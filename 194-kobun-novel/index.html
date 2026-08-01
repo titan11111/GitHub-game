@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d141f">
+<meta name="description" content="古文サウンドノベル『月夜綺譚』— 選択で分かれる四十四場面・二十六の結末。古語を読み解きながら月夜の山をさまよう和風ノベル。">
+<title>月夜綺譚 ─ 古文サウンドノベル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Shippori+Mincho+B1:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 表紙 / WebAudio 解錠 -->
+<div id="startScreen" class="start">
+  <div class="start__inner">
+    <p class="start__kicker">古文サウンドノベル</p>
+    <h1 class="start__title">月夜綺譚</h1>
+    <p class="start__ruby">つ き よ き た ん</p>
+    <div class="start__rule" aria-hidden="true"></div>
+    <p class="start__lead">むかし、男ありけり。<br>夜ふけて、山に入りぬ。</p>
+    <button id="startBtn" class="start__btn" type="button">
+      <span class="start__seal" aria-hidden="true">始</span>
+      <span>触れて始めよ</span>
+    </button>
+    <p class="start__note">四十四の場面／二十六の結末<br>音が鳴ります</p>
+  </div>
+</div>
+
+<!-- 本編 -->
+<div id="app" class="app is-hidden">
+
+  <header class="noren">
+    <div class="noren__brand">
+      <span class="noren__seal" aria-hidden="true">月</span>
+      <span class="noren__titles">
+        <span class="noren__title">月夜綺譚</span>
+        <span class="noren__sub">古文サウンドノベル</span>
+      </span>
+    </div>
+    <nav class="noren__nav">
+      <button id="audioBtn" class="fuda" type="button" aria-pressed="false">
+        <span class="fuda__glyph">音</span><span class="fuda__label" id="audioLabel">鳴</span>
+      </button>
+      <button id="dictBtn" class="fuda" type="button">
+        <span class="fuda__glyph">詞</span><span class="fuda__label">単語帳</span>
+        <span id="dictBadge" class="fuda__badge is-hidden" aria-hidden="true"></span>
+      </button>
+      <button id="endingBtn" class="fuda" type="button">
+        <span class="fuda__glyph">巻</span><span class="fuda__label">結末</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="stage">
+    <section class="maki" id="maki">
+      <div class="maki__strip">
+        <span class="maki__chapter" id="chapterLabel">序ノ段　月夜の山道</span>
+      </div>
+
+      <div class="maki__body">
+        <div class="maki__head">
+          <span class="maki__glyph" id="sceneGlyph">月</span>
+          <span class="maki__step" id="stepLabel">場面 一</span>
+          <button id="modernBtn" class="translate-btn" type="button" aria-pressed="false">訳</button>
+        </div>
+
+        <div class="honbun" id="honbun">
+          <p class="honbun__line" data-line="0"></p>
+          <p class="honbun__line" data-line="1"></p>
+          <p class="honbun__line" data-line="2"></p>
+        </div>
+
+        <div class="hanshi is-hidden" id="modernBox">
+          <p class="hanshi__label">現代語訳</p>
+          <p class="hanshi__line" data-mline="0"></p>
+          <p class="hanshi__line" data-mline="1"></p>
+          <p class="hanshi__line" data-mline="2"></p>
+        </div>
+
+        <div class="tags" id="wordTags"></div>
+        <div class="choices" id="choices"></div>
+      </div>
+    </section>
+
+    <p class="hint" id="hint">墨文字に触れると語義が開きます</p>
+  </main>
+
+  <footer class="footer">古文サウンドノベル『月夜綺譚』　体験型学習プロトタイプ</footer>
+</div>
+
+<!-- 単語帳 -->
+<div id="dictModal" class="veil is-hidden">
+  <div class="tojihon" role="dialog" aria-modal="true" aria-label="習得古語単語帳">
+    <div class="tojihon__head">
+      <h2 class="tojihon__title">習得古語　単語帳</h2>
+      <button class="close-btn" id="dictClose" type="button" aria-label="閉じる">閉</button>
+    </div>
+    <div class="tojihon__meter">
+      <span id="dictCount">〇 / 〇 語</span>
+      <span class="meter"><i id="dictBar"></i></span>
+    </div>
+    <div class="tojihon__list scroll-area" id="dictList"></div>
+    <p class="tojihon__foot">物語で出会った語が、ここに記されます</p>
+  </div>
+</div>
+
+<!-- 結末帳 -->
+<div id="endModal" class="veil is-hidden">
+  <div class="tojihon" role="dialog" aria-modal="true" aria-label="結末巻">
+    <div class="tojihon__head">
+      <h2 class="tojihon__title">見し結末　巻物</h2>
+      <button class="close-btn" id="endClose" type="button" aria-label="閉じる">閉</button>
+    </div>
+    <div class="tojihon__meter">
+      <span id="endCount">〇 / 〇 話</span>
+      <span class="meter"><i id="endBar"></i></span>
+    </div>
+    <div class="tojihon__list scroll-area" id="endList"></div>
+    <p class="tojihon__foot">道を変ふれば、また別の結末あり</p>
+  </div>
+</div>
+
+<!-- 語義 -->
+<div id="wordModal" class="veil is-hidden">
+  <div class="fusen" role="dialog" aria-modal="true" aria-label="語義">
+    <button class="close-btn close-btn--corner" id="wordClose" type="button" aria-label="閉じる">閉</button>
+    <div id="wordBody"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- 背景意匠（装飾のみ・操作を受けない） -->
+<canvas id="bgCanvas" aria-hidden="true"></canvas>
+<div class="moon" aria-hidden="true"></div>
+<div class="kasumi" aria-hidden="true"></div>
+<div class="shoji" aria-hidden="true"></div>
+
+<script src="dictionary.js"></script>
+<script src="story.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
