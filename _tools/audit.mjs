@@ -31,7 +31,20 @@ if (!target || !target.startsWith(`${root}${sep}`) || !existsSync(target) || !st
 }
 
 const rel = relative(root, target);
-const SIZE_LIMIT = 3 * 1024 * 1024;
+
+/**
+ * 人間判断が必要な項目（2026-08-02 タイタン決定）
+ * ここに載っている項目は、ループドライバが自動修正してはいけない。
+ * 「仕様・見た目・意図」が絡む＝AIが推測で埋めると事故る領域。
+ * この一覧は静的に定義する。AIに仕分けさせない（仕分けをAIに任せた瞬間に丸投げに戻る）。
+ */
+const HUMAN_DECISION = new Set([
+  '未使用アセットがない',
+  '参照切れがない（HTML/CSS/JSの全参照）',
+  '画像・音声・SVGのパス切れがない',
+  '外部CDN依存',
+  'SPEC.md が存在する（合格条件の定義元）',
+]);
 
 // ---------------------------------------------------------------------------
 // 判定モデル: mark は '○' | '×' | '―'。evidence（根拠1行）が空なら ○ を認めない。
@@ -54,6 +67,7 @@ function check(name, mark, evidence) {
     category: currentCategory,
     name,
     mark: finalMark,
+    human: HUMAN_DECISION.has(name),
     evidence: ev || '根拠を提示できないため ○ を付けない',
   });
 }
@@ -206,13 +220,17 @@ judge(
   const assets = relFiles.filter((f) => ASSET_EXT.has(extname(f).toLowerCase()) && f !== indexHtml);
   const unused = assets.filter((f) => !referencedPaths.has(f) && !allSource.includes(basename(f)));
   const unusedBytes = unused.reduce((s, f) => s + (fileSize.get(f) || 0), 0);
+  // 【削除の前提条件】参照切れが1件でもあるうちは、未参照ファイルは「ゴミ」ではなく
+  // 「行方不明の参照先の候補」。先に消すと直す材料を失う（017-action の hero.png 事故）。
+  const blocked = brokenRefs.length > 0;
   judge(
     '未使用アセットがない',
     unused.length === 0,
     unused.length === 0
       ? `アセット${assets.length}件すべてコード内から参照を検出`
-      : `未参照${unused.length}件 / 計${(unusedBytes / 1024 / 1024).toFixed(2)}MB: ${unused.slice(0, 6).join(', ')}${unused.length > 6 ? ' ほか' : ''}`,
+      : `未参照${unused.length}件 / 計${(unusedBytes / 1024 / 1024).toFixed(2)}MB: ${unused.slice(0, 6).join(', ')}${unused.length > 6 ? ' ほか' : ''}${blocked ? ` ／【削除禁止】参照切れ${brokenRefs.length}件が未解決のため、これらは参照先候補の可能性がある` : ' ／参照切れ0件なので削除可'}`,
   );
+  globalThis.__unused = unused;
 }
 
 {
@@ -561,13 +579,16 @@ category('5. iOS適合確認');
 category('6. 品質確認');
 
 {
+  // 2026-08-02 タイタン決定: 3MB を合否条件から外した。
+  // 理由「3MBを超えてダメだと、ほとんどのゲームが成立しない」。軽量化は推奨、上限は設けない。
+  // 計測は続ける（重い犯人を毎回見せる）が、× は付けない。
   const total = [...fileSize.values()].reduce((a, b) => a + b, 0);
-  judge(
-    'モバイル3MB鉄則',
-    total <= SIZE_LIMIT,
-    `フォルダ内アセット合計 ${(total / 1024 / 1024).toFixed(2)}MB（上限3.00MB）／最大 ${
-      [...fileSize.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([f, s]) => `${f} ${(s / 1024 / 1024).toFixed(2)}MB`).join(', ')
-    }`,
+  const top = [...fileSize.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+    .map(([f, s]) => `${f} ${(s / 1024 / 1024).toFixed(2)}MB`).join(', ');
+  check(
+    'アセット総量（参考値・合否対象外）',
+    '―',
+    `合計 ${(total / 1024 / 1024).toFixed(2)}MB（${relFiles.length}ファイル）／重い順: ${top}`,
   );
 }
 
@@ -639,11 +660,92 @@ const beforeFinal = results.length;
 skip('Obsidianへ記録済み', 'ObsidianのMCP接続が未認証のため、本ツールはローカルmdのみ出力する');
 
 // ---------------------------------------------------------------------------
+// 人間判断依頼の組み立て
+//   「状況 → 候補 → 質問 → YESなら何をするか」の4点セットにする。
+//   タイタンが読んで即答できる形にすることが目的。推測での穴埋めはしない。
+// ---------------------------------------------------------------------------
+const questions = [];
+
+if (brokenRefs.length) {
+  // 参照切れ1件ごとに、同じ拡張子の未参照ファイルを「候補」として提示する
+  const unusedAssets = globalThis.__unused || [];
+  const byRef = new Map();
+  for (const r of brokenRefs) {
+    if (!byRef.has(r.path)) byRef.set(r.path, []);
+    byRef.get(r.path).push(r.from);
+  }
+  const detail = [...byRef.entries()].map(([path, froms]) => {
+    const ext = extname(path).toLowerCase();
+    // 参照元の行を1行だけ引く（何に使う素材かを見せるため）
+    let usage = '';
+    for (const f of froms) {
+      const src = (textContent.get(f) || '').split('\n');
+      const i = src.findIndex((l) => l.includes(basename(path)));
+      if (i >= 0) { usage = `${f}:${i + 1}  ${src[i].trim().slice(0, 90)}`; break; }
+    }
+    const cands = unusedAssets.filter((u) => extname(u).toLowerCase() === ext);
+    return { path, usage, cands };
+  });
+  questions.push({
+    title: `参照切れ ${byRef.size}件 — コードが呼んでいるファイルが存在しない`,
+    situation: detail.map((d) => `\`${d.path}\` を ${d.usage || '(参照元不明)'} で使用`),
+    candidates: [...new Set(detail.flatMap((d) => d.cands))],
+    question: `どの実ファイルを充てる？（フォルダに残っている未参照ファイルが候補）`,
+    ifAnswered: 'リネームまたは参照先の書き換え → 再監査。ここが片付くと未使用アセットの削除も解禁される',
+    note: '自動修正禁止：どの画像がどの役割かはコードから判定できない',
+  });
+}
+
+{
+  const unusedAssets = globalThis.__unused || [];
+  if (unusedAssets.length) {
+    const bytes = unusedAssets.reduce((s, f) => s + (fileSize.get(f) || 0), 0);
+    questions.push({
+      title: `未参照ファイル ${unusedAssets.length}件（${(bytes / 1024 / 1024).toFixed(2)}MB）— 消していい？`,
+      situation: unusedAssets.map((f) => `\`${f}\`  ${((fileSize.get(f) || 0) / 1024 / 1024).toFixed(2)}MB`),
+      candidates: [],
+      question: brokenRefs.length
+        ? `**先に上の参照切れを解決すること。** 上で使う分を除いた残りを削除していい？`
+        : `全部削除していい？`,
+      ifAnswered: '削除 → 再監査',
+      note: brokenRefs.length ? `参照切れ${brokenRefs.length}件が未解決のため、いま消すと直す材料を失う` : '参照切れ0件なので安全に削除できる',
+    });
+  }
+}
+
+{
+  const cdn = [...new Set(references.filter((r) => r.external && /^(https?:)?\/\//i.test(r.raw)).map((r) => r.raw))];
+  if (cdn.length) {
+    questions.push({
+      title: `外部CDN依存 ${cdn.length}件 — どうする？`,
+      situation: cdn.map((u) => `\`${u}\``),
+      candidates: [],
+      question: 'ローカルに同梱する／そのまま外部参照でいく／使うのをやめる、どれ？',
+      ifAnswered: '同梱ならフォントファイルを取得して参照を書き換え → 再監査',
+      note: '見た目に直結するので自動判断しない',
+    });
+  }
+}
+
+if (!existsSync(join(target, 'SPEC.md'))) {
+  questions.push({
+    title: 'SPEC.md がない — 「仕様通りか」を永久に検証できない状態',
+    situation: [`${rel} に SPEC.md が存在しない`],
+    candidates: [],
+    question: 'いま書く／後回しにする／このゲームは対象外にする、どれ？',
+    ifAnswered: '書くなら .cursor/rules/global.mdc/game-spec-writing-rule.mdc の形式で作成',
+    note: 'SPEC.mdが無い間、この監査は「壊れてないか」しか見られない',
+  });
+}
+
+// ---------------------------------------------------------------------------
 // 出力
 // ---------------------------------------------------------------------------
 const ng = results.filter((r) => r.mark === '×');
 const ok = results.filter((r) => r.mark === '○');
 const na = results.filter((r) => r.mark === '―');
+const ngMachine = ng.filter((r) => !r.human);
+const ngHuman = ng.filter((r) => r.human);
 const verdict = ng.length === 0 ? 'コード監査上は問題なし' : 'コード監査上の問題あり';
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -656,6 +758,7 @@ const lines = [
   `# コード監査レポート: ${rel}`,
   '',
   `- 判定: **${verdict}**（○ ${ok.length} / × ${ng.length} / ― ${na.length}）`,
+  `- × の内訳: **機械箱 ${ngMachine.length}件**（ループが直す） / **人間箱 ${ngHuman.length}件**（タイタンが決める）`,
   `- 実行: ${new Date().toISOString()}`,
   `- ツール: \`_tools/audit.mjs\`（静的監査・対象フォルダは無変更）`,
   '',
@@ -663,16 +766,36 @@ const lines = [
   '> 動的検証は `_tools/game-harness.mjs`、実機確認は人間の責務。',
   '',
 ];
+
+if (questions.length) {
+  lines.push(`# 👤 タイタンに聞きたいこと（${questions.length}件）`, '');
+  questions.forEach((q, i) => {
+    lines.push(`## ${i + 1}. ${q.title}`, '');
+    lines.push('**いま起きてること**', '');
+    q.situation.forEach((s) => lines.push(`- ${s}`));
+    lines.push('');
+    if (q.candidates.length) {
+      lines.push('**フォルダに残ってる候補**', '');
+      q.candidates.forEach((c) => lines.push(`- \`${c}\`  ${((fileSize.get(c) || 0) / 1024 / 1024).toFixed(2)}MB`));
+      lines.push('');
+    }
+    lines.push(`**質問** — ${q.question}`, '');
+    lines.push(`**答えたらこうする** — ${q.ifAnswered}`, '');
+    lines.push(`*${q.note}*`, '');
+  });
+  lines.push('---', '');
+}
+lines.push('# 監査明細', '');
 for (const cat of [...new Set(results.map((r) => r.category))]) {
-  lines.push(`## ${cat}`, '', '| 項目 | 判定 | 根拠 |', '|---|:---:|---|');
+  lines.push(`## ${cat}`, '', '| 項目 | 判定 | 箱 | 根拠 |', '|---|:---:|:---:|---|');
   for (const r of results.filter((x) => x.category === cat)) {
-    lines.push(`| ${esc(r.name)} | ${r.mark} | ${esc(r.evidence)} |`);
+    lines.push(`| ${esc(r.name)} | ${r.mark} | ${r.human ? '👤' : '⚙️'} | ${esc(r.evidence)} |`);
   }
   lines.push('');
 }
-if (ng.length) {
-  lines.push('## × 一覧（修正対象）', '');
-  ng.forEach((r, i) => lines.push(`${i + 1}. **${r.name}**（${r.category}） — ${r.evidence}`));
+if (ngMachine.length) {
+  lines.push('## ⚙️ 機械箱 — ループが直す（上から順に1周1件）', '');
+  ngMachine.forEach((r, i) => lines.push(`${i + 1}. **${r.name}**（${r.category}） — ${r.evidence}`));
   lines.push('');
 }
 writeFileSync(reportFile, lines.join('\n'));
@@ -686,9 +809,10 @@ if (wantJson) {
       cat = r.category;
       console.log(`\n[${cat}]`);
     }
-    console.log(`  ${r.mark}  ${r.name}\n       └ ${r.evidence}`);
+    console.log(`  ${r.mark} ${r.human ? '👤' : '  '} ${r.name}\n       └ ${r.evidence}`);
   }
   console.log(`\nVERDICT ${verdict}  (○${ok.length} ×${ng.length} ―${na.length})`);
+  console.log(`  ⚙️ 機械箱 ${ngMachine.length}件 / 👤 人間箱 ${ngHuman.length}件（質問${questions.length}件）`);
   console.log(`REPORT ${relative(root, reportFile)}`);
 }
 
