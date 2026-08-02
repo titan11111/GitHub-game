@@ -22,6 +22,7 @@ import { tmpdir } from 'node:os';
 const root = resolve(new URL('..', import.meta.url).pathname);
 const argv = process.argv.slice(2);
 const wantJson = argv.includes('--json');
+const noReport = argv.includes('--no-report'); // 一括実行時にmdを150個作らないため
 const input = argv.find((a) => !a.startsWith('--'));
 const target = input ? resolve(root, input) : null;
 
@@ -40,7 +41,7 @@ const rel = relative(root, target);
  */
 const HUMAN_DECISION = new Set([
   '未使用アセットがない',
-  '参照切れがない（HTML/CSS/JSの全参照）',
+  '参照切れがない（該当ファイルがフォルダ内に存在しない）',
   '画像・音声・SVGのパス切れがない',
   '外部CDN依存',
   'SPEC.md が存在する（合格条件の定義元）',
@@ -155,15 +156,32 @@ const REF_PATTERNS = [
   /<link[^>]+href\s*=\s*["']([^"']+)["']/gi,
   /<img[^>]+src\s*=\s*["']([^"']+)["']/gi,
   /<(?:audio|video|source)[^>]+src\s*=\s*["']([^"']+)["']/gi,
-  /url\(\s*["']?([^"')]+)["']?\s*\)/gi,
+  // CSSの url() のみ。大文字小文字を区別しないと `new URL(request.url)` に誤ヒットする（誤判定ログ#3）
+  // 先読みの (?<![\w.\-]) は getImageUrl( / createObjectURL( 対策
+  /(?<![\w.\-])url\(\s*["']?([^"')]+)["']?\s*\)/g,
+  // JSからの読み込み。<script src> 以外の正規の読み込み経路（誤判定ログ#4）
+  /\bfrom\s+["']([^"']+)["']/g,                          // import ... from './x.js'
+  /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,              // 動的import
+  /new\s+Worker\s*\(\s*["']([^"']+)["']/g,               // Web Worker
+  /addModule\s*\(\s*["']([^"']+)["']/g,                  // AudioWorklet
+  /serviceWorker\s*\.\s*register\s*\(\s*["']([^"']+)["']/g, // Service Worker
 ];
 const STRING_ASSET = /["'`]([^"'`\n]*?\.(?:png|jpe?g|gif|webp|svg|ico|mp3|m4a|wav|ogg|aac|json|ttf|woff2?|otf))["'`]/gi;
 
-/** 参照文字列 → フォルダ内相対パスに正規化。外部URL/データURIは null */
+/** 参照文字列 → フォルダ内相対パスに正規化。外部URL/データURI/動的パスは null */
 function normalizeRef(ref, fromFile) {
   if (!ref) return null;
-  const clean = ref.split('#')[0].split('?')[0].trim();
+  // テンプレートリテラル・ワイルドカードは実行時にしか決まらない。静的には解決できないので対象外
+  // （誤判定ログ#3: `./images/${name}.png` を「参照切れ」と誤判定していた）
+  if (/[$`*{}]/.test(ref)) return null;
+  // url(#noise) のSVGフィルタ参照。ファイルではなく同一文書内のid（%23 は # のURLエンコード）
+  if (/^%23/i.test(ref) || ref.startsWith('#')) return null;
+  // %20 などのURLエンコードを戻す。ブラウザはデコードしてから取りに行くため
+  let clean = ref.split('#')[0].split('?')[0].trim();
+  try { clean = decodeURIComponent(clean); } catch { /* 不正なエンコードはそのまま */ }
   if (!clean) return null;
+  // `.png` `.jpg` のような拡張子だけの文字列。コード内の拡張子リストであって参照ではない
+  if (/^\.[a-z0-9]+$/i.test(clean.split('/').pop())) return null;
   if (/^(https?:)?\/\//i.test(clean) || /^data:/i.test(clean) || /^blob:/i.test(clean) || /^mailto:/i.test(clean)) return null;
   const base = dirname(fromFile).split(sep).join('/');
   const joined = clean.startsWith('/')
@@ -173,8 +191,14 @@ function normalizeRef(ref, fromFile) {
   return joined;
 }
 
+// 参照を探すのは「ブラウザが実際に読むファイル」だけ。
+// .md / .txt / .json は仕様書・メモであり、そこに書かれたファイル名は"読み込み"ではない。
+// （誤判定ログ#3: SPEC.md や CRITIQUE.md に書かれた素材名を「参照切れ」と誤判定していた）
+const LOADABLE = new Set(['.html', '.htm', '.js', '.mjs', '.css']);
+const scanFiles = textFiles.filter((f) => LOADABLE.has(extname(f).toLowerCase()));
+
 const references = []; // { from, raw, path, external }
-for (const f of textFiles) {
+for (const f of scanFiles) {
   const src = textContent.get(f) || '';
   const found = new Set();
   for (const re of REF_PATTERNS) {
@@ -191,8 +215,28 @@ for (const f of textFiles) {
   }
 }
 
-const referencedPaths = new Set(references.filter((r) => r.path).map((r) => r.path));
-const brokenRefs = references.filter((r) => r.path && !fileSize.has(r.path));
+/**
+ * 実行時にベースパスが足される書き方（`this.bgmEl.src = 'audio/' + file` など）があるため、
+ * 参照文字列からの解決候補を複数持つ。どれか1つでも実在すれば「切れていない」と判定する。
+ * （誤判定ログ#3: 176-kaerimichi2 の js/config.js に書かれた素材名を全部「切れ」と誤判定していた）
+ */
+const byBasename = new Map();
+for (const f of relFiles) {
+  const b = basename(f);
+  if (!byBasename.has(b)) byBasename.set(b, f);
+}
+function resolveCandidates(r) {
+  if (!r.path) return [];
+  const base = basename(r.path);
+  // 完全一致 → フォルダ内のどこかに同名ファイルがある、の順で探す。
+  // 後者を許すのは、実行時にベースパスを足す書き方が多数あるため（誤判定ログ#3）。
+  // その代わりこのチェックが主張するのは「そのファイルがどこにも存在しない」だけに絞られる。
+  return [r.path, byBasename.get(base)].filter(Boolean);
+}
+for (const r of references) r.resolved = resolveCandidates(r).find((p) => fileSize.has(p)) || null;
+
+const referencedPaths = new Set(references.filter((r) => r.resolved).map((r) => r.resolved));
+const brokenRefs = references.filter((r) => r.path && !r.resolved);
 
 // ---------------------------------------------------------------------------
 // 1. 実装確認
@@ -235,7 +279,9 @@ judge(
 
 {
   // HTMLから一度も読み込まれていない JS / CSS（死にファイル）
-  const codeFiles = [...jsFiles, ...cssFiles];
+  // サーバー側/ビルド用スクリプトはブラウザから読まれなくて当然なので除外する（誤判定ログ#4）
+  const SERVER_SIDE = /(^|\/)(server|api\/|tests?\/|.*\.spec|.*\.test|.*-worker|.*-worklet|.*-api|background|sw|.*\.config|.*\.compiled|check-[^/]*|build[^/]*|scripts?\/)/i;
+  const codeFiles = [...jsFiles, ...cssFiles].filter((f) => !SERVER_SIDE.test(f) && !f.endsWith('.mjs'));
   const dead = codeFiles.filter((f) => !referencedPaths.has(f));
   const deadBytes = dead.reduce((s, f) => s + (fileSize.get(f) || 0), 0);
   if (codeFiles.length === 0) skip('読み込まれていないJS/CSSがない', 'JS/CSSファイルが0件（全てインライン）のため対象外');
@@ -379,7 +425,7 @@ category('3. 依存関係確認');
 }
 
 judge(
-  '参照切れがない（HTML/CSS/JSの全参照）',
+  '参照切れがない（該当ファイルがフォルダ内に存在しない）',
   brokenRefs.length === 0,
   brokenRefs.length === 0
     ? `ローカル参照 ${referencedPaths.size}件すべて実ファイルに解決（外部URL ${references.filter((r) => r.external).length}件は対象外）`
@@ -768,7 +814,7 @@ const verdict = ng.length === 0 ? 'コード監査上は問題なし' : 'コー�
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const reportDir = join(root, 'docs', 'audit-reports');
-mkdirSync(reportDir, { recursive: true });
+if (!noReport) mkdirSync(reportDir, { recursive: true });
 const reportFile = join(reportDir, `${rel.replaceAll('/', '_')}-${stamp}.md`);
 
 const esc = (s) => String(s).replaceAll('|', '\\|');
@@ -816,7 +862,7 @@ if (ngMachine.length) {
   ngMachine.forEach((r, i) => lines.push(`${i + 1}. **${r.name}**（${r.category}） — ${r.evidence}`));
   lines.push('');
 }
-writeFileSync(reportFile, lines.join('\n'));
+if (!noReport) writeFileSync(reportFile, lines.join('\n'));
 
 if (wantJson) {
   console.log(JSON.stringify({ target: rel, verdict, ok: ok.length, ng: ng.length, na: na.length, results, report: relative(root, reportFile) }, null, 2));
