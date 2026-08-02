@@ -14,7 +14,7 @@
  * 終了コード: 0 = × なし / 1 = × あり / 2 = 実行エラー
  */
 
-import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, writeFileSync, copyFileSync, rmSync } from 'node:fs';
 import { join, relative, resolve, sep, extname, basename, dirname, posix } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -419,11 +419,29 @@ category('4. 既存機能への影響確認（回帰）');
     skip('新たな警告が発生していない', '基準となる過去実行結果が無いため判定不能');
   } else {
     const gitDir = hasGit ? target : root;
+    // 【重要】監査器は対象リポジトリの .git に一切書き込まない。
+    // git status はファイルのmtimeが変わっているとindexを書き戻すため .git/index.lock を作る。
+    // このワークスペースのマウントは unlink が効かず、そのlockが残って次のcommitを止めてしまう。
+    // → indexを一時ディレクトリにコピーし GIT_INDEX_FILE で差し替える。lockは/tmp側に出て消える。
+    // （2026-08-02 誤判定ログ#2）
     let dirty = '';
+    const tmpIndex = join(tmpdir(), `audit-index-${process.pid}-${Date.now()}`);
     try {
-      dirty = execFileSync('git', ['-C', gitDir, 'status', '--porcelain', '--', hasGit ? '.' : rel], { encoding: 'utf8' }).trim();
+      const env = { ...process.env };
+      const realIndex = join(gitDir, '.git', 'index');
+      if (existsSync(realIndex) && statSync(join(gitDir, '.git')).isDirectory()) {
+        copyFileSync(realIndex, tmpIndex);
+        env.GIT_INDEX_FILE = tmpIndex;
+      }
+      dirty = execFileSync('git', [
+        '--no-optional-locks', '-c', 'gc.auto=0', '-c', 'maintenance.auto=false',
+        '-C', gitDir, 'status', '--porcelain', '--', hasGit ? '.' : rel,
+      ], { encoding: 'utf8', env }).trim();
     } catch (e) {
       dirty = `__ERROR__${e.message}`;
+    } finally {
+      rmSync(tmpIndex, { force: true });
+      rmSync(`${tmpIndex}.lock`, { force: true });
     }
     if (dirty.startsWith('__ERROR__')) {
       skip('修正した箇所以外が壊れていない', `git status が実行できず判定不能: ${dirty.slice(9, 90)}`);
