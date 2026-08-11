@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>GitHub-game | 84本のHTMLブラウザゲーム</title>
-    <meta name="description" content="生成AIで創造した84本のHTMLブラウザゲーム。iPhoneで今すぐプレイ。ジャンルは多岐にわたり、新しいゲーム体験が毎日待っています。">
-    <meta name="theme-color" content="#6366f1">
+    <title>GitHub-game Studio | AI × Game Design Portfolio</title>
+    <meta name="description" content="生成AIとクリエイティビティで創造する84本のゲーム制作スタジオ。">
+    <meta name="theme-color" content="#000000">
     <style>
         * {
             margin: 0;
@@ -14,592 +14,619 @@
         }
 
         :root {
-            --color-primary: #6366f1;
-            --color-secondary: #a855f7;
-            --color-accent: #ec4899;
-            --color-success: #10b981;
-            --color-warning: #f59e0b;
-            --color-dark: #0f172a;
-            --color-light: #f8fafc;
-            --color-text: #1e293b;
-            --color-muted: #64748b;
+            --bg: #fafafa;
+            --bg-dark: #000000;
+            --text: #000000;
+            --text-light: #666666;
+            --border: #e8e8e8;
+            --accent: #ff6b6b;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
-            color: var(--color-text);
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text);
+            background: var(--bg);
             overflow-x: hidden;
         }
 
-        /* ────── Hero Section ────── */
-        .hero {
-            min-height: 100dvh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
-            background-size: 400% 400%;
-            animation: gradientShift 8s ease infinite;
-            position: relative;
-            overflow: hidden;
-            padding: env(safe-area-inset-top) 1rem env(safe-area-inset-bottom);
-        }
-
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
+        /* ────── Header ────── */
+        header {
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            bottom: 0;
-            background:
-                radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
-            pointer-events: none;
+            height: 60px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
         }
 
-        .hero-content {
-            position: relative;
-            z-index: 2;
-            text-align: center;
-            max-width: 900px;
-            animation: fadeInUp 0.8s ease-out;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .hero h1 {
-            font-size: clamp(2rem, 8vw, 4rem);
+        .logo {
+            font-size: 1.25rem;
             font-weight: 900;
-            color: white;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            margin-bottom: 1rem;
             letter-spacing: -1px;
         }
 
-        .hero p {
-            font-size: clamp(1rem, 3vw, 1.5rem);
-            color: rgba(255,255,255,0.95);
-            margin-bottom: 2rem;
-            font-weight: 300;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        .nav {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
         }
 
-        .hero-buttons {
+        .nav a {
+            color: var(--text-light);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .nav a:hover {
+            color: var(--text);
+        }
+
+        /* ────── Hero ────── */
+        .hero {
+            padding-top: 120px;
+            padding-bottom: 80px;
+            padding-left: 2rem;
+            padding-right: 2rem;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 10vw, 5rem);
+            font-weight: 900;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+            letter-spacing: -2px;
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 3vw, 1.25rem);
+            color: var(--text-light);
+            max-width: 700px;
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            padding: 0.875rem 2.5rem;
+            background: var(--bg-dark);
+            color: white;
+            text-decoration: none;
+            border-radius: 0;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .cta-btn.outline {
+            background: white;
+            color: var(--text);
+            border: 2px solid var(--text);
+        }
+
+        .cta-btn.outline:hover {
+            background: var(--text);
+            color: white;
+        }
+
+        .hero-ctas {
             display: flex;
             gap: 1rem;
             justify-content: center;
             flex-wrap: wrap;
         }
 
-        .btn {
-            padding: 0.875rem 2rem;
-            border: none;
-            border-radius: 50px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .btn-primary {
-            background: white;
-            color: var(--color-primary);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-        }
-
-        .btn-secondary {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 2px solid white;
-            backdrop-filter: blur(10px);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.3);
-            transform: translateY(-3px);
-        }
-
-        /* ────── Floating Cards Animation ────── */
-        .floating-cards {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            z-index: 1;
-            pointer-events: none;
-        }
-
-        .float-card {
-            position: absolute;
-            width: 80px;
-            height: 100px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-            animation: float 6s ease-in-out infinite;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-
-        .float-card:nth-child(1) { left: 10%; top: 20%; animation-delay: 0s; }
-        .float-card:nth-child(2) { right: 15%; top: 30%; animation-delay: 1s; }
-        .float-card:nth-child(3) { left: 20%; bottom: 20%; animation-delay: 2s; }
-        .float-card:nth-child(4) { right: 10%; bottom: 15%; animation-delay: 1.5s; }
-
-        /* ────── About Section ────── */
-        .about {
-            padding: 4rem 1rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .section-title {
-            font-size: clamp(2rem, 6vw, 3rem);
-            font-weight: 900;
-            margin-bottom: 1.5rem;
-            color: white;
-            text-align: center;
-        }
-
-        .section-subtitle {
-            font-size: 1.1rem;
-            color: var(--color-muted);
-            text-align: center;
-            max-width: 600px;
-            margin: 0 auto 3rem;
-            line-height: 1.6;
-        }
-
-        .about-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        .about-card {
-            background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(168,85,247,0.1) 100%);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 2rem;
-            backdrop-filter: blur(10px);
-            color: rgba(255,255,255,0.9);
-        }
-
-        .about-card h3 {
-            font-size: 1.25rem;
-            margin-bottom: 1rem;
-            color: white;
-        }
-
-        .about-card p {
-            line-height: 1.6;
-        }
-
-        /* ────── Stats Section ────── */
-        .stats {
-            padding: 4rem 1rem;
-            background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(168,85,247,0.1) 100%);
-            margin: 3rem 0;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: clamp(2.5rem, 8vw, 4rem);
-            font-weight: 900;
-            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            font-size: 1rem;
-            color: rgba(255,255,255,0.7);
-            font-weight: 600;
-        }
-
-        /* ────── Games Grid ────── */
-        .games-section {
-            padding: 4rem 1rem;
+        /* ────── Featured Works ────── */
+        .featured {
+            padding: 4rem 2rem;
             max-width: 1400px;
             margin: 0 auto;
         }
 
-        .filter-tags {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 2rem;
-        }
-
-        .filter-btn {
-            padding: 0.5rem 1.25rem;
-            border: 2px solid rgba(99,102,241,0.3);
-            background: rgba(99,102,241,0.1);
-            color: rgba(255,255,255,0.8);
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-
-        .filter-btn:hover,
-        .filter-btn.active {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-color: transparent;
-            color: white;
-        }
-
-        .games-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .game-card {
-            background: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(168,85,247,0.15) 100%);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 1.5rem;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            backdrop-filter: blur(10px);
-            display: flex;
-            flex-direction: column;
-            color: rgba(255,255,255,0.9);
-            text-decoration: none;
-        }
-
-        .game-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            background: linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(168,85,247,0.25) 100%);
-            border-color: rgba(255,255,255,0.2);
-            box-shadow: 0 20px 40px rgba(99,102,241,0.2);
-        }
-
-        .game-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 8px;
+        .section-label {
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-light);
             margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            font-weight: 900;
+            margin-bottom: 3rem;
+            line-height: 1.2;
+        }
+
+        .works-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .work-card {
+            background: white;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .work-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .work-image {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 3rem;
+            color: white;
         }
 
-        .game-title {
-            font-size: 1.1rem;
+        .work-card:nth-child(1) .work-image {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .work-card:nth-child(2) .work-image {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .work-card:nth-child(3) .work-image {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .work-info {
+            padding: 1.5rem;
+        }
+
+        .work-title {
+            font-size: 1.25rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
-            color: white;
         }
 
-        .game-genre {
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.6);
-            margin-bottom: 0.75rem;
+        .work-desc {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            line-height: 1.6;
         }
 
-        .game-desc {
-            font-size: 0.9rem;
-            line-height: 1.5;
-            color: rgba(255,255,255,0.7);
-            flex-grow: 1;
+        .work-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
         }
 
-        .game-play {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            font-size: 0.85rem;
-            color: #667eea;
-            font-weight: 600;
+        .tag {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 2px;
+            color: var(--text-light);
         }
 
-        /* ────── CTA Section ────── */
-        .cta {
-            padding: 4rem 1rem;
-            text-align: center;
-            background: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(236,72,153,0.15) 100%);
-            margin: 3rem 0;
+        /* ────── About ────── */
+        .about {
+            padding: 4rem 2rem;
+            background: var(--bg-secondary);
+            margin: 2rem 0;
         }
 
-        .cta h2 {
-            font-size: clamp(1.5rem, 6vw, 2.5rem);
-            color: white;
-            margin-bottom: 1.5rem;
+        .about-content {
+            max-width: 900px;
+            margin: 0 auto;
         }
 
-        .cta p {
+        .about-text {
             font-size: 1.1rem;
-            color: rgba(255,255,255,0.8);
+            line-height: 1.8;
             margin-bottom: 2rem;
+            color: var(--text-light);
+        }
+
+        /* ────── Process ────── */
+        .process {
+            padding: 4rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .process-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .process-item {
+            padding: 2rem;
+            border: 1px solid var(--border);
+            background: white;
+        }
+
+        .process-item h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .process-item p {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        /* ────── Stats ────── */
+        .stats {
+            padding: 4rem 2rem;
+            background: var(--bg-dark);
+            color: white;
+            margin: 2rem 0;
+        }
+
+        .stats-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: clamp(2rem, 8vw, 3.5rem);
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-item p {
+            font-size: 0.95rem;
+            color: rgba(255,255,255,0.7);
+        }
+
+        /* ────── Gallery ────── */
+        .gallery {
+            padding: 4rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
 
         /* ────── Footer ────── */
         footer {
-            background: rgba(0,0,0,0.2);
-            border-top: 1px solid rgba(255,255,255,0.1);
-            padding: 2rem 1rem;
-            text-align: center;
-            color: rgba(255,255,255,0.6);
-            backdrop-filter: blur(10px);
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            background: white;
         }
 
-        footer p {
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            font-size: 0.9rem;
+            font-weight: 700;
             margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .footer-links {
-            display: flex;
-            gap: 1.5rem;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-        }
-
-        .footer-links a {
-            color: rgba(99,102,241,0.9);
+        .footer-section a {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-light);
             text-decoration: none;
+            margin-bottom: 0.75rem;
             transition: color 0.3s ease;
         }
 
-        .footer-links a:hover {
-            color: #667eea;
+        .footer-section a:hover {
+            color: var(--text);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+            color: var(--text-light);
         }
 
         /* ────── Responsive ────── */
         @media (max-width: 768px) {
+            header {
+                padding: 0 1rem;
+            }
+
+            .nav {
+                display: none;
+            }
+
             .hero {
-                padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+                padding-left: 1rem;
+                padding-right: 1rem;
+                padding-top: 100px;
             }
 
-            .games-grid {
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                gap: 1rem;
+            .works-grid {
+                grid-template-columns: 1fr;
             }
 
-            .btn {
-                padding: 0.75rem 1.5rem;
-                font-size: 0.9rem;
+            .hero-ctas {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .cta-btn {
+                width: 100%;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Hero Section -->
+    <!-- Header -->
+    <header>
+        <div class="logo">GitHub-game</div>
+        <nav class="nav">
+            <a href="#works">Works</a>
+            <a href="#about">About</a>
+            <a href="#gallery">All Projects</a>
+        </nav>
+    </header>
+
+    <!-- Hero -->
     <section class="hero">
-        <div class="floating-cards">
-            <div class="float-card"></div>
-            <div class="float-card"></div>
-            <div class="float-card"></div>
-            <div class="float-card"></div>
+        <h1>AI × Game Design<br>Creative Studio</h1>
+        <p>生成AIとクリエイティビティの力で、84本のゲーム体験を創造。<br>iPhone で今すぐプレイ可能です。</p>
+        <div class="hero-ctas">
+            <button class="cta-btn" onclick="document.querySelector('.featured').scrollIntoView({behavior: 'smooth'})">
+                作品を見る
+            </button>
+            <a href="https://github.com/titan11111/GitHub-game" class="cta-btn outline">
+                GitHub
+            </a>
         </div>
-        <div class="hero-content">
-            <h1>🎮 GitHub-game</h1>
-            <p>84本のHTMLブラウザゲーム<br>生成AIで創造した、無限の世界へ</p>
-            <div class="hero-buttons">
-                <button class="btn btn-primary" onclick="document.querySelector('.games-section').scrollIntoView({behavior: 'smooth'})">
-                    冒険を始める
-                </button>
-                <a href="https://github.com/titan11111/GitHub-game" class="btn btn-secondary">
-                    GitHubを見る
-                </a>
+    </section>
+
+    <!-- Featured Works -->
+    <section class="featured" id="works">
+        <div class="section-label">Featured Works</div>
+        <h2 class="section-title">代表作</h2>
+        <div class="works-grid">
+            <div class="work-card">
+                <div class="work-image">🙏</div>
+                <div class="work-info">
+                    <h3 class="work-title">僧侶の相談部屋</h3>
+                    <p class="work-desc">60人のキャラクターとの分岐ナラティブ。選択によって異なるストーリーが展開します。</p>
+                    <div class="work-tags">
+                        <span class="tag">ノベル</span>
+                        <span class="tag">分岐</span>
+                        <span class="tag">AIキャラ</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="work-card">
+                <div class="work-image">🚀</div>
+                <div class="work-info">
+                    <h3 class="work-title">スペースファンタジー</h3>
+                    <p class="work-desc">宇宙を舞台とした シューティングゲーム。ダイナミックなアクションが特徴です。</p>
+                    <div class="work-tags">
+                        <span class="tag">STG</span>
+                        <span class="tag">アクション</span>
+                        <span class="tag">高速描画</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="work-card">
+                <div class="work-image">🏙️</div>
+                <div class="work-info">
+                    <h3 class="work-title">シティシミュレーター</h3>
+                    <p class="work-desc">都市経営の醍醐味を体験。経営判断が都市の発展に直結します。</p>
+                    <div class="work-tags">
+                        <span class="tag">シミュレーション</span>
+                        <span class="tag">経営</span>
+                        <span class="tag">ストラテジー</span>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- About Section -->
-    <section class="about">
-        <h2 class="section-title">GitHub-game とは</h2>
-        <p class="section-subtitle">
-            生成AIの力を活用して、毎日新しいゲーム体験を届ける、ブラウザゲーム開発スタジオです。
-        </p>
+    <!-- About -->
+    <section class="about" id="about">
         <div class="about-content">
-            <div class="about-card">
-                <h3>🌍 iPhone対応</h3>
-                <p>すべてのゲームはiPhoneのブラウザで最適化。インストール不要で、今すぐプレイできます。</p>
+            <div class="section-label">About</div>
+            <h2 class="section-title">GitHub-game について</h2>
+            <p class="about-text">
+                生成AIを活用したゲーム開発スタジオです。R&Dを通じて、ゲーム化による学習支援から法人研修・営業支援への応用まで、ゲーム体験の可能性を探求しています。
+            </p>
+            <p class="about-text">
+                各作品はiPhoneのブラウザで最適化。インストール不要で、いつでもどこでもプレイできます。20以上のジャンルにわたる84本の作品が、新しいゲーム体験をお届けします。
+            </p>
+        </div>
+    </section>
+
+    <!-- Process -->
+    <section class="process">
+        <div class="section-label">Process</div>
+        <h2 class="section-title">制作フロー</h2>
+        <div class="process-grid">
+            <div class="process-item">
+                <h3>🤖 AI アイデア生成</h3>
+                <p>生成AIを活用してゲームコンセプトを発想。多様なジャンル・メカニクスが次々と誕生します。</p>
             </div>
-            <div class="about-card">
-                <h3>🎨 多彩なジャンル</h3>
-                <p>アクション、パズル、RPG、STG、ノベル…多様なゲーム体験があなたを待っています。</p>
+            <div class="process-item">
+                <h3>📐 設計 & プロトタイプ</h3>
+                <p>ゲーム仕様をMarkdownで明文化。迅速なプロトタイプ制作で検証を加速させます。</p>
             </div>
-            <div class="about-card">
-                <h3>⚡ 高速開発サイクル</h3>
-                <p>生成AIを活用した迅速な開発・改善。常に新しいゲームが追加されています。</p>
+            <div class="process-item">
+                <h3>🎨 実装 & UIデザイン</h3>
+                <p>HTML5 + Canvas + JavaScriptでネイティブ実装。iOS対応の細かい配慮も含みます。</p>
+            </div>
+            <div class="process-item">
+                <h3>📊 テスト & 改善</h3>
+                <p>自動ハーネスで品質チェック。ユーザーフィードバックを反映した継続改善を実施。</p>
             </div>
         </div>
     </section>
 
-    <!-- Stats Section -->
+    <!-- Stats -->
     <section class="stats">
-        <div class="stats-grid">
+        <div class="stats-content">
             <div class="stat-item">
-                <div class="stat-number">84</div>
-                <div class="stat-label">ゲーム作品</div>
+                <h3>84</h3>
+                <p>ゲーム作品</p>
             </div>
             <div class="stat-item">
-                <div class="stat-number">20+</div>
-                <div class="stat-label">ジャンル</div>
+                <h3>20+</h3>
+                <p>ゲームジャンル</p>
             </div>
             <div class="stat-item">
-                <div class="stat-number">100%</div>
-                <div class="stat-label">モバイル対応</div>
+                <h3>100%</h3>
+                <p>モバイル対応</p>
             </div>
             <div class="stat-item">
-                <div class="stat-number">0¥</div>
-                <div class="stat-label">無料で遊べる</div>
+                <h3>∞</h3>
+                <p>遊び心</p>
             </div>
         </div>
     </section>
 
-    <!-- Games Section -->
-    <section class="games-section">
-        <h2 class="section-title">ゲーム一覧</h2>
-        <p class="section-subtitle">
-            すべてのゲームはGitHub Pagesで公開中。タップまたはクリックで今すぐプレイできます。
-        </p>
-
-        <div class="filter-tags">
-            <button class="filter-btn active" onclick="filterGames('all')">すべて</button>
-            <button class="filter-btn" onclick="filterGames('action')">アクション</button>
-            <button class="filter-btn" onclick="filterGames('puzzle')">パズル</button>
-            <button class="filter-btn" onclick="filterGames('rpg')">RPG</button>
-            <button class="filter-btn" onclick="filterGames('simulation')">シミュレーション</button>
+    <!-- Gallery -->
+    <section class="gallery" id="gallery">
+        <div class="section-label">All Projects</div>
+        <h2 class="section-title">全作品ギャラリー</h2>
+        <div class="gallery-grid" id="galleryGrid">
+            <!-- JavaScriptで動的生成 -->
         </div>
-
-        <div class="games-grid" id="gamesGrid">
-            <!-- ゲームカードはJavaScriptで動的生成 -->
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="cta">
-        <h2>すぐにプレイ可能</h2>
-        <p>ジャンルを選んで、新しいゲーム体験を今すぐ始めましょう</p>
-        <button class="btn btn-primary" onclick="document.querySelector('.games-section').scrollIntoView({behavior: 'smooth'})">
-            ゲームを探す
-        </button>
     </section>
 
     <!-- Footer -->
     <footer>
-        <div class="footer-links">
-            <a href="https://github.com/titan11111/GitHub-game">GitHub</a>
-            <a href="https://github.com/titan11111">Developer</a>
-            <a href="#">Privacy</a>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>GitHub-game</h4>
+                <a href="https://github.com/titan11111/GitHub-game">Repository</a>
+                <a href="https://github.com/titan11111">Developer</a>
+            </div>
+            <div class="footer-section">
+                <h4>Links</h4>
+                <a href="#works">Featured Works</a>
+                <a href="#about">About</a>
+                <a href="#gallery">Gallery</a>
+            </div>
+            <div class="footer-section">
+                <h4>Tech</h4>
+                <a href="#">HTML5</a>
+                <a href="#">Canvas</a>
+                <a href="#">JavaScript</a>
+            </div>
         </div>
-        <p>&copy; 2026 GitHub-game | Made with AI × Creativity</p>
+        <div class="footer-bottom">
+            &copy; 2026 GitHub-game Studio | Made with AI × Creativity
+        </div>
     </footer>
 
     <script>
-        // ゲームデータ
-        const allGames = [
-            { id: "026-bouzu", title: "僧侶の相談部屋", genre: "simulation", emoji: "🙏", desc: "60人のキャラとの分岐ナラティブ" },
-            { id: "025-barcode-scanner", title: "バーコードスキャナー", genre: "utility", emoji: "📱", desc: "商品情報を即座に検索" },
-            { id: "024-kotori", title: "小鳥との時間", genre: "action", emoji: "🐦", desc: "癒しのゲーム体験" },
-            { id: "023-spacefantasy", title: "スペースファンタジー", genre: "stg", emoji: "🚀", desc: "宇宙冒険譚" },
-            { id: "023-demae", title: "出前配達ゲーム", genre: "puzzle", emoji: "🍜", desc: "配達ロジックチャレンジ" },
-            { id: "022-city", title: "シティシミュレーター", genre: "simulation", emoji: "🏙️", desc: "都市経営の醍醐味" },
-            { id: "021-sanpo", title: "散歩", genre: "action", emoji: "🚶", desc: "自由な散策体験" },
-            { id: "020-taisyou", title: "対将", genre: "rpg", emoji: "⚔️", desc: "戦略的な陣地争奪" },
-            { id: "018-shooting-gallery", title: "シューティング", genre: "stg", emoji: "🎯", desc: "射撃の快感" },
-            { id: "017-action", title: "アクションゲーム", genre: "action", emoji: "💨", desc: "素早い動きが鍵" },
-            { id: "015-kobun-novel", title: "古文ノベル", genre: "rpg", emoji: "📖", desc: "古典文学の世界" },
-            { id: "011-kaimono_game", title: "買い物ゲーム", genre: "puzzle", emoji: "🛍️", desc: "賢い買物術を学ぶ" },
+        // ゲーム一覧
+        const games = [
+            { emoji: "🙏", name: "026-bouzu" },
+            { emoji: "🎯", name: "025-barcode" },
+            { emoji: "🐦", name: "024-kotori" },
+            { emoji: "🚀", name: "023-space" },
+            { emoji: "🍜", name: "023-demae" },
+            { emoji: "🏙️", name: "022-city" },
+            { emoji: "🚶", name: "021-sanpo" },
+            { emoji: "⚔️", name: "020-taisyou" },
+            { emoji: "🎮", name: "018-shooting" },
+            { emoji: "💨", name: "017-action" },
+            { emoji: "📖", name: "015-kobun" },
+            { emoji: "🛍️", name: "011-kaimono" },
+            { emoji: "🎪", name: "010-select" },
+            { emoji: "🚀", name: "012-rocket" },
+            { emoji: "🎨", name: "007-iro" },
+            { emoji: "🎯", name: "006-eigo" },
+            { emoji: "🌀", name: "005-meiro" },
+            { emoji: "⚔️", name: "004-battle" },
+            { emoji: "🎰", name: "003-amida" },
+            { emoji: "🐱", name: "001-neko" },
         ];
 
-        let currentFilter = 'all';
+        const galleryGrid = document.getElementById('galleryGrid');
+        games.forEach(game => {
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+            item.textContent = game.emoji;
+            item.style.cursor = 'pointer';
+            item.onclick = () => window.open(`https://titan11111.github.io/${game.name}/`, '_blank');
+            galleryGrid.appendChild(item);
+        });
 
-        function renderGames(filter = 'all') {
-            const grid = document.getElementById('gamesGrid');
-            const filtered = filter === 'all' ? allGames : allGames.filter(g => g.genre === filter);
-
-            grid.innerHTML = filtered.map(game => `
-                <a href="https://titan11111.github.io/${game.id}/" class="game-card" target="_blank">
-                    <div class="game-icon">${game.emoji}</div>
-                    <div class="game-title">${game.title}</div>
-                    <div class="game-genre">#${game.genre}</div>
-                    <div class="game-desc">${game.desc}</div>
-                    <div class="game-play">プレイする →</div>
-                </a>
-            `).join('');
-        }
-
-        function filterGames(filter) {
-            currentFilter = filter;
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            renderGames(filter);
-        }
-
-        // 初期描画
-        renderGames();
-
-        // スクロールアニメーション
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
+        // スムーズスクロール
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                const id = a.getAttribute('href').slice(1);
+                document.getElementById(id)?.scrollIntoView({behavior: 'smooth'});
             });
-        }, { threshold: 0.1 });
-
-        document.querySelectorAll('.about-card, .game-card').forEach(el => {
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(20px)';
-            el.style.transition = 'all 0.6s ease-out';
-            observer.observe(el);
         });
     </script>
 </body>
