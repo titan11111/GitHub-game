@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 const root = resolve(new URL('..', import.meta.url).pathname);
 const input = process.argv[2];
 const target = input ? resolve(root, input) : null;
-const limitBytes = 3 * 1024 * 1024;
+const limitBytes = 20 * 1024 * 1024;
 
 if (!target || !target.startsWith(`${root}${sep}`) || !existsSync(target)) {
   console.error('使い方: node _tools/game-harness.mjs <ゲームフォルダ>');
@@ -167,9 +167,9 @@ try {
     ['コンソールエラー', consoleErrors.length === 0 && pageErrors.length === 0,
       `${consoleErrors.length + pageErrors.length}件`],
     ['リクエスト失敗', failedRequests.length === 0, `${failedRequests.length}件`],
-    // 2026-08-02: 3MB を合否条件から外した（タイタン決定）。計測は残すが PASS/FAIL には使わない。
-    ['通信量（参考値・合否対象外）', true,
-      `${(downloadedBytes / 1024 / 1024).toFixed(2)}MB`],
+    // 2026-08-20: 20MB鉄則に緩和（タイタン決定）。iPhone実用上限に基づく。プレイ時ダウンロード量が上限超なら FAIL。
+    ['通信量20MB以下', downloadedBytes <= limitBytes,
+      `${(downloadedBytes / 1024 / 1024).toFixed(2)}MB（上限20.00MB）`],
   ];
   const passed = checks.every(([, ok]) => ok);
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');

@@ -643,16 +643,19 @@ category('5. iOS適合確認');
 category('6. 品質確認');
 
 {
-  // 2026-08-02 タイタン決定: 3MB を合否条件から外した。
-  // 理由「3MBを超えてダメだと、ほとんどのゲームが成立しない」。軽量化は推奨、上限は設けない。
-  // 計測は続ける（重い犯人を毎回見せる）が、× は付けない。
-  const total = [...fileSize.values()].reduce((a, b) => a + b, 0);
-  const top = [...fileSize.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+  // 2026-08-20 タイタン決定: 20MB鉄則に緩和（旧3MBは撤廃済み）。
+  // 公開実体 = .git / node_modules / _playtest を除いたフォルダ内ファイル合計。
+  const SIZE_LIMIT = 20 * 1024 * 1024;
+  const counted = [...fileSize.entries()].filter(([f]) =>
+    !f.split('/').includes('_playtest') && !f.startsWith('_playtest/')
+  );
+  const total = counted.reduce((a, [, s]) => a + s, 0);
+  const top = [...counted].sort((a, b) => b[1] - a[1]).slice(0, 3)
     .map(([f, s]) => `${f} ${(s / 1024 / 1024).toFixed(2)}MB`).join(', ');
-  check(
-    'アセット総量（参考値・合否対象外）',
-    '―',
-    `合計 ${(total / 1024 / 1024).toFixed(2)}MB（${relFiles.length}ファイル）／重い順: ${top}`,
+  judge(
+    'モバイル20MB鉄則',
+    total <= SIZE_LIMIT,
+    `合計 ${(total / 1024 / 1024).toFixed(2)}MB（上限20.00MB・${counted.length}ファイル）／重い順: ${top}`,
   );
 }
 
