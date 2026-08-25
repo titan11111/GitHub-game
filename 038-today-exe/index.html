@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>TODAY.exe - DAY 038</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" sizes="64x64" href="images/favicon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
+<meta property="og:title" content="TODAY.exe">
+<meta property="og:description" content="1日を攻略する。でも頑張りすぎてもいけない。">
+<meta property="og:image" content="https://titan11111.github.io/038-today-exe/images/ogp.png">
+<meta property="og:url" content="https://titan11111.github.io/038-today-exe/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<div class="wrap">
+  <div class="win">
+    <div class="titlebar">
+      <span class="tname">■ TODAY.exe</span>
+      <span class="day">DAY 038</span>
+      <button class="tbtn" id="btnMute" title="音声オン（タップでオフ）" aria-label="音声オン">♪</button>
+      <button class="tbtn" id="btnHelp" title="ルール">?</button>
+      <button class="tbtn" id="btnCrt" title="CRT表示切替">CRT</button>
+    </div>
+    <div class="screen" id="screen"></div>
+  </div>
+</div>
+
+<div class="modal" id="helpModal" hidden>
+  <div class="win">
+    <div class="titlebar"><span class="tname">HELP.txt</span><button class="tbtn" id="btnHelpClose">×</button></div>
+    <div class="screen">
+      <div class="help-grid">
+        <div class="help-row"><b style="color:#ff2bd6">HP 体力</b>25以下で仕事 → OVERWORK</div>
+        <div class="help-row"><b style="color:#7fff4d">休むタイミング</b>HP45以下で休む → 回復1.5倍</div>
+        <div class="help-row"><b style="color:#00f0ff">MP 集中</b>20未満だと仕事の効率が半分</div>
+        <div class="help-row"><b style="color:#ffb300">月〜金</b>同じ体。木曜の疲れは金曜に残る。最終は5日合計</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="audio.js"></script>
+<script src="stick.js"></script>
+<script>
+"use strict";
+(function(){
+
+/* =========================================================
+   定数・データ
+========================================================= */
+var START_HOUR = 7;
+var END_HOUR   = 23;
+var SAVE_KEY = "TODAY_EXE_DAY038_SAVE_V1";
+var WEEK_KEY = "TODAY_EXE_DAY038_WEEK_V1";
+var WEEKDAYS = ["月","火","水","木","金"];
+
+function clamp(v,min,max){ return v<min?min:(v>max?max:v); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function shuffle(arr){
+  var a = arr.slice(), i, j, t;
+  for(i=a.length-1;i>0;i--){ j=Math.floor(Math.random()*(i+1)); t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+function hhmm(h){
+  var hour = Math.floor(h);
+  var min  = Math.round((h-hour)*60);
+  return (hour<10?"0":"")+hour+":"+(min<10?"0":"")+min;
+}
+function phaseName(h){
+  if(h<9)  return "朝 // 始まり";
+  if(h<12) return "朝 // 頭が冴える";
+  if(h<14) return "昼";
+  if(h<17) return "午後 // 眠い時間";
+  if(h<20) return "夕 // 巻き返し";
+  return "夜 // 無理しがち";
+}
+function placeName(){
+  if(!S) return "家";
+  if(S.place === "office"){
+    return S.hour >= 18 ? "職場（残業）" : "職場";
+  }
+  if(!S.commuted && S.hour >= 9) return "家（在宅）";
+  return "家";
+}
+function inWindow(from, to, h){
+  return h >= from && h < to;
+}
+function weekdayName(){
+  return WEEKDAYS[S && S.weekday != null ? S.weekday : 0] + "曜日";
+}
+function weekdayLead(){
+  var lines = [
+    "月曜。まだ余白がある。",
+    "火曜。慣れてきた分、油断しやすい。",
+    "水曜。週の真ん中は、雑になりがち。",
+    "木曜。積み上がった疲れが顔を出す。",
+    "金曜。終わりが見えると、判断が雑になる。"
+  ];
+  var i = S && S.weekday != null ? S.weekday : 0;
+  return lines[i] || lines[0];
+}
+
+function bindTap(el, handler){
+  if(!el) return;
+  var fired = false;
+  var fire = function(e){
+    if(e) e.preventDefault();
+    el.classList.add("is-pressed");
+    if(navigator.vibrate) navigator.vibrate(15);
+    handler(e);
+  };
+  var release = function(){ el.classList.remove("is-pressed"); };
+  el.addEventListener("pointerdown", function(e){
+    fired = true;
+    fire(e);
+  });
+  el.addEventListener("pointerup", release);
+  el.addEventListener("pointercancel", release);
+  el.addEventListener("pointerleave", release);
+  el.addEventListener("click", function(e){
+    e.preventDefault();
+    if(fired){ fired = false; return; }
+    fire(e);
+  });
+}
+
+function syncBgm(){
+  if(!globalAUD()) return;
+  AUD.updatePlayBgm(mode, S);
+}
+function globalAUD(){ return typeof AUD !== "undefined"; }
+function playSE(name){ if(globalAUD()) AUD.playSE(name); }
+
+/* --- 通常行動（type: work / rest / mixed） from/to は時刻の半開区間 --- */
+var ACTIONS = [
+  {id:"prep",  icon:"str",  name:"身支度する",       type:"mixed", time:1, hp:4,   mp:4,   work:0,  sat:5,  from:7,  to:9,  at:"home", txt:"服を着て、顔を洗って、鍵を確認する。一日のスイッチ。"},
+  {id:"breakfast", icon:"rest", name:"朝ごはん",     type:"rest",  time:1, hp:12,  mp:8,   work:0,  sat:8,  from:7,  to:10, at:"home", txt:"何か食べる。食べないと、午前中に置いていかれる。"},
+  {id:"plan",  icon:"task", name:"今日の予定を見る", type:"work",  time:1, hp:-2,  mp:-6,  work:6,  sat:2,  from:7,  to:10, at:"home", txt:"カレンダーを開く。まだ家。戦場はこれから。"},
+  {id:"commute", icon:"walk", name:"出勤する",       type:"mixed", time:1, hp:-4,  mp:-6,  work:4,  sat:-2, from:7,  to:10, at:"home", txt:"電車に揺られる。頭はまだ、半分家に残っている。"},
+  {id:"leave", icon:"walk", name:"退勤する",         type:"mixed", time:1, hp:2,   mp:4,   work:0,  sat:6,  from:17, to:23, at:"office", txt:"改札を出る。今日の自分を、いったん職場に置いてくる。"},
+  {id:"remote", icon:"doc", name:"在宅で仕事する",   type:"work",  time:1, hp:-6,  mp:-12, work:10, sat:0,  from:9,  to:18, at:"home", txt:"部屋着のまま会議に入る。通勤はない。境界もない。"},
+  {id:"mail",  name:"メール処理",       type:"work",  time:1, hp:-5,  mp:-10, work:8,  sat:0,  from:7,  to:21, txt:"受信箱を上から順に潰していく。返信、返信、また返信。"},
+  {id:"doc",   name:"資料作成",         type:"work",  time:2, hp:-10, mp:-20, work:22, sat:2,  from:9,  to:21, txt:"スライドと向き合う。数字を並べ、言葉を削る。"},
+  {id:"idea",  name:"アイデアを考える", type:"work",  time:1, hp:-3,  mp:-16, work:12, sat:6,  from:7,  to:23, txt:"白紙に線を引く。まだ形にならない何かを掴もうとする。"},
+  {id:"task",  name:"雑務を片付ける",   type:"work",  time:1, hp:-4,  mp:-6,  work:8,  sat:3,  from:9,  to:19, txt:"小さいタスクを潰す。地味だが確実に減っていく。"},
+  {id:"meet",  name:"打ち合わせ",       type:"work",  time:1, hp:-8,  mp:-12, work:11, sat:-3, from:9,  to:18, txt:"画面越しに人と話す。決まったような、決まっていないような。"},
+  {id:"study", name:"勉強する",         type:"mixed", time:2, hp:-5,  mp:-14, work:5,  sat:14, from:7,  to:23, txt:"今日の仕事には効かない。でも来月の自分には効く。"},
+  {id:"rest",  name:"休憩する",         type:"rest",  time:1, hp:14,  mp:10,  work:0,  sat:4,  from:9,  to:23, txt:"椅子から離れて、何もしない時間をつくる。"},
+  {id:"walk",  name:"散歩する",         type:"rest",  time:1, hp:9,   mp:16,  work:0,  sat:9,  from:7,  to:21, txt:"外の空気。歩くと、詰まっていた思考がほどける。"},
+  {id:"nap",   name:"昼寝する",         type:"rest",  time:2, hp:26,  mp:26,  work:0,  sat:6,  from:12, to:16, txt:"20分のつもりが、気づけばしっかり寝ていた。"},
+  {id:"sleep", icon:"nap",  name:"早めに寝る",       type:"rest",  time:2, hp:20,  mp:16,  work:0,  sat:10, from:20, to:23, at:"home", txt:"今日はここまでにする。電気を消す。"},
+  {id:"str",   name:"ストレッチ",       type:"rest",  time:1, hp:11,  mp:6,   work:0,  sat:5,  from:7,  to:23, txt:"肩を回す。ずっと固まっていたことに、今さら気づく。"},
+  {id:"cafe",  name:"コーヒーを淹れる", type:"rest",  time:1, hp:-2,  mp:18,  work:0,  sat:4,  from:7,  to:21, txt:"湯気の向こうで、頭が少しだけクリアになる。"},
+  {id:"sns",   name:"SNSを眺める",      type:"rest",  time:1, hp:2,   mp:-6,  work:0,  sat:6,  from:7,  to:23, txt:"だらだら見る。楽しいけれど、集中力は静かに漏れていく。"}
+];
+var EVENT_WHEN = {
+  urgent:[9,19], pc:[9,19], consult:[9,18], coffee:[9,18],
+  zone:[9,20], notif:[8,20], sleepy:[12,17], early:[14,19],
+  outside:[10,18], sky:[16,23], idea:[8,22], motiv:[8,22],
+  boss:[9,18], junior:[9,18], client:[9,18], praise:[10,19]
+};
+var EVENT_WDAY = {
+  boss:[0,1,3],
+  junior:[1,2,3],
+  client:[2,3,4],
+  praise:[0,2,4],
+  consult:[0,1,2,3],
+  coffee:[1,2,3]
+};
+var EVENT_AT = {
+  boss:"office",
+  coffee:"office",
+  consult:"office"
+};
+
+/* --- ランダムイベント（12種／各3択） --- */
+var EVENTS = [
+  {
+    id:"urgent", title:"!! 急な仕事が降ってきた",
+    txt:"上司のチャットが、既読になる前に続く。\n「今日中、いけますか」",
+    ch:[
+      {name:"すぐ着手する",       type:"work", time:2, hp:-14, mp:-18, work:26, sat:-4, txt:"手を止めて割り込みを最優先。終わらせた。ただ、自分の作業は一ミリも進まなかった。"},
+      {name:"優先度を確認して調整",type:"mixed",time:1, hp:-5,  mp:-8,  work:12, sat:8,  txt:"「明日の午前でも大丈夫ですか？」と聞いてみる。大丈夫だった。"},
+      {name:"今日は無理と断る",   type:"rest", time:1, hp:2,   mp:-4,  work:0,  sat:10, txt:"断るのは怖い。でも言ってみたら、意外とあっさり受け入れられた。"}
+    ]
+  },
+  {
+    id:"pc", title:"!! PCが固まった",
+    txt:"虹色のくるくるが回り続けている。\n保存は…していない。",
+    ch:[
+      {name:"強制再起動する",     type:"mixed",time:1, hp:-6,  mp:-14, work:-6, sat:-8, txt:"再起動。書きかけの資料は消えた。無言で天井を見上げる。"},
+      {name:"待ちながら手帳を開く",type:"rest", time:1, hp:4,   mp:6,   work:3,  sat:6,  txt:"待つ間に手書きで整理。むしろ頭がまとまった。"},
+      {name:"諦めて席を立つ",     type:"rest", time:1, hp:10,  mp:12,  work:0,  sat:5,  txt:"復旧はPCに任せる。自分は休む。分業だ。"}
+    ]
+  },
+  {
+    id:"idea", title:"* 良いアイデアが降ってきた",
+    txt:"急に線がつながった。\nこれは、たぶん今日いちばんの拾いもの。",
+    ch:[
+      {name:"一気に形にする",     type:"work", time:2, hp:-12, mp:-22, work:30, sat:12, txt:"熱があるうちに走り切る。手応えのある形になった。"},
+      {name:"メモだけ残す",       type:"mixed",time:1, hp:-2,  mp:-5,  work:10, sat:9,  txt:"3行だけ書き留めて次へ。明日の自分へのプレゼント。"},
+      {name:"誰かに話してみる",   type:"mixed",time:1, hp:-4,  mp:-8,  work:8,  sat:13, txt:"同僚に雑に話した。輪郭が濃くなる。相手も面白がってくれた。"}
+    ]
+  },
+  {
+    id:"coffee", title:"~ 同僚に休憩へ誘われた",
+    txt:"隣の席が、マグカップを持って立っている。\n「ちょっと、頭冷やさない？」",
+    ch:[
+      {name:"誘いに乗る",         type:"rest", time:1, hp:12,  mp:14,  work:0,  sat:12, txt:"どうでもいい話をした。それが一番効いた。"},
+      {name:"デスクで一杯だけ",   type:"rest", time:1, hp:5,   mp:12,  work:2,  sat:3,  txt:"片手にカップ、片手にマウス。まあ、悪くはない。"},
+      {name:"断って作業を続ける", type:"work", time:1, hp:-8,  mp:-10, work:12, sat:-6, txt:"手は進んだ。でも部屋が少し静かになった気がした。"}
+    ]
+  },
+  {
+    id:"consult", title:"@ 同僚から相談された",
+    txt:"「ちょっといいですか」\n困った顔をしている。",
+    ch:[
+      {name:"じっくり聞く",       type:"mixed",time:2, hp:-9,  mp:-12, work:6,  sat:16, txt:"時間は使った。でも相手の顔が明るくなった。悪くない使い方だ。"},
+      {name:"10分だけ聞く",       type:"mixed",time:1, hp:-4,  mp:-7,  work:5,  sat:9,  txt:"要点だけ整理して返す。短くても、ちゃんと届いた。"},
+      {name:"後にしてもらう",     type:"work", time:1, hp:-3,  mp:-6,  work:11, sat:-5, txt:"今は自分の作業。少しだけ、後ろめたさが残る。"}
+    ]
+  },
+  {
+    id:"zone", title:"> 集中モードに入った",
+    txt:"世界が静かになった。\n指が勝手に動いている。",
+    ch:[
+      {name:"限界まで走る",       type:"work", time:2, hp:-20, mp:-26, work:36, sat:4,  txt:"すごい量が進んだ。同時に、ごっそり削れた。"},
+      {name:"90分で切り上げる",   type:"work", time:2, hp:-9,  mp:-14, work:26, sat:12, txt:"良い状態のまま終える。明日も入りやすくなる終わり方。"},
+      {name:"一番重い仕事に充てる",type:"work",time:2, hp:-13, mp:-20, work:30, sat:9,  txt:"避けていた課題を、勢いのまま片付けた。"}
+    ]
+  },
+  {
+    id:"sleepy", title:"z 猛烈な睡魔",
+    txt:"文字が二重に見える。\nさっきの段落、3回読んだ。",
+    ch:[
+      {name:"20分だけ仮眠",       type:"rest", time:1, hp:20,  mp:22,  work:0,  sat:7,  txt:"短く落ちて、すっきり浮上。午後が別物になった。"},
+      {name:"コーヒーを足す",     type:"mixed",time:1, hp:-6,  mp:16,  work:6,  sat:0,  txt:"一時的に浮上。ツケは夜に回ってくる予感。"},
+      {name:"気合いで乗り切る",   type:"work", time:1, hp:-14, mp:-12, work:5,  sat:-7, txt:"進んだ量は少なく、疲れだけが確実に積もった。"}
+    ]
+  },
+  {
+    id:"outside", title:"~ 無性に外に出たくなった",
+    txt:"窓の外がやたら明るい。\n足がそわそわしている。",
+    ch:[
+      {name:"素直に散歩へ",       type:"rest", time:1, hp:10,  mp:18,  work:0,  sat:14, txt:"15分歩いた。それだけで、詰まりが抜けた。"},
+      {name:"ベランダで5分",      type:"rest", time:1, hp:6,   mp:10,  work:0,  sat:7,  txt:"風に当たるだけでも、ちゃんと効いた。"},
+      {name:"我慢して座り続ける", type:"work", time:1, hp:-9,  mp:-12, work:9,  sat:-8, txt:"行かなかった。ずっと頭の片隅に、外の明るさが残った。"}
+    ]
+  },
+  {
+    id:"early", title:"+ 仕事が予定より早く終わった",
+    txt:"やることリストが、思ったより早く空いた。\nぽっかり時間が空いている。",
+    ch:[
+      {name:"次の仕事を前倒し",   type:"work", time:2, hp:-12, mp:-16, work:22, sat:-2, txt:"未来の自分は助かる。今日の自分は疲れる。"},
+      {name:"余白として休む",     type:"rest", time:1, hp:15,  mp:14,  work:0,  sat:13, txt:"空いた時間を、そのまま空けておいた。贅沢だ。"},
+      {name:"やりたかった勉強",   type:"mixed",time:2, hp:-4,  mp:-12, work:6,  sat:18, txt:"ずっと後回しにしていた本を開く。今日いちばん満たされた時間。"}
+    ]
+  },
+  {
+    id:"motiv", title:"* 謎のやる気が湧いてきた",
+    txt:"理由はわからない。\nでも今、なんでもできる気がする。",
+    ch:[
+      {name:"勢いで大物に挑む",   type:"work", time:2, hp:-16, mp:-20, work:32, sat:8,  txt:"えいやで踏み込んだ。進んだ。そして、しっかり削れた。"},
+      {name:"やる気のうちに整理", type:"mixed",time:1, hp:-4,  mp:-9,  work:14, sat:10, txt:"散らかった机とタスクを整える。明日の助走ができた。"},
+      {name:"あえて温存する",     type:"rest", time:1, hp:8,   mp:12,  work:2,  sat:6,  txt:"燃やしきらない。明日も走るために、火は小さく保つ。"}
+    ]
+  },
+  {
+    id:"notif", title:"!! 通知の嵐",
+    txt:"チャット、メール、カレンダー。\n全部が同時に鳴っている。",
+    ch:[
+      {name:"全部すぐ返す",       type:"work", time:1, hp:-11, mp:-18, work:13, sat:-6, txt:"全部返した。自分の作業には一文字も触れなかった。"},
+      {name:"通知を切って集中",   type:"work", time:2, hp:-7,  mp:-13, work:24, sat:7,  txt:"静けさを取り戻す。世界は止まらなかった。"},
+      {name:"重要な2件だけ返す",  type:"mixed",time:1, hp:-5,  mp:-8,  work:12, sat:8,  txt:"選んで返す。取りこぼしはなかった。"}
+    ]
+  },
+  {
+    id:"sky", title:"~ 空がやけに綺麗だ",
+    txt:"ふと顔を上げたら、\n窓の色が変わっていた。",
+    ch:[
+      {name:"しばらく眺める",     type:"rest", time:1, hp:8,   mp:12,  work:0,  sat:16, txt:"何も生まなかった時間。でも、今日を覚えていられる理由になった。"},
+      {name:"写真を1枚だけ撮る",  type:"rest", time:1, hp:3,   mp:6,   work:0,  sat:9,  txt:"1枚撮って、すぐ戻る。ちいさな寄り道。"},
+      {name:"気づかなかったことにする",type:"work",time:1,hp:-6,mp:-8, work:11, sat:-7, txt:"視線を画面に戻す。数字は進んだ。空の色は思い出せない。"}
+    ]
+  },
+  {
+    id:"boss", title:"@ 上司が席に立った",
+    txt:"「今、大丈夫？」\n後ろから声がする。画面を見られている。",
+    ch:[
+      {name:"その場で説明する",   type:"work", time:1, hp:-8,  mp:-14, work:14, sat:2,  txt:"詰まったところまで話した。上司はうなずいて、先に進めた。"},
+      {name:"後で資料を送ると伝える",type:"mixed",time:1, hp:-3, mp:-6, work:8, sat:6, txt:"「15分ください」で一旦閉じた。自分のペースは守れた。"},
+      {name:"遅れていると正直に言う",type:"mixed",time:1, hp:-2, mp:-8, work:4, sat:10, txt:"黙って抱えない、と決めた。空気は一瞬重い。でも楽になった。"}
+    ]
+  },
+  {
+    id:"junior", title:"@ 部下の手が止まっている",
+    txt:"「ちょっと見てほしいです」\n画面共有の向こうで、困っている。",
+    ch:[
+      {name:"一緒に片付ける",     type:"mixed",time:2, hp:-10, mp:-12, work:10, sat:16, txt:"横に座ったつもりで、手順を一緒に踏んだ。相手の顔が戻った。"},
+      {name:"方針だけ渡す",       type:"mixed",time:1, hp:-4,  mp:-8,  work:8,  sat:9,  txt:"答えは渡さない。道だけ渡す。少し時間がかかるが、それでいい。"},
+      {name:"自分で考えてみてと言う",type:"work",time:1, hp:-2, mp:-4, work:11, sat:-6, txt:"自分の作業は進んだ。チャットの既読が、少し気になる。"}
+    ]
+  },
+  {
+    id:"client", title:"!! 取引先から着信",
+    txt:"「今、お電話大丈夫ですか」\n担当の声が、いつもより早い。",
+    ch:[
+      {name:"すぐ出る",           type:"work", time:1, hp:-9,  mp:-12, work:16, sat:4,  txt:"要件は5分で済んだ。出てよかった、という顔をされた。"},
+      {name:"折り返すと伝える",   type:"mixed",time:1, hp:-3,  mp:-6,  work:10, sat:7,  txt:"「15分後に」と短く返した。相手も、それで納得した。"},
+      {name:"チャットで要件を聞く",type:"mixed",time:1, hp:-2, mp:-5, work:7, sat:8, txt:"文字にしてもらった。電話より正確で、自分の呼吸も乱れない。"}
+    ]
+  },
+  {
+    id:"praise", title:"~ 上司が「助かった」と言った",
+    txt:"チャットが1行だけ届く。\n絵文字もない。それでも、十分だった。",
+    ch:[
+      {name:"素直に受け取る",     type:"rest", time:1, hp:6,   mp:8,   work:2,  sat:16, txt:"ありがとう、と返して席に戻る。肩の力が、少し抜けた。"},
+      {name:"チームに共有する",   type:"mixed",time:1, hp:-2,  mp:-4,  work:6,  sat:14, txt:"部下と同僚にも回した。「自分だけ」にしない。それが仕事だ。"},
+      {name:"次の仕事にすぐ入る", type:"work", time:1, hp:-6,  mp:-8,  work:12, sat:2,  txt:"褒めても、時計は止まらない。手は進んだ。余韻は短かった。"}
+    ]
+  }
+];
+
+var ACTION_ICON = {
+  mail:"images/ic_mail.png",
+  doc:"images/ic_doc.png",
+  idea:"images/ic_idea.png",
+  task:"images/ic_task.png",
+  meet:"images/ic_meet.png",
+  study:"images/ic_study.png",
+  rest:"images/ic_rest.png",
+  walk:"images/ic_walk.png",
+  nap:"images/ic_nap.png",
+  str:"images/ic_stretch.png",
+  cafe:"images/ic_coffee.png",
+  sns:"images/ic_sns.png"
+};
+var EVENT_IMG = {
+  urgent:"images/ev_urgent.png"
+};
+var RANK_IMG = {
+  S:"images/rank_s.png",
+  A:"images/rank_a.png"
+};
+function actionIconSrc(c){
+  return ACTION_ICON[c.icon || c.id];
+}
+function imgTag(src, cls, alt){
+  if(!src) return "";
+  return '<img class="'+cls+'" src="'+src+'" alt="'+(alt||"")+'" draggable="false" onerror="this.style.display=\'none\'">';
+}
+function hourOk(a, h){
+  if(a.from == null) return true;
+  return inWindow(a.from, a.to, h);
+}
+function placeOk(a){
+  if(!a.at || a.at === "any") return true;
+  return a.at === (S && S.place);
+}
+function findAction(list, id){
+  var i;
+  for(i=0;i<list.length;i++){
+    if(list[i].id === id) return list[i];
+  }
+  return null;
+}
+function actionsNow(h, remain){
+  return ACTIONS.filter(function(a){
+    return hourOk(a, h) && placeOk(a) && a.time <= remain;
+  });
+}
+
+/* =========================================================
+   状態
+========================================================= */
+var S = null;
+var screenEl = document.getElementById("screen");
+var mode = "title";      // title / play / result
+var pendingChoices = null;
+var currentSet = null;   // {title, txt, isEvent, choices[]}
+var lastResult = null;   // 直前の結果表示
+
+function newGame(){
+  S = {
+    hour: START_HOUR,
+    weekday: 0,
+    hp: 80, mp: 80,
+    work: 0, sat: 50,
+    turn: 0,
+    overwork: 0,
+    recovery: 0,
+    owFlag:false,
+    rcFlag:false,
+    znFlag:false,
+    restRun: 0,
+    workRun: 0,
+    weekOverwork: 0,
+    weekRecovery: 0,
+    place: "home",
+    commuted: false,
+    log: []
+  };
+}
+
+/* =========================================================
+   セーブ
+========================================================= */
+function loadSave(){
+  var def = {high:0, bestRank:"-", bestTitle:"", plays:0};
+  try{
+    var raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return def;
+    var o = JSON.parse(raw);
+    return {
+      high: typeof o.high === "number" ? o.high : 0,
+      bestRank: o.bestRank || "-",
+      bestTitle: o.bestTitle || "",
+      plays: typeof o.plays === "number" ? o.plays : 0
+    };
+  }catch(e){ return def; }
+}
+function writeSave(o){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(o)); }catch(e){}
+}
+function emptyWeek(){
+  return {days:[], carry:null, done:false, weekHigh:0};
+}
+function loadWeek(){
+  try{
+    var raw = localStorage.getItem(WEEK_KEY);
+    if(!raw) return emptyWeek();
+    var o = JSON.parse(raw);
+    if(!o || typeof o !== "object") return emptyWeek();
+    return {
+      days: o.days instanceof Array ? o.days : [],
+      carry: o.carry && typeof o.carry === "object" ? o.carry : null,
+      done: !!o.done,
+      weekHigh: typeof o.weekHigh === "number" ? o.weekHigh : 0
+    };
+  }catch(e){ return emptyWeek(); }
+}
+function writeWeek(o){
+  try{ localStorage.setItem(WEEK_KEY, JSON.stringify(o)); }catch(e){}
+}
+function sleepCarry(s){
+  return {
+    weekday: s.weekday + 1,
+    hp: clamp(Math.round(s.hp + 12), 30, 86),
+    mp: clamp(Math.round(s.mp + 18), 28, 86),
+    sat: clamp(Math.round(s.sat * 0.7 + 15), 22, 80),
+    workRun: Math.max(0, (s.workRun||0) - 1),
+    weekOverwork: (s.weekOverwork||0) + (s.overwork||0),
+    weekRecovery: (s.weekRecovery||0) + (s.recovery||0)
+  };
+}
+function applyCarry(carry){
+  if(!carry) return;
+  S.weekday = clamp(carry.weekday|0, 0, 4);
+  S.hp = clamp(carry.hp|0, 0, 100);
+  S.mp = clamp(carry.mp|0, 0, 100);
+  S.sat = clamp(carry.sat|0, 0, 100);
+  S.workRun = Math.max(0, carry.workRun|0);
+  S.weekOverwork = Math.max(0, carry.weekOverwork|0);
+  S.weekRecovery = Math.max(0, carry.weekRecovery|0);
+}
+function persistDay(r){
+  var w = loadWeek();
+  w.days = w.days || [];
+  if(w.days.length && w.days[w.days.length-1].wday === S.weekday) return w;
+  w.days.push({
+    wday: S.weekday,
+    total: r.total,
+    rank: r.rank,
+    work: r.work,
+    health: r.health,
+    sat: r.sat,
+    overwork: S.overwork,
+    recovery: S.recovery
+  });
+  if(S.weekday < 4){
+    w.carry = sleepCarry(S);
+    w.done = false;
+  }else{
+    w.carry = null;
+    w.done = true;
+    var sum = 0, i;
+    for(i=0;i<w.days.length;i++) sum += w.days[i].total;
+    w.weekAvg = Math.round(sum / w.days.length);
+    w.weekSum = sum;
+    if(w.weekAvg > (w.weekHigh||0)) w.weekHigh = w.weekAvg;
+  }
+  writeWeek(w);
+  return w;
+}
+function weekLine(days){
+  var s = "", i;
+  for(i=0;i<days.length;i++){
+    if(i) s += "　";
+    s += WEEKDAYS[days[i].wday]+days[i].rank;
+  }
+  return s;
+}
+function weekStory(days){
+  if(!days.length) return "1週間が終わった。";
+  var n = days.length;
+  var hFirst = days[0].health, hLast = days[n-1].health;
+  var wFirst = days[0].work, wLast = days[n-1].work;
+  var sFirst = days[0].sat, sLast = days[n-1].sat;
+  if(hLast < hFirst - 12 && wLast >= wFirst){
+    return "成果は増えた。体は減った。成長というより、消耗に近い1週間だ。";
+  }
+  if(hLast >= hFirst - 4 && wLast > wFirst){
+    return "仕事も体力も、金曜の自分が月曜より少し強い。それが成長だ。";
+  }
+  if(hLast > hFirst && wLast <= wFirst){
+    return "数字は控えめでも、金曜の顔は明るい。休めている人の週だ。";
+  }
+  if(sLast < sFirst - 12){
+    return "タスクは終わった。満たされなかった。忙しいだけの1週間になりかけている。";
+  }
+  return "大きな破綻もなく、大きな跳躍もなく。こういう週を積めるのも、ひとつの強さだ。";
+}
+function weekRankOf(avg){
+  if(avg>=90) return {rank:"S", rtitle:"成長した1週間"};
+  if(avg>=80) return {rank:"A", rtitle:"いい1週間"};
+  if(avg>=70) return {rank:"B", rtitle:"まあ悪くない週"};
+  if(avg>=50) return {rank:"C", rtitle:"疲弊した1週間"};
+  return {rank:"D", rtitle:"休まないと続かない"};
+}
+function syncChrome(){
+  var el = document.querySelector(".titlebar .day");
+  if(!el) return;
+  if(mode==="play" && S){
+    el.textContent = WEEKDAYS[S.weekday]+" " +(S.weekday+1)+"/5";
+  }else{
+    el.textContent = "DAY 038";
+  }
+}
+
+/* =========================================================
+   選択肢の生成
+========================================================= */
+var lastEventId = "";
+function buildTurn(){
+  S.turn++;
+  var remain = END_HOUR - S.hour;
+  var eventChance = 0.5;
+  if(S.turn === 1) eventChance = 0;          // 1手目は普通の行動から
+  if(remain <= 2) eventChance = 0.25;        // 終盤はイベント控えめ
+
+  var usedEvent = false;
+  if(Math.random() < eventChance){
+    var pool = EVENTS.filter(function(e){
+      if(e.id === lastEventId) return false;
+      var w = EVENT_WHEN[e.id];
+      if(w && !inWindow(w[0], w[1], S.hour)) return false;
+      var wd = EVENT_WDAY[e.id];
+      if(wd && wd.indexOf(S.weekday) < 0) return false;
+      var at = EVENT_AT[e.id];
+      if(at && at !== S.place) return false;
+      return true;
+    });
+    if(pool.length){
+      var ev = pick(pool);
+      lastEventId = ev.id;
+      currentSet = {
+        isEvent:true,
+        title:ev.title,
+        txt:weekdayLead()+"\n"+ev.txt,
+        choices: ev.ch.map(function(c){ return c; })
+      };
+      usedEvent = true;
+    }
+  }
+  if(!usedEvent){
+    lastEventId = "";
+    var acts = shuffle(actionsNow(S.hour, remain));
+    var chosen = [];
+    var hasWork=false, hasRest=false;
+    var i;
+    var must = null;
+    if(S.place === "home" && S.hour < 10 && !S.commuted) must = findAction(acts, "commute");
+    if(S.place === "office" && S.hour >= 17) must = findAction(acts, "leave");
+    if(must){
+      chosen.push(must);
+      if(must.type==="work") hasWork=true;
+      if(must.type==="rest") hasRest=true;
+    }
+    for(i=0;i<acts.length && chosen.length<3;i++){
+      var a = acts[i];
+      if(chosen.indexOf(a)>=0) continue;
+      if(chosen.length===2 && !hasWork && a.type!=="work") continue;
+      if(chosen.length===2 && !hasRest && a.type!=="rest") continue;
+      chosen.push(a);
+      if(a.type==="work") hasWork=true;
+      if(a.type==="rest") hasRest=true;
+    }
+    for(i=0;i<acts.length && chosen.length<3;i++){
+      if(chosen.indexOf(acts[i])<0) chosen.push(acts[i]);
+    }
+    currentSet = {
+      isEvent:false,
+      title:"> 次の行動を選択してください",
+      txt:weekdayLead()+"\n時計は "+hhmm(S.hour)+"。"+placeName()+"。",
+      choices: shuffle(chosen)
+    };
+  }
+}
+
+/* =========================================================
+   行動の適用
+========================================================= */
+function applyChoice(c){
+  var d = {hp:0, mp:0, work:0, sat:0, time:c.time};
+  var notes = [];
+  var isWork = (c.work||0) > 0 || c.type==="work";
+  var isRest = c.type==="rest";
+
+  var hp = c.hp||0, mp = c.mp||0, wk = c.work||0, st = c.sat||0;
+
+  // --- MP不足ペナルティ ---
+  if(isWork && S.mp < 20){
+    wk = Math.round(wk*0.5);
+    hp -= 5;
+    st -= 3;
+    notes.push({cls:"down", t:"集中力が切れている。効率が半分になった。"});
+  }
+
+  // --- OVERWORK 判定 ---
+  S.owFlag = false;
+  if(isWork && S.hp <= 25){
+    S.owFlag = true;
+    S.overwork++;
+    wk = Math.round(wk*0.6);
+    hp -= 6;
+    st -= 6;
+    notes.push({cls:"down", t:"OVERWORK！ 体力が限界。成果も気分も削れていく。"});
+  }
+
+  // --- 連続で仕事し続けた場合 ---
+  if(isWork){
+    S.workRun++; S.restRun = 0;
+    if(S.workRun >= 4){
+      var pen = 4 + S.weekday;
+      hp -= pen; st -= pen;
+      notes.push({cls:"down", t:weekdayName()+"。連続仕事"+S.workRun+"回。今週の疲れが重なっている。"});
+    }
+  }else{
+    S.restRun++; S.workRun = 0;
+  }
+
+  // --- RECOVERY BONUS 判定 ---
+  S.rcFlag = false;
+  if(isRest && hp > 0 && S.hp <= 45){
+    S.rcFlag = true;
+    S.recovery++;
+    hp = Math.round(hp*1.5);
+    mp += 8;
+    st += 6;
+    notes.push({cls:"up", t:"RECOVERY BONUS！ 必要なタイミングで休めた。回復量アップ。"});
+  }
+
+  // --- 休みすぎ（元気なのに休憩が続く） ---
+  if(isRest && S.restRun >= 3 && S.hp > 60){
+    st -= 7;
+    notes.push({cls:"down", t:"体は元気なのに、何も進んでいない。物足りなさが残る。"});
+  }
+
+  // --- 逓減：満ちているものは、それ以上あまり増えない ---
+  if(hp > 0 && S.hp >= 80) hp = Math.round(hp*0.4);
+  if(mp > 0 && S.mp >= 80) mp = Math.round(mp*0.4);
+  if(st > 0 && S.sat >= 75) st = Math.round(st*0.5);
+
+  // --- 夜の作業は削れる ---
+  if(isWork && S.hour >= 20){
+    hp -= 4;
+    notes.push({cls:"down", t:"夜の作業は、昼の倍つかれる。"});
+  }
+
+  // --- 昼寝の時間帯補正 ---
+  if(c.name && c.name.indexOf("昼寝")>=0 && (S.hour < 12 || S.hour >= 16)){
+    hp = Math.round(hp*0.6); mp = Math.round(mp*0.6);
+    notes.push({cls:"flat", t:"この時間の昼寝は、少し効きが弱い。"});
+  }
+
+  // --- ゾーン表示 ---
+  S.znFlag = (S.mp >= 70 && isWork);
+  if(S.znFlag){
+    wk = Math.round(wk*1.15);
+    notes.push({cls:"up", t:"集中力が高い。作業がよく進む。"});
+  }
+
+  var beforeHp = S.hp, beforeMp = S.mp, beforeSat = S.sat, beforeWork = S.work;
+  S.hp   = clamp(S.hp + hp, 0, 100);
+  S.mp   = clamp(S.mp + mp, 0, 100);
+  S.sat  = clamp(S.sat + st, 0, 100);
+  S.work = Math.max(0, S.work + wk);
+  S.hour = S.hour + c.time;
+  if(S.hour > END_HOUR) S.hour = END_HOUR;
+
+  if(c.id === "commute"){
+    S.place = "office";
+    S.commuted = true;
+  }
+  if(c.id === "leave"){
+    S.place = "home";
+  }
+  if(S.hour >= END_HOUR && S.place === "office"){
+    S.place = "home";
+    notes.push({cls:"flat", t:"終電。今日の自分を、職場に置いて帰った。"});
+  }
+
+  d.hp = S.hp - beforeHp;
+  d.mp = S.mp - beforeMp;
+  d.sat = S.sat - beforeSat;
+  d.work = S.work - beforeWork;
+
+  S.log.push(hhmm(S.hour)+" "+c.name);
+
+  lastResult = {
+    title: c.name,
+    txt: c.txt || "",
+    d: d,
+    notes: notes
+  };
+}
+
+/* =========================================================
+   スコア計算
+========================================================= */
+function calcScore(){
+  var workScore = clamp(Math.round(S.work/1.25), 0, 100);
+  var healthScore = clamp(Math.round(S.hp - S.overwork*7 + Math.min(S.recovery,4)*3), 0, 100);
+  var satScore = clamp(Math.round(S.sat), 0, 100);
+
+  // 加重幾何平均：どれか1つが低いと全体が伸びない＝バランス重視
+  var gw = Math.max(workScore,1), gh = Math.max(healthScore,1), gs = Math.max(satScore,1);
+  var total = Math.exp(0.35*Math.log(gw) + 0.30*Math.log(gh) + 0.35*Math.log(gs));
+
+  var bonus = 0;
+  if(workScore>=75 && healthScore>=75 && satScore>=75) bonus = 8;
+  else if(workScore>=60 && healthScore>=60 && satScore>=60) bonus = 4;
+  total = clamp(Math.round(total + bonus), 0, 100);
+
+  var rank, rtitle, comment;
+  if(total>=90){ rank="S"; rtitle="最高の一日"; }
+  else if(total>=80){ rank="A"; rtitle="いい一日"; }
+  else if(total>=70){ rank="B"; rtitle="まあ悪くない"; }
+  else if(total>=50){ rank="C"; rtitle="ちょっと無理した"; }
+  else { rank="D"; rtitle="今日は休もう"; }
+
+  var min = Math.min(workScore, healthScore, satScore);
+  if(bonus===8){
+    comment = "仕事も、体も、気持ちも、どれも欠けていない。\nこういう日を「ちゃんと生きた日」と呼ぶんだと思う。";
+  }else if(min===healthScore && healthScore<60){
+    comment = "成果は出た。でも体を削って買った成果だ。\n"+ (S.weekday<4 ? "明日の自分は、今日のツケを払うことになる。" : "この疲れは、来週の自分に残る。");
+  }else if(min===satScore && satScore<60){
+    comment = "タスクは減った。けれど「今日、何が良かった？」に答えられない。\n寄り道の時間も、たぶん仕事のうち。";
+  }else if(min===workScore && workScore<60){
+    comment = "よく休めた一日。体も気持ちも軽い。\n"+ (S.weekday<4 ? "あとは、明日ちょっとだけ手を動かせたら完璧。" : "金曜に余白を残せたのは、立派な仕事だ。");
+  }else{
+    comment = "大きな失敗もなく、大きな充実もなく。\nこういう日を積み重ねられるのも、ひとつの強さだ。";
+  }
+  if(S.overwork>=3) comment += "\n\n※ OVERWORK "+S.overwork+"回。頑張りすぎのサインです。";
+
+  return {
+    work:workScore, health:healthScore, sat:satScore,
+    total:total, rank:rank, rtitle:rtitle, comment:comment, bonus:bonus
+  };
+}
+
+/* =========================================================
+   描画
+========================================================= */
+function todClass(h){
+  if(h == null) return "tod-boot";
+  if(h < 9) return "tod-dawn";
+  if(h < 12) return "tod-morning";
+  if(h < 17) return "tod-day";
+  if(h < 20) return "tod-dusk";
+  return "tod-night";
+}
+function setScreenTod(h){
+  screenEl.className = "screen " + todClass(h);
+}
+
+function barHTML(label, cls, val, max, text){
+  var pct = clamp(val/max*100, 0, 100);
+  return '<div class="bar"><span class="lb">'+label+'</span>'+
+         '<span class="track"><span class="fill '+cls+'" style="width:'+pct+'%"></span><span class="seg"></span></span>'+
+         '<span class="val">'+text+'</span></div>';
+}
+
+function statusHTML(bars){
+  var st = bars || S;
+  var remain = END_HOUR - S.hour;
+  var dayPct = clamp(((S.hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100, 0, 100);
+  var tags = "";
+  if(S.owFlag) tags += '<span class="tag ow">OVERWORK</span>';
+  if(S.rcFlag) tags += '<span class="tag rc">RECOVERY</span>';
+  if(S.znFlag) tags += '<span class="tag zn">FOCUSED</span>';
+  if(S.hp<=25 && !S.owFlag) tags += '<span class="tag ow">体力危険</span>';
+  if(S.mp<20)  tags += '<span class="tag zn">集中ぎれ</span>';
+  if(remain<=3) tags += '<span class="tag tr">のこり'+remain+'h</span>';
+
+  var wk = "";
+  for(var d=0;d<5;d++){
+    var cls = d < S.weekday ? "done" : (d === S.weekday ? "now" : "");
+    wk += '<span class="'+cls+'">'+WEEKDAYS[d]+'</span>';
+  }
+
+  return '<div class="hud">'+
+    '<div class="clockrow">'+
+      '<span class="clock">'+hhmm(S.hour)+'</span>'+
+      '<span class="placephase">'+
+        '<span class="place">'+WEEKDAYS[S.weekday]+" · "+placeName()+'</span>'+
+        '<span class="phase">'+phaseName(S.hour).split("// ").pop()+'</span>'+
+      '</span>'+
+      '<span class="turnno">のこり '+remain+'h</span>'+
+    '</div>'+
+    '<div class="weekstrip">'+wk+'</div>'+
+    '<div class="daymeter" aria-hidden="true"><span style="width:'+dayPct+'%"></span></div>'+
+    '<div class="statrow">'+
+      barHTML("HP","hp",st.hp,100,st.hp)+
+      '<div class="kpi"><span>WORK</span><b>'+st.work+'</b></div>'+
+      barHTML("MP","mp",st.mp,100,st.mp)+
+      '<div class="kpi sat"><span>SAT</span><b>'+st.sat+'</b></div>'+
+    '</div>'+
+    '<div class="states">'+tags+'</div>'+
+  '</div>';
+}
+
+function notesHTML(notes){
+  if(!notes || !notes.length) return "";
+  var n = "", i;
+  for(i=0;i<notes.length;i++){
+    n += '<div class="note '+notes[i].cls+'">'+notes[i].t+'</div>';
+  }
+  return '<div class="delta">'+n+'</div>';
+}
+
+function renderTitle(){
+  mode = "title";
+  setScreenTod(null);
+  syncChrome();
+  var sv = loadSave();
+  var w = loadWeek();
+  var lead = "月〜金、同じ体で5日。<br>木曜の疲れは金曜に残る。成果だけを積むゲームではない。";
+  var rec = "HIGH <b>"+sv.high+"</b>　WEEK <b>"+(w.weekHigh||0)+"</b>　PLAY <b>"+sv.plays+"</b>";
+  var startLabel = "▶ 月曜をはじめる";
+  var extra = "";
+  if(w.carry && w.carry.weekday >= 1 && w.carry.weekday <= 4){
+    var wd = WEEKDAYS[w.carry.weekday];
+    lead = wd+"曜日の朝。HP <b>"+w.carry.hp+"</b>　MP <b>"+w.carry.mp+"</b>　SAT <b>"+w.carry.sat+"</b> が残っている。";
+    rec = weekLine(w.days)+"　→　"+wd;
+    startLabel = "▶ "+wd+"曜日をはじめる";
+    extra = '<div class="nextrow"><button class="bigbtn sub" id="btnResetWeek">週をやり直す</button></div>';
+  }else if(w.done && w.days && w.days.length){
+    lead = "先週は "+weekLine(w.days)+"。<br>平均 <b>"+(w.weekAvg||0)+"</b>。同じ体で、もう一週いける。";
+    startLabel = "▶ 新しい週をはじめる";
+  }
+  screenEl.innerHTML =
+    '<div class="view view-title">'+
+      '<div class="view-body">'+
+        '<div class="bootline">C:\\TODAY.EXE <span class="caret"></span></div>'+
+        '<div class="logo">'+
+          '<h1>TODAY.exe</h1>'+
+          '<p>1日を攻略する。でも頑張りすぎてもいけない。</p>'+
+        '</div>'+
+        '<div class="lead">'+lead+'</div>'+
+        '<div class="rec">'+rec+'</div>'+
+      '</div>'+
+      '<div class="view-actions">'+
+        '<div class="nextrow"><button class="bigbtn" id="btnStart">'+startLabel+'</button></div>'+
+        extra+
+        '<div class="hint">[1][2][3] でも選べます</div>'+
+      '</div>'+
+    '</div>';
+  bindTap(document.getElementById("btnStart"), function(){ startGame(false); });
+  var rst = document.getElementById("btnResetWeek");
+  if(rst) bindTap(rst, function(){ startGame(true); });
+  if(globalAUD()) AUD.playBgm("title");
+}
+
+function renderPlay(){
+  mode = "play";
+  setScreenTod(S.hour);
+  syncChrome();
+  var head = statusHTML(lastResult && lastResult.from ? lastResult.from : null);
+  var body = "";
+
+  if(lastResult){
+    body =
+      '<div class="view view-play is-beat">'+head+
+        '<div class="view-body"><div class="msgbox is-result">'+
+          '<div class="stick-animation" id="stickAnim" hidden></div>'+
+          '<div class="evtitle normal">&gt; '+lastResult.title+'</div>'+
+          '<div class="evtext">'+lastResult.txt+'</div>'+
+          notesHTML(lastResult.notes)+
+        '</div></div>'+
+        '<div class="view-actions"><div class="nextrow"><button class="bigbtn" id="btnNext">▼ つづける</button></div></div>'+
+      '</div>';
+    screenEl.innerHTML = body;
+    bindTap(document.getElementById("btnNext"), nextTurn);
+    if(typeof STICK !== "undefined") STICK.play(screenEl, lastResult);
+    return;
+  }
+
+  var cs = "";
+  for(var j=0;j<currentSet.choices.length;j++){
+    var c = currentSet.choices[j];
+    var chips = '<span class="chip time">'+c.time+'h</span>';
+    cs += '<button class="choice" data-i="'+j+'">'+
+            '<span class="num">'+(j+1)+'</span>'+
+            imgTag(actionIconSrc(c), "cic", "")+
+            '<span class="body"><span class="cname">'+c.name+'</span>'+
+            '<span class="cost chips">'+chips+'</span></span>'+
+          '</button>';
+  }
+
+  var evPic = (currentSet.isEvent && lastEventId) ? imgTag(EVENT_IMG[lastEventId], "evimg", "") : "";
+  body =
+    '<div class="view view-play">'+head+
+      '<div class="view-body"><div class="msgbox'+(currentSet.isEvent?" is-event":"")+'">'+
+        '<div class="evhead"><div class="evtitle'+(currentSet.isEvent?"":" normal")+'">'+currentSet.title+'</div>'+evPic+'</div>'+
+        '<div class="evtext">'+currentSet.txt.replace(/\n/g, "<br>")+'</div>'+
+      '</div></div>'+
+      '<div class="view-actions"><div class="choices">'+cs+'</div></div>'+
+    '</div>';
+
+  screenEl.innerHTML = body;
+
+  var btns = screenEl.querySelectorAll(".choice");
+  for(var k=0;k<btns.length;k++){
+    (function(btn){
+      bindTap(btn, function(){
+        choose(parseInt(btn.getAttribute("data-i"),10));
+      });
+    })(btns[k]);
+  }
+}
+
+function renderResult(){
+  mode = "result";
+  setScreenTod(END_HOUR);
+  var r = calcScore();
+  var sv = loadSave();
+  sv.plays++;
+  var isNew = r.total > sv.high;
+  if(isNew){ sv.high = r.total; }
+  var order = {S:5,A:4,B:3,C:2,D:1,"-":0};
+  if(order[r.rank] > (order[sv.bestRank]||0)){ sv.bestRank = r.rank; sv.bestTitle = r.rtitle; }
+  writeSave(sv);
+  var w = persistDay(r);
+  syncChrome();
+
+  function srow(label, v, color){
+    return '<div class="srow"><span class="sl">'+label+'</span>'+
+      '<span class="track"><span class="fill" style="width:'+v+'%;background:'+color+'"></span><span class="seg"></span></span>'+
+      '<span class="sv">'+v+'</span></div>';
+  }
+
+  var isWeekEnd = S.weekday >= 4;
+  var wr = isWeekEnd ? weekRankOf(w.weekAvg||r.total) : null;
+  var headlineRank = isWeekEnd ? wr.rank : r.rank;
+  var headlineTitle = isWeekEnd ? wr.rtitle : r.rtitle;
+  var comment = isWeekEnd ? weekStory(w.days) : r.comment.split("\n")[0];
+  var nextLabel = isWeekEnd ? "▶ 新しい週" : ("▶ "+WEEKDAYS[S.weekday+1]+"曜日へ");
+  var totalLabel = isWeekEnd ? "WEEK AVG" : "TODAY";
+  var totalVal = isWeekEnd ? (w.weekAvg||r.total) : r.total;
+  var recLine = isWeekEnd
+    ? weekLine(w.days)+"　SUM "+(w.weekSum||0)
+    : weekdayName()+"　OW "+S.overwork+"　RC "+S.recovery;
+
+  screenEl.innerHTML =
+    '<div class="view view-result">'+
+      '<div class="view-body">'+
+        '<div class="clockrow"><span class="clock">23:00</span><span class="phase">'+(isWeekEnd?"金曜が終わった":(weekdayName()+"が終わった"))+'</span></div>'+
+        '<div class="rank">'+imgTag(RANK_IMG[headlineRank], "rankimg", "")+
+          '<div class="rkcol"><div class="rk '+headlineRank+'">'+headlineRank+'</div><div class="rt rk '+headlineRank+'">「'+headlineTitle+'」</div></div></div>'+
+        '<div class="scorelist">'+
+          srow("仕事", r.work, "linear-gradient(90deg,#7fff4d,#00f0ff)")+
+          srow("健康", r.health, "linear-gradient(90deg,#ff2bd6,#ff7a3d)")+
+          srow("満足", r.sat, "linear-gradient(90deg,#ffb300,#ffe14d)")+
+        '</div>'+
+        '<div class="total"><div class="tl">'+totalLabel+'</div><div class="tv">'+totalVal+'</div>'+
+          (r.bonus>0 && !isWeekEnd?'<div class="note">BALANCE +'+r.bonus+'</div>':'')+
+          (isNew && !isWeekEnd?'<div class="new">★ NEW HIGH ★</div>':'')+
+        '</div>'+
+        '<div class="comment">'+comment+'</div>'+
+        '<div class="rec">'+recLine+'</div>'+
+      '</div>'+
+      '<div class="view-actions">'+
+        '<div class="nextrow"><button class="bigbtn" id="btnRetry">'+nextLabel+'</button></div>'+
+        '<div class="nextrow"><button class="bigbtn sub" id="btnTitle">タイトルへ</button></div>'+
+      '</div>'+
+    '</div>';
+
+  bindTap(document.getElementById("btnRetry"), function(){
+    if(isWeekEnd) startGame(true);
+    else startGame(false);
+  });
+  bindTap(document.getElementById("btnTitle"), renderTitle);
+  playSE("result");
+  if(headlineRank === "S"){
+    setTimeout(function(){ playSE("rank_s"); }, 400);
+  }
+  if(globalAUD()) AUD.playBgm("result");
+}
+
+function startGame(resetWeek){
+  if(globalAUD()) AUD.unlock();
+  playSE("select");
+  newGame();
+  lastResult = null;
+  if(resetWeek){
+    var prev = loadWeek();
+    writeWeek({days:[], carry:null, done:false, weekHigh:prev.weekHigh||0});
+  }else{
+    var w = loadWeek();
+    if(w.carry && w.carry.weekday >= 1 && w.carry.weekday <= 4){
+      applyCarry(w.carry);
+    }else if(w.done){
+      writeWeek({days:[], carry:null, done:false, weekHigh:w.weekHigh||0});
+    }
+  }
+  buildTurn();
+  if(globalAUD()) AUD.playBgm("day");
+  renderPlay();
+}
+
+function choose(i){
+  if(mode!=="play" || lastResult) return;
+  var c = currentSet.choices[i];
+  if(!c) return;
+  playSE("click");
+  var from = {hp:S.hp, mp:S.mp, work:S.work, sat:S.sat};
+  applyChoice(c);
+  if(S.owFlag) playSE("overwork");
+  else if(S.rcFlag) playSE("recovery");
+  else if(c.type==="rest") playSE("rest");
+  else if((c.work||0)>0 || c.type==="work") playSE("work");
+  syncBgm();
+  lastResult.from = from;
+  lastResult.to = {hp:S.hp, mp:S.mp, work:S.work, sat:S.sat};
+  lastResult.animId = (typeof STICK !== "undefined") ? STICK.animKey(c) : "";
+  renderPlay();
+}
+
+function nextTurn(){
+  playSE("select");
+  lastResult = null;
+  S.owFlag=false; S.rcFlag=false; S.znFlag=false;
+  if(S.hour >= END_HOUR){
+    renderResult();
+    return;
+  }
+  playSE("time");
+  buildTurn();
+  if(currentSet && currentSet.isEvent) playSE("event");
+  syncBgm();
+  renderPlay();
+}
+
+/* =========================================================
+   入力
+========================================================= */
+document.addEventListener("keydown", function(e){
+  if(e.key==="1"||e.key==="2"||e.key==="3"){
+    if(mode==="play" && !lastResult){ choose(parseInt(e.key,10)-1); }
+  }
+  if(e.key==="Enter"||e.key===" "){
+    var b = document.getElementById("btnNext") || document.getElementById("btnStart") || document.getElementById("btnRetry");
+    if(b){ e.preventDefault(); b.click(); }
+  }
+});
+
+var hm = document.getElementById("helpModal");
+hm.addEventListener("click", function(e){ if(e.target===hm) hm.hidden = true; });
+
+bindTap(document.getElementById("btnMute"), function(){
+  if(globalAUD()) AUD.toggleMute();
+});
+bindTap(document.getElementById("btnCrt"), function(){
+  playSE("click");
+  document.body.classList.toggle("nocrt");
+});
+bindTap(document.getElementById("btnHelp"), function(){
+  playSE("click");
+  hm.hidden = false;
+});
+bindTap(document.getElementById("btnHelpClose"), function(){
+  playSE("click");
+  hm.hidden = true;
+});
+
+var lastTap = 0;
+document.addEventListener("touchstart", function(e){
+  var now = Date.now();
+  if(now - lastTap < 300) e.preventDefault();
+  lastTap = now;
+}, {passive:false});
+var lastTouchEnd = 0;
+document.addEventListener("touchend", function(e){
+  var now = Date.now();
+  if(now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, {passive:false});
+document.addEventListener("dblclick", function(e){ e.preventDefault(); });
+document.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+document.addEventListener("touchmove", function(e){ e.preventDefault(); }, {passive:false});
+document.addEventListener("selectstart", function(e){ e.preventDefault(); });
+document.addEventListener("dragstart", function(e){ e.preventDefault(); });
+
+if(globalAUD()) AUD.syncButton();
+
+/* start */
+renderTitle();
+
+})();
+</script>
+<canvas id="probe" width="2" height="2" aria-hidden="true"></canvas>
+</body>
+</html>
