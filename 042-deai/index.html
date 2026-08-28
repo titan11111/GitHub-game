@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>運命の角激突 - 視界良好・交差点ワイド版</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            overflow: hidden;
+            background: linear-gradient(180deg, #70c5ff 0%, #cbe8ff 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            touch-action: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* 洗練されたグラスモフィズムUI */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 14px;
+        }
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .brand-badge {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(10px);
+            border: 1.5px solid rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 6px 14px;
+            box-shadow: 0 4px 16px rgba(0, 50, 120, 0.12);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .brand-icon {
+            font-size: 18px;
+        }
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .brand-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: #1e293b;
+        }
+        .brand-sub {
+            font-size: 10px;
+            font-weight: 700;
+            color: #f43f5e;
+        }
+        .timer-pill {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(10px);
+            border: 1.5px solid rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 6px 14px;
+            box-shadow: 0 4px 16px rgba(0, 50, 120, 0.12);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #1e293b;
+            font-weight: 800;
+            font-size: 14px;
+        }
+        .timer-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: blink 1s infinite alternate;
+        }
+
+        .meter-container {
+            position: absolute;
+            top: 68px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            padding: 4px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            font-size: 11px;
+            font-weight: 700;
+            color: #334155;
+        }
+        .meter-track {
+            width: 90px;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .meter-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8, #f43f5e);
+            border-radius: 4px;
+            transition: width 0.05s linear;
+        }
+
+        #speech-bubble {
+            position: absolute;
+            background: #ffffff;
+            border: 2px solid #1e293b;
+            border-radius: 12px;
+            padding: 5px 12px;
+            font-weight: 900;
+            font-size: 12px;
+            color: #e11d48;
+            pointer-events: none;
+            transform: translate(-50%, -120%);
+            display: none;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+            z-index: 20;
+            white-space: nowrap;
+        }
+        #speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -7px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 7px 5px 0;
+            border-style: solid;
+            border-color: #ffffff transparent;
+            display: block;
+            width: 0;
+        }
+
+        #impact-cutin {
+            position: absolute;
+            top: 28%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 26px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 4px 16px rgba(244, 63, 94, 0.9), 0 0 4px #f43f5e;
+            pointer-events: none;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+            white-space: nowrap;
+            z-index: 50;
+            line-height: 1.25;
+        }
+
+        .controls-layer {
+            pointer-events: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 8px;
+        }
+        .d-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 48px);
+            grid-template-rows: repeat(3, 48px);
+            gap: 5px;
+        }
+        .d-btn {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            color: #334155;
+            font-size: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.1s ease;
+        }
+        .d-btn:active {
+            background: #38bdf8;
+            color: #fff;
+            transform: scale(0.92);
+        }
+        .action-btn-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dash-btn {
+            width: 76px;
+            height: 76px;
+            background: linear-gradient(135deg, #f43f5e, #fb7185);
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            color: #fff;
+            font-weight: 900;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(244, 63, 94, 0.35);
+            transition: transform 0.1s;
+        }
+        .dash-btn:active {
+            transform: scale(0.92);
+            background: #e11d48;
+        }
+        .dash-btn span {
+            font-size: 8px;
+            opacity: 0.9;
+        }
+
+        #result-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #result-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .result-card {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 20px;
+            width: 88%;
+            max-width: 340px;
+            text-align: center;
+            color: #1e293b;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            transform: translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #result-modal.active .result-card {
+            transform: translateY(0);
+        }
+        .result-rank {
+            font-size: 28px;
+            font-weight: 900;
+            color: #f43f5e;
+            margin-bottom: 2px;
+        }
+        .result-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0284c7;
+            margin-bottom: 12px;
+        }
+        .result-stats {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 16px;
+            text-align: left;
+            font-size: 12px;
+            line-height: 1.8;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        .stat-row strong {
+            color: #1e293b;
+        }
+        .restart-btn {
+            background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+            border: none;
+            border-radius: 20px;
+            color: #fff;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+            transition: transform 0.1s;
+        }
+        .restart-btn:active {
+            transform: scale(0.96);
+        }
+
+        @keyframes blink {
+            0% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div id="speech-bubble">遅刻遅刻〜〜っ！🍞</div>
+    <div id="impact-cutin">運命の角激突！<br><span style="font-size:16px; font-weight:800;">PERFECT IMPACT 💕</span></div>
+
+    <div id="ui-layer">
+        <div class="hud-header">
+            <div class="brand-badge">
+                <div class="brand-icon">🌸</div>
+                <div class="brand-text">
+                    <span class="brand-title">運命の曲がり角</span>
+                    <span class="brand-sub">交差点へ走れ！</span>
+                </div>
+            </div>
+            <div class="timer-pill">
+                <div class="timer-dot"></div>
+                <span id="timer-val">08.0</span>s
+            </div>
+        </div>
+
+        <div class="meter-container">
+            <span>ヒロイン接近</span>
+            <div class="meter-track">
+                <div class="meter-fill" id="meter-fill"></div>
+            </div>
+        </div>
+
+        <div class="controls-layer">
+            <div class="d-pad">
+                <div></div>
+                <div class="d-btn" data-key="ArrowUp">▲</div>
+                <div></div>
+                <div class="d-btn" data-key="ArrowLeft">◀</div>
+                <div class="d-btn" data-key="ArrowDown">▼</div>
+                <div class="d-btn" data-key="ArrowRight">▶</div>
+            </div>
+            <div class="action-btn-box">
+                <div class="dash-btn" id="btn-dash">
+                    ダッシュ
+                    <span>SPACE</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-modal">
+        <div class="result-card">
+            <div class="result-rank" id="res-rank">RANK SSS</div>
+            <div class="result-title" id="res-title">世紀のラブコメ開幕！</div>
+            <div class="result-stats">
+                <div class="stat-row">
+                    <span>激突ポイント:</span>
+                    <strong id="res-timing">運命の角・交差点中央</strong>
+                </div>
+                <div class="stat-row">
+                    <span>衝撃度:</span>
+                    <strong id="res-power">純情トキメキ直撃</strong>
+                </div>
+                <div class="stat-row">
+                    <span>トースト滞空:</span>
+                    <strong id="res-toast">3.6 m (青空へ飛翔)</strong>
+                </div>
+                <div class="stat-row" style="color: #f43f5e; font-weight: 800; border-top: 1px dashed #cbd5e1; margin-top:4px; padding-top:4px;">
+                    <span>ラブコメ度:</span>
+                    <strong id="res-love" style="color:#f43f5e;">100%</strong>
+                </div>
+            </div>
+            <button class="restart-btn" id="btn-restart">もう一度角を曲がる！🔄</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playTone(freq, type, duration, gainVal) {
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+            playCrash(isJust) {
+                if (!this.ctx) return;
+                try {
+                    const bufferSize = this.ctx.sampleRate * 0.25;
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                    const noise = this.ctx.createBufferSource();
+                    noise.buffer = buffer;
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(isJust ? 1400 : 700, this.ctx.currentTime);
+                    filter.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.25);
+
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    noise.start();
+
+                    if (isJust) {
+                        setTimeout(() => this.playTone(523.25, 'triangle', 0.1, 0.15), 40);
+                        setTimeout(() => this.playTone(659.25, 'triangle', 0.1, 0.15), 120);
+                        setTimeout(() => this.playTone(1046.50, 'triangle', 0.25, 0.2), 200);
+                    }
+                } catch(e) {}
+            }
+            playDash() {
+                this.playTone(260, 'sine', 0.15, 0.12);
+            }
+        }
+        const sound = new SoundFX();
+
+        let scene, camera, renderer;
+        let playerGroup, girlGroup, toastMesh;
+        let playerLimbs = {}, girlLimbs = {};
+        let hitHearts = [];
+
+        // 道幅を4.8m（半幅2.4m）に拡大し、角（交差点）を広々とした見通しの良い設計に
+        let gameState = {
+            active: true,
+            isCollided: false,
+            timeLeft: 8.0,
+            dashActive: false,
+            dashTimer: 0,
+            girlSpeed: 0.11,
+            playerBaseSpeed: 0.14,
+            playerDashSpeed: 0.20,
+            toastFlying: false,
+            toastVelocity: new THREE.Vector3(),
+            reactionProgress: 0,
+            collisionPoint: new THREE.Vector3()
+        };
+
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false,
+            Space: false
+        };
+
+        function initScene() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xa7d8ff);
+            scene.fog = new THREE.Fog(0xa7d8ff, 25, 65);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.05;
+            container.appendChild(renderer.domElement);
+
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x88bbdd, 0.95);
+            scene.add(hemiLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfff5ea, 1.25);
+            sunLight.position.set(16, 26, 14);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 1024;
+            sunLight.shadow.mapSize.height = 1024;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 50;
+            const d = 16;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            sunLight.shadow.bias = -0.0005;
+            scene.add(sunLight);
+
+            buildWideTown();
+            buildChibiCharacters();
+            setupHitEffects();
+
+            // 初期視点：主人公が手前に綺麗に収まり、前方の角交差点全体を見通せる位置
+            camera.position.set(2.0, 5.2, 14.5);
+            camera.lookAt(0, 1.0, 4.0);
+
+            window.addEventListener('resize', onWindowResize);
+            setupInput();
+        }
+
+        /* --- ゆとりのある道幅（幅4.8m）と開放的な角・交差点の構築 --- */
+        function buildWideTown() {
+            const roadMat = new THREE.MeshLambertMaterial({ color: 0x556070 });
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), roadMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const rw = 2.4; // 道の半幅（道幅 4.8m で広々）
+
+            // 南北方向の白線
+            const lineSL = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 18), lineMat);
+            lineSL.rotation.x = -Math.PI / 2;
+            lineSL.position.set(-rw, 0.015, 9.0);
+            scene.add(lineSL);
+
+            const lineSR = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 18), lineMat);
+            lineSR.rotation.x = -Math.PI / 2;
+            lineSR.position.set(rw, 0.015, 9.0);
+            scene.add(lineSR);
+
+            // 東西方向の白線
+            const lineWL = new THREE.Mesh(new THREE.PlaneGeometry(18, 0.12), lineMat);
+            lineWL.rotation.x = -Math.PI / 2;
+            lineWL.position.set(-9.0, 0.015, -rw);
+            scene.add(lineWL);
+
+            const lineWR = new THREE.Mesh(new THREE.PlaneGeometry(18, 0.12), lineMat);
+            lineWR.rotation.x = -Math.PI / 2;
+            lineWR.position.set(-9.0, 0.015, rw);
+            scene.add(lineWR);
+
+            // 交差点中心の目印（止まれゾーン）
+            const zebraMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+            for (let i = 0; i < 4; i++) {
+                const zLine = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 1.2), zebraMat);
+                zLine.rotation.x = -Math.PI / 2;
+                zLine.position.set(-1.2 + i * 0.8, 0.018, 2.6);
+                scene.add(zLine);
+            }
+
+            function createHouseBlock(centerX, centerZ, w, d, wallColor, roofColor) {
+                const group = new THREE.Group();
+
+                const wallBase = new THREE.Mesh(
+                    new THREE.BoxGeometry(w, 0.5, d),
+                    new THREE.MeshLambertMaterial({ color: 0x94a3b8 })
+                );
+                wallBase.position.set(centerX, 0.25, centerZ);
+                wallBase.receiveShadow = true;
+                group.add(wallBase);
+
+                // 塀の高さを2.1mに適正化（高すぎて交差点が隠れるのを防止）
+                const wallH = 2.1;
+                const wall = new THREE.Mesh(
+                    new THREE.BoxGeometry(w, wallH, d),
+                    new THREE.MeshLambertMaterial({ color: 0xf1f5f9 })
+                );
+                wall.position.set(centerX, 0.5 + wallH / 2, centerZ);
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                group.add(wall);
+
+                const cap = new THREE.Mesh(
+                    new THREE.BoxGeometry(w + 0.12, 0.12, d + 0.12),
+                    new THREE.MeshLambertMaterial({ color: 0x64748b })
+                );
+                cap.position.set(centerX, 0.5 + wallH + 0.06, centerZ);
+                group.add(cap);
+
+                // 生垣
+                const hedge = new THREE.Mesh(
+                    new THREE.BoxGeometry(w - 0.3, 0.5, d - 0.3),
+                    new THREE.MeshLambertMaterial({ color: 0x4ade80 })
+                );
+                hedge.position.set(centerX, 0.5 + wallH + 0.3, centerZ);
+                group.add(hedge);
+
+                // 住宅
+                const houseH = 3.2;
+                const house = new THREE.Mesh(
+                    new THREE.BoxGeometry(w - 1.0, houseH, d - 1.0),
+                    new THREE.MeshLambertMaterial({ color: wallColor })
+                );
+                house.position.set(centerX, 2.8 + houseH / 2, centerZ);
+                house.castShadow = true;
+                group.add(house);
+
+                const roof = new THREE.Mesh(
+                    new THREE.ConeGeometry(Math.min(w, d) * 0.65, 1.6, 4),
+                    new THREE.MeshLambertMaterial({ color: roofColor })
+                );
+                roof.rotation.y = Math.PI / 4;
+                roof.position.set(centerX, 2.8 + houseH + 0.8, centerZ);
+                roof.castShadow = true;
+                group.add(roof);
+
+                return group;
+            }
+
+            // 道幅2.4mに合わせてブロックを後退配置（交差点空間が広々）
+            scene.add(createHouseBlock(-8.8, -8.8, 12.5, 12.5, 0xfef9c3, 0x0284c7)); // 北西（角）
+            scene.add(createHouseBlock(8.8, -8.8, 12.5, 12.5, 0xffedd5, 0xf97316));  // 北東
+            scene.add(createHouseBlock(-8.8, 8.8, 12.5, 12.5, 0xe0e7ff, 0x4f46e5));  // 南西
+            scene.add(createHouseBlock(8.8, 8.8, 12.5, 12.5, 0xfce7f3, 0xdb2777));   // 南東
+
+            // カーブミラー（角の視界を遮らないよう配置）
+            const mirrorGroup = new THREE.Group();
+            const pole = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.06, 3.8, 16),
+                new THREE.MeshLambertMaterial({ color: 0xf97316 })
+            );
+            pole.position.set(2.6, 1.9, -2.6);
+            pole.castShadow = true;
+            mirrorGroup.add(pole);
+
+            const mirrorBack = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.55, 0.55, 0.08, 24),
+                new THREE.MeshLambertMaterial({ color: 0xf97316 })
+            );
+            mirrorBack.rotation.x = Math.PI / 2.7;
+            mirrorBack.rotation.z = Math.PI / 4;
+            mirrorBack.position.set(2.6, 3.6, -2.6);
+            mirrorGroup.add(mirrorBack);
+
+            const mirrorFace = new THREE.Mesh(
+                new THREE.CircleGeometry(0.5, 24),
+                new THREE.MeshBasicMaterial({ color: 0xbae6fd })
+            );
+            mirrorFace.rotation.x = -Math.PI / 2.7;
+            mirrorFace.rotation.y = Math.PI;
+            mirrorFace.position.set(2.6, 3.6, -2.53);
+            mirrorGroup.add(mirrorFace);
+            scene.add(mirrorGroup);
+
+            // 電柱
+            const utilPole = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.22, 0.26, 8, 16),
+                new THREE.MeshLambertMaterial({ color: 0x94a3b8 })
+            );
+            utilPole.position.set(-2.7, 4, -2.7);
+            utilPole.castShadow = true;
+            scene.add(utilPole);
+        }
+
+        function buildChibiCharacters() {
+            // 主人公
+            playerGroup = new THREE.Group();
+            const gakuranMat = new THREE.MeshLambertMaterial({ color: 0x1e3a8a });
+            const skinMat = new THREE.MeshLambertMaterial({ color: 0xffedd5 });
+            const hairMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+
+            const pTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.34, 1.0, 16), gakuranMat);
+            pTorso.position.y = 1.25;
+            pTorso.castShadow = true;
+            playerGroup.add(pTorso);
+
+            const pHead = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 16), skinMat);
+            pHead.position.y = 1.95;
+            pHead.castShadow = true;
+            playerGroup.add(pHead);
+
+            const pHair = new THREE.Mesh(new THREE.SphereGeometry(0.39, 16, 16), hairMat);
+            pHair.position.set(0, 2.05, -0.05);
+            playerGroup.add(pHair);
+
+            const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.75, 12);
+            const legGeo = new THREE.CylinderGeometry(0.12, 0.11, 0.85, 12);
+
+            playerLimbs.leftArm = new THREE.Mesh(armGeo, gakuranMat);
+            playerLimbs.leftArm.position.set(-0.48, 1.3, 0);
+            playerLimbs.rightArm = new THREE.Mesh(armGeo, gakuranMat);
+            playerLimbs.rightArm.position.set(0.48, 1.3, 0);
+
+            playerLimbs.leftLeg = new THREE.Mesh(legGeo, gakuranMat);
+            playerLimbs.leftLeg.position.set(-0.2, 0.45, 0);
+            playerLimbs.leftLeg.castShadow = true;
+            playerLimbs.rightLeg = new THREE.Mesh(legGeo, gakuranMat);
+            playerLimbs.rightLeg.position.set(0.2, 0.45, 0);
+            playerLimbs.rightLeg.castShadow = true;
+
+            playerGroup.add(playerLimbs.leftArm, playerLimbs.rightArm, playerLimbs.leftLeg, playerLimbs.rightLeg);
+            // 初期位置（南の道、Z: 10）
+            playerGroup.position.set(0, 0, 10);
+            scene.add(playerGroup);
+
+            // ヒロイン
+            girlGroup = new THREE.Group();
+            const sailorMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const skirtMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6 });
+            const ribbonMat = new THREE.MeshLambertMaterial({ color: 0xf43f5e });
+            const gHairMat = new THREE.MeshLambertMaterial({ color: 0xb45309 });
+
+            const gTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.28, 0.8, 16), sailorMat);
+            gTorso.position.y = 1.25;
+            gTorso.castShadow = true;
+            girlGroup.add(gTorso);
+
+            const ribbon = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), ribbonMat);
+            ribbon.position.set(0, 1.45, 0.24);
+            girlGroup.add(ribbon);
+
+            const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.45, 16, 1, true), skirtMat);
+            skirt.position.y = 0.85;
+            skirt.castShadow = true;
+            girlGroup.add(skirt);
+
+            const gHead = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), skinMat);
+            gHead.position.y = 1.88;
+            gHead.castShadow = true;
+            girlGroup.add(gHead);
+
+            const gHair = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), gHairMat);
+            gHair.position.set(0, 1.98, -0.04);
+            girlGroup.add(gHair);
+
+            const gTailL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.04, 0.6, 8), gHairMat);
+            gTailL.position.set(-0.35, 1.75, -0.15);
+            gTailL.rotation.z = 0.3;
+            const gTailR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.04, 0.6, 8), gHairMat);
+            gTailR.position.set(0.35, 1.75, -0.15);
+            gTailR.rotation.z = -0.3;
+            girlGroup.add(gTailL, gTailR);
+
+            const toastGeo = new THREE.BoxGeometry(0.34, 0.34, 0.08);
+            const toastMat = new THREE.MeshLambertMaterial({ color: 0xfcd34d });
+            toastMesh = new THREE.Mesh(toastGeo, toastMat);
+            toastMesh.position.set(0, 1.82, 0.28);
+            toastMesh.rotation.z = 0.15;
+            girlGroup.add(toastMesh);
+
+            const butter = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.03), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+            butter.position.set(0, 0, 0.05);
+            toastMesh.add(butter);
+
+            girlLimbs.leftArm = new THREE.Mesh(armGeo, sailorMat);
+            girlLimbs.leftArm.position.set(-0.42, 1.25, 0);
+            girlLimbs.rightArm = new THREE.Mesh(armGeo, sailorMat);
+            girlLimbs.rightArm.position.set(0.42, 1.25, 0);
+
+            girlLimbs.leftLeg = new THREE.Mesh(legGeo, skinMat);
+            girlLimbs.leftLeg.position.set(-0.16, 0.45, 0);
+            girlLimbs.leftLeg.castShadow = true;
+            girlLimbs.rightLeg = new THREE.Mesh(legGeo, skinMat);
+            girlLimbs.rightLeg.position.set(0.16, 0.45, 0);
+            girlLimbs.rightLeg.castShadow = true;
+
+            girlGroup.add(girlLimbs.leftArm, girlLimbs.rightArm, girlLimbs.leftLeg, girlLimbs.rightLeg);
+            // 初期位置（西の道、X: -10）
+            girlGroup.position.set(-10, 0, 0);
+            girlGroup.rotation.y = Math.PI / 2;
+            scene.add(girlGroup);
+        }
+
+        function setupHitEffects() {
+            const heartShape = new THREE.Shape();
+            heartShape.moveTo(0, 0);
+            heartShape.bezierCurveTo(0, 0.1, -0.15, 0.25, -0.3, 0.25);
+            heartShape.bezierCurveTo(-0.45, 0.25, -0.5, 0.1, -0.5, 0);
+            heartShape.bezierCurveTo(-0.5, -0.15, -0.3, -0.35, 0, -0.5);
+            heartShape.bezierCurveTo(0.3, -0.35, 0.5, -0.15, 0.5, 0);
+            heartShape.bezierCurveTo(0.5, 0.1, 0.45, 0.25, 0.3, 0.25);
+            heartShape.bezierCurveTo(0.15, 0.25, 0, 0.1, 0, 0);
+
+            const heartGeo = new THREE.ShapeGeometry(heartShape);
+            const heartMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e, side: THREE.DoubleSide });
+
+            for (let i = 0; i < 10; i++) {
+                const mesh = new THREE.Mesh(heartGeo, heartMat);
+                mesh.scale.set(0.55, 0.55, 0.55);
+                mesh.visible = false;
+                scene.add(mesh);
+                hitHearts.push({
+                    mesh: mesh,
+                    vel: new THREE.Vector3(),
+                    rotSpeed: (Math.random() - 0.5) * 0.2
+                });
+            }
+        }
+
+        function triggerHearts(pos) {
+            hitHearts.forEach(item => {
+                item.mesh.visible = true;
+                item.mesh.position.set(pos.x, 1.4, pos.z);
+                item.vel.set(
+                    (Math.random() - 0.5) * 0.16,
+                    Math.random() * 0.16 + 0.08,
+                    (Math.random() - 0.5) * 0.16
+                );
+            });
+        }
+
+        function setupInput() {
+            window.addEventListener('keydown', (e) => {
+                sound.init();
+                if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    triggerDash();
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
+            });
+
+            document.querySelectorAll('.d-btn').forEach(btn => {
+                const key = btn.getAttribute('data-key');
+                const onStart = (e) => {
+                    e.preventDefault();
+                    sound.init();
+                    keys[key] = true;
+                };
+                const onEnd = (e) => {
+                    e.preventDefault();
+                    keys[key] = false;
+                };
+                btn.addEventListener('touchstart', onStart, { passive: false });
+                btn.addEventListener('touchend', onEnd, { passive: false });
+                btn.addEventListener('mousedown', onStart);
+                btn.addEventListener('mouseup', onEnd);
+                btn.addEventListener('mouseleave', onEnd);
+            });
+
+            const dashBtn = document.getElementById('btn-dash');
+            const handleDash = (e) => {
+                e.preventDefault();
+                sound.init();
+                triggerDash();
+            };
+            dashBtn.addEventListener('touchstart', handleDash, { passive: false });
+            dashBtn.addEventListener('mousedown', handleDash);
+
+            document.getElementById('btn-restart').addEventListener('click', resetGame);
+        }
+
+        function triggerDash() {
+            if (!gameState.active || gameState.isCollided) return;
+            if (gameState.dashTimer <= 0) {
+                gameState.dashActive = true;
+                gameState.dashTimer = 0.35;
+                sound.playDash();
+                playerGroup.rotation.x = -0.12;
+            }
+        }
+
+        function resetGame() {
+            gameState.active = true;
+            gameState.isCollided = false;
+            gameState.timeLeft = 8.0;
+            gameState.dashActive = false;
+            gameState.dashTimer = 0;
+            gameState.toastFlying = false;
+            gameState.reactionProgress = 0;
+
+            playerGroup.position.set(0, 0, 10);
+            playerGroup.rotation.set(0, 0, 0);
+
+            girlGroup.position.set(-10, 0, 0);
+            girlGroup.rotation.set(0, Math.PI / 2, 0);
+
+            hitHearts.forEach(h => h.mesh.visible = false);
+
+            if (toastMesh.parent !== girlGroup) {
+                scene.remove(toastMesh);
+                girlGroup.add(toastMesh);
+            }
+            toastMesh.position.set(0, 1.82, 0.28);
+            toastMesh.rotation.set(0, 0, 0.15);
+
+            document.getElementById('result-modal').classList.remove('active');
+            document.getElementById('impact-cutin').style.transform = 'translate(-50%, -50%) scale(0)';
+            document.getElementById('speech-bubble').style.display = 'none';
+        }
+
+        function updateSpeechBubble() {
+            const bubble = document.getElementById('speech-bubble');
+            if (gameState.isCollided || !gameState.active) {
+                bubble.style.display = 'none';
+                return;
+            }
+
+            if (girlGroup.position.x > -8 && girlGroup.position.x < 1.5) {
+                bubble.style.display = 'block';
+                const headPos = girlGroup.position.clone().add(new THREE.Vector3(0, 2.2, 0));
+                headPos.project(camera);
+
+                const x = (headPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-(headPos.y * 0.5) + 0.5) * window.innerHeight;
+
+                bubble.style.left = `${x}px`;
+                bubble.style.top = `${y}px`;
+            } else {
+                bubble.style.display = 'none';
+            }
+        }
+
+        function checkCollision() {
+            const dist = playerGroup.position.distanceTo(girlGroup.position);
+            
+            const distToCorner = Math.sqrt(playerGroup.position.z * playerGroup.position.z + girlGroup.position.x * girlGroup.position.x);
+            const meterPct = Math.max(0, Math.min(100, (1 - (distToCorner / 14)) * 100));
+            document.getElementById('meter-fill').style.width = `${meterPct}%`;
+
+            if (dist < 1.45 && !gameState.isCollided) {
+                gameState.isCollided = true;
+                gameState.active = false;
+
+                const hitCenter = playerGroup.position.clone().add(girlGroup.position).multiplyScalar(0.5);
+                gameState.collisionPoint.copy(hitCenter);
+
+                const cornerCenterDist = hitCenter.distanceTo(new THREE.Vector3(0, 0, 0));
+                const isJustCorner = cornerCenterDist < 1.8;
+                const isJustDash = gameState.dashActive;
+
+                sound.playCrash(isJustCorner);
+                triggerHearts(hitCenter);
+
+                const worldPos = new THREE.Vector3();
+                toastMesh.getWorldPosition(worldPos);
+                girlGroup.remove(toastMesh);
+                scene.add(toastMesh);
+                toastMesh.position.copy(worldPos);
+                gameState.toastFlying = true;
+                gameState.toastVelocity.set(0.04, 0.22, -0.06);
+
+                const cutin = document.getElementById('impact-cutin');
+                if (isJustCorner && isJustDash) {
+                    cutin.innerHTML = "運命の角激突！<br><span style='font-size:16px; color:#fef08a;'>💕 完璧な出会い頭ヒット！ 💕</span>";
+                } else if (isJustCorner) {
+                    cutin.innerHTML = "交差点でバッタリ！<br><span style='font-size:15px; color:#38bdf8;'>✨ 「きゃっ、痛〜い！」 ✨</span>";
+                } else {
+                    cutin.innerHTML = "路地で接触！<br><span style='font-size:15px; color:#cbd5e1;'>💦 角ではありませんでした 💦</span>";
+                }
+                cutin.style.transform = 'translate(-50%, -50%) scale(1)';
+
+                setTimeout(() => {
+                    showResult(isJustCorner, isJustDash);
+                }, 1300);
+            }
+        }
+
+        function showResult(isJustCorner, isDash) {
+            const modal = document.getElementById('result-modal');
+            const resRank = document.getElementById('res-rank');
+            const resTitle = document.getElementById('res-title');
+            const resTiming = document.getElementById('res-timing');
+            const resPower = document.getElementById('res-power');
+            const resToast = document.getElementById('res-toast');
+            const resLove = document.getElementById('res-love');
+
+            if (isJustCorner && isDash) {
+                resRank.innerText = "RANK SSS";
+                resTitle.innerText = "💞 世紀のラブコメ開幕！";
+                resTiming.innerText = "交差点中央ジャスト";
+                resPower.innerText = "純情トキメキ直撃";
+                resToast.innerText = "3.6 m (青空へ飛翔)";
+                resLove.innerText = "100%";
+                resRank.style.color = "#f43f5e";
+            } else if (isJustCorner) {
+                resRank.innerText = "RANK A";
+                resTitle.innerText = "🌸 王道のアクシデント";
+                resTiming.innerText = "角でのバッタリ衝突";
+                resPower.innerText = "ソフトな接触";
+                resToast.innerText = "2.4 m";
+                resLove.innerText = "85%";
+                resRank.style.color = "#0284c7";
+            } else {
+                resRank.innerText = "RANK B";
+                resTitle.innerText = "🏃 直線路地での衝突";
+                resTiming.innerText = "位置ズレ";
+                resPower.innerText = "すれ違い事故";
+                resToast.innerText = "1.2 m";
+                resLove.innerText = "30%";
+                resRank.style.color = "#64748b";
+            }
+
+            modal.classList.add('active');
+        }
+
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            if (gameState.active && !gameState.isCollided) {
+                gameState.timeLeft -= delta;
+                document.getElementById('timer-val').innerText = Math.max(0, gameState.timeLeft).toFixed(1);
+                if (gameState.timeLeft <= 0) {
+                    gameState.active = false;
+                    showResult(false, false);
+                }
+
+                let currentSpeed = gameState.playerBaseSpeed;
+                if (gameState.dashActive) {
+                    gameState.dashTimer -= delta;
+                    currentSpeed = gameState.playerDashSpeed;
+                    if (gameState.dashTimer <= 0) {
+                        gameState.dashActive = false;
+                        playerGroup.rotation.x = 0;
+                    }
+                }
+
+                let isMoving = false;
+                if (keys.ArrowUp) { playerGroup.position.z -= currentSpeed; isMoving = true; }
+                if (keys.ArrowDown) { playerGroup.position.z += currentSpeed; isMoving = true; }
+                if (keys.ArrowLeft) { playerGroup.position.x -= currentSpeed; isMoving = true; }
+                if (keys.ArrowRight) { playerGroup.position.x += currentSpeed; isMoving = true; }
+
+                // 広い道幅（幅4.8m）に合わせた移動範囲
+                if (playerGroup.position.z > 1.8) {
+                    playerGroup.position.x = Math.max(-1.8, Math.min(1.8, playerGroup.position.x));
+                } else {
+                    playerGroup.position.x = Math.max(-1.8, Math.min(6.0, playerGroup.position.x));
+                }
+                playerGroup.position.z = Math.max(-2.5, Math.min(11, playerGroup.position.z));
+
+                if (isMoving) {
+                    const runSwing = Math.sin(time * 16);
+                    playerLimbs.leftArm.rotation.x = runSwing * 0.7;
+                    playerLimbs.rightArm.rotation.x = -runSwing * 0.7;
+                    playerLimbs.leftLeg.rotation.x = -runSwing * 0.8;
+                    playerLimbs.rightLeg.rotation.x = runSwing * 0.8;
+                } else {
+                    playerLimbs.leftArm.rotation.x = 0;
+                    playerLimbs.rightArm.rotation.x = 0;
+                    playerLimbs.leftLeg.rotation.x = 0;
+                    playerLimbs.rightLeg.rotation.x = 0;
+                }
+
+                if (girlGroup.position.x < 8) {
+                    girlGroup.position.x += gameState.girlSpeed;
+                    const girlSwing = Math.sin(time * 15);
+                    girlLimbs.leftArm.rotation.x = girlSwing * 0.6;
+                    girlLimbs.rightArm.rotation.x = -girlSwing * 0.6;
+                    girlLimbs.leftLeg.rotation.x = -girlSwing * 0.7;
+                    girlLimbs.rightLeg.rotation.x = girlSwing * 0.7;
+                }
+
+                checkCollision();
+            }
+
+            if (gameState.isCollided) {
+                if (gameState.reactionProgress < 1.0) {
+                    gameState.reactionProgress += 0.04;
+                    girlGroup.position.y = Math.max(0, -0.3 * gameState.reactionProgress);
+                    girlGroup.rotation.z = 0.25 * gameState.reactionProgress;
+                    playerGroup.rotation.x = -0.12 * Math.sin(gameState.reactionProgress * Math.PI);
+                }
+            }
+
+            hitHearts.forEach(item => {
+                if (item.mesh.visible) {
+                    item.mesh.position.add(item.vel);
+                    item.vel.y -= 0.005;
+                    item.mesh.rotation.z += item.rotSpeed;
+                }
+            });
+
+            if (gameState.toastFlying) {
+                toastMesh.position.add(gameState.toastVelocity);
+                gameState.toastVelocity.y -= 0.01;
+                toastMesh.rotation.x += 0.15;
+                toastMesh.rotation.y += 0.2;
+                if (toastMesh.position.y < 0.1) {
+                    toastMesh.position.y = 0.1;
+                    gameState.toastFlying = false;
+                }
+            }
+
+            // ★ ぶつかった場所・2人のリアクションが壁に遮られず完璧に見通せるカメラ
+            if (gameState.isCollided) {
+                // 衝突時：ぶつかった地点（gameState.collisionPoint）を画面中央に捉える、壁に遮られない斜め上アングル
+                const targetCam = new THREE.Vector3(
+                    gameState.collisionPoint.x + 3.2,
+                    3.8,
+                    gameState.collisionPoint.z + 4.6
+                );
+                camera.position.lerp(targetCam, 0.05);
+                camera.lookAt(gameState.collisionPoint.x, 1.2, gameState.collisionPoint.z);
+            } else {
+                // 通常走行時：主人公の背後斜め上から交差点の全体を見渡す
+                const targetCamX = playerGroup.position.x * 0.5 + 2.2;
+                const targetCamY = 4.8;
+                const targetCamZ = playerGroup.position.z + 4.8;
+
+                camera.position.x += (targetCamX - camera.position.x) * 0.08;
+                camera.position.y += (targetCamY - camera.position.y) * 0.08;
+                camera.position.z += (targetCamZ - camera.position.z) * 0.08;
+
+                camera.lookAt(playerGroup.position.x * 0.3, 1.2, playerGroup.position.z - 2.8);
+            }
+
+            updateSpeechBubble();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.onload = function() {
+            initScene();
+            animate();
+        };
+    </script>
+</body>
+</html>
