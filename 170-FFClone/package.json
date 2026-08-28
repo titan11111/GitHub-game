@@ -1,0 +1,22 @@
+{
+  "name": "170-ffclone",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:phase1": "playwright test phase1",
+    "dev": "serve . -p 8080"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "serve": "^14.2.6"
+  }
+}

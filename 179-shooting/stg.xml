@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 128" width="100%" height="100%">
+  <defs>
+    <!-- 1. カラーグラデーションの定義 -->
+    <!-- 機体本体：メタリックなブルーグレー -->
+    <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1f2d3d"/>
+      <stop offset="40%" stop-color="#475f7a"/>
+      <stop offset="80%" stop-color="#8faec4"/>
+      <stop offset="100%" stop-color="#b8d1e0"/>
+    </linearGradient>
+
+    <!-- 主翼：ダークな金属調 -->
+    <linearGradient id="wingGrad" x1="0%" y1="100%" x2="50%" y2="0%">
+      <stop offset="0%" stop-color="#111a24"/>
+      <stop offset="100%" stop-color="#354a5f"/>
+    </linearGradient>
+
+    <!-- キャノピー：近未来的な発光シアン -->
+    <linearGradient id="canopyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#005b66"/>
+      <stop offset="50%" stop-color="#00f3ff"/>
+      <stop offset="100%" stop-color="#e0ffff"/>
+    </linearGradient>
+
+    <!-- エンジンノズル：チタン風金属調 -->
+    <linearGradient id="nozzleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#151a21"/>
+      <stop offset="50%" stop-color="#4d5a69"/>
+      <stop offset="100%" stop-color="#151a21"/>
+    </linearGradient>
+
+    <!-- 炎（最大出力用グラデーション） -->
+    <linearGradient id="fireGradMax" x1="100%" y1="0%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="25%" stop-color="#ffea00"/>
+      <stop offset="65%" stop-color="#ff5500"/>
+      <stop offset="100%" stop-color="rgba(255, 0, 0, 0)"/>
+    </linearGradient>
+
+    <!-- 炎（中出力用グラデーション） -->
+    <linearGradient id="fireGradMed" x1="100%" y1="0%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="30%" stop-color="#ffcc00"/>
+      <stop offset="75%" stop-color="#ff3300"/>
+      <stop offset="100%" stop-color="rgba(200, 0, 0, 0)"/>
+    </linearGradient>
+
+    <!-- 2. エフェクト（グロー）の定義 -->
+    <!-- 炎発光用の強力なグロー -->
+    <filter id="fireGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="blur1"/>
+      <feGaussianBlur stdDeviation="2" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- キャノピー用のソフトなグロー -->
+    <filter id="canopyGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- 3. 共通の戦闘機機体ベース (128x128サイズ内でのパーツ配置) -->
+    <!-- 基準点をノズル排気口のx=35, y=64として、右向き(進行方向)にデザイン -->
+    <g id="player-ship">
+      <!-- 後部サブスラスター（上下） -->
+      <path d="M 42,48 L 32,41 L 45,41 Z" fill="#2d3d4d" stroke="#0a0f14" stroke-width="1.5"/>
+      <path d="M 42,80 L 32,87 L 45,87 Z" fill="#2d3d4d" stroke="#0a0f14" stroke-width="1.5"/>
+
+      <!-- 主翼（下側パーツ：遠近感を出すために最背面に配置） -->
+      <path d="M 55,64 L 38,108 L 65,108 L 82,64 Z" fill="url(#wingGrad)" stroke="#0a0f14" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M 43,98 L 58,98 L 62,105 L 46,105 Z" fill="#ff2e2e" /> <!-- ウィングデカール -->
+
+      <!-- 主翼（上側パーツ） -->
+      <path d="M 55,64 L 38,20 L 65,20 L 82,64 Z" fill="url(#wingGrad)" stroke="#0a0f14" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M 43,30 L 58,30 L 62,23 L 46,23 Z" fill="#ff2e2e" /> <!-- ウィングデカール -->
+
+      <!-- メインボディ（シャープなSF戦闘機ライン） -->
+      <path d="M 32,64 Q 30,46 55,46 L 92,50 Q 116,64 120,64 Q 116,64 92,78 L 55,82 Q 30,82 32,64 Z" fill="url(#bodyGrad)" stroke="#0a0f14" stroke-width="1.5" stroke-linejoin="round"/>
+      
+      <!-- キャノピー（コックピット：発光シアン） -->
+      <path d="M 72,50 Q 94,50 102,64 Q 94,78 72,78 Q 78,64 72,50 Z" fill="url(#canopyGrad)" stroke="#00f3ff" stroke-width="1" filter="url(#canopyGlow)"/>
+      <path d="M 78,54 Q 91,54 96,64 Q 91,74 78,74 Q 82,64 78,54 Z" fill="#ffffff" opacity="0.35"/> <!-- 反射ハイライト -->
+
+      <!-- 先端レーザー砲口 -->
+      <path d="M 115,62 L 123,62 L 123,66 L 115,66 Z" fill="#151a21" stroke="#0a0f14" stroke-width="1"/>
+      
+      <!-- メインエンジンノズル -->
+      <rect x="25" y="54" width="10" height="20" rx="2" fill="url(#nozzleGrad)" stroke="#0a0f14" stroke-width="1.5"/>
+      <!-- ノズルのインナー（排気口） -->
+      <ellipse cx="25" cy="64" rx="3" ry="9" fill="#0d0d0d"/>
+    </g>
+  </defs>
+
+  <!-- スプライトシート全体の暗色背景（ゲーム画面を想定して発光を際立たせる。不要な場合はこのrectを削除または透過にしてください） -->
+  <rect width="512" height="128" fill="#080c14" />
+
+  <!-- ==================== FRAME 1 (Flame: MAX) ==================== -->
+  <g transform="translate(0, 0)">
+    <!-- 1. エンジンの火（最大） -->
+    <!-- 外側の炎（赤〜オレンジ） -->
+    <path d="M 25,55 C 3,46 -8,58 -8,64 C -8,70 3,82 25,73 C 14,68 14,60 25,55 Z" fill="url(#fireGradMax)" filter="url(#fireGlow)"/>
+    <!-- 内側の超高温部（白〜黄色） -->
+    <path d="M 25,58 C 12,54 5,61 5,64 C 5,67 12,74 25,70 Z" fill="#ffffff" filter="url(#fireGlow)"/>
+    <path d="M 25,60 Q 14,60 14,64 Q 14,68 25,68 Z" fill="#ffffff"/>
+
+    <!-- 2. 固定された自機ベース -->
+    <use href="#player-ship"/>
+  </g>
+
+  <!-- ==================== FRAME 2 (Flame: MID) ==================== -->
+  <g transform="translate(128, 0)">
+    <!-- 1. エンジンの火（中） -->
+    <!-- 外側の炎 -->
+    <path d="M 25,56 C 8,49 2,59 2,64 C 2,69 8,79 25,72 C 16,68 16,60 25,56 Z" fill="url(#fireGradMed)" filter="url(#fireGlow)"/>
+    <!-- 内側の炎 -->
+    <path d="M 25,59 C 15,56 10,61 10,64 C 10,67 15,72 25,69 Z" fill="#ffffff" filter="url(#fireGlow)"/>
+
+    <!-- 2. 固定された自機ベース -->
+    <use href="#player-ship"/>
+  </g>
+
+  <!-- ==================== FRAME 3 (Flame: MIN) ==================== -->
+  <g transform="translate(256, 0)">
+    <!-- 1. エンジンの火（最小 / 火花） -->
+    <!-- 外側の極小の炎 -->
+    <path d="M 25,58 C 17,54 13,61 13,64 C 13,67 17,74 25,70 Z" fill="url(#fireGradMed)" filter="url(#fireGlow)"/>
+    <!-- 内側の極小の点 -->
+    <ellipse cx="21" cy="64" rx="2" ry="2" fill="#ffffff" filter="url(#fireGlow)"/>
+
+    <!-- 2. 固定された自機ベース -->
+    <use href="#player-ship"/>
+  </g>
+
+  <!-- ==================== FRAME 4 (Flame: OFF / HEAT) ==================== -->
+  <g transform="translate(384, 0)">
+    <!-- 1. エンジンの火（完全消灯、ノズル内部の熱い余韻のみ） -->
+    <ellipse cx="25" cy="64" rx="3" ry="8" fill="#ff3c00" filter="url(#fireGlow)" opacity="0.8"/>
+    <ellipse cx="25" cy="64" rx="1" ry="5" fill="#ffea00"/>
+
+    <!-- 2. 固定された自機ベース -->
+    <use href="#player-ship"/>
+  </g>
+
+  <!-- ==================== 開発用ガイドライン＆フレームテキスト ==================== -->
+  <!-- ※ゲームへの組み込み時やスライス作成時に不要な場合は、この「guides」グループごと削除するか、display="none"にしてください。 -->
+  <g id="guides" opacity="0.4" style="pointer-events: none;">
+    <!-- 外枠境界線 -->
+    <rect width="512" height="128" fill="none" stroke="#4a5a6a" stroke-width="2"/>
+    
+    <!-- フレーム分割用の縦のグリッド（破線） -->
+    <line x1="128" y1="0" x2="128" y2="128" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <line x1="256" y1="0" x2="256" y2="128" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <line x1="384" y1="0" x2="384" y2="128" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+    <!-- 各フレームのインデックスラベル（x座標とアニメーション状態） -->
+    <text x="10" y="20" fill="#ffffff" font-family="monospace" font-size="10" font-weight="bold">FRAME 1 [x:0-128] MAX</text>
+    <text x="138" y="20" fill="#ffffff" font-family="monospace" font-size="10" font-weight="bold">FRAME 2 [x:128-256] MID</text>
+    <text x="266" y="20" fill="#ffffff" font-family="monospace" font-size="10" font-weight="bold">FRAME 3 [x:256-384] MIN</text>
+    <text x="394" y="20" fill="#ffffff" font-family="monospace" font-size="10" font-weight="bold">FRAME 4 [x:384-512] OFF</text>
+    
+    <!-- 各コマのサイズインジケーター（128x128） -->
+    <text x="10" y="115" fill="#8899aa" font-family="monospace" font-size="9">Size: 128x128px</text>
+    <text x="138" y="115" fill="#8899aa" font-family="monospace" font-size="9">Size: 128x128px</text>
+    <text x="266" y="115" fill="#8899aa" font-family="monospace" font-size="9">Size: 128x128px</text>
+    <text x="394" y="115" fill="#8899aa" font-family="monospace" font-size="9">Size: 128x128px</text>
+  </g>
+</svg>

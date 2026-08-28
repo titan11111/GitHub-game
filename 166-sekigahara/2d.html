@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>関ヶ原の戦い 1600 — シミュレーション</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: none;
+}
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #14160f;
+  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+  color: #e8e4d8;
+}
+#cv {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  height: -webkit-fill-available;
+}
+/* ---------- ヘッダー ---------- */
+#hd {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 6px) max(10px, env(safe-area-inset-right)) 6px max(10px, env(safe-area-inset-left));
+  background: linear-gradient(180deg, rgba(12,13,9,.92), rgba(12,13,9,.72));
+  border-bottom: 1px solid rgba(200,180,120,.25);
+  z-index: 20;
+}
+#hd-title {
+  font-family: "Hiragino Mincho ProN", serif;
+  font-weight: 700; font-size: 15px; letter-spacing: 2px;
+  color: #e6d9b0; white-space: nowrap;
+}
+#hd-title small { display: block; font-size: 8px; letter-spacing: 1px; color: #9b9070; font-weight: 400; }
+#hd-time {
+  font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: #fff; margin-left: 2px; min-width: 62px;
+}
+#hd-spacer { flex: 1; }
+.hbtn {
+  appearance: none; border: 1px solid rgba(200,180,120,.4);
+  background: rgba(40,38,28,.85); color: #e6d9b0;
+  border-radius: 8px; font-size: 13px; font-weight: 700;
+  min-width: 42px; height: 34px; padding: 0 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.hbtn:active { background: rgba(90,80,50,.9); }
+/* ---------- 兵力バー ---------- */
+#abar {
+  position: fixed; left: 0; right: 0;
+  top: calc(env(safe-area-inset-top) + 47px);
+  height: 18px; display: flex; z-index: 19;
+  font-size: 10px; font-weight: 700; line-height: 18px;
+  border-bottom: 1px solid rgba(0,0,0,.4);
+}
+#ab-e { background: #2d4a66; color: #cfe2f5; text-align: left; padding-left: 8px; white-space: nowrap; overflow: hidden; transition: width .4s; }
+#ab-w { background: #a83a32; color: #ffe0da; text-align: right; padding-right: 8px; white-space: nowrap; overflow: hidden; flex: 1; }
+/* ---------- 戦況ログ ---------- */
+#log {
+  position: fixed;
+  left: max(8px, env(safe-area-inset-left));
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
+  width: min(48%, 330px); max-height: 118px;
+  overflow-y: auto; z-index: 18;
+  background: rgba(12,13,9,.72);
+  border: 1px solid rgba(200,180,120,.25); border-radius: 8px;
+  padding: 6px 8px; font-size: 10.5px; line-height: 1.5;
+  touch-action: pan-y;
+}
+#log .lt { color: #c8b878; font-weight: 700; margin-right: 4px; }
+#log div { margin-bottom: 2px; }
+/* ---------- 部隊情報 ---------- */
+#info {
+  position: fixed;
+  right: max(8px, env(safe-area-inset-right));
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
+  width: 168px; z-index: 18; display: none;
+  background: rgba(12,13,9,.85);
+  border: 1px solid rgba(200,180,120,.35); border-radius: 8px;
+  padding: 8px 10px; font-size: 11px; line-height: 1.6;
+}
+#info .nm { font-weight: 700; font-size: 13px; }
+#info .sd-E { color: #8fb8e0; } #info .sd-W { color: #f09a90; }
+#info .mbar { height: 5px; background: #333; border-radius: 3px; overflow: hidden; margin-top: 2px; }
+#info .mbar i { display: block; height: 100%; background: #c8b040; }
+/* ---------- バナー ---------- */
+#banner {
+  position: fixed; left: 50%; top: 34%;
+  transform: translate(-50%, -50%);
+  z-index: 25; pointer-events: none; text-align: center;
+  font-family: "Hiragino Mincho ProN", serif;
+  opacity: 0; transition: opacity .35s;
+}
+#banner .b1 {
+  font-size: clamp(22px, 5.5vw, 40px); font-weight: 700; letter-spacing: 5px;
+  color: #f2e6c0; text-shadow: 0 0 14px rgba(0,0,0,.95), 0 2px 4px #000;
+}
+#banner .b2 { font-size: clamp(11px, 2.6vw, 15px); color: #d8c890; margin-top: 4px; text-shadow: 0 1px 3px #000; }
+/* ---------- オーバーレイ共通 ---------- */
+.ovl {
+  position: fixed; inset: 0; z-index: 30;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(10,11,7,.88); text-align: center; padding: 20px;
+}
+.ovl h1 {
+  font-family: "Hiragino Mincho ProN", serif;
+  font-size: clamp(30px, 8vw, 52px); letter-spacing: 8px;
+  color: #ecdfb6; margin: 0 0 4px;
+  text-shadow: 0 0 18px rgba(200,170,90,.35);
+}
+.ovl .sub { color: #a89c78; font-size: 13px; letter-spacing: 2px; margin-bottom: 26px; }
+.ovl p { color: #cfc6ae; font-size: 13px; line-height: 1.8; max-width: 460px; }
+.obtn {
+  appearance: none; display: block; width: min(78vw, 320px);
+  margin: 8px auto; padding: 14px 12px;
+  border-radius: 10px; font-size: 15px; font-weight: 700;
+  border: 1px solid rgba(210,190,130,.5);
+  background: linear-gradient(180deg, #4a432d, #322d1e); color: #f0e6c4;
+  letter-spacing: 1px;
+}
+.obtn:active { background: #5d5436; }
+.obtn small { display: block; font-weight: 400; font-size: 10.5px; color: #b3a87f; margin-top: 3px; }
+.obtn.west { border-color: rgba(230,120,110,.5); background: linear-gradient(180deg, #5a2c26, #381d19); color: #f5d6cf; }
+.obtn.west:active { background: #6e362e; }
+#end .stats {
+  margin: 14px 0 6px; font-size: 13px; line-height: 2;
+  color: #d8d0b8; border-top: 1px solid rgba(200,180,120,.25);
+  border-bottom: 1px solid rgba(200,180,120,.25); padding: 10px 24px;
+}
+#end .stats b.e { color: #8fb8e0; } #end .stats b.w { color: #f09a90; }
+#choice, #end { display: none; }
+</style>
+</head>
+<body>
+
+<canvas id="cv"></canvas>
+
+<header id="hd">
+  <div id="hd-title">関ヶ原の戦い<small>慶長五年九月十五日（1600.10.21）</small></div>
+  <div id="hd-time">--:--</div>
+  <div id="hd-spacer"></div>
+  <button type="button" class="hbtn" id="b-play">▶</button>
+  <button type="button" class="hbtn" id="b-speed">×1</button>
+  <button type="button" class="hbtn" id="b-mute">♪</button>
+  <button type="button" class="hbtn" id="b-reset">↺</button>
+</header>
+
+<div id="abar">
+  <div id="ab-e">東軍</div><div id="ab-w">西軍</div>
+</div>
+
+<div id="log" aria-live="polite"></div>
+<div id="info"></div>
+
+<div id="banner"><div class="b1"></div><div class="b2"></div></div>
+
+<div class="ovl" id="start">
+  <h1>関ヶ原</h1>
+  <div class="sub">— 天下分け目の戦い・シミュレーション —</div>
+  <p>慶長五年九月十五日早暁。盆地を囲む山々——笹尾山・天満山・松尾山・南宮山——に布陣した両軍およそ十五万。<br>濃霧が晴れるとき、戦が始まります。</p>
+  <button type="button" class="obtn" id="m-hist">史実モード<small>歴史の通りに戦況が推移します</small></button>
+  <button type="button" class="obtn west" id="m-if">小早川の決断モード<small>正午、松尾山の決断をあなたが選びます</small></button>
+  <p style="font-size:11px;color:#8a8166">地図はドラッグで移動・ピンチで拡大できます。部隊をタップすると詳細を表示します。</p>
+</div>
+
+<div class="ovl" id="choice">
+  <h1 style="font-size:clamp(24px,6vw,40px)">松尾山の決断</h1>
+  <div class="sub">家康の問鉄砲が松尾山に轟いた——</div>
+  <p>小早川秀秋、十九歳。眼下では西軍が一進一退の攻防を続けている。<br>一万五千の軍勢は、どちらへ向かうのか。</p>
+  <button type="button" class="obtn" id="c-east">東軍に寝返る<small>史実の選択 — 大谷吉継の陣へ突撃する</small></button>
+  <button type="button" class="obtn west" id="c-west">義を貫き西軍として戦う<small>もう一つの関ヶ原 — 東軍の側面を突く</small></button>
+</div>
+
+<div class="ovl" id="end">
+  <h1 id="end-title"></h1>
+  <div class="sub" id="end-sub"></div>
+  <div class="stats" id="end-stats"></div>
+  <p id="end-note" style="font-size:12px"></p>
+  <button type="button" class="obtn" id="b-again">もう一度</button>
+</div>
+
+<script>
+'use strict';
+/* =====================================================
+   関ヶ原の戦い シミュレーション
+   世界座標: 1000 x 700 （関ヶ原盆地 約4km四方を想定）
+===================================================== */
+const W = 1000, H = 700;
+
+/* ---------- 乱数・ノイズ ---------- */
+function hash2(i, j) {
+  let n = (i * 374761393 + j * 668265263) | 0;
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
+}
+function vnoise(x, y) {
+  const i = Math.floor(x), j = Math.floor(y);
+  const fx = x - i, fy = y - j;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = hash2(i, j), b = hash2(i + 1, j), c = hash2(i, j + 1), d = hash2(i + 1, j + 1);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+function fbm(x, y) {
+  return vnoise(x, y) * 0.55 + vnoise(x * 2.13, y * 2.13) * 0.28 + vnoise(x * 4.41, y * 4.41) * 0.17;
+}
+
+/* ---------- 地形定義（実際の地理に基づく配置） ---------- */
+// [cx, cy, 高さ, 半径x, 半径y]
+const HILLS = [
+  [300, 170, 0.42,  58,  48],   // 笹尾山（石田三成本陣）
+  [272, 360, 0.32,  58,  50],   // 天満山（宇喜多隊後背）
+  [318, 595, 0.74,  98,  88],   // 松尾山（小早川秀秋）
+  [832, 445, 0.88, 155, 125],   // 南宮山（毛利秀元）
+  [682, 345, 0.30,  50,  42],   // 桃配山（家康初陣）
+  // 盆地を囲む山地
+  [150, -60, 1.10, 270, 170],   // 伊吹山地
+  [430, -90, 0.95, 320, 150],
+  [ 30, 190, 0.92, 145, 210],   // 今須・西の山地
+  [-70, 500, 0.85, 170, 230],
+  [ 90, 700, 0.75, 190, 130],
+  [360, 775, 0.85, 260, 125],   // 南の山地
+  [660, 800, 0.95, 300, 150],
+  [990, 730, 0.85, 210, 170],
+  [1060, 300, 0.75, 165, 230],  // 東の山地
+  [1050,  60, 0.85, 210, 170],
+  [720, -70, 0.90, 270, 130],
+];
+function heightAt(x, y) {
+  let h = 0;
+  for (let k = 0; k < HILLS.length; k++) {
+    const e = HILLS[k];
+    const dx = (x - e[0]) / e[3], dy = (y - e[1]) / e[4];
+    const q = dx * dx + dy * dy;
+    if (q < 9) h += e[2] * Math.exp(-q);
+  }
+  const n = fbm(x * 0.013, y * 0.013);
+  h = h * (0.78 + 0.45 * n) + 0.018 * n;
+  return Math.min(1, h);
+}
+
+/* ---------- 川・街道・地名 ---------- */
+const RIVERS = [
+  { pts: [[228,0],[238,120],[252,250],[268,380],[292,500],[322,610],[350,700]], w: 7 },   // 藤古川
+  { pts: [[395,40],[428,150],[468,255],[540,322],[645,358],[770,372],[1000,350]], w: 8 }, // 相川
+  { pts: [[430,700],[560,662],[720,642],[1000,615]], w: 7 },                              // 牧田川
+];
+const ROADS = [
+  { pts: [[0,440],[120,420],[250,400],[420,372],[520,358],[682,348],[845,326],[1000,300]] }, // 中山道
+  { pts: [[452,368],[400,300],[346,218],[310,118],[290,0]] },                                // 北国街道
+  { pts: [[478,372],[520,470],[558,580],[585,700]] },                                        // 伊勢街道
+];
+const LABELS = [
+  { t: '伊吹山地', x: 148, y: 52,  s: 16, c: '#3f4a30', mt: true },
+  { t: '笹尾山',   x: 300, y: 138, s: 13, c: '#3f4a30', mt: true },
+  { t: '天満山',   x: 250, y: 338, s: 12, c: '#3f4a30', mt: true },
+  { t: '松尾山',   x: 318, y: 558, s: 14, c: '#3f4a30', mt: true },
+  { t: '南宮山',   x: 835, y: 420, s: 14, c: '#3f4a30', mt: true },
+  { t: '桃配山',   x: 690, y: 320, s: 12, c: '#3f4a30', mt: true },
+  { t: '今須峠',   x: 55,  y: 405, s: 11, c: '#4a4a3a' },
+  { t: '関ヶ原',   x: 452, y: 396, s: 13, c: '#5a4a38' },
+  { t: '山中',     x: 228, y: 480, s: 11, c: '#5a4a38' },
+  { t: '藤古川',   x: 232, y: 200, s: 10, c: '#46708e', it: true },
+  { t: '相川',     x: 700, y: 392, s: 10, c: '#46708e', it: true },
+  { t: '牧田川',   x: 690, y: 660, s: 10, c: '#46708e', it: true },
+  { t: '中山道',   x: 140, y: 452, s: 11, c: '#6e5636', it: true },
+  { t: '北国街道', x: 358, y: 165, s: 11, c: '#6e5636', it: true },
+  { t: '伊勢街道', x: 548, y: 545, s: 11, c: '#6e5636', it: true },
+];
+
+/* ---------- 地形ラスタ生成（陰影段彩＋等高線） ---------- */
+const TS = 1.5, TW = Math.round(W * TS), TH = Math.round(H * TS);
+const tcv = document.createElement('canvas');
+tcv.width = TW; tcv.height = TH;
+const tx2 = tcv.getContext('2d');
+const RAMP = [
+  [0.00, 209, 213, 165],
+  [0.06, 192, 204, 146],
+  [0.18, 153, 182, 117],
+  [0.38, 112, 152,  92],
+  [0.58,  85, 122,  74],
+  [0.78, 108, 115,  95],
+  [1.00, 162, 162, 146],
+];
+function rampColor(h) {
+  for (let i = 1; i < RAMP.length; i++) {
+    if (h <= RAMP[i][0]) {
+      const a = RAMP[i - 1], b = RAMP[i];
+      const t = (h - a[0]) / (b[0] - a[0]);
+      return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+    }
+  }
+  return [RAMP[RAMP.length - 1][1], RAMP[RAMP.length - 1][2], RAMP[RAMP.length - 1][3]];
+}
+function buildTerrain() {
+  const hf = new Float32Array(TW * TH);
+  for (let py = 0; py < TH; py++) {
+    const wy = py / TS;
+    for (let px = 0; px < TW; px++) {
+      hf[py * TW + px] = heightAt(px / TS, wy);
+    }
+  }
+  const img = tx2.createImageData(TW, TH);
+  const d = img.data;
+  const BAND = 0.075;
+  for (let py = 0; py < TH; py++) {
+    for (let px = 0; px < TW; px++) {
+      const i = py * TW + px;
+      const h = hf[i];
+      const hr = hf[px < TW - 1 ? i + 1 : i];
+      const hd = hf[py < TH - 1 ? i + TW : i];
+      // 北西光源の陰影
+      let shade = 1 - (hr - h) * 60 - (hd - h) * 60;
+      shade = Math.max(0.6, Math.min(1.32, shade));
+      let [r, g, b] = rampColor(h);
+      // 等高線
+      if ((h / BAND | 0) !== (hr / BAND | 0) || (h / BAND | 0) !== (hd / BAND | 0)) shade *= 0.86;
+      // 微細な質感
+      const j = (hash2(px, py) - 0.5) * 9;
+      d[i * 4]     = Math.max(0, Math.min(255, r * shade + j));
+      d[i * 4 + 1] = Math.max(0, Math.min(255, g * shade + j));
+      d[i * 4 + 2] = Math.max(0, Math.min(255, b * shade + j));
+      d[i * 4 + 3] = 255;
+    }
+  }
+  tx2.putImageData(img, 0, 0);
+  // 樹林の点描
+  tx2.fillStyle = 'rgba(38,66,38,0.30)';
+  for (let k = 0; k < 26000; k++) {
+    const x = hash2(k, 11) * W, y = hash2(k, 37) * H;
+    const h = hf[(Math.min(TH - 1, y * TS | 0)) * TW + Math.min(TW - 1, x * TS | 0)];
+    if (h > 0.22 && h < 0.85) {
+      const r = 1.2 + hash2(k, 53) * 2.2;
+      tx2.beginPath();
+      tx2.arc(x * TS, y * TS, r, 0, 6.3);
+      tx2.fill();
+    }
+  }
+  // 川
+  for (const rv of RIVERS) {
+    tx2.lineCap = 'round'; tx2.lineJoin = 'round';
+    tx2.strokeStyle = 'rgba(74,118,150,0.9)'; tx2.lineWidth = rv.w * TS;
+    strokePath(tx2, rv.pts);
+    tx2.strokeStyle = 'rgba(140,180,205,0.75)'; tx2.lineWidth = rv.w * TS * 0.45;
+    strokePath(tx2, rv.pts);
+  }
+  // 街道
+  for (const rd of ROADS) {
+    tx2.strokeStyle = 'rgba(96,74,46,0.85)'; tx2.lineWidth = 5.5 * TS;
+    strokePath(tx2, rd.pts);
+    tx2.strokeStyle = 'rgba(196,168,118,0.9)'; tx2.lineWidth = 3 * TS;
+    strokePath(tx2, rd.pts);
+  }
+}
+function strokePath(c, pts) {
+  c.beginPath();
+  c.moveTo(pts[0][0] * TS, pts[0][1] * TS);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const mx = (pts[i][0] + pts[i + 1][0]) / 2 * TS;
+    const my = (pts[i][1] + pts[i + 1][1]) / 2 * TS;
+    c.quadraticCurveTo(pts[i][0] * TS, pts[i][1] * TS, mx, my);
+  }
+  const L = pts[pts.length - 1];
+  c.lineTo(L[0] * TS, L[1] * TS);
+  c.stroke();
+}
+
+/* ---------- 部隊データ（兵力：千人） ---------- */
+function mkUnits() {
+  return [
+    // ===== 西軍 =====
+    { id: 'ishida',     name: '石田三成',  sn: '石', side: 'W', str: 6.0,  x: 300, y: 192, hold: true,  grit: 0.7 },
+    { id: 'shimazu',    name: '島津義弘',  sn: '島', side: 'W', str: 1.6,  x: 352, y: 262, hold: true,  grit: 0.3, noRout: true },
+    { id: 'konishi',    name: '小西行長',  sn: '西', side: 'W', str: 4.0,  x: 348, y: 318, hold: true,  grit: 0.75 },
+    { id: 'ukita',      name: '宇喜多秀家', sn: '宇', side: 'W', str: 17.0, x: 338, y: 385, hold: true,  grit: 0.8 },
+    { id: 'otani',      name: '大谷吉継',  sn: '大', side: 'W', str: 3.5,  x: 298, y: 455, hold: true,  grit: 0.55 },
+    { id: 'wakisaka',   name: '脇坂ら四隊', sn: '脇', side: 'W', str: 4.2,  x: 330, y: 508, hold: true,  reserve: true },
+    { id: 'kobayakawa', name: '小早川秀秋', sn: '早', side: 'W', str: 15.0, x: 326, y: 580, hold: true,  reserve: true },
+    { id: 'mori',       name: '毛利秀元',  sn: '毛', side: 'W', str: 15.0, x: 815, y: 430, inactive: true },
+    { id: 'chosokabe',  name: '長宗我部盛親', sn: '長', side: 'W', str: 6.6, x: 858, y: 492, inactive: true },
+    // ===== 東軍 =====
+    { id: 'kuroda',    name: '黒田長政',  sn: '黒', side: 'E', str: 5.4, x: 472, y: 200, tgt0: 'ishida',  grit: 0.8 },
+    { id: 'hosokawa',  name: '細川忠興',  sn: '細', side: 'E', str: 5.0, x: 490, y: 236, tgt0: 'ishida',  grit: 0.85 },
+    { id: 'kato',      name: '加藤嘉明',  sn: '加', side: 'E', str: 3.0, x: 494, y: 272, tgt0: 'konishi', grit: 0.85 },
+    { id: 'tanaka',    name: '田中吉政',  sn: '田', side: 'E', str: 3.0, x: 478, y: 306, tgt0: 'konishi', grit: 0.85 },
+    { id: 'ii',        name: '井伊直政・松平忠吉', sn: '井', side: 'E', str: 6.0, x: 505, y: 345, tgt0: 'ukita', grit: 0.7 },
+    { id: 'fukushima', name: '福島正則',  sn: '福', side: 'E', str: 6.0, x: 482, y: 398, tgt0: 'ukita',   grit: 0.6 },
+    { id: 'todo',      name: '藤堂高虎・京極高知', sn: '藤', side: 'E', str: 5.0, x: 470, y: 442, tgt0: 'otani', grit: 0.8 },
+    { id: 'honda',     name: '本多忠勝',  sn: '本', side: 'E', str: 1.0, x: 525, y: 380, tgt0: 'ukita',   grit: 0.3 },
+    { id: 'ieyasu',    name: '徳川家康',  sn: '徳', side: 'E', str: 30.0, x: 682, y: 340, hold: true, reserve: true, grit: 0.3 },
+    { id: 'ikeda',     name: '池田・山内ら（南宮山の押さえ）', sn: '池', side: 'E', str: 15.0, x: 700, y: 415, inactive: true },
+  ];
+}
+let units = [];
+const byId = id => units.find(u => u.id === id);
+
+/* ---------- 状態 ---------- */
+let mode = null;                 // 'hist' | 'choice'
+let absMin = 450;                // 7:30 開始
+let playing = false, ended = false, speed = 1, muted = false;
+let momentum = null;             // 'E' | 'W'（小早川決断後）
+let betrayalDone = false;
+let kobaDecision = null;
+const cas = { E: 0, W: 0 };      // 損害（千人）
+let selUnit = null;
+let shimazuRetreat = false;
+let ieyasuFled = false;
+const sparks = [];
+const SPD = 5;                   // 行軍速度 world/分
+const FIGHT_R = 30;
+
+function fmtTime(m) {
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.floor(m % 60)).padStart(2, '0');
+}
+
+/* ---------- DOM ---------- */
+const canvas = document.getElementById('cv');
+const ctx = canvas.getContext('2d');
+const elTime = document.getElementById('hd-time');
+const elLog = document.getElementById('log');
+const elInfo = document.getElementById('info');
+const elBanner = document.getElementById('banner');
+const elAbE = document.getElementById('ab-e');
+const elAbW = document.getElementById('ab-w');
+
+function log(msg, t) {
+  const row = document.createElement('div');
+  const ts = document.createElement('span');
+  ts.className = 'lt';
+  ts.textContent = fmtTime(t !== undefined ? t : absMin);
+  row.appendChild(ts);
+  row.appendChild(document.createTextNode(msg));
+  elLog.insertBefore(row, elLog.firstChild);
+  while (elLog.children.length > 40) elLog.removeChild(elLog.lastChild);
+}
+let bannerTimer = 0;
+function banner(main, sub) {
+  elBanner.children[0].textContent = main;
+  elBanner.children[1].textContent = sub || '';
+  elBanner.style.opacity = '1';
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { elBanner.style.opacity = '0'; }, 3400);
+}
+
+/* ---------- サウンド（合成のみ） ---------- */
+let audioCtx = null;
+function getAC() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function unlockAudio() {
+  const c = getAC();
+  if (c.state === 'suspended') c.resume();
+}
+document.addEventListener('pointerdown', unlockAudio, { once: true });
+function sfx(type, vol) {
+  if (muted) return;
+  let c;
+  try { c = getAC(); } catch (err) { return; }
+  if (c.state !== 'running') return;
+  const t = c.currentTime;
+  const g = c.createGain();
+  g.connect(c.destination);
+  vol = vol || 0.18;
+  if (type === 'gun') {
+    const len = 0.09, buf = c.createBuffer(1, c.sampleRate * len, c.sampleRate);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / ch.length, 2);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 750 + Math.random() * 500;
+    src.connect(bp); bp.connect(g);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + len);
+    src.start(t); src.stop(t + len);
+  } else if (type === 'drum') {
+    const o = c.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.25);
+    o.connect(g);
+    g.gain.setValueAtTime(vol * 1.6, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    o.start(t); o.stop(t + 0.32);
+  } else if (type === 'horn') {
+    const o = c.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(196, t); o.frequency.linearRampToValueAtTime(165, t + 0.65);
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    o.connect(lp); lp.connect(g);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+    o.start(t); o.stop(t + 0.85);
+  }
+}
+
+/* ---------- ビュー（パン・ズーム） ---------- */
+const view = { z: 1, ox: 0, oy: 0, s: 1, fit: 1 };
+let dpr = 1;
+function resizeCanvas() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cw = window.innerWidth, ch = window.innerHeight;
+  canvas.width = cw * dpr;
+  canvas.height = ch * dpr;
+  canvas.style.width = cw + 'px';
+  canvas.style.height = ch + 'px';
+  view.fit = Math.min(cw / W, ch / H);
+  applyView();
+}
+function applyView() {
+  const cw = window.innerWidth, ch = window.innerHeight;
+  view.z = Math.max(1, Math.min(5, view.z));
+  view.s = view.fit * view.z;
+  const mw = W * view.s, mh = H * view.s;
+  if (mw <= cw) view.ox = (cw - mw) / 2;
+  else view.ox = Math.max(cw - mw, Math.min(0, view.ox));
+  if (mh <= ch) view.oy = (ch - mh) / 2;
+  else view.oy = Math.max(ch - mh, Math.min(0, view.oy));
+}
+function toWorld(px, py) {
+  return [(px - view.ox) / view.s, (py - view.oy) / view.s];
+}
+window.addEventListener('resize', resizeCanvas);
+
+const ptrs = new Map();
+let tapStart = null, pinch0 = 0, z0 = 1;
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 1) tapStart = { x: e.clientX, y: e.clientY, t: Date.now(), moved: false };
+  if (ptrs.size === 2) {
+    const p = [...ptrs.values()];
+    pinch0 = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+    z0 = view.z;
+  }
+});
+canvas.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  const prev = ptrs.get(e.pointerId);
+  const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 1) {
+    view.ox += dx; view.oy += dy;
+    if (tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) > 9) tapStart.moved = true;
+    applyView();
+  } else if (ptrs.size === 2) {
+    const p = [...ptrs.values()];
+    const dNow = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+    const mx = (p[0].x + p[1].x) / 2, my = (p[0].y + p[1].y) / 2;
+    const [wx, wy] = toWorld(mx, my);
+    view.z = z0 * (dNow / Math.max(1, pinch0));
+    applyView();
+    view.ox = mx - wx * view.s;
+    view.oy = my - wy * view.s;
+    applyView();
+    tapStart = null;
+  }
+});
+function endPtr(e) {
+  ptrs.delete(e.pointerId);
+  if (tapStart && !tapStart.moved && Date.now() - tapStart.t < 400 && ptrs.size === 0) {
+    handleTap(tapStart.x, tapStart.y);
+  }
+  if (ptrs.size === 0) tapStart = null;
+}
+canvas.addEventListener('pointerup', endPtr);
+canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const [wx, wy] = toWorld(e.clientX, e.clientY);
+  view.z *= e.deltaY < 0 ? 1.12 : 0.89;
+  applyView();
+  view.ox = e.clientX - wx * view.s;
+  view.oy = e.clientY - wy * view.s;
+  applyView();
+}, { passive: false });
+
+function handleTap(px, py) {
+  const [wx, wy] = toWorld(px, py);
+  const r = 30 / Math.min(Math.max(view.s, 0.45), 1.2);
+  let best = null, bd = r;
+  for (const u of units) {
+    if (u.state === 'off' || u.dead) continue;
+    const d = Math.hypot(u.x - wx, u.y - wy);
+    if (d < bd) { bd = d; best = u; }
+  }
+  selUnit = best;
+  updateInfo();
+}
+function updateInfo() {
+  if (!selUnit) { elInfo.style.display = 'none'; return; }
+  const u = selUnit;
+  elInfo.style.display = 'block';
+  elInfo.textContent = '';
+  const nm = document.createElement('div');
+  nm.className = 'nm sd-' + u.side;
+  nm.textContent = u.name;
+  const sd = document.createElement('div');
+  sd.textContent = (u.side === 'E' ? '東軍' : '西軍') + ' ／ ' + stateLabel(u);
+  const st = document.createElement('div');
+  st.textContent = '兵力 ' + (u.str * 1000 | 0).toLocaleString() + ' ／ ' + (u.str0 * 1000 | 0).toLocaleString();
+  const ml = document.createElement('div');
+  ml.textContent = '士気';
+  const mb = document.createElement('div');
+  mb.className = 'mbar';
+  const mi = document.createElement('i');
+  mi.style.width = Math.max(0, Math.min(100, u.morale)) + '%';
+  mb.appendChild(mi); ml.appendChild(mb);
+  elInfo.append(nm, sd, st, ml);
+}
+function stateLabel(u) {
+  if (u.dead) return '壊滅';
+  if (u.inactive) return '不動';
+  if (u.state === 'rout') return '壊走中';
+  if (u.state === 'retreat') return '退却戦';
+  if (u.fighting) return '交戦中';
+  if (u.state === 'advance' && !u.hold) return '前進中';
+  return '布陣';
+}
+
+/* ---------- 戦闘シミュレーション ---------- */
+function initSim() {
+  units = mkUnits();
+  for (const u of units) {
+    u.str0 = u.str;
+    u.morale = 100;
+    u.state = 'idle';
+    u.fighting = false;
+    u.engagedBy = 0;
+    u.tgt = null;
+    u.grit = u.grit || 1;
+  }
+}
+function phaseMod(att) {
+  if (!betrayalDone) return 0.55;
+  return att.side === momentum ? 1.35 : 0.9;
+}
+function validTarget(u, t) {
+  return t && !t.dead && !t.inactive && t.side !== u.side &&
+         t.state !== 'rout' && t.state !== 'off' && t.state !== 'retreat';
+}
+function nearestEnemy(u, radius) {
+  let best = null, bd = radius;
+  for (const t of units) {
+    if (!validTarget(u, t)) continue;
+    if (t.reserve && t.id !== 'ieyasu') continue;
+    const d = Math.hypot(u.x - t.x, u.y - t.y);
+    if (d < bd) { bd = d; best = t; }
+  }
+  return best;
+}
+function moveToward(u, x, y, amt) {
+  const dx = x - u.x, dy = y - u.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 0.5) return true;
+  const m = Math.min(amt, d);
+  // 山地は登坂で減速
+  const slow = 1 - heightAt(u.x, u.y) * 0.45;
+  u.x += dx / d * m * slow;
+  u.y += dy / d * m * slow;
+  return d - m * slow < 2;
+}
+function dealDamage(att, def, dm) {
+  const eff = Math.min(att.str, def.str * 2 + 0.5);
+  const defB = 1 + heightAt(def.x, def.y) * 2;
+  const split = Math.max(1, Math.sqrt(att.engagedBy || 1));
+  const dmg = eff * 0.0025 * phaseMod(att) * dm / (defB * split);
+  def.str = Math.max(0, def.str - dmg);
+  cas[def.side] += dmg;
+  def.morale -= dmg / def.str0 * 220 * def.grit;
+  if (Math.random() < dm * 0.25) {
+    sparks.push({ x: (att.x + def.x) / 2 + (Math.random() - 0.5) * 22, y: (att.y + def.y) / 2 + (Math.random() - 0.5) * 22, life: 1 });
+  }
+  if (def.str <= 0.08) { def.dead = true; def.fighting = false; log(def.name + '隊、壊滅。'); shock(def); return; }
+  if (def.morale <= 22 && !def.noRout && def.state !== 'rout') routUnit(def);
+}
+function routUnit(u) {
+  u.state = 'rout';
+  u.fighting = false;
+  u.fleeTo = u.side === 'W' ? [Math.max(-50, u.x - 400), Math.max(40, u.y - 180)] : [1060, u.y];
+  log(u.name + '隊、壊走！');
+  sfx('horn', 0.14);
+  shock(u);
+  if (selUnit === u) updateInfo();
+}
+function shock(u) {
+  for (const a of units) {
+    if (a === u || a.side !== u.side || a.dead || a.inactive || a.state === 'rout') continue;
+    if (Math.hypot(a.x - u.x, a.y - u.y) < 160) a.morale -= 12;
+  }
+}
+function simTick(dm) {
+  for (const u of units) u.engagedBy = 0;
+  // 交戦カウント
+  for (const u of units) {
+    if (u.dead || u.inactive || u.state !== 'advance' || !u.tgt) continue;
+    if (validTarget(u, u.tgt) && Math.hypot(u.x - u.tgt.x, u.y - u.tgt.y) < FIGHT_R) u.tgt.engagedBy++;
+  }
+  for (const u of units) {
+    if (u.dead || u.state === 'off' || u.inactive) continue;
+    if (u.state === 'rout') {
+      moveToward(u, u.fleeTo[0], u.fleeTo[1], SPD * 1.8 * dm);
+      if (u.x < 5 || u.x > W - 5 || u.y < 5) u.state = 'off';
+      continue;
+    }
+    if (u.state === 'retreat') {
+      const wp = u.wps[u.wpi];
+      if (moveToward(u, wp[0], wp[1], SPD * 1.7 * dm)) {
+        u.wpi++;
+        if (u.wpi >= u.wps.length) {
+          u.state = 'off';
+          if (u.id === 'shimazu') log('島津隊、伊勢街道へ離脱。世にいう「島津の退き口」。');
+          if (u.id === 'ieyasu') log('家康、戦場を離脱。');
+        }
+      }
+      // 敵中突破の損耗
+      if (u.id === 'shimazu') {
+        for (const e of units) {
+          if (e.side === u.side || e.dead || e.inactive || e.state === 'rout' || e.state === 'off') continue;
+          if (Math.hypot(e.x - u.x, e.y - u.y) < 70) {
+            const dmg = e.str * 0.0009 * dm;
+            u.str = Math.max(0.15, u.str - dmg);
+            cas.W += dmg;
+            if (!u.iiHit && e.id === 'ii') {
+              u.iiHit = true;
+              log('追撃する井伊直政、島津勢の銃撃を受け負傷。');
+              sfx('gun', 0.2);
+            }
+          }
+        }
+      }
+      continue;
+    }
+    if (u.reserve || u.state === 'idle') continue;
+    // 目標の取得
+    if (!validTarget(u, u.tgt)) {
+      u.tgt = nearestEnemy(u, u.hold ? FIGHT_R + 6 : 320);
+      if (u.tgt && !u.hold) u.morale = Math.min(100, u.morale + 4);
+    }
+    if (!u.tgt) { u.fighting = false; continue; }
+    const d = Math.hypot(u.x - u.tgt.x, u.y - u.tgt.y);
+    if (d > FIGHT_R) {
+      u.fighting = false;
+      if (!u.hold) moveToward(u, u.tgt.x, u.tgt.y, SPD * (u.charge ? 1.6 : 1) * dm);
+    } else {
+      u.fighting = true;
+      dealDamage(u, u.tgt, dm);
+    }
+    if (!u.fighting) u.morale = Math.min(100, u.morale + 0.4 * dm);
+  }
+  // 島津の退き口
+  if (!shimazuRetreat && mode && betrayalDone && momentum === 'E') {
+    const i = byId('ishida'), k = byId('konishi'), uk = byId('ukita');
+    const gone = x => x.dead || x.state === 'rout' || x.state === 'off';
+    if (gone(i) && gone(k) && gone(uk)) {
+      shimazuRetreat = true;
+      const s = byId('shimazu');
+      s.state = 'retreat';
+      s.wps = [[470, 378], [545, 470], [575, 610], [600, 730]];
+      s.wpi = 0;
+      banner('島津の退き口', '敵中突破——島津義弘、正面の敵陣へ駆ける');
+      log('島津義弘、退路を断たれ正面突破を決断。「捨て奸」の退却戦が始まる。');
+      sfx('drum', 0.3);
+    }
+  }
+  checkVictory();
+}
+function routedFrac(side) {
+  let tot = 0, bad = 0;
+  for (const u of units) {
+    if (u.side !== side || u.reserve || u.inactive) continue;
+    tot += u.str0;
+    if (u.dead || u.state === 'rout' || u.state === 'off' || u.state === 'retreat') bad += u.str0;
+  }
+  return tot ? bad / tot : 0;
+}
+function checkVictory() {
+  if (ended || !betrayalDone) {
+    if (absMin >= 900 && !ended) finish(routedFrac('W') > routedFrac('E') ? 'E' : 'W');
+    return;
+  }
+  const rw = routedFrac('W'), re = routedFrac('E');
+  if (momentum === 'W' && !ieyasuFled && re >= 0.5) {
+    ieyasuFled = true;
+    const ie = byId('ieyasu');
+    ie.state = 'retreat'; ie.reserve = false;
+    ie.wps = [[840, 322], [1050, 295]];
+    ie.wpi = 0;
+    banner('家康、撤退を決断', '東軍総崩れ——本陣が東へ退いてゆく');
+    log('家康、勝ち目なしと見て中山道を東へ退却。');
+  }
+  if (rw >= 0.72) {
+    const s = byId('shimazu');
+    if (s.state === 'retreat') return; // 退き口を見届けてから
+    finish('E');
+  } else if (re >= 0.72) {
+    finish('W');
+  } else if (absMin >= 900) {
+    finish(rw > re ? 'E' : 'W');
+  }
+}
+function finish(winner) {
+  if (ended) return;
+  ended = true;
+  playing = false;
+  document.getElementById('b-play').textContent = '▶';
+  setTimeout(() => {
+    document.getElementById('end-title').textContent = winner === 'E' ? '東軍勝利' : '西軍勝利';
+    document.getElementById('end-sub').textContent = '戦闘終結 ' + fmtTime(Math.min(absMin, 900));
+    const st = document.getElementById('end-stats');
+    st.textContent = '';
+    const r1 = document.createElement('div');
+    const bE = document.createElement('b'); bE.className = 'e'; bE.textContent = '東軍';
+    r1.append(bE, ' 損害 約' + fmtCas(cas.E));
+    const r2 = document.createElement('div');
+    const bW = document.createElement('b'); bW.className = 'w'; bW.textContent = '西軍';
+    r2.append(bW, ' 損害 約' + fmtCas(cas.W));
+    st.append(r1, r2);
+    const note = document.getElementById('end-note');
+    if (kobaDecision === 'W') {
+      note.textContent = winner === 'W'
+        ? 'もう一つの関ヶ原。松尾山の一万五千が義を貫いたとき、歴史は塗り替えられました。'
+        : '小早川は西軍に付きましたが、東軍の戦力が勝りました。歴史は容易には覆らないようです。';
+    } else {
+      note.textContent = winner === 'E'
+        ? '史実通り、戦いはわずか半日で決しました。天下は徳川のものとなります。'
+        : '東軍の崩壊。史実とは異なる結末です。';
+    }
+    document.getElementById('end').style.display = 'flex';
+  }, 1800);
+}
+function fmtCas(k) {
+  const n = Math.round(k * 1000 / 100) * 100;
+  return n.toLocaleString() + '人';
+}
+
+/* ---------- イベント年表 ---------- */
+let events = [];
+function setupEvents() {
+  events = [
+    { t: 455, fn() { log('両軍、濃霧の中で布陣を完了。盆地は深い霧に包まれている。'); } },
+    { t: 480, fn() {
+      banner('開戦', '霧が晴れ、井伊直政・松平忠吉の抜け駆けが火蓋を切る');
+      log('霧が晴れる。井伊直政・松平忠吉、宇喜多隊へ発砲。関ヶ原の戦い、開戦。');
+      sfx('gun', 0.3); setTimeout(() => sfx('gun', 0.25), 180); setTimeout(() => sfx('drum', 0.3), 360);
+      for (const u of units) {
+        if (u.inactive || u.reserve) continue;
+        u.state = 'advance';
+        if (u.tgt0) u.tgt = byId(u.tgt0);
+      }
+    } },
+    { t: 495, fn() { log('福島隊六千、宇喜多隊一万七千と激突。中央で激戦が始まる。'); } },
+    { t: 540, fn() {
+      log('笹尾山前衛・島左近、黒田隊の銃撃により負傷。石田隊に動揺が走る。');
+      byId('ishida').morale -= 8;
+      sfx('gun', 0.22);
+    } },
+    { t: 600, fn() { log('三成、狼煙を上げ南宮山・松尾山へ出撃を促す。しかし毛利勢は動かない（吉川広家の内通）。'); } },
+    { t: 660, fn() {
+      banner('家康、本陣前進', '桃配山から陣場野へ——決戦の覚悟');
+      log('家康、本陣を桃配山から最前線・陣場野へ進める。東軍の士気が上がる。');
+      const ie = byId('ieyasu');
+      ie.moveTo = [524, 336];
+      for (const u of units) if (u.side === 'E' && !u.inactive) u.morale = Math.min(100, u.morale + 5);
+      sfx('drum', 0.3);
+    } },
+    { t: 705, fn() {
+      if (mode === 'choice') {
+        playing = false;
+        document.getElementById('b-play').textContent = '▶';
+        document.getElementById('choice').style.display = 'flex';
+      } else {
+        banner('問鉄砲', '家康、松尾山へ威嚇射撃——「秀秋、何をしている」');
+        log('家康、業を煮やし松尾山へ鉄砲を撃ちかける。');
+        sfx('gun', 0.3); setTimeout(() => sfx('gun', 0.3), 200);
+      }
+    } },
+    { t: 720, fn() {
+      if (kobaDecision === null) kobaDecision = 'E';
+      doKobayakawa(kobaDecision);
+    } },
+    { t: 748, fn() {
+      const w = byId('wakisaka');
+      w.reserve = false; w.hold = false; w.state = 'advance'; w.charge = true;
+      if (kobaDecision === 'E') {
+        w.side = 'E';
+        w.tgt = byId('otani');
+        log('脇坂安治・朽木・小川・赤座の四隊も寝返り、大谷隊へ襲いかかる。');
+      } else {
+        w.tgt = byId('fukushima');
+        log('脇坂ら四隊、小早川に続き東軍側面へ突撃。');
+      }
+    } },
+  ];
+}
+function doKobayakawa(dec) {
+  betrayalDone = true;
+  const k = byId('kobayakawa');
+  k.reserve = false; k.hold = false; k.state = 'advance'; k.charge = true;
+  if (dec === 'E') {
+    momentum = 'E';
+    k.side = 'E';
+    k.tgt = byId('otani');
+    banner('小早川秀秋、裏切り', '一万五千、松尾山を駆け下り大谷陣へ');
+    log('小早川秀秋、東軍へ寝返る。一万五千が松尾山を駆け下り、大谷吉継の陣へ突撃。');
+    for (const u of units) if (u.side === 'W' && !u.inactive) u.morale -= 12;
+  } else {
+    momentum = 'W';
+    k.tgt = byId('todo');
+    banner('小早川秀秋、参戦', '一万五千、西軍として東軍側面を突く');
+    log('小早川秀秋、義を貫き西軍として参戦。藤堂・京極隊の側面へ突撃する。');
+    for (const u of units) {
+      if (u.inactive) continue;
+      if (u.side === 'W') u.morale = Math.min(100, u.morale + 12);
+      else u.morale -= 10;
+    }
+    // 西軍も反攻へ
+    for (const u of units) if (u.side === 'W' && !u.inactive && !u.reserve) u.hold = false;
+  }
+  sfx('horn', 0.3); setTimeout(() => sfx('drum', 0.32), 250);
+}
+function runEvents() {
+  for (const ev of events) {
+    if (!ev.done && absMin >= ev.t) { ev.done = true; ev.fn(); }
+  }
+  // 家康の移動
+  const ie = byId('ieyasu');
+  if (ie.moveTo && ie.state !== 'retreat') {
+    if (moveToward(ie, ie.moveTo[0], ie.moveTo[1], SPD * 0.9 * lastDm)) ie.moveTo = null;
+  }
+}
+
+/* ---------- 描画 ---------- */
+const SIDE_COL = { E: '#27435e', W: '#b13a30' };
+const SIDE_EDGE = { E: '#c9a84c', W: '#f0d6b0' };
+function uiScale() { return 1 / Math.min(Math.max(view.s, 0.45), 1.2); }
+
+function draw() {
+  const cw = window.innerWidth, ch = window.innerHeight;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#191c12';
+  ctx.fillRect(0, 0, cw, ch);
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.s, view.s);
+  ctx.drawImage(tcv, 0, 0, W, H);
+  drawMapLabels();
+  drawSparks();
+  drawUnits();
+  drawFog();
+  drawCompass();
+}
+function drawMapLabels() {
+  const k = uiScale();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const L of LABELS) {
+    const fs = L.s * Math.min(k, 1.6);
+    ctx.font = (L.it ? 'italic ' : '') + (L.mt ? '700 ' : '') + fs + 'px "Hiragino Mincho ProN", serif';
+    ctx.lineWidth = fs * 0.28;
+    ctx.strokeStyle = 'rgba(235,235,215,0.75)';
+    ctx.strokeText(L.t, L.x, L.y);
+    ctx.fillStyle = L.c;
+    ctx.fillText(L.t, L.x, L.y);
+    if (L.mt && L.t !== '伊吹山地') {
+      ctx.fillStyle = L.c;
+      ctx.font = fs * 0.8 + 'px serif';
+      ctx.fillText('▲', L.x, L.y + fs * 0.95);
+    }
+  }
+}
+function drawUnits() {
+  const k = uiScale();
+  const t = performance.now() / 1000;
+  for (const u of units) {
+    if (u.state === 'off') continue;
+    const dim = u.inactive || u.dead;
+    ctx.globalAlpha = u.dead ? 0.35 : u.inactive ? 0.5 : u.state === 'rout' ? 0.65 : 1;
+    const fw = 26 * k, fh = 17 * k;
+    // 選択リング
+    if (u === selUnit) {
+      ctx.beginPath();
+      ctx.arc(u.x, u.y, 22 * k, 0, 6.3);
+      ctx.strokeStyle = '#f5e9b8';
+      ctx.lineWidth = 2 * k;
+      ctx.stroke();
+    }
+    // 旗竿
+    ctx.strokeStyle = '#3a3328';
+    ctx.lineWidth = 1.6 * k;
+    ctx.beginPath();
+    ctx.moveTo(u.x, u.y + 6 * k);
+    ctx.lineTo(u.x, u.y - fh - 6 * k);
+    ctx.stroke();
+    // 軍旗
+    const col = u.state === 'rout' || u.dead ? '#6f6f66' : SIDE_COL[u.side];
+    ctx.fillStyle = col;
+    ctx.strokeStyle = dim ? '#888' : SIDE_EDGE[u.side];
+    ctx.lineWidth = 1.2 * k;
+    const fy = u.y - fh - 6 * k;
+    ctx.beginPath();
+    ctx.rect(u.x, fy, fw, fh);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#f5efdc';
+    ctx.font = '700 ' + 11.5 * k + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(u.sn, u.x + fw / 2, fy + fh / 2 + 0.5 * k);
+    // 本陣マーク（足元）
+    ctx.beginPath();
+    ctx.arc(u.x, u.y + 6 * k, 3.2 * k, 0, 6.3);
+    ctx.fillStyle = col;
+    ctx.fill();
+    // 兵力バー
+    if (!u.dead) {
+      const bw = 28 * k, bh = 3.5 * k;
+      const r = u.str / u.str0;
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(u.x - bw / 2, u.y + 11 * k, bw, bh);
+      ctx.fillStyle = r > 0.5 ? '#7fbf52' : r > 0.25 ? '#d8a832' : '#cc4a36';
+      ctx.fillRect(u.x - bw / 2, u.y + 11 * k, bw * r, bh);
+    }
+    // 状態表示
+    ctx.font = 9 * k + 'px sans-serif';
+    ctx.fillStyle = 'rgba(30,28,20,0.9)';
+    if (u.inactive) ctx.fillText('不動', u.x, u.y + 21 * k);
+    else if (u.state === 'rout') ctx.fillText('壊走', u.x, u.y + 21 * k);
+    else if (u.dead) ctx.fillText('壊滅', u.x, u.y + 21 * k);
+    // 交戦エフェクト
+    if (u.fighting && Math.floor(t * 6 + u.x) % 3 === 0) {
+      ctx.beginPath();
+      ctx.arc(u.x + (hash2(u.x | 0, t * 4 | 0) - 0.5) * 26 * k, u.y - 2 * k + (hash2(t * 4 | 0, u.y | 0) - 0.5) * 18 * k, 2.2 * k, 0, 6.3);
+      ctx.fillStyle = '#ffce63';
+      ctx.fill();
+    }
+    // 小早川の逡巡
+    if (u.id === 'kobayakawa' && !betrayalDone && absMin >= 600 && !u.dead) {
+      const bob = Math.sin(t * 3) * 3 * k;
+      ctx.font = '700 ' + 15 * k + 'px serif';
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 3 * k;
+      ctx.strokeText('？', u.x + fw + 6 * k, fy + bob);
+      ctx.fillText('？', u.x + fw + 6 * k, fy + bob);
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+function drawSparks() {
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.life -= 0.04;
+    if (s.life <= 0) { sparks.splice(i, 1); continue; }
+    ctx.globalAlpha = s.life * 0.8;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, (1 - s.life) * 9 + 2, 0, 6.3);
+    ctx.strokeStyle = '#e8c050';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+function drawFog() {
+  if (absMin >= 496) return;
+  const a = absMin < 480 ? 0.55 : 0.55 * (1 - (absMin - 480) / 16);
+  ctx.fillStyle = 'rgba(222,226,222,' + a.toFixed(3) + ')';
+  ctx.fillRect(0, 0, W, H);
+  const t = performance.now() / 4000;
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath();
+    ctx.ellipse(160 + i * 150 + Math.sin(t + i) * 40, 200 + (i % 3) * 160, 150, 60, 0, 0, 6.3);
+    ctx.fillStyle = 'rgba(235,238,235,' + (a * 0.5).toFixed(3) + ')';
+    ctx.fill();
+  }
+}
+function drawCompass() {
+  const k = uiScale();
+  ctx.font = '700 ' + 13 * k + 'px serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(40,40,30,0.8)';
+  ctx.fillText('N', 36, 96);
+  ctx.beginPath();
+  ctx.moveTo(36, 104);
+  ctx.lineTo(36, 126);
+  ctx.moveTo(36, 104);
+  ctx.lineTo(31, 112);
+  ctx.moveTo(36, 104);
+  ctx.lineTo(41, 112);
+  ctx.strokeStyle = 'rgba(40,40,30,0.8)';
+  ctx.lineWidth = 1.6 * k;
+  ctx.stroke();
+}
+
+/* ---------- メインループ ---------- */
+let lastT = 0, lastDm = 0, gunAcc = 0, uiAcc = 0;
+function loop(t) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.1, (t - lastT) / 1000);
+  lastT = t;
+  if (playing && !ended && mode) {
+    const dm = dt * 4 * speed;   // 実1秒 = 戦場4分 (×1)
+    lastDm = dm;
+    absMin = Math.min(910, absMin + dm);
+    runEvents();
+    simTick(dm);
+    // 戦闘音
+    let nf = 0;
+    for (const u of units) if (u.fighting) nf++;
+    if (nf > 0) {
+      gunAcc += dt;
+      if (gunAcc > 0.55 + Math.random() * 0.7) {
+        gunAcc = 0;
+        sfx('gun', 0.05 + Math.min(0.06, nf * 0.008));
+      }
+    }
+  }
+  uiAcc += dt;
+  if (uiAcc > 0.25) {
+    uiAcc = 0;
+    elTime.textContent = fmtTime(absMin);
+    updateArmyBar();
+    if (selUnit) updateInfo();
+  }
+  draw();
+}
+function updateArmyBar() {
+  let e = 0, w = 0;
+  for (const u of units) {
+    if (u.inactive || u.dead || u.state === 'off' || u.state === 'rout') continue;
+    if (u.side === 'E') e += u.str; else w += u.str;
+  }
+  const tot = e + w || 1;
+  elAbE.style.width = (e / tot * 100).toFixed(1) + '%';
+  elAbE.textContent = '東軍 ' + fmtMan(e);
+  elAbW.textContent = fmtMan(w) + ' 西軍';
+}
+function fmtMan(k) {
+  return (k / 10).toFixed(1) + '万';
+}
+
+/* ---------- UI操作 ---------- */
+document.getElementById('b-play').addEventListener('click', function () {
+  if (ended || !mode) return;
+  playing = !playing;
+  this.textContent = playing ? '❚❚' : '▶';
+});
+document.getElementById('b-speed').addEventListener('click', function () {
+  speed = speed === 1 ? 2 : speed === 2 ? 4 : 1;
+  this.textContent = '×' + speed;
+});
+document.getElementById('b-mute').addEventListener('click', function () {
+  muted = !muted;
+  this.textContent = muted ? '∅' : '♪';
+});
+document.getElementById('b-reset').addEventListener('click', () => location.reload());
+document.getElementById('b-again').addEventListener('click', () => location.reload());
+
+function startGame(m) {
+  mode = m;
+  document.getElementById('start').style.display = 'none';
+  initSim();
+  setupEvents();
+  playing = true;
+  document.getElementById('b-play').textContent = '❚❚';
+  log('夜明け。盆地は霧の中。両軍十五万が対峙する。', 450);
+}
+document.getElementById('m-hist').addEventListener('click', () => { kobaDecision = 'E'; startGame('hist'); });
+document.getElementById('m-if').addEventListener('click', () => startGame('choice'));
+document.getElementById('c-east').addEventListener('click', () => {
+  kobaDecision = 'E';
+  document.getElementById('choice').style.display = 'none';
+  playing = true;
+  document.getElementById('b-play').textContent = '❚❚';
+});
+document.getElementById('c-west').addEventListener('click', () => {
+  kobaDecision = 'W';
+  document.getElementById('choice').style.display = 'none';
+  playing = true;
+  document.getElementById('b-play').textContent = '❚❚';
+});
+
+/* ---------- iOS対策 ---------- */
+let lastTap = 0;
+document.addEventListener('touchstart', e => {
+  const now = Date.now();
+  if (now - lastTap < 300) e.preventDefault();
+  lastTap = now;
+}, { passive: false });
+document.addEventListener('dblclick', e => e.preventDefault());
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------- 起動 ---------- */
+initSim();
+buildTerrain();
+resizeCanvas();
+requestAnimationFrame(t => { lastT = t; loop(t); });
+</script>
+</body>
+</html>

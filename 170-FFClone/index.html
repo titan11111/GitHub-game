@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>FFClone</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ① プレイ画面（上部 80%） -->
+  <div id="game-area">
+    <canvas id="gameCanvas" data-testid="game-canvas"></canvas>
+  </div>
+
+  <!-- ② コントロールパネル（下部 20%） ファミコン配置 -->
+  <div id="controller">
+
+    <!-- 左ゾーン(10%)：十字キー -->
+    <div class="ctrl-zone" id="zone-dpad">
+      <div id="dpad">
+        <div class="dpad-row">
+          <div class="dpad-btn" id="dpad-up">▲</div>
+        </div>
+        <div class="dpad-row dpad-mid">
+          <div class="dpad-btn" id="dpad-left">◀</div>
+          <div class="dpad-center"></div>
+          <div class="dpad-btn" id="dpad-right">▶</div>
+        </div>
+        <div class="dpad-row">
+          <div class="dpad-btn" id="dpad-down">▼</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中央ゾーン(20%)：SELECTとSTART -->
+    <div class="ctrl-zone" id="zone-center">
+      <button class="sys-btn" id="btn-select">SELECT</button>
+      <button class="sys-btn" id="btn-start">START</button>
+    </div>
+
+    <!-- 右ゾーン(20%)：BとA（ファミコン配置：B左・A右、Aを若干上） -->
+    <div class="ctrl-zone" id="zone-ab">
+      <div id="ab-wrap">
+        <button class="action-btn" id="btn-b">B</button>
+        <button class="action-btn" id="btn-a">A</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 縦持ち警告 -->
+  <div id="rotate-overlay">
+    <div>📱<br><br>横向きにしてください<br>Please rotate your device</div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
