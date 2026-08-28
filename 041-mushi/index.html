@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#183f2e">
+  <meta name="description" content="虫取りあみを振って、時間や天気で変わる虫を集める昆虫図鑑ゲーム">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>むしあみ日和｜里山昆虫図鑑</title>
+  <link rel="stylesheet" href="style.css">
+  <style>.motion-note{padding:10px 13px;margin:12px 0;background:#e9efd4;border-left:4px solid #2e6b45;border-radius:4px 12px 12px 4px;text-align:left}.motion-note b,.motion-note span{display:block}.motion-note b{font-size:11px;color:#2e6b45}.motion-note span{margin-top:4px;font-size:10px;line-height:1.55}</style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" aria-label="虫取りフィールド"></canvas>
+
+    <header class="hud" aria-live="polite">
+      <button class="brand glass" id="helpBtn" aria-label="遊び方">
+        <span class="brand-mark">む</span><span><b>むしあみ日和</b><small>里山昆虫図鑑</small></span>
+      </button>
+      <div class="status glass">
+        <span><small>のこり</small><b id="time">60</b></span>
+        <i></i><span><small>つかまえた</small><b id="score">0</b></span>
+        <i></i><span><small>コンボ</small><b id="combo">×1</b></span>
+      </div>
+      <div class="hud-actions">
+        <button class="round glass" id="soundBtn" aria-label="音の切り替え">♪</button>
+        <button class="book-button" id="bookBtn"><span>図鑑</span><b id="bookCount">0/58</b><em id="newDot"></em></button>
+      </div>
+    </header>
+
+    <aside class="field-card glass">
+      <p id="periodIcon">☀</p><div><small id="weather">晴れ・ひる</small><b id="area">ひだまり草原</b></div>
+    </aside>
+
+    <div id="stamina" class="stamina glass"><small>あみ</small><div id="staminaPips"></div></div>
+    <div id="hint" class="hint">虫に狙いを合わせて、タップ！</div>
+    <div id="toast" class="toast" role="status"></div>
+
+    <section id="startScreen" class="overlay start-screen open">
+      <div class="paper-panel start-panel">
+        <p class="eyebrow">A SMALL SUMMER ADVENTURE</p>
+        <h1>むしあみ<br><span>日和</span></h1>
+        <p class="lead">虫の気配を読み、そっと近づいて網を振る。<br>時間と天気で出会いが変わる、里山の一日。</p>
+        <div class="start-art" aria-hidden="true"><span>🦋</span><span>🌿</span><span>🪲</span></div>
+        <button id="startBtn" class="primary">虫取りにでかける <span>→</span></button>
+        <p class="save-note">図鑑はこの端末に自動保存されます</p>
+      </div>
+    </section>
+
+    <section id="catchScreen" class="overlay catch-screen" aria-modal="true">
+      <div class="paper-panel catch-card">
+        <button class="close" data-close="catchScreen" aria-label="閉じる">×</button>
+        <p id="catchNew" class="eyebrow gold">NEW DISCOVERY</p>
+        <div id="catchBug" class="bug-portrait"></div>
+        <p id="catchStars" class="stars"></p>
+        <h2 id="catchName"></h2>
+        <p id="catchLatin" class="latin"></p>
+        <p id="catchDesc" class="description"></p>
+        <div class="specs"><span><small>大きさ</small><b id="catchSize"></b></span><span><small>ベスト</small><b id="catchBest"></b></span><span><small>捕獲数</small><b id="catchTotal"></b></span></div>
+        <button class="primary compact" data-close="catchScreen">そっと図鑑へしまう</button>
+      </div>
+    </section>
+
+    <section id="bookScreen" class="overlay book-screen" aria-modal="true">
+      <div class="book-panel">
+        <header><div><p class="eyebrow">FIELD NOTES</p><h2>里山昆虫図鑑</h2><p id="progressText"></p></div><button class="close" data-close="bookScreen">×</button></header>
+        <nav id="filters" aria-label="図鑑フィルター">
+          <button class="active" data-filter="all">すべて</button><button data-filter="caught">発見済み</button><button data-filter="rare">珍しい虫</button>
+        </nav>
+        <div id="bookGrid" class="book-grid"></div>
+        <footer><button id="shareBtn">発見記録をシェア</button><button id="resetBtn">記録をリセット</button></footer>
+      </div>
+    </section>
+
+    <section id="detailScreen" class="overlay detail-screen" aria-modal="true">
+      <div class="paper-panel detail-card"><button class="close" data-close="detailScreen">×</button><div id="detailContent"></div></div>
+    </section>
+
+    <section id="resultScreen" class="overlay result-screen" aria-modal="true">
+      <div class="paper-panel result-card">
+        <p class="eyebrow">TODAY'S FIELD NOTE</p><h2>今日の虫取り、おしまい</h2>
+        <div class="result-score"><span id="resultCaught">0</span><small>匹つかまえた</small></div>
+        <p id="resultMessage"></p><div id="resultDiscoveries" class="result-discoveries"></div>
+        <button id="retryBtn" class="primary">もう一度でかける</button><button id="resultBookBtn" class="secondary">図鑑をひらく</button>
+      </div>
+    </section>
+
+    <section id="helpScreen" class="overlay help-screen" aria-modal="true">
+      <div class="paper-panel help-card"><button class="close" data-close="helpScreen">×</button><p class="eyebrow">HOW TO PLAY</p><h2>虫取り名人の三か条</h2><ol><li><b>狙う</b><span>虫の少し先へ網を動かす</span></li><li><b>待つ</b><span>珍しい虫ほどフェイントをする</span></li><li><b>振る</b><span>画面タップ。連続捕獲でコンボ！</span></li></ol><p>マウス・タッチ・キーボードに対応しています。</p><button class="primary compact" data-close="helpScreen">わかった</button></div>
+    </section>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
