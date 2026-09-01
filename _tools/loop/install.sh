@@ -1,21 +1,25 @@
 #!/usr/bin/env bash
-set -uo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"; . "$SCRIPT_DIR/lib.sh"
-settings="$REPO_ROOT/.claude/settings.json"; mkdir -p "$REPO_ROOT/.claude"
-backup="$settings.backup.$(date +%Y%m%d-%H%M%S)"
-if [ -f "$settings" ]; then cp "$settings" "$backup" || exit 2
-else printf '%s\n' '{"_backup_state":"settings.json did not exist"}' > "$backup" || exit 2; fi
-python3 - "$settings" "$SCRIPT_DIR/handoff.sh" <<'PY'
-import json,pathlib,sys
-p=pathlib.Path(sys.argv[1]); command=sys.argv[2]
-if p.exists():
- try:d=json.loads(p.read_text())
- except Exception:raise SystemExit(2)
-else:d={}
-stop=d.setdefault("hooks",{}).setdefault("Stop",[])
-def ours(e):return any(isinstance(h,dict) and h.get("command")==command for h in (e.get("hooks",[]) if isinstance(e,dict) else []))
-stop[:]=[e for e in stop if not ours(e)]
-stop.append({"hooks":[{"type":"command","command":command}]})
-t=p.with_suffix(p.suffix+".tmp");t.write_text(json.dumps(d,ensure_ascii=False,indent=2)+"\n");t.replace(p)
+# .claude/settings.json に Stop フックを追記する。既存設定は必ずバックアップし、既存フックは消さない。
+set -euo pipefail
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+SETTINGS="$REPO_ROOT/.claude/settings.json"
+mkdir -p "$(dirname "$SETTINGS")"
+if [ -f "$SETTINGS" ]; then
+  cp "$SETTINGS" "$SETTINGS.bak.$(date +%Y%m%d-%H%M%S)"
+else
+  echo '{}' > "$SETTINGS.bak.$(date +%Y%m%d-%H%M%S)"
+  echo '{}' > "$SETTINGS"
+fi
+python3 - "$SETTINGS" "$LOOP_DIR/handoff.sh" <<'PY'
+import json,sys
+p,hook=sys.argv[1],sys.argv[2]
+d=json.load(open(p,encoding="utf-8"))
+hooks=d.setdefault("hooks",{}); stop=hooks.setdefault("Stop",[])
+cmds=[h.get("command") for g in stop for h in g.get("hooks",[])]
+if hook not in cmds:
+    stop.append({"hooks":[{"type":"command","command":hook,"timeout":10}]})
+json.dump(d,open(p,"w",encoding="utf-8"),ensure_ascii=False,indent=2)
+print("hook registered:",hook)
 PY
-code=$?; [ "$code" -eq 0 ] || exit "$code"; printf '%s\n' "$backup"
+echo "→ 有効化するには: touch $GATE_FILE"
+echo "→ 止めるには:     rm $GATE_FILE"

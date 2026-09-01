@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
+# 機械検証のみ。存在するものを順に走らせ、1つでも失敗したら非0で返す。
 set -uo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"; . "$SCRIPT_DIR/lib.sh"
-hid="${HANDOFF_ID:-manual}"; sid="${SESSION_ID:-}"; target="${LOOP_VERIFY_TARGET:-}"
-ts0="$(now_iso)"; e0="$(now_epoch)"; code=0; cmd=""
-if [ -n "$target" ]; then
-  cmd="node _tools/audit.mjs $target --no-report"
-  (cd "$REPO_ROOT" && node _tools/audit.mjs "$target" --no-report); code=$?
-  if [ "$code" -eq 0 ]; then
-    cmd="$cmd && _tools/game-harness.sh $target"
-    (cd "$REPO_ROOT" && _tools/game-harness.sh "$target"); code=$?
-  fi
-elif [ -f "$REPO_ROOT/package.json" ] && node -e 'let p=require(process.argv[1]);process.exit(p.scripts&&p.scripts.test?0:1)' "$REPO_ROOT/package.json"; then
-  cmd="npm test"; (cd "$REPO_ROOT" && npm test); code=$?
-else cmd="no configured mechanical verifier"; code=2
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+cd "$REPO_ROOT" || exit 1
+RC=0
+if [ -n "${LOOP_TARGET:-}" ] && [ -f "_tools/audit.mjs" ]; then
+  node _tools/audit.mjs "$LOOP_TARGET" || RC=$?
 fi
-ts1="$(now_iso)"; e1="$(now_epoch)"
-log_event verify "$cmd" "$code" "$ts0" "$ts1" "$((e1-e0))" "$hid" "$sid"
-exit "$code"
+if [ -n "${LOOP_TARGET:-}" ] && [ -x "_tools/game-harness.sh" ]; then
+  ./_tools/game-harness.sh "$LOOP_TARGET" || RC=$?
+fi
+if [ -f "package.json" ] && grep -q '"test"' package.json 2>/dev/null; then
+  npm test --silent || RC=$?
+fi
+exit "$RC"

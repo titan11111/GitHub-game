@@ -1,29 +1,39 @@
 #!/usr/bin/env bash
+# ②Codex(exec) → ③機械検証 → ④記録。すべて exit code のみで判定する。
 set -uo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"; . "$SCRIPT_DIR/lib.sh"
-gate_open || exit 0; mkdir -p "$LOOP_DIR/processed"; queue_file=""
-if [ "${1:-}" = "--task" ]; then
- task="${2:-}"; hid="${HANDOFF_ID:-manual-$(date -u +%Y%m%dT%H%M%SZ)-$$}"; sid="${SESSION_ID:-manual}"; depth="$(( ${LOOP_DEPTH:-0}+1 ))"
-else
- queue_file="$(find "$QUEUE_DIR" -maxdepth 1 -type f -name '*.json' -print | sort | head -n 1)"; [ -n "$queue_file" ] || exit 0
- task="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["task"])' "$queue_file")" || exit 2
- hid="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["handoff_id"])' "$queue_file")" || exit 2
- sid="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("session_id",""))' "$queue_file")" || exit 2
- depth="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("depth",1))' "$queue_file")" || exit 2
-fi
-case "$depth" in (*[!0-9]*|'') depth=1;; esac
-if [ "$depth" -gt "$MAX_DEPTH" ]; then printf '0\n' > "$DEPTH_FILE"; exit 3; fi
-printf '%s\n' "$depth" > "$DEPTH_FILE"; bin="${LOOP_CODEX_BIN:-codex}"
-ts0="$(now_iso)"; e0="$(now_epoch)"; "$bin" exec "$task"; c=$?; ts1="$(now_iso)"; e1="$(now_epoch)"
-log_event codex "$bin exec" "$c" "$ts0" "$ts1" "$((e1-e0))" "$hid" "$sid"
-if [ "$c" -ne 0 ]; then printf '0\n' > "$DEPTH_FILE"; exit "$c"; fi
-HANDOFF_ID="$hid" SESSION_ID="$sid" "$SCRIPT_DIR/verify.sh"; verify_code=$?
-HANDOFF_ID="$hid" SESSION_ID="$sid" "$SCRIPT_DIR/to-obsidian.sh" "$verify_code"; obsidian_code=$?
-st0="$(now_iso)"; se0="$(now_epoch)"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+HID="${1:?handoff id}"; SID="${2:-}"
+TASK_FILE="$QUEUE_DIR/$HID.task"
+[ -f "$TASK_FILE" ] || exit 1
+TASK="$(cat "$TASK_FILE")"
+cd "$REPO_ROOT" || exit 1
+
+T0=$(now_iso); E0=$(now_epoch)
+codex exec --skip-git-repo-check "$TASK" >"$LOG_DIR/$HID.codex.log" 2>&1
+CODEX_CODE=$?
+T1=$(now_iso); E1=$(now_epoch)
+log_event "codex" "codex exec" "$CODEX_CODE" "$T0" "$T1" "$((E1-E0))" "$HID" "$SID"
+
+T2=$(now_iso); E2=$(now_epoch)
+"$LOOP_DIR/verify.sh" >"$LOG_DIR/$HID.verify.log" 2>&1
+VERIFY_CODE=$?
+T3=$(now_iso); E3=$(now_epoch)
+log_event "verify" "verify.sh" "$VERIFY_CODE" "$T2" "$T3" "$((E3-E2))" "$HID" "$SID"
+
+"$LOOP_DIR/to-obsidian.sh" "$HID" "$CODEX_CODE" "$VERIFY_CODE" "$T0" "$T3"
+OBS_CODE=$?
+log_event "obsidian" "to-obsidian.sh" "$OBS_CODE" "$(now_iso)" "$(now_iso)" 0 "$HID" "$SID"
+
 if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
- curl -fsS -X POST -H 'Content-Type: application/json' --data "$(python3 -c 'import json,sys;print(json.dumps({"text":f"Loop {sys.argv[1]} verify exit={sys.argv[2]} obsidian exit={sys.argv[3]}"}))' "$hid" "$verify_code" "$obsidian_code")" "$SLACK_WEBHOOK_URL" >/dev/null; slack_code=$?
-else slack_code=2
+  S="PASS"; [ "$VERIFY_CODE" != "0" ] && S="FAIL"
+  BODY="$(python3 -c 'import json,sys;print(json.dumps({"text":sys.argv[1]},ensure_ascii=False))' "[loop $HID] codex=$CODEX_CODE verify=$VERIFY_CODE → $S")"
+  curl -sS -X POST -H 'Content-type: application/json' --data "$BODY" "$SLACK_WEBHOOK_URL" >/dev/null 2>&1
+  SLACK_CODE=$?
+  log_event "slack" "webhook" "$SLACK_CODE" "$(now_iso)" "$(now_iso)" 0 "$HID" "$SID"
 fi
-st1="$(now_iso)"; se1="$(now_epoch)"; log_event slack "notify Slack webhook" "$slack_code" "$st0" "$st1" "$((se1-se0))" "$hid" "$sid"
-printf '0\n' > "$DEPTH_FILE"; [ -z "$queue_file" ] || mv "$queue_file" "$LOOP_DIR/processed/$(basename "$queue_file")"
-exit "$verify_code"
+
+if [ "$CODEX_CODE" != "0" ] || [ "$VERIFY_CODE" != "0" ]; then
+  echo 0 > "$DEPTH_FILE"
+fi
+[ "$CODEX_CODE" = "0" ] || exit "$CODEX_CODE"
+exit "$VERIFY_CODE"
