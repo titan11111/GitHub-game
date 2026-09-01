@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/gosho/GitHub-game/_tools/loop/handoff.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
