@@ -17,17 +17,23 @@
     --ink:#efe7ff;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%}
+  html,body{width:100%;height:100%}
   body{
     background:
       radial-gradient(120% 80% at 50% 0%, #2a1f45 0%, var(--night) 60%, #0b0817 100%);
     color:var(--ink);
     font-family:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN","Yu Gothic","游ゴシック体",-apple-system,sans-serif;
-    display:flex;align-items:center;justify-content:center;
-    overflow:hidden;touch-action:none;
+    overflow:hidden;overscroll-behavior:none;touch-action:none;
   }
-  #wrap{width:min(100vw,760px);padding:8px;display:flex;flex-direction:column;gap:8px}
-  #hud{display:flex;align-items:center;gap:8px;font-size:15px;line-height:1}
+  /* ---- iOS 75/25 シェル ---- */
+  #game-shell{position:fixed;inset:0;width:100%;height:100%;height:100dvh;
+    display:grid;grid-template-rows:minmax(0,1fr) clamp(132px,25vh,210px);
+    padding-top:env(safe-area-inset-top)}
+  #game-stage{min-height:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:10px;overflow:hidden}
+  #screen-wrap{position:relative;width:min(100%,calc((75dvh - env(safe-area-inset-top))*4/3));
+    max-width:760px;aspect-ratio:4/3}
+  #hud{width:min(100%,760px);padding:0 12px;display:flex;align-items:center;gap:8px;font-size:15px;line-height:1}
   #stage{font-weight:700;letter-spacing:.02em;white-space:nowrap}
   #stage small{opacity:.6;font-weight:400}
   #bar{flex:1;height:16px;border-radius:8px;background:#0d0a1a;overflow:hidden;position:relative;box-shadow:inset 0 0 0 1px #ffffff1a}
@@ -35,8 +41,8 @@
   #barfill.low{background:linear-gradient(90deg,#ff3d5f,#ff8a5c);animation:pulse .6s infinite alternate}
   @keyframes pulse{to{filter:brightness(1.45)}}
   #fishcount{white-space:nowrap;font-weight:700;color:var(--fish)}
-  #screen{position:relative;border-radius:14px;overflow:hidden;box-shadow:0 18px 40px #0008, inset 0 0 0 1px #ffffff14}
-  canvas{display:block;width:100%;height:auto;image-rendering:auto;background:var(--night)}
+  #screen{position:absolute;inset:0;border-radius:14px;overflow:hidden;box-shadow:0 18px 40px #0008, inset 0 0 0 1px #ffffff14}
+  canvas{display:block;width:100%;height:100%;image-rendering:auto;background:var(--night);touch-action:none}
   #overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:14px;text-align:center;padding:24px;background:#0b0817e6;backdrop-filter:blur(3px);
     pointer-events:none}
@@ -54,38 +60,82 @@
   }
   button:active{transform:translateY(4px);box-shadow:0 2px 0 #b57f2e,0 6px 14px #0007}
   button:focus-visible{outline:3px solid var(--fish);outline-offset:3px}
-  #foot{display:flex;justify-content:space-between;align-items:center;font-size:12px;opacity:.55}
+  #foot{width:min(100%,760px);padding:0 12px;display:flex;justify-content:space-between;align-items:center;font-size:12px;opacity:.55}
   .toast{position:absolute;left:50%;top:16%;transform:translateX(-50%);
     font-size:clamp(16px,4.6vw,24px);font-weight:700;letter-spacing:.08em;
     color:var(--danger);text-shadow:0 0 18px #ff5d7a88;pointer-events:none;opacity:0}
   @media (prefers-reduced-motion: reduce){#barfill.low{animation:none}}
+
+  /* ---- iOS 仮想コントローラ（下25%） ---- */
+  #control-deck{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px max(14px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom))
+      max(14px,env(safe-area-inset-left));
+    border-top:1px solid #f5b95c2e;
+    background:linear-gradient(180deg,#171029,#0b0817);overflow:hidden}
+  .dpad{position:relative;width:min(38vw,140px);height:min(38vw,140px);flex-shrink:0;touch-action:none;
+    background:
+      linear-gradient(#2e2547,#191231) 50% 0/34% 100% no-repeat,
+      linear-gradient(#2e2547,#191231) 0 50%/100% 34% no-repeat;
+    border-radius:16px;box-shadow:inset 0 0 0 2px #6b5590,0 4px 0 #07050f}
+  .dpad .arr{position:absolute;color:var(--ink);font-size:15px;opacity:.5;pointer-events:none}
+  .dpad .arr.u{top:6%;left:50%;transform:translateX(-50%)}
+  .dpad .arr.d{bottom:6%;left:50%;transform:translateX(-50%)}
+  .dpad .arr.l{left:8%;top:50%;transform:translateY(-50%)}
+  .dpad .arr.r{right:8%;top:50%;transform:translateY(-50%)}
+  .dpad.press-u .arr.u,.dpad.press-d .arr.d,
+  .dpad.press-l .arr.l,.dpad.press-r .arr.r{opacity:1;color:var(--lamp)}
+  .dpad-nub{position:absolute;left:50%;top:50%;width:26%;height:26%;border-radius:50%;
+    background:#1d1633;transform:translate(-50%,-50%);pointer-events:none;border:1px solid #6b5590}
+  .action-controls{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:10px;flex:1}
+  .game-btn{min-width:96px;min-height:82px;border-radius:50%;padding:8px 12px;
+    color:#211636;background:linear-gradient(180deg,#ffd98a,#f5b95c);
+    border:2px solid #b57f2e;box-shadow:0 5px 0 #7d5518,0 8px 18px #0007;
+    font-size:15px;font-weight:700;line-height:1.1;touch-action:none;
+    transition:transform .08s ease,opacity .08s ease}
+  .game-btn small{display:block;margin-top:3px;font-size:10px;letter-spacing:.08em;opacity:.7}
+  .game-btn:active,.game-btn.pressed{transform:scale(.93) translateY(3px);
+    box-shadow:0 1px 0 #7d5518;background:linear-gradient(180deg,#ff9f43,#e07c2c)}
+  .deck-note{font-size:10px;opacity:.45;letter-spacing:.04em;text-align:right;line-height:1.5}
 </style>
 </head>
 <body>
-<div id="wrap">
+<div id="game-shell">
+<div id="game-stage">
   <div id="hud">
     <div id="stage">1F <small>キッチン</small></div>
     <div id="bar"><div id="barfill"></div></div>
     <div id="fishcount">🐟 0/2</div>
   </div>
 
-  <div id="screen">
-    <canvas id="cv" width="640" height="480"></canvas>
+  <div id="screen-wrap"><div id="screen">
+    <canvas id="cv" width="640" height="480" data-logical-width="640" data-logical-height="480"></canvas>
     <div class="toast" id="toast"></div>
     <div id="overlay">
       <h1>しのびニャンコ<span class="sub">おさかな大作戦</span></h1>
       <p>夜のおうち、から始まる10の夜。人間の視界をよけて、おさかなを全部いただいて、寝床にかえるまでがごはん。<br>
       進むほど、たどり着く場所はおかしくなっていく。おなかが空っぽになったら、その場でおねむ＝ゲームオーバー。</p>
-      <button id="btn">はじめる</button>
       <div class="keys">
-        そっと歩く：矢印／WASD・画面ドラッグ（浅く）<br>
-        ダッシュ：Shift・ドラッグを深く（速いけどバレやすい／おなかも減る）<br>
+        そっと歩く：画面下の十字キー／矢印・WASD／画面ドラッグ（浅く）<br>
+        ダッシュ：ダッシュボタン／Shift／ドラッグを深く（速いけどバレやすい・おなかも減る）<br>
         物かげ（植木・木箱・机・岩かげ）の上では姿が消える
       </div>
+      <button id="btn">はじめる</button>
     </div>
-  </div>
+  </div></div>
 
   <div id="foot"><span>ねこは音を立てない。ただし全力疾走は別。</span><span id="best"></span></div>
+</div>
+<div id="control-deck" aria-label="ゲームコントローラ">
+  <div class="dpad" id="dpad" aria-label="十字キー">
+    <span class="arr u">▲</span><span class="arr l">◀</span>
+    <span class="arr r">▶</span><span class="arr d">▼</span>
+    <span class="dpad-nub"></span>
+  </div>
+  <div class="action-controls">
+    <button type="button" class="game-btn" id="cv-dash" aria-label="ダッシュ">ダッシュ<small>バレやすい</small></button>
+    <div class="deck-note">十字キーでそっと歩く<br>押しながらダッシュで走る</div>
+  </div>
+</div>
 </div>
 
 <script>
@@ -333,10 +383,27 @@ let TH = THEMES[0];
 const hsh = (x,y)=>(((x*73856093)^(y*19349663))>>>0);
 
 /* ============ 音（依存なしの小さなブリップ） ============ */
-let ac=null;
+let ac=null, audioReady=false;
+/* AudioContextの生成は重い。ユーザー操作の外で先に作っておき、
+   操作の中では resume() と無音1サンプルだけ流す（iOSのunlock要件はこれで満たす） */
+function ensureCtx(){
+  if(!ac){ try{ ac = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  return ac;
+}
+setTimeout(ensureCtx, 0);
+function unlockAudio(){
+  if(audioReady) return;
+  const c = ensureCtx(); if(!c) return;
+  try{
+    if(c.state==="suspended") c.resume();
+    const b=c.createBuffer(1,1,22050), src=c.createBufferSource();
+    src.buffer=b; src.connect(c.destination); src.start(0);
+    audioReady = true;
+  }catch(e){}
+}
 function beep(freq, dur=.09, type="triangle", vol=.16, slideTo=null){
   try{
-    if(!ac) ac = new (window.AudioContext||window.webkitAudioContext)();
+    if(!ensureCtx()) return;
     if(ac.state==="suspended") ac.resume();
     const o=ac.createOscillator(), g=ac.createGain();
     o.type=type; o.frequency.setValueAtTime(freq, ac.currentTime);
@@ -363,6 +430,7 @@ let last = 0, toastT = 0;
 /* ============ 入力 ============ */
 const keys = {};
 addEventListener('keydown', e=>{
+  unlockAudio();
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
   keys[e.key.toLowerCase()] = true;
   if(e.key===" "||e.key==="Enter"){ if(state!==S.PLAY) primary(); }
@@ -372,12 +440,51 @@ addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
 let touch = {on:false, ox:0, oy:0, dx:0, dy:0};
 function tPos(e){ const r=cv.getBoundingClientRect(); const t=e.changedTouches?e.changedTouches[0]:e;
   return {x:(t.clientX-r.left)/r.width*CW, y:(t.clientY-r.top)/r.height*CH}; }
-cv.addEventListener('touchstart', e=>{ e.preventDefault(); const p=tPos(e); touch={on:true,ox:p.x,oy:p.y,dx:0,dy:0}; }, {passive:false});
+cv.addEventListener('touchstart', e=>{ e.preventDefault(); unlockAudio(); const p=tPos(e); touch={on:true,ox:p.x,oy:p.y,dx:0,dy:0}; }, {passive:false});
 cv.addEventListener('touchmove',  e=>{ e.preventDefault(); if(!touch.on)return; const p=tPos(e); touch.dx=p.x-touch.ox; touch.dy=p.y-touch.oy; }, {passive:false});
 cv.addEventListener('touchend',   e=>{ e.preventDefault(); touch.on=false; touch.dx=touch.dy=0; }, {passive:false});
 cv.addEventListener('mousedown', e=>{ const p=tPos(e); touch={on:true,ox:p.x,oy:p.y,dx:0,dy:0}; });
 addEventListener('mousemove', e=>{ if(!touch.on)return; const p=tPos(e); touch.dx=p.x-touch.ox; touch.dy=p.y-touch.oy; });
 addEventListener('mouseup', ()=>{ touch.on=false; touch.dx=touch.dy=0; });
+
+/* ---- 画面下の十字キーとダッシュボタン ---- */
+const elDpad = document.getElementById('dpad');
+const elDash = document.getElementById('cv-dash');
+const pad = {on:false, x:0, y:0};
+let dashHold = false;
+
+function padSet(e){
+  const r = elDpad.getBoundingClientRect();
+  const t = e.changedTouches ? e.changedTouches[0] : e;
+  const dx = (t.clientX - (r.left + r.width/2)) / (r.width/2);
+  const dy = (t.clientY - (r.top  + r.height/2)) / (r.height/2);
+  const l = Math.hypot(dx,dy);
+  if(l < 0.2){ padClear(); return; }
+  pad.on = true; pad.x = dx/l; pad.y = dy/l;
+  elDpad.classList.toggle('press-u', pad.y < -0.38);
+  elDpad.classList.toggle('press-d', pad.y >  0.38);
+  elDpad.classList.toggle('press-l', pad.x < -0.38);
+  elDpad.classList.toggle('press-r', pad.x >  0.38);
+}
+function padClear(){
+  pad.on=false; pad.x=pad.y=0;
+  elDpad.classList.remove('press-u','press-d','press-l','press-r');
+}
+elDpad.addEventListener('touchstart', e=>{ e.preventDefault(); unlockAudio(); padSet(e); }, {passive:false});
+elDpad.addEventListener('touchmove',  e=>{ e.preventDefault(); padSet(e); }, {passive:false});
+elDpad.addEventListener('touchend',   e=>{ e.preventDefault(); padClear(); }, {passive:false});
+elDpad.addEventListener('touchcancel',e=>{ padClear(); }, {passive:false});
+elDpad.addEventListener('mousedown',  e=>{ unlockAudio(); padSet(e); });
+addEventListener('mousemove', e=>{ if(pad.on) padSet(e); });
+addEventListener('mouseup',   ()=> padClear());
+
+function dashOn(e){ if(e) e.preventDefault(); unlockAudio(); dashHold=true;  elDash.classList.add('pressed'); }
+function dashOff(e){ if(e) e.preventDefault(); dashHold=false; elDash.classList.remove('pressed'); }
+elDash.addEventListener('touchstart', dashOn,  {passive:false});
+elDash.addEventListener('touchend',   dashOff, {passive:false});
+elDash.addEventListener('touchcancel',dashOff, {passive:false});
+elDash.addEventListener('mousedown',  dashOn);
+addEventListener('mouseup', ()=>dashOff());
 
 function readInput(){
   let ix=0, iy=0, mag=1;
@@ -390,11 +497,15 @@ function readInput(){
     mag = (keys.shift) ? 1 : 0.45;
     return {x:ix,y:iy,mag};
   }
+  if(pad.on){
+    return {x:pad.x, y:pad.y, mag: dashHold ? 1 : 0.45};
+  }
   if(touch.on){
     const l=Math.hypot(touch.dx,touch.dy);
     if(l>10){
       const dead=10, full=68;
       mag = Math.min(1, (l-dead)/(full-dead));
+      if(dashHold) return {x:touch.dx/l, y:touch.dy/l, mag:1};
       return {x:touch.dx/l, y:touch.dy/l, mag:Math.max(.28,mag)};
     }
   }
@@ -561,6 +672,7 @@ function show(html, label){
   document.getElementById('btn').onclick = primary;
 }
 function primary(){
+  unlockAudio();
   if(state===S.TITLE || state===S.OVER || state===S.ALLCLEAR){
     if(state!==S.TITLE){ lv=0; totalFish=0; }
     hunger = HUNGER_MAX; elapsed = 0;
