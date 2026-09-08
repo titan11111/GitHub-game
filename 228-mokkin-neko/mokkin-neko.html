@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>木琴とネコ｜60秒のくつろがせゲーム</title>
+<style>
+  :root{
+    --night:#141726;
+    --room:#20243a;
+    --lamp:#ffca7a;
+    --cream:#f4e6cd;
+    --ink:#0d0f18;
+    --calm:#8fd0c0;
+    --tense:#e2735f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;background:var(--night);overflow:hidden;
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+    color:var(--cream);user-select:none;overscroll-behavior:none;-webkit-touch-callout:none;}
+  #wrap{position:relative;width:100%;height:100%;}
+  canvas{display:block;width:100%;height:100%;touch-action:none;}
+
+  .hud{position:absolute;top:0;left:0;right:0;padding:calc(10px + env(safe-area-inset-top)) 14px 0;pointer-events:none;}
+  .row{display:flex;align-items:baseline;justify-content:space-between;font-size:13px;letter-spacing:.04em;}
+  .time{font-variant-numeric:tabular-nums;font-size:20px;color:var(--lamp);}
+  .meter{margin-top:6px;height:9px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden;}
+  .meter i{display:block;height:100%;width:50%;background:var(--calm);border-radius:9px;
+    transition:width .25s ease, background .35s ease;}
+
+  .veil{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(12,14,24,.86);backdrop-filter:blur(3px);padding:22px;text-align:center;}
+  .veil.hide{display:none;}
+  .card{max-width:340px;}
+  .card h1{margin:0 0 10px;font-size:26px;line-height:1.35;font-weight:700;}
+  .card p{margin:0 0 8px;font-size:14px;line-height:1.85;color:#cfc6b4;}
+  .btn{margin-top:18px;padding:13px 30px;border:0;border-radius:999px;font:inherit;font-size:16px;
+    font-weight:700;color:var(--ink);background:var(--lamp);cursor:pointer;}
+  .btn:active{transform:translateY(1px);}
+  .btn:focus-visible{outline:3px solid #fff;outline-offset:3px;}
+
+  .verdict{font-size:15px;color:var(--lamp);margin-bottom:4px;}
+  .meow{font-size:22px;line-height:1.6;margin:6px 0 14px;letter-spacing:.06em;min-height:1.6em;}
+  .trans{font-size:15px;line-height:1.9;color:var(--cream);
+    border-left:3px solid var(--lamp);padding-left:12px;text-align:left;opacity:0;
+    transition:opacity .6s ease;}
+  .trans.on{opacity:1;}
+  .stats{margin-top:14px;font-size:12.5px;line-height:1.9;color:#a49c8c;text-align:left;}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="hud">
+    <div class="row"><span id="mood">ネコを見ている</span><span class="time" id="time">60</span></div>
+    <div class="meter"><i id="bar"></i></div>
+  </div>
+
+  <div class="veil" id="start">
+    <div class="card">
+      <h1>木琴とネコ</h1>
+      <p>部屋の奥にネコがいます。<br>手前の木琴を叩いて、60秒でくつろがせてください。</p>
+      <p>低い音・ゆっくり・下りの音階が効きます。<br>高い音の連打はきらわれます。<br>耳を伏せたらひと休み。続けるとシャーッ、カプッ！</p>
+      <p>左が低い音、右が高い音。バチは自動で動きます。<br>タップ、またはキーの A S D F G H J K</p>
+      <button class="btn" id="go">木琴を叩く</button>
+    </div>
+  </div>
+
+  <div class="veil hide" id="result">
+    <div class="card">
+      <div class="verdict" id="verdict"></div>
+      <div class="meow" id="meow"></div>
+      <div class="trans" id="trans"></div>
+      <div class="stats" id="stats"></div>
+      <button class="btn" id="again">もう一度</button>
+    </div>
+  </div>
+  <canvas id="cv"></canvas>
+</div>
+
+<script>
+(function(){
+"use strict";
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=cv.clientWidth; H=cv.clientHeight;
+  cv.width=W*DPR; cv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  layout();
+}
+window.addEventListener('resize',resize);
+
+/* ---------- 音 ---------- */
+const FREQ=[261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
+const NAME=['ド','レ','ミ','ファ','ソ','ラ','シ','ド'];
+const KEYMAP=['a','s','d','f','g','h','j','k'];
+let AC=null;
+function tone(i){
+  if(!AC) return;
+  const t=AC.currentTime, f=FREQ[i];
+  const g=AC.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.5,t+0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+1.1);
+  g.connect(AC.destination);
+  [[1,0.6,'sine'],[4.02,0.16,'sine'],[9.1,0.05,'triangle']].forEach(([m,a,ty])=>{
+    const o=AC.createOscillator(), og=AC.createGain();
+    o.type=ty; o.frequency.value=f*m;
+    og.gain.setValueAtTime(a,t);
+    og.gain.exponentialRampToValueAtTime(0.0001,t+(m>1?0.25:1.0));
+    o.connect(og); og.connect(g); o.start(t); o.stop(t+1.2);
+  });
+}
+function purr(){
+  if(!AC) return;
+  const t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
+  o.type='sawtooth'; o.frequency.value=42;
+  const lfo=AC.createOscillator(), lg=AC.createGain();
+  lfo.frequency.value=22; lg.gain.value=18;
+  lfo.connect(lg); lg.connect(o.frequency);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.06,t+0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+1.6);
+  o.connect(g); g.connect(AC.destination);
+  o.start(t); lfo.start(t); o.stop(t+1.7); lfo.stop(t+1.7);
+}
+
+/* ---------- 状態 ---------- */
+const S={
+  playing:false, t0:0, left:60,
+  relax:50, hits:[], keyFlash:new Array(8).fill(0),
+  react:null, reactT:0, tally:{}, total:0, lastPurr:0,
+  action:"listen", actionT:0, actionEnd:0, attackNext:0, attacks:0, warned:false,
+  mallets:[], lastGood:-99, resultTimer:null
+};
+const PAT={
+  down:{n:'下りの音階',d:+5,f:'とろん'},
+  low:{n:'低音のゆらぎ',d:+4,f:'ゴロゴロ'},
+  slow:{n:'ゆっくりの間',d:+3,f:'ふぅ…'},
+  chord:{n:'ふたつ同時',d:+2,f:'ほう？'},
+  up:{n:'のぼる音階',d:+2,f:'わくわく'},
+  leap:{n:'大きな跳躍',d:0,f:'きょとん'},
+  drift:{n:'しずかな間',d:+5,f:'うとうと'},
+  same:{n:'同じ音の連打',d:-7,f:'たいくつ'},
+  high:{n:'高音の連続',d:-9,f:'ビクッ'},
+  rush:{n:'速すぎる連打',d:-12,f:'うるさい！'}
+};
+const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
+function catVoice(kind){
+  if(!AC) return;
+  const t=AC.currentTime, g=AC.createGain();
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.exponentialRampToValueAtTime(.10,t+.03);
+  g.gain.exponentialRampToValueAtTime(.0001,t+.5);
+  g.connect(AC.destination);
+  if(kind==='hiss' || kind==='scratch'){
+    const buffer=AC.createBuffer(1,Math.ceil(AC.sampleRate*.55),AC.sampleRate);
+    const data=buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i]=Math.random()*2-1;
+    const source=AC.createBufferSource(), filter=AC.createBiquadFilter();
+    source.buffer=buffer; filter.type='highpass'; filter.frequency.value=2200;
+    source.connect(filter); filter.connect(g); source.start(t); source.stop(t+.55);
+  }else{
+    const o=AC.createOscillator(); o.type='triangle';
+    o.frequency.setValueAtTime(kind==='bite'?380:600,t);
+    o.frequency.exponentialRampToValueAtTime(150,t+.35);
+    o.connect(g); o.start(t); o.stop(t+.55);
+  }
+}
+function setAction(kind,now,duration){
+  S.action=kind; S.actionT=now; S.actionEnd=now+duration;
+  const labels={happy:'ゴロゴロ ♪',startle:'ビクッ！',annoyed:'むすっ…',hiss:'シャーッ！',scratch:'ひっかく！',bite:'カプッ！',curious:'ん？'};
+  S.react={f:labels[kind]||'ふぅ…',good:kind==='happy'||kind==='curious'}; S.reactT=now;
+  if(['hiss','scratch','bite'].includes(kind)) catVoice(kind);
+}
+function judge(now){
+  const h=S.hits.filter(v=>now-v.t<2.8), n=h.length, last=h[n-1];
+  const gap=n>1?last.t-h[n-2].t:99;
+  // A burst always wins over chord or melody bonuses.
+  if(h.filter(v=>now-v.t<.65).length>=3) return 'rush';
+  if(n>1 && last.i>=6 && h[n-2].i>=6 && gap<1.2) return 'high';
+  if(n>2 && last.t-h[n-3].t<1.5 && h[n-3].i===h[n-2].i && h[n-2].i===last.i) return 'same';
+  if(n>1 && gap<.09 && last.i!==h[n-2].i) return 'chord';
+  if(n>2 && h[n-3].i<h[n-2].i && h[n-2].i<last.i) return 'up';
+  if(n>2 && h[n-3].i>h[n-2].i && h[n-2].i>last.i) return 'down';
+  if(last.i<=2 && gap>.5) return 'low';
+  if(gap>1.2 && gap<90) return 'slow';
+  if(n>1 && Math.abs(last.i-h[n-2].i)>=4) return 'leap';
+  return null;
+}
+function apply(key,now){
+  const p=PAT[key];
+  if(p.d>0 && now-S.lastGood<.65) return;
+  if(p.d>0) S.lastGood=now;
+  S.relax=Math.max(0,Math.min(100,S.relax+p.d));
+  S.tally[key]=(S.tally[key]||0)+1;
+  if(now<S.actionEnd) return;
+  if(p.d<0){
+    if(S.relax<30 && !S.warned){
+      S.warned=true; S.attackNext=now+1.6; setAction('hiss',now,1.3);
+    }else if(S.relax<25 && S.warned && now>=S.attackNext){
+      setAction(S.attacks++%2===0?'scratch':'bite',now,1.1); S.attackNext=now+3;
+    }else setAction(key==='high'?'startle':'annoyed',now,.65);
+  }else{
+    setAction(S.relax>=60?'happy':'curious',now,.7);
+    if(S.relax>=65 && now-S.lastPurr>3){ S.lastPurr=now; purr(); }
+  }
+}
+function hit(i){
+  if(!S.playing) return;
+  const now=(performance.now()-S.t0)/1000;
+  if(AC&&AC.state==='suspended') AC.resume();
+  tone(i); S.keyFlash[i]=1; S.total++;
+  S.mallets.push({i,t:performance.now()/1000,side:S.total%2?1:-1});
+  if(S.mallets.length>8) S.mallets.shift();
+  S.hits.push({i:i,t:now}); if(S.hits.length>24) S.hits.shift();
+  const k=judge(now); if(k) apply(k,now);
+}
+
+/* ---------- レイアウト ---------- */
+let keys=[];
+function layout(){
+  keys=[];
+  const band=W*.92/8;
+  for(let i=0;i<8;i++){
+    const r=i/7;
+    const w=band*.86, h=H*(.30-.10*r);
+    const x=W*.04+i*band+(band-w)/2, y=H*.72-h/2;
+    const p=new Path2D(), rd=Math.min(w/3,9);
+    p.moveTo(x+rd,y); p.lineTo(x+w-rd,y);
+    p.quadraticCurveTo(x+w,y,x+w,y+rd); p.lineTo(x+w,y+h-rd);
+    p.quadraticCurveTo(x+w,y+h,x+w-rd,y+h); p.lineTo(x+rd,y+h);
+    p.quadraticCurveTo(x,y+h,x,y+h-rd); p.lineTo(x,y+rd);
+    p.quadraticCurveTo(x,y,x+rd,y);
+    keys.push({path:p,x:x,y:y,w:w,h:h});
+  }
+}
+function pick(px,py){
+  for(let i=0;i<8;i++){ const k=keys[i]; if(px>=k.x && px<=k.x+k.w && py>=k.y && py<=k.y+k.h) return i; }
+  return -1;
+}
+
+/* ---------- 描画 ---------- */
+function drawRoom(tm){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#0f1120'); g.addColorStop(.55,'#1b1f33'); g.addColorStop(1,'#262a42');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // ランプの光だまり
+  const cx=W*0.5, cy=H*0.38, rr=Math.max(W,H)*0.5;
+  const gl=ctx.createRadialGradient(cx,cy,0,cx,cy,rr);
+  const warm=0.10+0.10*(S.relax/100);
+  gl.addColorStop(0,'rgba(255,202,122,'+warm+')'); gl.addColorStop(1,'rgba(255,202,122,0)');
+  ctx.fillStyle=gl; ctx.fillRect(0,0,W,H);
+  // 窓と月
+  ctx.fillStyle='rgba(255,255,255,.05)';
+  ctx.fillRect(W*0.06,H*0.06,W*0.2,H*0.2);
+  ctx.fillStyle='rgba(255,240,210,.5)';
+  ctx.beginPath(); ctx.arc(W*0.14,H*0.13,Math.min(W,H)*0.022,0,7); ctx.fill();
+  // 床の境目
+  ctx.strokeStyle='rgba(0,0,0,.28)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,H*0.5); ctx.lineTo(W,H*0.5); ctx.stroke();
+}
+
+function drawCat(tm){
+  const relax=S.relax/100;
+  const age=performance.now()/1000-S.t0/1000-S.actionT;
+  const active=performance.now()/1000-S.t0/1000<S.actionEnd;
+  const action=active?S.action:'listen';
+  const attack=action==='scratch'||action==='bite';
+  const pulse=active?Math.sin(Math.PI*Math.min(1,age/(S.actionEnd-S.actionT))):0;
+  const angry=S.relax<30;
+  const s=Math.min(W,H)*(W>H?0.0015:0.0019);            // スケール（奥にいるので小さめ）
+  const cx=W*0.5, cy=H*0.40-Math.min(W,H)*0.02;
+  // クッション
+  ctx.save(); ctx.translate(cx,cy+62*s*1.4);
+  ctx.fillStyle='#3b2f4d'; ctx.beginPath();
+  ctx.ellipse(0,0,150*s,38*s,0,0,7); ctx.fill();
+  ctx.fillStyle='#4a3b60'; ctx.beginPath();
+  ctx.ellipse(0,-6*s,138*s,30*s,0,0,7); ctx.fill();
+  ctx.restore();
+
+  const lie=relax;                          // 1に近いほど横になる
+  ctx.save();
+  ctx.translate(cx,cy+(reducedMotion.matches?0:attack?pulse*H*.13:action==='startle'?-pulse*18:action==='happy'?Math.sin(tm*7)*3:0));
+  const zoom=1+(attack&&!reducedMotion.matches?pulse*.32:0);
+  ctx.scale(s*zoom,s*zoom);
+  const bodyW=95+45*lie, bodyH=68-16*lie, bodyY=18+16*lie;
+
+  // しっぽ（不機嫌ほど速く振る）
+  const speed=0.9+3.4*(1-relax);
+  const sw=Math.sin(tm*(angry?11:speed))*(reducedMotion.matches?3:10+34*(1-relax));
+  ctx.strokeStyle='#e6d3b2'; ctx.lineWidth=15; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(bodyW*0.75,bodyY+14);
+  ctx.quadraticCurveTo(bodyW*1.25,bodyY+10+sw*0.4,bodyW*1.05+sw*0.5,bodyY-34-sw*0.8);
+  ctx.stroke();
+
+  // 体
+  ctx.fillStyle='#f0e0c2';
+  ctx.beginPath(); ctx.ellipse(0,bodyY,bodyW,bodyH,0,0,7); ctx.fill();
+  // 縞
+  ctx.strokeStyle='rgba(160,132,98,.55)'; ctx.lineWidth=7;
+  for(let k=-1;k<=1;k++){
+    ctx.beginPath();
+    ctx.moveTo(k*34-8,bodyY-bodyH*0.72);
+    ctx.quadraticCurveTo(k*34,bodyY-bodyH*0.2,k*34+10,bodyY-bodyH*0.05);
+    ctx.stroke();
+  }
+  // 前足
+  ctx.fillStyle='#f6e9d1';
+  ctx.beginPath(); ctx.ellipse(-30-14*lie,bodyY+bodyH*0.72,26+10*lie,13,0,0,7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(24+14*lie,bodyY+bodyH*0.72,26+10*lie,13,0,0,7); ctx.fill();
+
+  if(action==='scratch'){
+    ctx.save(); ctx.translate(34,bodyY+15); ctx.rotate(-1.5+pulse*2.7);
+    ctx.fillStyle='#f6e9d1'; ctx.beginPath(); ctx.ellipse(30,0,48,19,0,0,7); ctx.fill();
+    ctx.strokeStyle='#fff7e5'; ctx.lineWidth=3;
+    for(let j=-1;j<=1;j++){ctx.beginPath();ctx.moveTo(65,j*9);ctx.lineTo(84,j*12);ctx.stroke();}
+    ctx.restore();
+  }
+  // 頭
+  const hx=-(6+42*lie), hy=-42+30*lie, tilt=(-0.06-0.5*lie);
+  ctx.save(); ctx.translate(hx,hy); ctx.rotate(tilt);
+  // 耳（警戒でピン、リラックスで寝る）
+  const ear=1-relax;
+  ctx.fillStyle='#eadcbe';
+  [[-34,-1],[34,1]].forEach(([ex,dir])=>{
+    ctx.save(); ctx.translate(ex,-24); ctx.rotate(dir*(angry?1.25:0.35-0.75*ear));
+    ctx.beginPath(); ctx.moveTo(-19,6); ctx.lineTo(0,-32); ctx.lineTo(19,6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#d9a3a0';
+    ctx.beginPath(); ctx.moveTo(-9,3); ctx.lineTo(0,-19); ctx.lineTo(9,3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#eadcbe';
+    ctx.restore();
+  });
+  ctx.fillStyle='#f4e6cd';
+  ctx.beginPath(); ctx.ellipse(0,0,50,44,0,0,7); ctx.fill();
+  // 目
+  const openness=Math.max(0.06,1-relax*0.95);
+  ctx.fillStyle='#2b2333';
+  [-19,19].forEach(ex=>{
+    ctx.beginPath();
+    ctx.ellipse(ex,-4,8.5,10*openness+1.5,0,0,7); ctx.fill();
+  });
+  if(relax>0.55){ // 細めた目のライン
+    ctx.strokeStyle='#2b2333'; ctx.lineWidth=3; ctx.lineCap='round';
+    [-19,19].forEach(ex=>{ ctx.beginPath(); ctx.moveTo(ex-9,-3); ctx.quadraticCurveTo(ex,-8,ex+9,-3); ctx.stroke(); });
+  }
+  if(angry){
+    ctx.strokeStyle='#57404a';ctx.lineWidth=5;
+    [-1,1].forEach(d=>{ctx.beginPath();ctx.moveTo(d*8,-10);ctx.lineTo(d*30,-21);ctx.stroke();});
+  }
+  // 鼻と口
+  ctx.fillStyle='#d78d8d';
+  ctx.beginPath(); ctx.moveTo(-6,10); ctx.lineTo(6,10); ctx.lineTo(0,17); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#3a3040'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(0,17); ctx.quadraticCurveTo(-8,23,-14,18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,17); ctx.quadraticCurveTo(8,23,14,18); ctx.stroke();
+  if(action==='hiss'||action==='bite'){
+    ctx.fillStyle='#502936'; ctx.beginPath(); ctx.ellipse(0,25,17,action==='bite'?5+19*pulse:17,0,0,7);ctx.fill();
+    ctx.fillStyle='#fff7e9';
+    [-1,1].forEach(d=>{ctx.beginPath();ctx.moveTo(d*13,15);ctx.lineTo(d*5,15);ctx.lineTo(d*9,26);ctx.closePath();ctx.fill();});
+  }
+  // ひげ
+  ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1.6;
+  for(let k=-1;k<2;k+=1){
+    ctx.beginPath(); ctx.moveTo(-16,10+k*5); ctx.lineTo(-56,4+k*9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(16,10+k*5); ctx.lineTo(56,4+k*9); ctx.stroke();
+  }
+  ctx.restore();
+  ctx.restore();
+
+  // ゴロゴロの音符
+  if(relax>0.7){
+    ctx.save(); ctx.globalAlpha=0.5*(relax-0.7)/0.3;
+    ctx.fillStyle='#ffca7a'; ctx.font=(16)+'px sans-serif';
+    for(let k=0;k<3;k++){
+      const ph=(tm*0.5+k*0.33)%1;
+      ctx.globalAlpha=(1-ph)*0.7*((relax-0.7)/0.3);
+      ctx.fillText('♪',cx+50+k*16,cy-70-ph*46);
+    }
+    ctx.restore();
+  }
+  // リアクション文字
+  if(S.react){
+    const age=(performance.now()-S.t0)/1000-S.reactT;
+    if(age<1.3){
+      ctx.save();
+      ctx.globalAlpha=Math.max(0,1-age/1.3);
+      ctx.fillStyle=S.react.good?'#a9e3d2':'#f0937f';
+      ctx.font='700 20px "Hiragino Maru Gothic ProN",sans-serif';
+      ctx.textAlign='center';
+      ctx.fillText(S.react.f,cx+Math.min(W,H)*0.17,cy-58-age*22);
+      ctx.restore(); ctx.textAlign='start';
+    } else S.react=null;
+  }
+}
+
+function drawXylo(){
+  // 枠
+  ctx.fillStyle='#4a3524';
+  ctx.fillRect(W*.025,H*.60,W*.95,H*.05);
+  ctx.fillRect(W*.025,H*.79,W*.95,H*.05);
+  ctx.fillStyle='#d8c6a5';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('低い音  ←     ド レ ミ ファ ソ ラ シ ド     →  高い音',W/2,H*.94);
+  ctx.textAlign='start';
+  const HUE=[8,34,52,96,168,200,244,286];
+  for(let i=0;i<8;i++){
+    const k=keys[i], f=S.keyFlash[i];
+    ctx.save();
+    ctx.translate(0,f*3);
+    ctx.fillStyle='rgba(0,0,0,.35)';
+    ctx.save(); ctx.translate(0,5); ctx.fill(k.path); ctx.restore();
+    ctx.fillStyle='hsl('+HUE[i]+',52%,'+(50+f*22)+'%)';
+    ctx.fill(k.path);
+    ctx.fillStyle='rgba(255,255,255,'+(0.12+f*0.55)+')';
+    ctx.fillRect(k.x+6,k.y+3,k.w-12,k.h*0.3);
+    // ネジ穴
+    ctx.fillStyle='rgba(0,0,0,.35)';
+    [k.y+k.h*.16,k.y+k.h*.84].forEach(py=>{
+      ctx.beginPath(); ctx.arc(k.x+k.w/2,py,2.4,0,7); ctx.fill();
+    });
+    ctx.fillStyle='rgba(20,10,0,.7)';
+    ctx.font='600 '+Math.max(10,Math.min(15,k.h*0.42))+'px "Hiragino Maru Gothic ProN",sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(NAME[i],k.x+k.w/2,k.y+k.h/2);
+    ctx.font='10px sans-serif';ctx.fillText(KEYMAP[i].toUpperCase(),k.x+k.w/2,k.y+k.h/2+18);
+    ctx.textAlign='start'; ctx.textBaseline='alphabetic';
+    ctx.restore();
+    S.keyFlash[i]*=0.86;
+  }
+}
+
+function drawMallets(tm){
+  S.mallets=S.mallets.filter(m=>tm-m.t<.38);
+  for(const m of S.mallets){
+    const k=keys[m.i], progress=(tm-m.t)/.38;
+    const lift=reducedMotion.matches?0:Math.sin(Math.PI*progress)*40;
+    const x=k.x+k.w/2, y=k.y+k.h*.42-lift;
+    ctx.save();ctx.globalAlpha=Math.min(1,(1-progress)*3);ctx.lineCap='round';
+    ctx.strokeStyle='#533724';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(x+m.side*28,y+85);ctx.lineTo(x,y);ctx.stroke();
+    ctx.strokeStyle='#d9ac70';ctx.lineWidth=5;ctx.stroke();
+    ctx.fillStyle='#f9d69b';ctx.beginPath();ctx.arc(x,y,Math.min(13,k.w*.38),0,7);ctx.fill();
+    ctx.restore();
+  }
+}
+function drawAttack(){
+  const now=(performance.now()-S.t0)/1000, age=now-S.actionT;
+  if(now>=S.actionEnd || !['scratch','bite'].includes(S.action)) return;
+  ctx.save();ctx.globalAlpha=Math.max(0,Math.sin(age/(S.actionEnd-S.actionT)*Math.PI));
+  ctx.strokeStyle='#ffd3ac';ctx.lineWidth=4;ctx.lineCap='round';
+  if(S.action==='scratch'){
+    for(let j=-1;j<=1;j++){ctx.beginPath();ctx.moveTo(W*.45+j*16,H*.44);ctx.lineTo(W*.57+j*16,H*.56);ctx.stroke();}
+  }else{
+    ctx.font='bold 26px sans-serif';ctx.textAlign='center';ctx.fillStyle='#ffca7a';ctx.fillText('カプッ！',W/2,H*.54);
+  }
+  ctx.restore();
+}
+const moodEl=document.getElementById('mood'), timeEl=document.getElementById('time'), barEl=document.getElementById('bar');
+function moodText(){
+  const r=S.relax;
+  if(r>=85) return 'とろけている';
+  if(r>=65) return 'ごきげん';
+  if(r>=45) return '聴いている';
+  if(r>=25) return 'そわそわ';
+  return '不機嫌';
+}
+let raf=null, previousFrame=0;
+function loop(now){
+  const tm=now/1000, dt=Math.min(.1,Math.max(0,(now-previousFrame)/1000)); previousFrame=now;
+  if(S.playing){
+    const el=(performance.now()-S.t0)/1000;
+    S.left=Math.max(0,60-el);
+    // 静けさ：叩かない時間が続くとゆっくり眠くなる
+    const last=S.hits.length?S.hits[S.hits.length-1].t:0;
+    if(el-last>3 && S.relax<50) S.relax=Math.min(50,S.relax+dt*2);
+    if(S.relax>=45) S.warned=false;
+    timeEl.textContent=Math.ceil(S.left);
+    barEl.style.width=S.relax+'%';
+    barEl.style.background=S.relax>=55?'#8fd0c0':(S.relax>=30?'#e5c07b':'#e2735f');
+    moodEl.textContent=moodText()+' · 満足度 '+Math.round(S.relax)+'/100';
+    if(S.left<=0) finish();
+  }
+  drawRoom(tm); drawXylo(); drawCat(tm); drawMallets(tm); drawAttack();
+  raf=requestAnimationFrame(loop);
+}
+
+/* ---------- 結果 ---------- */
+const TIERS=[
+  {min:85,v:'完全にとろけた',
+   m:'ニャーン　ニャニャーン　ニャ〜〜〜〜',
+   t:'骨がなくなったみたい。低いところをゆっくり鳴らしてくれたでしょう。あの間（ま）がいちばん良かった。このまま朝まで寝るね。'},
+  {min:65,v:'ごきげん',
+   m:'ニャニャッ　ニャーン　ニャッ',
+   t:'なかなか良かったよ。下りていく音の並びが好き。もう少し静かな間があれば、完全に寝落ちしていたと思う。'},
+  {min:45,v:'まあまあ',
+   m:'ニャー…　ニャッ、ニャニャ',
+   t:'聴いてはいた。悪くはないけど落ち着ききれなかった。次はもっとゆっくり、低いところから始めてほしい。'},
+  {min:25,v:'そわそわ',
+   m:'ニャッ！　ニャニャッ　ニャー',
+   t:'落ち着かなかった。高いところを続けて叩かれると背中がびくっとする。速さより間を大事にして。'},
+  {min:-1,v:'不機嫌',
+   m:'シャーッ　ニャッニャッ　ニャーッ！',
+   t:'うるさい。連打はやめて。今日はもう向こうの部屋で寝る。明日はドから、ひと呼吸おいて鳴らして。'}
+];
+function finish(){
+  S.playing=false;
+  const tier=TIERS.find(t=>S.relax>=t.min);
+  let best=null,worst=null;
+  for(const k in S.tally){
+    if(PAT[k].d>0 && (!best||S.tally[k]>S.tally[best])) best=k;
+    if(PAT[k].d<0 && (!worst||S.tally[k]>S.tally[worst])) worst=k;
+  }
+  document.getElementById('verdict').textContent='くつろぎ度 '+Math.round(S.relax)+'／100　'+tier.v;
+  const meowEl=document.getElementById('meow'), transEl=document.getElementById('trans');
+  meowEl.textContent=''; transEl.classList.remove('on');
+  transEl.textContent='猫語の訳：'+tier.t;
+  document.getElementById('stats').innerHTML=
+    '叩いた回数　'+S.total+'回<br>'+
+    '刺さった鳴らし方　'+(best?PAT[best].n:'なし')+'<br>'+
+    '嫌がった鳴らし方　'+(worst?PAT[worst].n:'なし');
+  document.getElementById('result').classList.remove('hide');
+  // 猫語を一文字ずつ
+  const chars=[...tier.m]; let idx=0;
+  (function type(){
+    if(idx<chars.length){ meowEl.textContent+=chars[idx++]; S.resultTimer=setTimeout(type,70); }
+    else S.resultTimer=setTimeout(()=>transEl.classList.add('on'),400);
+  })();
+  if(S.relax>=65) purr(); else if(S.relax<30) catVoice('hiss');
+}
+
+/* ---------- 入力 ---------- */
+function press(px,py){ const i=pick(px,py); if(i>=0) hit(i); }
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  cv.setPointerCapture(e.pointerId);
+  const r=cv.getBoundingClientRect();
+  press(e.clientX-r.left,e.clientY-r.top);
+});
+window.addEventListener('keydown',e=>{
+  if(e.repeat) return;
+  const i=KEYMAP.indexOf(e.key.toLowerCase());
+  if(i>=0){ e.preventDefault(); hit(i); }
+});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('dblclick',e=>e.preventDefault());
+function start(){
+  clearTimeout(S.resultTimer);
+  S.action='listen'; S.actionT=0; S.actionEnd=0; S.attackNext=0; S.attacks=0; S.warned=false;
+  S.mallets=[]; S.lastGood=-99; S.lastPurr=-99; S.keyFlash.fill(0);
+  if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(err){} }
+  if(AC&&AC.state==='suspended') AC.resume();
+  S.playing=true; S.t0=performance.now(); S.relax=50; S.hits=[]; S.tally={}; S.total=0; S.react=null;
+  document.getElementById('start').classList.add('hide');
+  document.getElementById('result').classList.add('hide');
+}
+document.getElementById('go').addEventListener('click',start);
+document.getElementById('again').addEventListener('click',start);
+
+resize();
+raf=requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
