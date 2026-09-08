@@ -80,7 +80,7 @@
       <div class="keys">
         そっと歩く：矢印／WASD・画面ドラッグ（浅く）<br>
         ダッシュ：Shift・ドラッグを深く（速いけどバレやすい／おなかも減る）<br>
-        観葉植物やダンボールの上では姿が消える
+        物かげ（植木・木箱・机・岩かげ）の上では姿が消える
       </div>
     </div>
   </div>
@@ -313,6 +313,25 @@ const LEVELS = [
     {path:[[14,9],[14,1]],  sp:72, range:5.2} ]},
 ];
 
+
+/* ============ ステージごとの見た目テーマ ============
+   bg:下地 f1/f2:床の市松 floor:床の様式 w1:構築物の地色 wall:構築物の様式
+   hide:隠れ場所の様式 hu/hair/hat:そこにいる人 vig:暗がりの色 acc:差し色 */
+const THEMES = [
+/*1 キッチン*/{coneRGB:"245,185,92",bg:"#141026",f1:"#241d3a",f2:"#2b2244",floor:"tile" ,w1:"#0d0a1a",wall:"counter" ,hide:"plant" ,hu:"#5a5f86",hair:"#332a44",hat:null   ,vig:"#000000aa",acc:"#f5b95c"},
+/*2 リビング*/{coneRGB:"245,185,92",bg:"#161029",f1:"#2a2140",f2:"#322a4c",floor:"rug"  ,w1:"#120c1e",wall:"sofa"    ,hide:"plant" ,hu:"#5a5f86",hair:"#332a44",hat:null   ,vig:"#000000aa",acc:"#f5b95c"},
+/*3 食卓  */{coneRGB:"255,208,138",bg:"#1a1026",f1:"#2a1e34",f2:"#33253f",floor:"wood" ,w1:"#1a1020",wall:"table"   ,hide:"plant" ,hu:"#6a5f86",hair:"#3a2a3a",hat:null   ,vig:"#0a0006aa",acc:"#ffd08a"},
+/*4 魚市場*/{coneRGB:"160,225,235",bg:"#0b171c",f1:"#14212a",f2:"#1a2932",floor:"wet"  ,w1:"#0c1a20",wall:"crate"   ,hide:"crate" ,hu:"#3f6f7a",hair:"#22303a",hat:"towel",vig:"#00131aaa",acc:"#7fe0e8"},
+/*5 商店街*/{coneRGB:"255,159,67",bg:"#150d1f",f1:"#221c2e",f2:"#292236",floor:"pave" ,w1:"#170f22",wall:"shop"    ,hide:"awning",hu:"#6b4f7a",hair:"#2e2440",hat:null   ,vig:"#12061aaa",acc:"#ff9f43"},
+/*6 学校  */{coneRGB:"159,232,255",bg:"#0d1420",f1:"#1c2431",f2:"#212a39",floor:"lino" ,w1:"#101826",wall:"desk"    ,hide:"desk"  ,hu:"#45507c",hair:"#241d2e",hat:null   ,vig:"#050d1aaa",acc:"#9fe8ff"},
+/*7 港    */{coneRGB:"255,216,107",bg:"#0a151d",f1:"#241d18",f2:"#2b231c",floor:"plank",w1:"#14202a",wall:"cargo"   ,hide:"crate" ,hu:"#4a6b52",hair:"#222c22",hat:"cap"  ,vig:"#00121faa",acc:"#ffd86b"},
+/*8 船の中*/{coneRGB:"159,232,255",bg:"#0a1018",f1:"#171e26",f2:"#1c242d",floor:"deck" ,w1:"#0e161f",wall:"bulkhead",hide:"crate" ,hu:"#3d5a7a",hair:"#1e2a36",hat:"cap"  ,vig:"#0a0f1aaa",acc:"#9fe8ff"},
+/*9 水族館*/{coneRGB:"127,224,232",bg:"#04141d",f1:"#08161f",f2:"#0b1d28",floor:"aqua" ,w1:"#071a26",wall:"tank"    ,hide:"coral" ,hu:"#2f5f6b",hair:"#16303a",hat:null   ,vig:"#001a2aaa",acc:"#7fe0e8"},
+/*10 砂漠 */{coneRGB:"255,208,138",bg:"#150e06",f1:"#2a2013",f2:"#32271a",floor:"sand" ,w1:"#241a0e",wall:"rock"    ,hide:"cactus",hu:"#8a6a44",hair:"#3a2a18",hat:"hood" ,vig:"#160c00cc",acc:"#ffd08a"},
+];
+let TH = THEMES[0];
+const hsh = (x,y)=>(((x*73856093)^(y*19349663))>>>0);
+
 /* ============ 音（依存なしの小さなブリップ） ============ */
 let ac=null;
 function beep(freq, dur=.09, type="triangle", vol=.16, slideTo=null){
@@ -385,6 +404,7 @@ function readInput(){
 /* ============ ステージ構築 ============ */
 function buildLevel(n){
   const L = LEVELS[n];
+  TH = THEMES[n] || THEMES[0];
   grid = L.map.map(r => (r+"################").slice(0,W).split(''));
   while(grid.length<H) grid.push("################".split(''));
   items = []; fishNeed = 0; fishGot = 0;
@@ -571,7 +591,7 @@ function gameOver(){
   show(`<h1>おなかがぺこぺこ<span class="sub">GAME OVER</span></h1>
     <p>${LEVELS[lv].name} で力尽きた。おさかな ${totalFish}匹。<br>
     走るとバレにくい代わりに、おなかは倍速で減る。<br>
-    かくれ場所（観葉植物・ダンボール）は視線を完全に切れる。</p>`, "もういちど");
+    かくれ場所（その場所ごとの物かげ）は視線を完全に切れる。</p>`, "もういちど");
 }
 
 /* ============ 描画 ============ */
@@ -579,17 +599,10 @@ function draw(){
   ctx.save();
   if(shake>0){ const s=shake*7; ctx.translate((Math.random()-.5)*s,(Math.random()-.5)*s); }
 
-  /* 床 */
-  ctx.fillStyle = "#141026"; ctx.fillRect(0,0,CW,CH);
+  /* 床・構築物（ステージごとに変わる） */
+  ctx.fillStyle = TH.bg; ctx.fillRect(0,0,CW,CH);
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-    const c = grid[y][x];
-    if(c==='#'){
-      ctx.fillStyle = "#0d0a1a"; ctx.fillRect(x*T,y*T,T,T);
-      ctx.fillStyle = "#ffffff0d"; ctx.fillRect(x*T,y*T,T,3);
-    }else{
-      ctx.fillStyle = ((x+y)%2===0) ? "#241d3a" : "#2b2244";
-      ctx.fillRect(x*T,y*T,T,T);
-    }
+    if(grid[y][x]==='#') drawWallTile(x,y); else drawFloorTile(x,y);
   }
   /* かくれ場所 */
   for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(grid[y][x]==='h') drawHide(x*T+T/2, y*T+T/2);
@@ -611,7 +624,7 @@ function draw(){
 
   /* 暗がりのビネット */
   const g = ctx.createRadialGradient(CW/2,CH/2,CH*0.3, CW/2,CH/2,CH*0.86);
-  g.addColorStop(0,"#00000000"); g.addColorStop(1,"#000000aa");
+  g.addColorStop(0,"#00000000"); g.addColorStop(1,TH.vig);
   ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH);
 
   if(grace>0 && state===S.PLAY){
@@ -623,29 +636,215 @@ function draw(){
   ctx.restore();
 }
 
+/* ---- 床：ステージごとの地面 ---- */
+function drawFloorTile(x,y){
+  const px=x*T, py=y*T, h=hsh(x,y);
+  ctx.fillStyle = ((x+y)%2===0) ? TH.f1 : TH.f2;
+  ctx.fillRect(px,py,T,T);
+  switch(TH.floor){
+    case 'rug':   /* リビング：中央にラグ */
+      if(x>4&&x<11&&y>4&&y<9){ ctx.fillStyle="#ffffff08"; ctx.fillRect(px,py,T,T); }
+      break;
+    case 'wood':  /* 食卓：フローリング */
+      ctx.fillStyle="#00000026"; ctx.fillRect(px,py+T-3,T,2);
+      ctx.fillStyle="#ffffff08"; ctx.fillRect(px+(h%3)*13,py+4,2,T-8);
+      break;
+    case 'wet':   /* 魚市場：濡れたコンクリと水たまり */
+      if(h%6===0){ ctx.fillStyle="#7fe0e81a"; ctx.beginPath();
+        ctx.ellipse(px+T/2,py+T/2,13,7,0,0,7); ctx.fill(); }
+      ctx.strokeStyle="#00000030"; ctx.lineWidth=1; ctx.strokeRect(px+.5,py+.5,T-1,T-1);
+      break;
+    case 'pave':  /* 商店街：石畳 */
+      ctx.strokeStyle="#ffffff0a"; ctx.lineWidth=1;
+      ctx.strokeRect(px+.5,py+.5,T/2-1,T-1); ctx.strokeRect(px+T/2+.5,py+.5,T/2-1,T-1);
+      break;
+    case 'lino':  /* 学校：リノリウムの目地 */
+      ctx.strokeStyle="#ffffff0c"; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(px+T,py); ctx.lineTo(px+T,py+T);
+      ctx.moveTo(px,py+T); ctx.lineTo(px+T,py+T); ctx.stroke();
+      break;
+    case 'plank': /* 港：木の桟橋 */
+      ctx.fillStyle="#00000038"; ctx.fillRect(px,py+12,T,2); ctx.fillRect(px,py+26,T,2);
+      ctx.fillStyle="#ffffff0a"; ctx.fillRect(px,py+14,T,1);
+      if(h%9===0){ ctx.fillStyle="#00000055"; ctx.fillRect(px+6,py+18,3,3); }
+      break;
+    case 'deck':  /* 船：鉄板とリベット */
+      ctx.strokeStyle="#ffffff0c"; ctx.lineWidth=1; ctx.strokeRect(px+2.5,py+2.5,T-5,T-5);
+      ctx.fillStyle="#ffffff14";
+      [6,T-7].forEach(a=>[6,T-7].forEach(b=>ctx.fillRect(px+a,py+b,2,2)));
+      break;
+    case 'aqua':  /* 水族館：水の揺らぎ */
+      { const w=Math.sin((px*0.05+py*0.03)+performance.now()/1100);
+        ctx.fillStyle=`rgba(127,224,232,${(0.05+0.045*w).toFixed(3)})`; ctx.fillRect(px,py,T,T); }
+      break;
+    case 'sand':  /* 砂漠：風紋 */
+      ctx.strokeStyle="#ffffff0d"; ctx.lineWidth=1.5; ctx.beginPath();
+      ctx.moveTo(px, py+9+(h%7));
+      ctx.quadraticCurveTo(px+T/2, py+3+(h%9), px+T, py+11+(h%6));
+      ctx.stroke();
+      if(h%11===0){ ctx.fillStyle="#00000030"; ctx.beginPath();
+        ctx.ellipse(px+T/2,py+T-8,7,3,0,0,7); ctx.fill(); }
+      break;
+  }
+}
+
+/* ---- 構築物：ステージごとに「置いてあるもの」を変える ---- */
+function drawWallTile(x,y){
+  const px=x*T, py=y*T, h=hsh(x,y);
+  ctx.fillStyle = TH.w1; ctx.fillRect(px,py,T,T);
+  switch(TH.wall){
+    case 'counter': /* キッチン：調理台と引き出し */
+      ctx.fillStyle="#ffffff16"; ctx.fillRect(px,py,T,4);
+      ctx.strokeStyle="#ffffff10"; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(px+T/2,py+8); ctx.lineTo(px+T/2,py+T-5); ctx.stroke();
+      ctx.fillStyle="#ffffff1c"; ctx.fillRect(px+8,py+15,7,2); ctx.fillRect(px+T-15,py+15,7,2);
+      break;
+    case 'sofa':    /* リビング：ソファと棚 */
+      ctx.fillStyle="#ffffff12"; ctx.fillRect(px+2,py+5,T-4,T-9);
+      ctx.strokeStyle="#00000055"; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(px+T/2,py+7); ctx.lineTo(px+T/2,py+T-7); ctx.stroke();
+      ctx.fillStyle="#ffffff08"; ctx.fillRect(px+2,py+3,T-4,3);
+      break;
+    case 'table':   /* 食卓：テーブルクロスと木肌 */
+      ctx.fillStyle="#ffffff10"; ctx.fillRect(px,py+2,T,T-4);
+      ctx.fillStyle=TH.acc+"22"; ctx.fillRect(px,py+2,T,4);
+      ctx.strokeStyle="#00000044"; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(px,py+T-6); ctx.lineTo(px+T,py+T-6); ctx.stroke();
+      break;
+    case 'crate':   /* 魚市場：氷の入った木箱 */
+      ctx.fillStyle="#4a3a28"; ctx.fillRect(px+1,py+8,T-2,T-9);
+      ctx.fillStyle="#00000044";
+      ctx.fillRect(px+1,py+16,T-2,2); ctx.fillRect(px+1,py+27,T-2,2);
+      ctx.fillStyle="#a6c2ca"; ctx.fillRect(px+1,py+2,T-2,8);
+      ctx.fillStyle="#ffffff3d"; ctx.fillRect(px+3,py+3,T-8,2);
+      if(h%3===0){ ctx.fillStyle="#7fe0e8aa"; ctx.beginPath();
+        ctx.ellipse(px+T/2,py+6,7,3,0,0,7); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px+T/2+6,py+6); ctx.lineTo(px+T/2+11,py+3);
+        ctx.lineTo(px+T/2+11,py+9); ctx.closePath(); ctx.fill(); }
+      break;
+    case 'shop':    /* 商店街：シャッターと日よけ */
+      ctx.fillStyle="#ffffff0e";
+      for(let i=9;i<T-2;i+=5) ctx.fillRect(px+2,py+i,T-4,2);
+      ctx.fillStyle=TH.acc+"55"; ctx.fillRect(px,py,T,7);
+      ctx.fillStyle="#ffffff33";
+      for(let i=0;i<T;i+=12) ctx.fillRect(px+i,py,6,7);
+      break;
+    case 'desk':    /* 学校：机とロッカー */
+      ctx.fillStyle="#ffffff08"; ctx.fillRect(px+1,py+1,T-2,T-2);
+      ctx.fillStyle="#c9a97a"; ctx.fillRect(px+4,py+11,T-8,5);
+      ctx.fillStyle="#00000055"; ctx.fillRect(px+7,py+16,3,12); ctx.fillRect(px+T-10,py+16,3,12);
+      ctx.fillStyle="#5a6480"; ctx.fillRect(px+9,py+24,T-18,8);
+      break;
+    case 'cargo':   /* 港：コンテナ */
+      ctx.fillStyle = (h%3===0)?"#3d5a4a":(h%3===1)?"#54463a":"#3a4a5e";
+      ctx.fillRect(px+1,py+3,T-2,T-6);
+      ctx.fillStyle="#00000033";
+      for(let i=4;i<T-2;i+=6) ctx.fillRect(px+i,py+3,2,T-6);
+      ctx.fillStyle="#ffffff14"; ctx.fillRect(px+1,py+3,T-2,2);
+      ctx.fillStyle=TH.acc+"44"; ctx.fillRect(px+1,py+T-9,T-2,2);
+      break;
+    case 'bulkhead':/* 船：隔壁とパイプ */
+      ctx.fillStyle="#28323d"; ctx.fillRect(px+1,py+1,T-2,T-2);
+      ctx.fillStyle="#ffffff10"; ctx.fillRect(px+1,py+1,T-2,3);
+      ctx.fillStyle="#5a6a78"; ctx.fillRect(px+4,py+T-13,T-8,4);
+      ctx.fillStyle="#ffffff22";
+      [5,T-7].forEach(a=>[7,T-9].forEach(b=>ctx.fillRect(px+a,py+b,3,3)));
+      if(h%4===0){ ctx.strokeStyle="#7fe0e844"; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(px+T/2,py+T/2,8,0,7); ctx.stroke(); }
+      break;
+    case 'tank':    /* 水族館：ガラス水槽と魚影 */
+      ctx.fillStyle="#0d3b4d"; ctx.fillRect(px+1,py+1,T-2,T-2);
+      { const w=Math.sin(px*0.06+performance.now()/900);
+        ctx.fillStyle=`rgba(127,224,232,${(0.10+0.06*w).toFixed(3)})`;
+        ctx.fillRect(px+1,py+1,T-2,T-2); }
+      ctx.fillStyle="#ffffff22"; ctx.fillRect(px+3,py+3,3,T-6);
+      if(h%3!==0){ ctx.fillStyle="#04212caa";
+        const fy=py+12+(h%14);
+        ctx.beginPath(); ctx.ellipse(px+T/2,fy,8,4,0,0,7); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px+T/2+7,fy); ctx.lineTo(px+T/2+13,fy-4);
+        ctx.lineTo(px+T/2+13,fy+4); ctx.closePath(); ctx.fill(); }
+      ctx.strokeStyle="#9fe8ff33"; ctx.lineWidth=1.5; ctx.strokeRect(px+1.5,py+1.5,T-3,T-3);
+      break;
+    case 'rock':    /* 砂漠：岩とサボテン */
+      ctx.fillStyle="#2e2411"; ctx.beginPath();
+      ctx.ellipse(px+T/2,py+T/2+3,T/2-1,T/2-3,0,0,7); ctx.fill();
+      ctx.fillStyle="#3d3018"; ctx.beginPath();
+      ctx.ellipse(px+T/2-4,py+T/2-2,T/2-7,T/2-9,0,0,7); ctx.fill();
+      ctx.fillStyle="#00000044"; ctx.beginPath();
+      ctx.ellipse(px+T/2,py+T-6,T/2-4,4,0,0,7); ctx.fill();
+      if(h%5===0){
+        const cx0=px+T/2, cy0=py+T-7;
+        ctx.fillStyle="#3f6b46";
+        ctx.fillRect(cx0-3,cy0-24,6,24);
+        ctx.fillRect(cx0-10,cy0-15,7,4); ctx.fillRect(cx0-10,cy0-21,4,7);
+        ctx.fillRect(cx0+3,cy0-18,7,4);  ctx.fillRect(cx0+6,cy0-24,4,7);
+        ctx.fillStyle="#2f5236"; ctx.fillRect(cx0-1,cy0-24,2,24); }
+      break;
+  }
+}
+
 function drawHide(cx,cy){
   ctx.save(); ctx.translate(cx,cy); ctx.scale(GS,GS);
   ctx.fillStyle="#00000055"; ctx.beginPath(); ctx.ellipse(0,12,15,6,0,0,7); ctx.fill();
-  ctx.fillStyle="#3b6b4a";
-  for(let i=0;i<5;i++){
-    const a = -Math.PI/2 + (i-2)*0.5;
-    ctx.save(); ctx.rotate(a);
-    ctx.beginPath(); ctx.ellipse(0,-11,5,14,0,0,7); ctx.fill();
-    ctx.restore();
+  switch(TH.hide){
+    case 'crate':   /* 木箱の陰 */
+      ctx.fillStyle="#5b452e"; ctx.fillRect(-14,-10,28,22);
+      ctx.fillStyle="#3a2c1c"; ctx.fillRect(-14,-3,28,3); ctx.fillRect(-14,5,28,3);
+      ctx.fillStyle="#74593c"; ctx.fillRect(-14,-13,28,5);
+      ctx.fillStyle="#00000055"; ctx.fillRect(-4,-13,8,25);
+      break;
+    case 'awning':  /* 店先の日よけ */
+      ctx.fillStyle="#7a3c4a"; ctx.beginPath();
+      ctx.moveTo(-16,-6); ctx.lineTo(16,-6); ctx.lineTo(12,8); ctx.lineTo(-12,8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle="#e8e0d0";
+      for(let i=-14;i<14;i+=9){ ctx.beginPath();
+        ctx.moveTo(i,-6); ctx.lineTo(i+4,-6); ctx.lineTo(i+3,8); ctx.lineTo(i-1,8); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle="#00000044"; ctx.fillRect(-12,8,24,4);
+      break;
+    case 'desk':    /* 机の下 */
+      ctx.fillStyle="#c9a97a"; ctx.fillRect(-15,-8,30,6);
+      ctx.fillStyle="#00000066"; ctx.fillRect(-13,-2,26,12);
+      ctx.fillStyle="#7a6244"; ctx.fillRect(-13,-2,3,14); ctx.fillRect(10,-2,3,14);
+      ctx.fillStyle="#5a6480"; ctx.fillRect(-6,2,12,8);
+      break;
+    case 'coral':   /* 水草のかげ */
+      ctx.fillStyle="#2f7a6a";
+      for(let i=0;i<5;i++){ const a=-Math.PI/2+(i-2)*0.42;
+        ctx.save(); ctx.rotate(a);
+        ctx.beginPath(); ctx.ellipse(0,-12,4,15,0,0,7); ctx.fill(); ctx.restore(); }
+      ctx.fillStyle="#e0764a";
+      ctx.beginPath(); ctx.ellipse(-7,4,5,4,0,0,7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(6,6,4,3,0,0,7); ctx.fill();
+      ctx.fillStyle="#3a2c1c"; ctx.fillRect(-10,8,20,5);
+      break;
+    case 'cactus':  /* 岩かげのサボテン */
+      ctx.fillStyle="#4a3a22"; ctx.beginPath(); ctx.ellipse(2,7,15,8,0,0,7); ctx.fill();
+      ctx.fillStyle="#3f6b46";
+      ctx.fillRect(-4,-16,8,24);
+      ctx.fillRect(-13,-8,9,6); ctx.fillRect(-13,-14,5,8);
+      ctx.fillRect(4,-11,9,6);  ctx.fillRect(8,-17,5,8);
+      ctx.fillStyle="#2f5236"; ctx.fillRect(-2,-16,2,24);
+      break;
+    default:        /* 観葉植物とダンボール */
+      ctx.fillStyle="#3b6b4a";
+      for(let i=0;i<5;i++){ const a=-Math.PI/2+(i-2)*0.5;
+        ctx.save(); ctx.rotate(a);
+        ctx.beginPath(); ctx.ellipse(0,-11,5,14,0,0,7); ctx.fill(); ctx.restore(); }
+      ctx.fillStyle="#7a5136"; ctx.fillRect(-9,6,18,10);
+      ctx.fillStyle="#5d3c28"; ctx.fillRect(-9,6,18,3);
   }
-  ctx.fillStyle="#7a5136"; ctx.fillRect(-9,6,18,10);
-  ctx.fillStyle="#5d3c28"; ctx.fillRect(-9,6,18,3);
   ctx.restore();
 }
 function drawDoor(cx,cy){
   ctx.save(); ctx.translate(cx,cy); ctx.scale(GS,GS);
   const pulse = 0.5+0.5*Math.sin(performance.now()/420);
   const ready = fishGot>=fishNeed;
-  ctx.fillStyle = ready ? `rgba(245,185,92,${0.16+0.14*pulse})` : "rgba(245,185,92,0.07)";
+  const glow = TH.coneRGB || "245,185,92";
+  ctx.fillStyle = ready ? `rgba(${glow},${0.16+0.14*pulse})` : `rgba(${glow},0.07)`;
   ctx.beginPath(); ctx.arc(0,0,ready?30+4*pulse:22,0,7); ctx.fill();
   ctx.fillStyle="#6b4f7a"; ctx.beginPath(); ctx.ellipse(0,4,17,12,0,0,7); ctx.fill();
   ctx.fillStyle="#8e6ba0"; ctx.beginPath(); ctx.ellipse(0,1,13,9,0,0,7); ctx.fill();
-  ctx.fillStyle= ready?"#f5b95c":"#4a3a5e"; ctx.font="bold 13px system-ui"; ctx.textAlign="center";
+  ctx.fillStyle= ready?TH.acc:"#4a3a5e"; ctx.font="bold 13px system-ui"; ctx.textAlign="center";
   ctx.fillText("ねどこ",0,-16);
   ctx.restore();
 }
@@ -680,8 +879,9 @@ function drawCone(h){
   }
   ctx.closePath();
   const g = ctx.createRadialGradient(h.x,h.y,4,h.x,h.y,range);
-  const c1 = alert>0.05 ? `rgba(255,93,122,${0.16+0.28*alert})` : "rgba(245,185,92,0.20)";
-  const c2 = alert>0.05 ? `rgba(255,93,122,0)` : "rgba(245,185,92,0)";
+  const cone = TH.coneRGB || "245,185,92";
+  const c1 = alert>0.05 ? `rgba(255,93,122,${0.16+0.28*alert})` : `rgba(${cone},0.20)`;
+  const c2 = alert>0.05 ? `rgba(255,93,122,0)` : `rgba(${cone},0)`;
   g.addColorStop(0,c1); g.addColorStop(1,c2);
   ctx.fillStyle=g; ctx.fill();
   ctx.restore();
@@ -692,10 +892,23 @@ function drawHuman(h){
   ctx.fillStyle="#00000066"; ctx.beginPath(); ctx.ellipse(0,13,14,6,0,0,7); ctx.fill();
   /* 体 */
   ctx.rotate(h.ang+Math.PI/2);
-  ctx.fillStyle="#5a5f86"; ctx.beginPath(); ctx.ellipse(sway*0.4,0,13,11,0,0,7); ctx.fill();
+  ctx.fillStyle=TH.hu; ctx.beginPath(); ctx.ellipse(sway*0.4,0,13,11,0,0,7); ctx.fill();
+  if(TH.hat==='towel'||TH.hat==='cap'){   /* 市場の前掛け・作業着の胸当て */
+    ctx.fillStyle="#ffffff1e"; ctx.fillRect(-6,-2,12,10);
+  }
   /* 頭 */
   ctx.fillStyle="#e8c39a"; ctx.beginPath(); ctx.arc(0,-3,9,0,7); ctx.fill();
-  ctx.fillStyle="#332a44"; ctx.beginPath(); ctx.arc(0,-3,9,Math.PI*0.05,Math.PI*0.95); ctx.fill();
+  ctx.fillStyle=TH.hair; ctx.beginPath(); ctx.arc(0,-3,9,Math.PI*0.05,Math.PI*0.95); ctx.fill();
+  if(TH.hat==='towel'){                   /* 魚市場：ねじり鉢巻き */
+    ctx.fillStyle="#e8eef0"; ctx.fillRect(-9,-7,18,4);
+    ctx.fillStyle="#c9d3d6"; ctx.fillRect(6,-9,5,3);
+  }else if(TH.hat==='cap'){               /* 港・船：帽子とつば */
+    ctx.fillStyle="#20303f"; ctx.beginPath(); ctx.arc(0,-4,9.4,Math.PI,0); ctx.fill();
+    ctx.fillStyle="#2c4256"; ctx.fillRect(-9,-13,18,4);
+  }else if(TH.hat==='hood'){              /* 砂漠：かぶりもの */
+    ctx.fillStyle="#d9c39a"; ctx.beginPath(); ctx.arc(0,-3,10.5,Math.PI*0.92,Math.PI*0.08); ctx.fill();
+    ctx.fillStyle="#c2ad86"; ctx.fillRect(-11,-4,22,7);
+  }
   /* 鼻先＝向き */
   ctx.fillStyle="#f2d3b0"; ctx.beginPath(); ctx.arc(0,-11,3.2,0,7); ctx.fill();
   ctx.restore();
