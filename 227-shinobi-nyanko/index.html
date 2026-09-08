@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>しのびニャンコ ｜ おさかな大作戦</title>
+<style>
+  :root{
+    --night:#141026;      /* 部屋の暗がり */
+    --floor:#241d3a;      /* 床 */
+    --floor2:#2b2244;
+    --wall:#0d0a1a;       /* 壁・家具 */
+    --lamp:#f5b95c;       /* ランプの光 */
+    --fish:#7fe0e8;       /* おさかな */
+    --danger:#ff5d7a;     /* 見つかった */
+    --cream:#f6e6c9;      /* ニャンコ */
+    --ink:#efe7ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% 0%, #2a1f45 0%, var(--night) 60%, #0b0817 100%);
+    color:var(--ink);
+    font-family:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN","Yu Gothic","游ゴシック体",-apple-system,sans-serif;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;touch-action:none;
+  }
+  #wrap{width:min(100vw,760px);padding:8px;display:flex;flex-direction:column;gap:8px}
+  #hud{display:flex;align-items:center;gap:8px;font-size:15px;line-height:1}
+  #stage{font-weight:700;letter-spacing:.02em;white-space:nowrap}
+  #stage small{opacity:.6;font-weight:400}
+  #bar{flex:1;height:16px;border-radius:8px;background:#0d0a1a;overflow:hidden;position:relative;box-shadow:inset 0 0 0 1px #ffffff1a}
+  #barfill{height:100%;width:100%;background:linear-gradient(90deg,#ff9f43,#ffd86b);transition:width .12s linear}
+  #barfill.low{background:linear-gradient(90deg,#ff3d5f,#ff8a5c);animation:pulse .6s infinite alternate}
+  @keyframes pulse{to{filter:brightness(1.45)}}
+  #fishcount{white-space:nowrap;font-weight:700;color:var(--fish)}
+  #screen{position:relative;border-radius:14px;overflow:hidden;box-shadow:0 18px 40px #0008, inset 0 0 0 1px #ffffff14}
+  canvas{display:block;width:100%;height:auto;image-rendering:auto;background:var(--night)}
+  #overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;text-align:center;padding:24px;background:#0b0817e6;backdrop-filter:blur(3px);
+    pointer-events:none}
+  #overlay button{pointer-events:auto}
+  #overlay.hide{display:none}
+  #overlay h1{font-size:clamp(22px,5.4vw,34px);letter-spacing:.04em;line-height:1.25}
+  #overlay h1 .sub{display:block;font-size:.44em;opacity:.72;margin-top:8px;letter-spacing:.12em}
+  #overlay p{font-size:clamp(12px,3.2vw,15px);line-height:1.85;opacity:.86;max-width:34em}
+  #overlay .keys{font-size:12px;opacity:.6;line-height:1.9}
+  button{
+    font:inherit;font-weight:700;font-size:16px;color:#211636;
+    background:linear-gradient(180deg,#ffd98a,#f5b95c);
+    border:none;border-radius:999px;padding:13px 34px;cursor:pointer;
+    box-shadow:0 6px 0 #b57f2e, 0 12px 24px #0007;
+  }
+  button:active{transform:translateY(4px);box-shadow:0 2px 0 #b57f2e,0 6px 14px #0007}
+  button:focus-visible{outline:3px solid var(--fish);outline-offset:3px}
+  #foot{display:flex;justify-content:space-between;align-items:center;font-size:12px;opacity:.55}
+  .toast{position:absolute;left:50%;top:16%;transform:translateX(-50%);
+    font-size:clamp(16px,4.6vw,24px);font-weight:700;letter-spacing:.08em;
+    color:var(--danger);text-shadow:0 0 18px #ff5d7a88;pointer-events:none;opacity:0}
+  @media (prefers-reduced-motion: reduce){#barfill.low{animation:none}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div id="stage">1F <small>キッチン</small></div>
+    <div id="bar"><div id="barfill"></div></div>
+    <div id="fishcount">🐟 0/2</div>
+  </div>
+
+  <div id="screen">
+    <canvas id="cv" width="640" height="480"></canvas>
+    <div class="toast" id="toast"></div>
+    <div id="overlay">
+      <h1>しのびニャンコ<span class="sub">おさかな大作戦</span></h1>
+      <p>夜のおうち、から始まる10の夜。人間の視界をよけて、おさかなを全部いただいて、寝床にかえるまでがごはん。<br>
+      進むほど、たどり着く場所はおかしくなっていく。おなかが空っぽになったら、その場でおねむ＝ゲームオーバー。</p>
+      <button id="btn">はじめる</button>
+      <div class="keys">
+        そっと歩く：矢印／WASD・画面ドラッグ（浅く）<br>
+        ダッシュ：Shift・ドラッグを深く（速いけどバレやすい／おなかも減る）<br>
+        観葉植物やダンボールの上では姿が消える
+      </div>
+    </div>
+  </div>
+
+  <div id="foot"><span>ねこは音を立てない。ただし全力疾走は別。</span><span id="best"></span></div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ============ 定数 ============ */
+const T = 40, W = 16, H = 12;            // タイル / 盤面
+const CW = T*W, CH = T*H;
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const overlay = document.getElementById('overlay');
+const btn = document.getElementById('btn');
+const elStage = document.getElementById('stage');
+const elFish = document.getElementById('fishcount');
+const elBar = document.getElementById('barfill');
+const elToast = document.getElementById('toast');
+const elBest = document.getElementById('best');
+
+const GS = 1.15;                         // 見た目の拡大率（スマホで小さすぎたため）
+const SNEAK = 92, RUN = 196;             // px/s
+const HUNGER_MAX = 100;
+const DRAIN_WALK = 1.25, DRAIN_RUN = 2.5;
+const FISH_FEED = 26, SNACK_FEED = 13;
+const CAUGHT_COST = 18;
+const GRACE = 1.3;                        // 開始直後の猶予(秒)
+
+/* ============ ステージ ============
+   # 壁/家具  . 床  h かくれ場所  F おさかな  s おやつ  D おうち(寝床)  C ネコ  */
+const LEVELS = [
+{ name:"1F キッチン", note:"アイランドの周りを、ひとり",
+  map:[
+  "################",
+  "#..............#",
+  "#.h..........h.#",
+  "#....######....#",
+  "#.F..#....#..F.#",
+  "#....#....#....#",
+  "#....#....#....#",
+  "#....######....#",
+  "#.h..........h.#",
+  "#..C.......sD..#",
+  "#..............#",
+  "################"],
+  humans:[ {path:[[12,2],[12,9],[3,9],[3,2]], sp:62, range:5.4} ]},
+
+{ name:"1F リビング", note:"テレビの前と、ソファのそば",
+  map:[
+  "################",
+  "#......#.......#",
+  "#.h....#....F..#",
+  "#......#.......#",
+  "#..#####...#####",
+  "#..............#",
+  "#####...########",
+  "#..F...........#",
+  "#....####...h..#",
+  "#.h..#..#...F..#",
+  "#..C.#..#...D..#",
+  "################"],
+  humans:[
+    {path:[[9,2],[13,2],[13,3],[9,3]], sp:58, range:5.2},
+    {path:[[10,8],[10,10],[13,10]],    sp:66, range:5.0} ]},
+
+{ name:"食卓", note:"家族はまだ、ごはんの途中",
+  map:[
+  "################",
+  "#..h........h..#",
+  "#..............#",
+  "#...########...#",
+  "#.F.########.F.#",
+  "#...########...#",
+  "#..............#",
+  "#....#....#....#",
+  "#..h.#..s.#..h.#",
+  "#....#....#....#",
+  "#..C.....F..D..#",
+  "################"],
+  humans:[
+    {path:[[2,2],[13,2],[13,6],[2,6]], sp:62, range:5.2},
+    {path:[[8,10],[12,10],[12,7]],     sp:66, range:5.0} ]},
+
+{ name:"魚市場", note:"目当てが多すぎるのも、それはそれで",
+  map:[
+  "################",
+  "#....F....F....#",
+  "#.####.####.##.#",
+  "#.####.####.##.#",
+  "#.h...........h#",
+  "#.##.####.####.#",
+  "#.##.####.####.#",
+  "#....F....F....#",
+  "#.####.####.##.#",
+  "#.####.####.##.#",
+  "#..C....s....D.#",
+  "################"],
+  humans:[
+    {path:[[14,1],[1,1]],   sp:66, range:5.2},
+    {path:[[1,4],[14,4]],   sp:72, range:5.4},
+    {path:[[1,7],[14,7]],   sp:70, range:5.4} ]},
+
+{ name:"商店街", note:"アーケードは、音がよく響く",
+  map:[
+  "################",
+  "#.##.##.##.##..#",
+  "#.##.##.##.##.F#",
+  "#..............#",
+  "#.h..F....F..h.#",
+  "#..............#",
+  "#.##.##.##.##..#",
+  "#.##.##.##.##.s#",
+  "#..............#",
+  "#..h........h..#",
+  "#..C........D..#",
+  "################"],
+  humans:[
+    {path:[[1,3],[14,3]],   sp:70, range:5.4},
+    {path:[[14,5],[1,5]],   sp:70, range:5.4},
+    {path:[[1,8],[14,8]],   sp:74, range:5.2},
+    {path:[[14,1],[14,8]],  sp:64, range:5.0} ]},
+
+{ name:"学校", note:"夜なのに、どの教室にも誰かいる",
+  map:[
+  "################",
+  "#F...#....#...F#",
+  "#....#.h..#....#",
+  "#.##.#....#.##.#",
+  "#....##..##....#",
+  "#..............#",
+  "######.##.######",
+  "#....#.s..#....#",
+  "#.h..#....#..h.#",
+  "#..F.#....#..F.#",
+  "#..C.......D...#",
+  "################"],
+  humans:[
+    {path:[[1,5],[14,5]],            sp:74, range:5.6},
+    {path:[[13,10],[4,10]],          sp:68, range:5.2},
+    {path:[[6,7],[9,7],[9,9],[6,9]], sp:60, range:5.0},
+    {path:[[1,1],[4,1],[4,3],[1,3]], sp:58, range:4.8},
+    {path:[[14,1],[11,1],[11,3],[14,3]], sp:58, range:4.8} ]},
+
+{ name:"港", note:"隠れる場所が、だんだん減っていく",
+  map:[
+  "################",
+  "#..............#",
+  "#.F..........F.#",
+  "#....##..##....#",
+  "#..h.#....#..h.#",
+  "#....#....#....#",
+  "#....#..s.#....#",
+  "#.########.###.#",
+  "#..............#",
+  "#.F..........F.#",
+  "#..C........D..#",
+  "################"],
+  humans:[
+    {path:[[1,1],[14,1]],          sp:76, range:5.6},
+    {path:[[14,8],[1,8]],          sp:76, range:5.6},
+    {path:[[1,5],[4,5],[4,2]],     sp:62, range:5.0},
+    {path:[[14,5],[11,5],[11,2]],  sp:62, range:5.0},
+    {path:[[7,10],[13,10]],        sp:70, range:5.2} ]},
+
+{ name:"船の中", note:"通路はどこも、逃げ道が一本",
+  map:[
+  "################",
+  "#..F.......F...#",
+  "#.############.#",
+  "#..............#",
+  "#.############.#",
+  "#..s........h..#",
+  "#.####.#####.###",
+  "#....#.....#...#",
+  "#.##.#.###.#.#.#",
+  "#.h..#..F..#.F.#",
+  "#..C.......D...#",
+  "################"],
+  humans:[
+    {path:[[1,1],[14,1]],   sp:78, range:5.4},
+    {path:[[14,3],[1,3]],   sp:78, range:5.4},
+    {path:[[1,5],[14,5]],   sp:74, range:5.6},
+    {path:[[6,7],[10,7]],   sp:64, range:5.0},
+    {path:[[7,10],[13,10]], sp:72, range:5.2} ]},
+
+{ name:"水族館", note:"ガラスの向こうは、ぜんぶ魚",
+  map:[
+  "################",
+  "#..............#",
+  "#.#####.######.#",
+  "#.#..F....F..#.#",
+  "#.#.###..###.#.#",
+  "#.#.#......#.#.#",
+  "#.#.#.s..h.#.#.#",
+  "#.#.########.#.#",
+  "#.#..F....F..#.#",
+  "#.######.#####.#",
+  "#..C........D..#",
+  "################"],
+  humans:[
+    {path:[[1,1],[14,1]],   sp:78, range:5.6},
+    {path:[[1,3],[1,9]],    sp:74, range:5.4},
+    {path:[[14,9],[14,3]],  sp:74, range:5.4},
+    {path:[[3,3],[12,3]],   sp:70, range:5.6},
+    {path:[[12,8],[3,8]],   sp:70, range:5.6} ]},
+
+{ name:"砂漠", note:"隠れる場所は、もうふたつだけ",
+  map:[
+  "################",
+  "#..F........F..#",
+  "#..............#",
+  "#....##..##....#",
+  "#..............#",
+  "#.h....##....h.#",
+  "#......##......#",
+  "#..............#",
+  "#....##..##....#",
+  "#..F...s....F..#",
+  "#..C........D..#",
+  "################"],
+  humans:[
+    {path:[[1,2],[14,2]],   sp:82, range:5.8},
+    {path:[[14,4],[1,4]],   sp:82, range:5.8},
+    {path:[[1,7],[14,7]],   sp:80, range:5.8},
+    {path:[[7,10],[13,10]], sp:76, range:5.4},
+    {path:[[1,1],[1,9]],    sp:72, range:5.2},
+    {path:[[14,9],[14,1]],  sp:72, range:5.2} ]},
+];
+
+/* ============ 音（依存なしの小さなブリップ） ============ */
+let ac=null;
+function beep(freq, dur=.09, type="triangle", vol=.16, slideTo=null){
+  try{
+    if(!ac) ac = new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==="suspended") ac.resume();
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.type=type; o.frequency.setValueAtTime(freq, ac.currentTime);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, ac.currentTime+dur);
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime+dur);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+dur+.02);
+  }catch(e){}
+}
+const sfxFish  = ()=>{ beep(680,.10,"triangle",.18,980); setTimeout(()=>beep(880,.14,"triangle",.14,1180),80); };
+const sfxSnack = ()=>beep(520,.08,"square",.10,700);
+const sfxSpot  = ()=>beep(300,.22,"sawtooth",.16,120);
+const sfxClear = ()=>{ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.16,"triangle",.16),i*110)); };
+const sfxOver  = ()=>{ [392,330,262,196].forEach((f,i)=>setTimeout(()=>beep(f,.28,"sine",.18),i*170)); };
+
+/* ============ 状態 ============ */
+const S = { TITLE:0, PLAY:1, CLEAR:2, OVER:3, ALLCLEAR:4 };
+let state = S.TITLE;
+let lv = 0, grid = [], items = [], humans = [], door = {x:0,y:0}, start = {x:0,y:0};
+let cat = {x:0,y:0,vx:0,vy:0,face:-Math.PI/2,spd:0,step:0,hidden:false,flash:0};
+let hunger = HUNGER_MAX, fishNeed = 0, fishGot = 0, grace = 0, shake = 0, elapsed = 0, totalFish = 0;
+let last = 0, toastT = 0;
+
+/* ============ 入力 ============ */
+const keys = {};
+addEventListener('keydown', e=>{
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+  keys[e.key.toLowerCase()] = true;
+  if(e.key===" "||e.key==="Enter"){ if(state!==S.PLAY) primary(); }
+});
+addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
+
+let touch = {on:false, ox:0, oy:0, dx:0, dy:0};
+function tPos(e){ const r=cv.getBoundingClientRect(); const t=e.changedTouches?e.changedTouches[0]:e;
+  return {x:(t.clientX-r.left)/r.width*CW, y:(t.clientY-r.top)/r.height*CH}; }
+cv.addEventListener('touchstart', e=>{ e.preventDefault(); const p=tPos(e); touch={on:true,ox:p.x,oy:p.y,dx:0,dy:0}; }, {passive:false});
+cv.addEventListener('touchmove',  e=>{ e.preventDefault(); if(!touch.on)return; const p=tPos(e); touch.dx=p.x-touch.ox; touch.dy=p.y-touch.oy; }, {passive:false});
+cv.addEventListener('touchend',   e=>{ e.preventDefault(); touch.on=false; touch.dx=touch.dy=0; }, {passive:false});
+cv.addEventListener('mousedown', e=>{ const p=tPos(e); touch={on:true,ox:p.x,oy:p.y,dx:0,dy:0}; });
+addEventListener('mousemove', e=>{ if(!touch.on)return; const p=tPos(e); touch.dx=p.x-touch.ox; touch.dy=p.y-touch.oy; });
+addEventListener('mouseup', ()=>{ touch.on=false; touch.dx=touch.dy=0; });
+
+function readInput(){
+  let ix=0, iy=0, mag=1;
+  if(keys.arrowleft||keys.a) ix-=1;
+  if(keys.arrowright||keys.d) ix+=1;
+  if(keys.arrowup||keys.w) iy-=1;
+  if(keys.arrowdown||keys.s) iy+=1;
+  if(ix||iy){
+    const l=Math.hypot(ix,iy); ix/=l; iy/=l;
+    mag = (keys.shift) ? 1 : 0.45;
+    return {x:ix,y:iy,mag};
+  }
+  if(touch.on){
+    const l=Math.hypot(touch.dx,touch.dy);
+    if(l>10){
+      const dead=10, full=68;
+      mag = Math.min(1, (l-dead)/(full-dead));
+      return {x:touch.dx/l, y:touch.dy/l, mag:Math.max(.28,mag)};
+    }
+  }
+  return {x:0,y:0,mag:0};
+}
+
+/* ============ ステージ構築 ============ */
+function buildLevel(n){
+  const L = LEVELS[n];
+  grid = L.map.map(r => (r+"################").slice(0,W).split(''));
+  while(grid.length<H) grid.push("################".split(''));
+  items = []; fishNeed = 0; fishGot = 0;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const c = grid[y][x];
+    if(c==='F'){ items.push({x:x*T+T/2,y:y*T+T/2,t:'fish',got:false,bob:Math.random()*6}); fishNeed++; grid[y][x]='.'; }
+    if(c==='s'){ items.push({x:x*T+T/2,y:y*T+T/2,t:'snack',got:false,bob:Math.random()*6}); grid[y][x]='.'; }
+    if(c==='D'){ door={x:x*T+T/2,y:y*T+T/2}; grid[y][x]='.'; }
+    if(c==='C'){ start={x:x*T+T/2,y:y*T+T/2}; grid[y][x]='.'; }
+  }
+  humans = L.humans.map(h=>({
+    path:h.path.map(p=>({x:p[0]*T+T/2, y:p[1]*T+T/2})),
+    i:0, dir:1, x:h.path[0][0]*T+T/2, y:h.path[0][1]*T+T/2,
+    sp:h.sp, range:h.range*T, half:0.62, ang:0, targetAng:0,
+    sus:0, mode:'walk', timer:1+Math.random()*2, bob:Math.random()*10
+  }));
+  resetCat();
+  elStage.textContent = `${n+1}/${LEVELS.length}　${L.name}`;
+  updateHUD();
+}
+function resetCat(){
+  cat.x=start.x; cat.y=start.y; cat.vx=cat.vy=0; cat.face=-Math.PI/2; cat.spd=0; cat.hidden=false;
+  humans.forEach(h=>{ h.i=0; h.dir=1; h.x=h.path[0].x; h.y=h.path[0].y; h.sus=0; h.mode='walk'; h.timer=1+Math.random()*2; });
+  grace = GRACE;
+}
+const isWall = (tx,ty) => tx<0||ty<0||tx>=W||ty>=H || grid[ty][tx]==='#';
+const wallAtPx = (px,py) => isWall(Math.floor(px/T), Math.floor(py/T));
+const tileChar = (px,py) => { const tx=Math.floor(px/T), ty=Math.floor(py/T);
+  return (tx<0||ty<0||tx>=W||ty>=H)?'#':grid[ty][tx]; };
+
+/* ============ 更新 ============ */
+function update(dt){
+  if(state!==S.PLAY) return;
+  elapsed += dt;
+  if(grace>0) grace -= dt;
+  if(cat.flash>0) cat.flash -= dt;
+  if(shake>0) shake = Math.max(0, shake-dt*3);
+  if(toastT>0){ toastT-=dt; elToast.style.opacity = Math.min(1,toastT*2); }
+
+  /* ネコ */
+  const inp = readInput();
+  const speed = SNEAK + (RUN-SNEAK)*Math.max(0,(inp.mag-0.45)/0.55);
+  const vx = inp.mag>0 ? inp.x*speed : 0;
+  const vy = inp.mag>0 ? inp.y*speed : 0;
+  cat.spd = Math.hypot(vx,vy);
+  if(cat.spd>4){ cat.face = Math.atan2(vy,vx); cat.step += cat.spd*dt*0.05; }
+
+  const r = 12;
+  let nx = cat.x + vx*dt;
+  if(!wallAtPx(nx-r,cat.y-r+3)&&!wallAtPx(nx+r,cat.y-r+3)&&!wallAtPx(nx-r,cat.y+r)&&!wallAtPx(nx+r,cat.y+r)) cat.x=nx;
+  let ny = cat.y + vy*dt;
+  if(!wallAtPx(cat.x-r,ny-r+3)&&!wallAtPx(cat.x+r,ny-r+3)&&!wallAtPx(cat.x-r,ny+r)&&!wallAtPx(cat.x+r,ny+r)) cat.y=ny;
+  cat.hidden = tileChar(cat.x,cat.y)==='h';
+
+  /* おなか */
+  hunger -= (cat.spd>SNEAK*1.15 ? DRAIN_RUN : DRAIN_WALK)*dt;
+  if(hunger<=0){ hunger=0; gameOver(); return; }
+
+  /* アイテム */
+  for(const it of items){
+    if(it.got) continue;
+    if(Math.hypot(it.x-cat.x,it.y-cat.y) < 22){
+      it.got = true;
+      if(it.t==='fish'){ fishGot++; totalFish++; hunger=Math.min(HUNGER_MAX,hunger+FISH_FEED); sfxFish(); toast("いただき！","#7fe0e8"); }
+      else { hunger=Math.min(HUNGER_MAX,hunger+SNACK_FEED); sfxSnack(); }
+      updateHUD();
+    }
+  }
+
+  /* 人間 */
+  const stealth = 0.58 + 0.72*(cat.spd/RUN);
+  for(const h of humans){
+    h.bob += dt*6;
+    h.timer -= dt;
+    if(h.timer<=0){
+      if(h.mode==='walk'){ h.mode = Math.random()<0.45 ? 'phone' : 'scan'; h.timer = 1.4+Math.random()*2.2; }
+      else { h.mode='walk'; h.timer = 2.6+Math.random()*3.4; }
+    }
+    if(h.mode==='walk'){
+      const tgt = h.path[h.i];
+      const dx=tgt.x-h.x, dy=tgt.y-h.y, d=Math.hypot(dx,dy);
+      if(d<3){
+        h.i += h.dir;
+        if(h.i>=h.path.length){ h.i=h.path.length-2>=0?h.path.length-2:0; h.dir=-1; }
+        if(h.i<0){ h.i=Math.min(1,h.path.length-1); h.dir=1; }
+      }else{
+        h.x += dx/d*h.sp*dt; h.y += dy/d*h.sp*dt;
+        h.targetAng = Math.atan2(dy,dx);
+      }
+    }else if(h.mode==='scan'){
+      h.targetAng += dt*0.9;
+    }
+    /* 視線を向ける */
+    let da = ((h.targetAng - h.ang + Math.PI*3)%(Math.PI*2)) - Math.PI;
+    h.ang += da*Math.min(1, dt*5);
+
+    /* 発見判定 */
+    const range = h.range * (h.mode==='phone'?0.5:1) * stealth;
+    const half  = h.half * (h.mode==='phone'?0.55:1);
+    const dx=cat.x-h.x, dy=cat.y-h.y, dist=Math.hypot(dx,dy);
+    let seen = false;
+    if(grace<=0 && !cat.hidden && dist<range){
+      const a = Math.atan2(dy,dx);
+      let diff = Math.abs(((a-h.ang+Math.PI*3)%(Math.PI*2))-Math.PI);
+      if(diff<half || dist<T*1.15) seen = los(h.x,h.y,cat.x,cat.y);
+    }
+    if(seen){
+      h.sus += dt*(52 + 60*(1-dist/Math.max(1,range)));
+      h.targetAng = Math.atan2(dy,dx);
+      if(h.sus>45 && h.mode!=='walk'){ h.mode='walk'; h.timer=3; }
+      if(h.sus>=100){ caught(); return; }
+    }else{
+      h.sus = Math.max(0, h.sus - dt*46);
+    }
+  }
+
+  /* おうち */
+  if(Math.hypot(door.x-cat.x, door.y-cat.y) < 25){
+    if(fishGot>=fishNeed) clearStage();
+    else if(toastT<=0) toast(`おさかな あと ${fishNeed-fishGot}`, "#ffd86b");
+  }
+  updateHUD();
+}
+
+function los(x0,y0,x1,y1){
+  const dx=x1-x0, dy=y1-y0, d=Math.hypot(dx,dy), steps=Math.ceil(d/6);
+  for(let i=1;i<steps;i++){
+    const t=i/steps;
+    if(wallAtPx(x0+dx*t, y0+dy*t)) return false;
+  }
+  return true;
+}
+
+function toast(msg,color){ elToast.textContent=msg; elToast.style.color=color||"#ff5d7a"; elToast.style.opacity=1; toastT=1.1; }
+
+function caught(){
+  sfxSpot(); shake=1; cat.flash=0.7;
+  hunger = Math.max(0, hunger - CAUGHT_COST);
+  toast("見つかった！","#ff5d7a");
+  if(hunger<=0){ gameOver(); return; }
+  resetCat();
+}
+
+function updateHUD(){
+  elBar.style.width = (hunger/HUNGER_MAX*100).toFixed(1)+"%";
+  elBar.classList.toggle('low', hunger < 30);
+  elFish.textContent = `🐟 ${fishGot}/${fishNeed}`;
+}
+
+/* ============ 画面遷移 ============ */
+function show(html, label){
+  overlay.innerHTML = html + `<button id="btn">${label}</button>`;
+  overlay.classList.remove('hide');
+  document.getElementById('btn').onclick = primary;
+}
+function primary(){
+  if(state===S.TITLE || state===S.OVER || state===S.ALLCLEAR){
+    if(state!==S.TITLE){ lv=0; totalFish=0; }
+    hunger = HUNGER_MAX; elapsed = 0;
+    buildLevel(lv); state=S.PLAY; overlay.classList.add('hide');
+  }else if(state===S.CLEAR){
+    lv++; buildLevel(lv); state=S.PLAY; overlay.classList.add('hide');
+  }
+}
+function clearStage(){
+  sfxClear();
+  if(lv >= LEVELS.length-1){
+    state = S.ALLCLEAR;
+    elBest.textContent = `記録：${elapsed.toFixed(1)}秒 ／ おさかな ${totalFish}`;
+    show(`<h1>おかえり、ニャンコ<span class="sub">ALL CLEAR</span></h1>
+      <p>10の夜をぜんぶ抜けて、寝床にたどり着いた。<br>
+      おさかな ${totalFish}匹、通しタイム ${elapsed.toFixed(1)}秒。<br>
+      あしたの夜も、たぶんおなかは空く。</p>`, "もういちど");
+  }else{
+    state = S.CLEAR;
+    const nx = LEVELS[lv+1];
+    show(`<h1>ステージ ${lv+1} クリア<span class="sub">寝床にたどり着いた</span></h1>
+      <p>おさかな ${fishNeed}匹、しっかり回収。おなかは ${Math.round(hunger)}％。<br>
+      つぎは「${nx.name}」。${nx.note}。</p>`, "つぎの部屋へ");
+  }
+}
+function gameOver(){
+  sfxOver(); state=S.OVER;
+  show(`<h1>おなかがぺこぺこ<span class="sub">GAME OVER</span></h1>
+    <p>${LEVELS[lv].name} で力尽きた。おさかな ${totalFish}匹。<br>
+    走るとバレにくい代わりに、おなかは倍速で減る。<br>
+    かくれ場所（観葉植物・ダンボール）は視線を完全に切れる。</p>`, "もういちど");
+}
+
+/* ============ 描画 ============ */
+function draw(){
+  ctx.save();
+  if(shake>0){ const s=shake*7; ctx.translate((Math.random()-.5)*s,(Math.random()-.5)*s); }
+
+  /* 床 */
+  ctx.fillStyle = "#141026"; ctx.fillRect(0,0,CW,CH);
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const c = grid[y][x];
+    if(c==='#'){
+      ctx.fillStyle = "#0d0a1a"; ctx.fillRect(x*T,y*T,T,T);
+      ctx.fillStyle = "#ffffff0d"; ctx.fillRect(x*T,y*T,T,3);
+    }else{
+      ctx.fillStyle = ((x+y)%2===0) ? "#241d3a" : "#2b2244";
+      ctx.fillRect(x*T,y*T,T,T);
+    }
+  }
+  /* かくれ場所 */
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(grid[y][x]==='h') drawHide(x*T+T/2, y*T+T/2);
+
+  /* 寝床 */
+  drawDoor(door.x, door.y);
+
+  /* 視界 */
+  humans.forEach(drawCone);
+
+  /* アイテム */
+  for(const it of items){ if(!it.got) drawItem(it); }
+
+  /* 人間 */
+  humans.forEach(drawHuman);
+
+  /* ネコ */
+  drawCat();
+
+  /* 暗がりのビネット */
+  const g = ctx.createRadialGradient(CW/2,CH/2,CH*0.3, CW/2,CH/2,CH*0.86);
+  g.addColorStop(0,"#00000000"); g.addColorStop(1,"#000000aa");
+  ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH);
+
+  if(grace>0 && state===S.PLAY){
+    ctx.globalAlpha = Math.min(1,grace);
+    ctx.fillStyle="#f6e6c9"; ctx.font="bold 17px system-ui"; ctx.textAlign="center";
+    ctx.fillText("そーっと…", cat.x, cat.y-34);
+    ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+
+function drawHide(cx,cy){
+  ctx.save(); ctx.translate(cx,cy); ctx.scale(GS,GS);
+  ctx.fillStyle="#00000055"; ctx.beginPath(); ctx.ellipse(0,12,15,6,0,0,7); ctx.fill();
+  ctx.fillStyle="#3b6b4a";
+  for(let i=0;i<5;i++){
+    const a = -Math.PI/2 + (i-2)*0.5;
+    ctx.save(); ctx.rotate(a);
+    ctx.beginPath(); ctx.ellipse(0,-11,5,14,0,0,7); ctx.fill();
+    ctx.restore();
+  }
+  ctx.fillStyle="#7a5136"; ctx.fillRect(-9,6,18,10);
+  ctx.fillStyle="#5d3c28"; ctx.fillRect(-9,6,18,3);
+  ctx.restore();
+}
+function drawDoor(cx,cy){
+  ctx.save(); ctx.translate(cx,cy); ctx.scale(GS,GS);
+  const pulse = 0.5+0.5*Math.sin(performance.now()/420);
+  const ready = fishGot>=fishNeed;
+  ctx.fillStyle = ready ? `rgba(245,185,92,${0.16+0.14*pulse})` : "rgba(245,185,92,0.07)";
+  ctx.beginPath(); ctx.arc(0,0,ready?30+4*pulse:22,0,7); ctx.fill();
+  ctx.fillStyle="#6b4f7a"; ctx.beginPath(); ctx.ellipse(0,4,17,12,0,0,7); ctx.fill();
+  ctx.fillStyle="#8e6ba0"; ctx.beginPath(); ctx.ellipse(0,1,13,9,0,0,7); ctx.fill();
+  ctx.fillStyle= ready?"#f5b95c":"#4a3a5e"; ctx.font="bold 13px system-ui"; ctx.textAlign="center";
+  ctx.fillText("ねどこ",0,-16);
+  ctx.restore();
+}
+function drawItem(it){
+  const b = Math.sin(performance.now()/300 + it.bob)*2.5;
+  ctx.save(); ctx.translate(it.x, it.y+b); ctx.scale(GS,GS);
+  if(it.t==='fish'){
+    ctx.fillStyle="#7fe0e8";
+    ctx.beginPath(); ctx.ellipse(0,0,11,6,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(16,-6); ctx.lineTo(16,6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#12303a"; ctx.beginPath(); ctx.arc(-5,-1.5,1.8,0,7); ctx.fill();
+    ctx.strokeStyle="#ffffff44"; ctx.lineWidth=1; ctx.beginPath(); ctx.ellipse(0,0,11,6,0,0,7); ctx.stroke();
+  }else{
+    ctx.fillStyle="#ffd86b"; ctx.beginPath(); ctx.arc(0,0,6,0,7); ctx.fill();
+    ctx.fillStyle="#c68b2c"; ctx.beginPath(); ctx.arc(-2,-2,1.6,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(2.5,1.5,1.4,0,7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawCone(h){
+  const alert = Math.min(1, h.sus/100);
+  const range = h.range * (h.mode==='phone'?0.5:1);
+  const half  = h.half  * (h.mode==='phone'?0.55:1);
+  const N = 22;
+  ctx.save(); ctx.beginPath(); ctx.moveTo(h.x,h.y);
+  for(let i=0;i<=N;i++){
+    const a = h.ang - half + (2*half)*(i/N);
+    let d = range;
+    for(let s=6; s<range; s+=6){
+      if(wallAtPx(h.x+Math.cos(a)*s, h.y+Math.sin(a)*s)){ d=s; break; }
+    }
+    ctx.lineTo(h.x+Math.cos(a)*d, h.y+Math.sin(a)*d);
+  }
+  ctx.closePath();
+  const g = ctx.createRadialGradient(h.x,h.y,4,h.x,h.y,range);
+  const c1 = alert>0.05 ? `rgba(255,93,122,${0.16+0.28*alert})` : "rgba(245,185,92,0.20)";
+  const c2 = alert>0.05 ? `rgba(255,93,122,0)` : "rgba(245,185,92,0)";
+  g.addColorStop(0,c1); g.addColorStop(1,c2);
+  ctx.fillStyle=g; ctx.fill();
+  ctx.restore();
+}
+function drawHuman(h){
+  const sway = Math.sin(h.bob)*(h.mode==='walk'?2:0.6);
+  ctx.save(); ctx.translate(h.x,h.y); ctx.scale(GS,GS);
+  ctx.fillStyle="#00000066"; ctx.beginPath(); ctx.ellipse(0,13,14,6,0,0,7); ctx.fill();
+  /* 体 */
+  ctx.rotate(h.ang+Math.PI/2);
+  ctx.fillStyle="#5a5f86"; ctx.beginPath(); ctx.ellipse(sway*0.4,0,13,11,0,0,7); ctx.fill();
+  /* 頭 */
+  ctx.fillStyle="#e8c39a"; ctx.beginPath(); ctx.arc(0,-3,9,0,7); ctx.fill();
+  ctx.fillStyle="#332a44"; ctx.beginPath(); ctx.arc(0,-3,9,Math.PI*0.05,Math.PI*0.95); ctx.fill();
+  /* 鼻先＝向き */
+  ctx.fillStyle="#f2d3b0"; ctx.beginPath(); ctx.arc(0,-11,3.2,0,7); ctx.fill();
+  ctx.restore();
+  /* スマホ／気配 */
+  if(h.mode==='phone'){
+    ctx.fillStyle="#9fe8ff"; ctx.fillRect(h.x+9*GS,h.y+4*GS,6*GS,9*GS);
+    ctx.fillStyle="#ffffff55"; ctx.fillRect(h.x+10*GS,h.y+5*GS,4*GS,3*GS);
+  }
+  if(h.sus>3){
+    const w=26*GS, p=Math.min(1,h.sus/100);
+    ctx.fillStyle="#00000088"; ctx.fillRect(h.x-w/2, h.y-24*GS, w, 5*GS);
+    ctx.fillStyle= p>0.6? "#ff5d7a" : "#ffd86b"; ctx.fillRect(h.x-w/2, h.y-24*GS, w*p, 5*GS);
+    if(p>0.6){ ctx.fillStyle="#ff5d7a"; ctx.font="bold 16px system-ui"; ctx.textAlign="center"; ctx.fillText("!", h.x, h.y-29*GS); }
+  }
+}
+/* 進行方向を「下・上・横」の3ポーズに丸める。スプライトは回さないので仰向けにならない */
+function catPose(){
+  const deg = ((cat.face*180/Math.PI)%360+360)%360;
+  if(deg>=45 && deg<135)  return {dir:'down', flip:1};
+  if(deg>=225 && deg<315) return {dir:'up',   flip:1};
+  return {dir:'side', flip:(deg<45||deg>=315)?1:-1};
+}
+function drawCat(){
+  const moving = cat.spd>4;
+  const gait = Math.sin(cat.step*2)*(moving?1:0);
+  const bob  = Math.abs(gait)*1.5;
+  const wag  = Math.sin(performance.now()/280)*(moving?0.85:0.45);
+  const pose = catPose();
+  const CREAM="#f6e6c9", TABBY="#d9c09a", DARK="#bda484", PINK="#e8a9b8";
+  const eye = cat.hidden ? "#7fe0e8" : "#2e2440";
+
+  ctx.save(); ctx.translate(cat.x, cat.y); ctx.scale(GS,GS);
+  ctx.globalAlpha = cat.hidden ? 0.34 : (cat.flash>0 && Math.floor(cat.flash*14)%2 ? 0.35 : 1);
+  ctx.fillStyle="#00000070"; ctx.beginPath(); ctx.ellipse(0,13,13,4.5,0,0,7); ctx.fill();
+  ctx.scale(pose.flip,1);
+  ctx.translate(0,-bob);
+  ctx.lineCap="round";
+
+  if(pose.dir==='side'){
+    ctx.strokeStyle=TABBY; ctx.lineWidth=4.5;
+    ctx.beginPath(); ctx.moveTo(-9,4); ctx.quadraticCurveTo(-20,2-6*wag, -17,-9-5*wag); ctx.stroke();
+    ctx.fillStyle=DARK;
+    ctx.beginPath(); ctx.ellipse(-6,11+gait*2,4,3.4,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5,11-gait*2,3.6,3.2,0,0,7); ctx.fill();
+    ctx.fillStyle=CREAM; ctx.beginPath(); ctx.ellipse(-2,3,12,8.5,0,0,7); ctx.fill();
+    ctx.fillStyle=TABBY;
+    ctx.beginPath(); ctx.ellipse(-6,-2,3,2,0.5,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0,-3,2.6,1.8,0.3,0,7); ctx.fill();
+    ctx.fillStyle=CREAM;
+    ctx.beginPath(); ctx.arc(8,-5,8,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(14,-3,4.2,3.4,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(3,-10); ctx.lineTo(3.5,-18); ctx.lineTo(9,-12); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(9.5,-11); ctx.lineTo(13,-17); ctx.lineTo(14,-9); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=PINK;
+    ctx.beginPath(); ctx.moveTo(4.6,-11); ctx.lineTo(4.9,-15.8); ctx.lineTo(8,-12.4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=eye; ctx.beginPath(); ctx.ellipse(10.5,-6,2,2.5,0,0,7); ctx.fill();
+    ctx.fillStyle=PINK; ctx.beginPath(); ctx.arc(16.6,-3.6,1.5,0,7); ctx.fill();
+    ctx.strokeStyle="#ffffff70"; ctx.lineWidth=1;
+    for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(15,-3); ctx.lineTo(22,-5+i*3.2); ctx.stroke(); }
+  }else if(pose.dir==='down'){
+    ctx.strokeStyle=TABBY; ctx.lineWidth=4.5;
+    ctx.beginPath(); ctx.moveTo(6,7); ctx.quadraticCurveTo(17,7+8*wag, 15,-3+6*wag); ctx.stroke();
+    ctx.fillStyle=DARK;
+    ctx.beginPath(); ctx.ellipse(-5.5,12+gait*1.6,3.4,3,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5.5,12-gait*1.6,3.4,3,0,0,7); ctx.fill();
+    ctx.fillStyle=CREAM; ctx.beginPath(); ctx.ellipse(0,4,10.5,9.5,0,0,7); ctx.fill();
+    ctx.fillStyle=CREAM; ctx.beginPath(); ctx.arc(0,-6,8.6,0,7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-8.4,-9.5); ctx.lineTo(-6.5,-18); ctx.lineTo(-0.8,-12.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(8.4,-9.5); ctx.lineTo(6.5,-18); ctx.lineTo(0.8,-12.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=PINK;
+    ctx.beginPath(); ctx.moveTo(-6.8,-11); ctx.lineTo(-6,-15.6); ctx.lineTo(-3,-12.6); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(6.8,-11); ctx.lineTo(6,-15.6); ctx.lineTo(3,-12.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=eye;
+    ctx.beginPath(); ctx.ellipse(-3.4,-7,1.9,2.5,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(3.4,-7,1.9,2.5,0,0,7); ctx.fill();
+    ctx.fillStyle=PINK; ctx.beginPath(); ctx.arc(0,-3.4,1.5,0,7); ctx.fill();
+    ctx.strokeStyle="#ffffff70"; ctx.lineWidth=1;
+    [-1,1].forEach(s=>{ for(let i=-1;i<=1;i++){
+      ctx.beginPath(); ctx.moveTo(s*5,-3); ctx.lineTo(s*13,-4.5+i*3); ctx.stroke(); }});
+  }else{
+    ctx.strokeStyle=TABBY; ctx.lineWidth=4.5;
+    ctx.beginPath(); ctx.moveTo(4,9); ctx.quadraticCurveTo(15,15+6*wag, 12,23+4*wag); ctx.stroke();
+    ctx.fillStyle=DARK;
+    ctx.beginPath(); ctx.ellipse(-6.5,10+gait*1.6,3.2,2.8,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6.5,10-gait*1.6,3.2,2.8,0,0,7); ctx.fill();
+    ctx.fillStyle=CREAM; ctx.beginPath(); ctx.ellipse(0,3,10.5,10,0,0,7); ctx.fill();
+    ctx.fillStyle=TABBY;
+    ctx.beginPath(); ctx.ellipse(0,-1,6,2.2,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0,4,5,2,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0,8.5,3.6,1.8,0,0,7); ctx.fill();
+    ctx.fillStyle=CREAM; ctx.beginPath(); ctx.arc(0,-7,8.6,0,7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-8.4,-10.5); ctx.lineTo(-6.5,-19); ctx.lineTo(-0.8,-13.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(8.4,-10.5); ctx.lineTo(6.5,-19); ctx.lineTo(0.8,-13.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=TABBY; ctx.beginPath(); ctx.ellipse(0,-9.5,5.5,2.2,0,0,7); ctx.fill();
+    if(cat.hidden){ ctx.fillStyle="#7fe0e8";
+      ctx.beginPath(); ctx.arc(-3.2,-11.5,1.2,0,7); ctx.fill();
+      ctx.beginPath(); ctx.arc(3.2,-11.5,1.2,0,7); ctx.fill(); }
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+/* ============ ループ ============ */
+function loop(ts){
+  const dt = Math.min(0.05, (ts-last)/1000 || 0); last = ts;
+  update(dt);
+  if(state!==S.TITLE) draw();
+  requestAnimationFrame(loop);
+}
+buildLevel(0); draw();
+btn.onclick = primary;
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
