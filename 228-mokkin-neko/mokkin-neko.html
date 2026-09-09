@@ -48,6 +48,11 @@
   .stats{margin-top:14px;font-size:12.5px;line-height:1.9;color:#a49c8c;text-align:left;}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
+    <meta property="og:title" content="木琴とネコ｜60秒のくつろがせゲーム">
+    <meta property="og:description" content="スマホ・PCのブラウザで遊べる無料ゲームです。インストール不要！">
+    <meta property="og:url" content="https://titan11111.github.io/228-mokkin-neko/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
 </head>
 <body>
 <div id="wrap">
@@ -133,7 +138,8 @@ const S={
   relax:50, hits:[], keyFlash:new Array(8).fill(0),
   react:null, reactT:0, tally:{}, total:0, lastPurr:0,
   action:"listen", actionT:0, actionEnd:0, attackNext:0, attacks:0, warned:false,
-  mallets:[], lastGood:-99, resultTimer:null
+  mallets:[], lastGood:-99, resultTimer:null,
+  room:{x:.50,y:.66,tx:.50,ty:.66,place:'cushion',nextMove:0,walk:0,event:'',arriveT:-99,arrivePlace:''}
 };
 const PAT={
   down:{n:'下りの音階',d:+5,f:'とろん'},
@@ -151,29 +157,46 @@ const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
 function catVoice(kind){
   if(!AC) return;
   const t=AC.currentTime, g=AC.createGain();
+  const length=(kind==='hiss'||kind==='scratch')?.55:(kind==='startle'?.22:.58);
+  const peak=(kind==='annoyed'||kind==='bite')?.075:(kind==='startle'?.055:.085);
   g.gain.setValueAtTime(.0001,t);
-  g.gain.exponentialRampToValueAtTime(.10,t+.03);
-  g.gain.exponentialRampToValueAtTime(.0001,t+.5);
+  g.gain.exponentialRampToValueAtTime(peak,t+.035);
+  g.gain.exponentialRampToValueAtTime(.0001,t+length);
   g.connect(AC.destination);
   if(kind==='hiss' || kind==='scratch'){
-    const buffer=AC.createBuffer(1,Math.ceil(AC.sampleRate*.55),AC.sampleRate);
+    const buffer=AC.createBuffer(1,Math.ceil(AC.sampleRate*length),AC.sampleRate);
     const data=buffer.getChannelData(0);
     for(let i=0;i<data.length;i++) data[i]=Math.random()*2-1;
     const source=AC.createBufferSource(), filter=AC.createBiquadFilter();
     source.buffer=buffer; filter.type='highpass'; filter.frequency.value=2200;
-    source.connect(filter); filter.connect(g); source.start(t); source.stop(t+.55);
+    source.connect(filter); filter.connect(g); source.start(t); source.stop(t+length);
   }else{
-    const o=AC.createOscillator(); o.type='triangle';
-    o.frequency.setValueAtTime(kind==='bite'?380:600,t);
-    o.frequency.exponentialRampToValueAtTime(150,t+.35);
-    o.connect(g); o.start(t); o.stop(t+.55);
+    // 猫の声は「鳴き始め→少し高く→喉へ落ちる」2本の倍音で作る。
+    const profile={
+      happy:[420,720,220], curious:[520,820,300], annoyed:[250,190,120],
+      startle:[760,430,240], bite:[380,260,150]
+    }[kind]||[420,680,220];
+    const wobble=AC.createOscillator(), wobbleGain=AC.createGain();
+    wobble.frequency.value=5.5; wobbleGain.gain.value=kind==='annoyed'?10:18;
+    wobble.connect(wobbleGain);
+    [[1,.78,'triangle'],[2.02,.16,'sine']].forEach(([ratio,amount,type])=>{
+      const o=AC.createOscillator(), og=AC.createGain();
+      o.type=type;
+      o.frequency.setValueAtTime(profile[0]*ratio,t);
+      o.frequency.linearRampToValueAtTime(profile[1]*ratio,t+length*.38);
+      o.frequency.exponentialRampToValueAtTime(profile[2]*ratio,t+length);
+      wobbleGain.connect(o.frequency);
+      og.gain.value=amount; o.connect(og); og.connect(g);
+      o.start(t); o.stop(t+length+.02);
+    });
+    wobble.start(t); wobble.stop(t+length+.02);
   }
 }
 function setAction(kind,now,duration){
   S.action=kind; S.actionT=now; S.actionEnd=now+duration;
   const labels={happy:'ゴロゴロ ♪',startle:'ビクッ！',annoyed:'むすっ…',hiss:'シャーッ！',scratch:'ひっかく！',bite:'カプッ！',curious:'ん？'};
   S.react={f:labels[kind]||'ふぅ…',good:kind==='happy'||kind==='curious'}; S.reactT=now;
-  if(['hiss','scratch','bite'].includes(kind)) catVoice(kind);
+  if(['happy','curious','startle','annoyed','hiss','scratch','bite'].includes(kind)) catVoice(kind);
 }
 function judge(now){
   const h=S.hits.filter(v=>now-v.t<2.8), n=h.length, last=h[n-1];
@@ -196,6 +219,7 @@ function apply(key,now){
   if(p.d>0) S.lastGood=now;
   S.relax=Math.max(0,Math.min(100,S.relax+p.d));
   S.tally[key]=(S.tally[key]||0)+1;
+  queueMoodDestination(now);
   if(now<S.actionEnd) return;
   if(p.d<0){
     if(S.relax<30 && !S.warned){
@@ -243,9 +267,58 @@ function pick(px,py){
 }
 
 /* ---------- 描画 ---------- */
+const ROOM_SPOTS=[
+  {name:'window',x:.18,y:.18,label:'日なたでひと休み'},
+  {name:'box',x:.78,y:.28,label:'箱にすぽっ'},
+  {name:'cushion',x:.52,y:.66,label:'クッションでふみふみ'},
+  {name:'toy',x:.34,y:.43,label:'猫じゃらしを発見'}
+];
+function moodDestination(){
+  if(S.relax>=80) return 'window';
+  if(S.relax>=60) return 'cushion';
+  if(S.relax<30) return 'box';
+  return 'toy';
+}
+function queueMoodDestination(now){
+  const target=moodDestination();
+  if(target===S.room.place || target===S.room.txName) return;
+  const spot=ROOM_SPOTS.find(s=>s.name===target);
+  if(!spot) return;
+  S.room.txName=target;
+  S.room.tx=spot.x; S.room.ty=spot.y;
+  S.room.planned=true; S.room.nextMove=now+0.45;
+}
+function roomPoint(spot){
+  return {x:W*spot.x,y:H*(.25+.31*spot.y)};
+}
+function chooseRoomSpot(now,force){
+  if(!S.playing && !force) return;
+  const calm=S.relax>=65;
+  const choices=calm?ROOM_SPOTS.filter(s=>s.name!=='toy') : ROOM_SPOTS;
+  const spot=choices[Math.floor(Math.random()*choices.length)];
+  S.room.place=spot.name; S.room.txName=spot.name; S.room.tx=spot.x; S.room.ty=spot.y;
+  S.room.nextMove=now+3.2+Math.random()*4.8;
+}
+function updateCatMovement(now,dt){
+  const r=S.room;
+  if(!S.playing) return;
+  if(now>=r.nextMove || (Math.abs(r.x-r.tx)+Math.abs(r.y-r.ty)<.012 && now>=r.nextMove-.8)){
+    if(r.planned) r.planned=false; else chooseRoomSpot(now);
+  }
+  const dx=r.tx-r.x, dy=r.ty-r.y, dist=Math.hypot(dx,dy);
+  r.moving=dist>.006 && S.action!=='hiss' && S.action!=='scratch' && S.action!=='bite';
+  if(r.moving){
+    const step=Math.min(dist,dt*.105);
+    r.x+=dx/dist*step; r.y+=dy/dist*step; r.walk+=dt*12;
+  }
+  if(dist<=.012 && r.event!==r.place){
+    r.event=r.place; r.arriveT=now; r.arrivePlace=r.place;
+    S.react={f:ROOM_SPOTS.find(s=>s.name===r.place).label,good:true}; S.reactT=now;
+  }
+}
 function drawRoom(tm){
   const g=ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,'#0f1120'); g.addColorStop(.55,'#1b1f33'); g.addColorStop(1,'#262a42');
+  g.addColorStop(0,'#111426'); g.addColorStop(.46,'#242943'); g.addColorStop(.47,'#55445a'); g.addColorStop(1,'#27263b');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   // ランプの光だまり
   const cx=W*0.5, cy=H*0.38, rr=Math.max(W,H)*0.5;
@@ -253,14 +326,75 @@ function drawRoom(tm){
   const warm=0.10+0.10*(S.relax/100);
   gl.addColorStop(0,'rgba(255,202,122,'+warm+')'); gl.addColorStop(1,'rgba(255,202,122,0)');
   ctx.fillStyle=gl; ctx.fillRect(0,0,W,H);
-  // 窓と月
-  ctx.fillStyle='rgba(255,255,255,.05)';
-  ctx.fillRect(W*0.06,H*0.06,W*0.2,H*0.2);
-  ctx.fillStyle='rgba(255,240,210,.5)';
-  ctx.beginPath(); ctx.arc(W*0.14,H*0.13,Math.min(W,H)*0.022,0,7); ctx.fill();
-  // 床の境目
-  ctx.strokeStyle='rgba(0,0,0,.28)'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.moveTo(0,H*0.5); ctx.lineTo(W,H*0.5); ctx.stroke();
+  // HD-2D風の奥行き：壁の窓、床板、家具の影を別レイヤーで描く
+  const wx=W*.06, wy=H*.08, ww=W*.22, wh=H*.18;
+  ctx.fillStyle='#171a2c'; ctx.fillRect(wx-6,wy-6,ww+12,wh+12);
+  ctx.fillStyle='#35415f'; ctx.fillRect(wx,wy,ww,wh);
+  ctx.strokeStyle='rgba(255,235,190,.18)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(wx+ww/2,wy); ctx.lineTo(wx+ww/2,wy+wh); ctx.moveTo(wx,wy+wh/2); ctx.lineTo(wx+ww,wy+wh/2); ctx.stroke();
+  ctx.fillStyle='rgba(255,240,210,.62)'; ctx.beginPath(); ctx.arc(wx+ww*.72,wy+wh*.3,Math.min(W,H)*.022,0,7); ctx.fill();
+  ctx.fillStyle='rgba(255,210,125,.12)'; ctx.beginPath(); ctx.moveTo(wx+ww*.58,wy+wh); ctx.lineTo(wx+ww*.88,wy+wh); ctx.lineTo(wx+ww*.72,wy+wh*.42); ctx.closePath(); ctx.fill();
+  // 壁の額縁と棚：小さな生活用品を置いて、部屋の持ち主を感じさせる
+  ctx.fillStyle='#6b4b4b'; ctx.fillRect(W*.38,H*.105,W*.16,H*.11);
+  ctx.fillStyle='#d2a86f'; ctx.fillRect(W*.395,H*.12,W*.13,H*.08);
+  ctx.fillStyle='#4b6b70'; ctx.beginPath(); ctx.moveTo(W*.405,H*.185); ctx.lineTo(W*.45,H*.135); ctx.lineTo(W*.515,H*.185); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#392b3b'; ctx.fillRect(W*.64,H*.12,W*.29,H*.035);
+  ctx.fillStyle='#7b9b85'; ctx.beginPath(); ctx.ellipse(W*.70,H*.105,14,10,0,0,7); ctx.fill();
+  ctx.fillStyle='#bd8861'; ctx.fillRect(W*.675,H*.13,28,10);
+  ctx.fillStyle='#c88969'; ctx.fillRect(W*.82,H*.055,12,50);
+  ctx.fillStyle='#e0a26f'; ctx.beginPath(); ctx.ellipse(W*.826,H*.052,28,13,0,0,7); ctx.fill();
+  // 背の低い収納棚と箱
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.fillRect(W*.68,H*.335,W*.22,H*.028);
+  ctx.fillStyle='#4d3540'; ctx.fillRect(W*.68,H*.29,W*.22,H*.075);
+  ctx.fillStyle='#8e5d51'; ctx.fillRect(W*.70,H*.30,W*.16,H*.065); ctx.strokeStyle='#d29368'; ctx.strokeRect(W*.70,H*.30,W*.16,H*.065);
+  ctx.strokeStyle='rgba(34,20,24,.45)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(W*.78,H*.30); ctx.lineTo(W*.78,H*.365); ctx.stroke();
+  ctx.fillStyle='#dca36c'; ctx.beginPath(); ctx.arc(W*.75,H*.325,3,0,7); ctx.fill();
+  // 鉢植え
+  ctx.fillStyle='rgba(0,0,0,.27)'; ctx.beginPath(); ctx.ellipse(W*.13,H*.395,35,8,0,0,7); ctx.fill();
+  ctx.fillStyle='#b87555'; ctx.beginPath(); ctx.moveTo(W*.105,H*.34); ctx.lineTo(W*.155,H*.34); ctx.lineTo(W*.145,H*.40); ctx.lineTo(W*.115,H*.40); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#77a780'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(W*.13,H*.35); ctx.quadraticCurveTo(W*.10,H*.25,W*.07,H*.22); ctx.moveTo(W*.13,H*.34); ctx.quadraticCurveTo(W*.18,H*.26,W*.20,H*.21); ctx.stroke();
+  ctx.fillStyle='#9bc28c'; [[.07,.22],[.20,.21],[.1,.27],[.17,.28]].forEach(([x,y])=>{ctx.beginPath();ctx.ellipse(W*x,H*y,12,6,x<.13?-.5:.5,0,7);ctx.fill();});
+  // 床のパースとラグ
+  ctx.strokeStyle='rgba(16,15,27,.24)'; ctx.lineWidth=1;
+  for(let i=0;i<7;i++){ const y=H*(.54+i*.065); ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y+H*.02); ctx.stroke(); }
+  const rg=ctx.createRadialGradient(W*.5,H*.56,0,W*.5,H*.56,W*.42); rg.addColorStop(0,'rgba(139,101,116,.42)'); rg.addColorStop(1,'rgba(139,101,116,0)');
+  ctx.fillStyle=rg; ctx.beginPath(); ctx.ellipse(W*.5,H*.58,W*.42,H*.12,0,0,7); ctx.fill();
+  // クッション、猫じゃらし
+  ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(W*.52,H*.46,W*.16,H*.035,0,0,7); ctx.fill();
+  ctx.fillStyle='#59466c'; ctx.beginPath(); ctx.ellipse(W*.52,H*.445,W*.15,H*.034,0,0,7); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.fillRect(W*.72,H*.335,W*.15,H*.025);
+  ctx.fillStyle='#9a654f'; ctx.fillRect(W*.70,H*.30,W*.16,H*.08); ctx.strokeStyle='#d29368'; ctx.strokeRect(W*.70,H*.30,W*.16,H*.08);
+  ctx.strokeStyle='#79b695'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(W*.34,H*.45); ctx.quadraticCurveTo(W*.30,H*.35,W*.39,H*.29); ctx.stroke();
+  ctx.fillStyle='#e8a4a4'; ctx.beginPath(); ctx.arc(W*.39,H*.29,7,0,7); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.28)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0,H*.5); ctx.lineTo(W,H*.5); ctx.stroke();
+  // 家具に到着した瞬間の小さな余韻。家具そのものが猫を迎えるように見せる。
+  if(S.room.arriveT>=0){
+    const age=tm-S.room.arriveT, p=Math.max(0,1-age/1.4);
+    if(p>0){
+      const spot=S.room.arrivePlace;
+      const sp=ROOM_SPOTS.find(s=>s.name===spot);
+      const q=1+Math.sin((1-p)*Math.PI)*.06;
+      ctx.save(); ctx.globalAlpha=p*.55; ctx.strokeStyle=spot==='toy'?'#e8a4a4':'#ffca7a'; ctx.lineWidth=3;
+      const x=W*sp.x, y=H*(.25+.31*sp.y);
+      ctx.beginPath(); ctx.ellipse(x,y+H*.035,W*.10*q,H*.025*q,0,0,7); ctx.stroke();
+      ctx.globalAlpha=p*.7;
+      if(spot==='window'){
+        ctx.strokeStyle='#ffe0a0'; ctx.lineWidth=2;
+        for(let k=-1;k<=1;k++){
+          ctx.beginPath(); ctx.moveTo(x+k*W*.035,y-H*.05); ctx.lineTo(x+k*W*.055,y+H*.025); ctx.stroke();
+        }
+      }else if(spot==='box'){
+        ctx.strokeStyle='#dca36c'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(x-W*.07,y-H*.025-p*H*.012); ctx.lineTo(x+W*.07,y-H*.025-p*H*.012); ctx.stroke();
+      }else if(spot==='cushion'){
+        ctx.strokeStyle='#b88bd1'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.ellipse(x,y-H*.01,W*.075*q,H*.018*q,0,0,7); ctx.stroke();
+      }else if(spot==='toy'){
+        ctx.fillStyle='#f4b0b0'; ctx.beginPath(); ctx.arc(x+W*.05,y-H*.12-p*H*.02,5+3*p,0,7); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
 }
 
 function drawCat(tm){
@@ -271,22 +405,25 @@ function drawCat(tm){
   const attack=action==='scratch'||action==='bite';
   const pulse=active?Math.sin(Math.PI*Math.min(1,age/(S.actionEnd-S.actionT))):0;
   const angry=S.relax<30;
-  const s=Math.min(W,H)*(W>H?0.0015:0.0019);            // スケール（奥にいるので小さめ）
-  const cx=W*0.5, cy=H*0.40-Math.min(W,H)*0.02;
-  // クッション
-  ctx.save(); ctx.translate(cx,cy+62*s*1.4);
-  ctx.fillStyle='#3b2f4d'; ctx.beginPath();
-  ctx.ellipse(0,0,150*s,38*s,0,0,7); ctx.fill();
-  ctx.fillStyle='#4a3b60'; ctx.beginPath();
-  ctx.ellipse(0,-6*s,138*s,30*s,0,0,7); ctx.fill();
-  ctx.restore();
+  const depth=.72+.34*S.room.y;
+  const s=Math.min(W,H)*(W>H?0.0015:0.0019)*depth;
+  const cx=W*S.room.x, cy=H*(.25+.31*S.room.y)-Math.min(W,H)*.02;
 
-  const lie=relax;                          // 1に近いほど横になる
+  const walking=S.room.moving && !attack;
+  const settledPlace=S.room.place;
+  const tucked=settledPlace==='box' && !walking && !attack;
+  const kneading=settledPlace==='cushion' && !walking && !attack && relax>.45;
+  const sleeping=settledPlace==='window' && !walking && relax>.72;
+  const lie=walking?.08:(tucked?.72:(sleeping?.98:relax)); // 場所ごとに姿勢を変える
   ctx.save();
-  ctx.translate(cx,cy+(reducedMotion.matches?0:attack?pulse*H*.13:action==='startle'?-pulse*18:action==='happy'?Math.sin(tm*7)*3:0));
+  const bob=S.room.walk%Math.PI*2;
+  ctx.translate(cx,cy+(reducedMotion.matches?0:attack?pulse*H*.13:action==='startle'?-pulse*18:action==='happy'?Math.sin(tm*7)*3:Math.sin(bob)*1.5));
   const zoom=1+(attack&&!reducedMotion.matches?pulse*.32:0);
   ctx.scale(s*zoom,s*zoom);
-  const bodyW=95+45*lie, bodyH=68-16*lie, bodyY=18+16*lie;
+  const breath=reducedMotion.matches?0:Math.sin(tm*(sleeping?1.7:2.8))*(sleeping?2.5:1.2);
+  const bodyW=95+45*lie, bodyH=68-16*lie+breath, bodyY=18+16*lie;
+  const facing=S.room.tx<S.room.x?-1:1;
+  ctx.scale(facing,1);
 
   // しっぽ（不機嫌ほど速く振る）
   const speed=0.9+3.4*(1-relax);
@@ -307,10 +444,24 @@ function drawCat(tm){
     ctx.quadraticCurveTo(k*34,bodyY-bodyH*0.2,k*34+10,bodyY-bodyH*0.05);
     ctx.stroke();
   }
-  // 前足
+  // 歩行中は前後の足を交互に出す。停止時はいつもの丸い前足に戻す
   ctx.fillStyle='#f6e9d1';
-  ctx.beginPath(); ctx.ellipse(-30-14*lie,bodyY+bodyH*0.72,26+10*lie,13,0,0,7); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(24+14*lie,bodyY+bodyH*0.72,26+10*lie,13,0,0,7); ctx.fill();
+  if(walking){
+    const step=Math.sin(S.room.walk);
+    [[-34,step],[28,-step]].forEach(([x,phase])=>{
+      ctx.save(); ctx.translate(x,bodyY+bodyH*.72+Math.max(0,phase)*4); ctx.rotate(phase*.16);
+      ctx.beginPath(); ctx.ellipse(0,16,12,30,0,0,7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0,35,15,8,0,0,7); ctx.fill(); ctx.restore();
+    });
+    [[-52,-step],[48,step]].forEach(([x,phase])=>{
+      ctx.save(); ctx.translate(x,bodyY+bodyH*.62+Math.max(0,phase)*3); ctx.rotate(phase*.12);
+      ctx.beginPath(); ctx.ellipse(0,18,13,25,0,0,7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0,34,15,8,0,0,7); ctx.fill(); ctx.restore();
+    });
+  }else{
+    ctx.beginPath(); ctx.ellipse(-30-14*lie,bodyY+bodyH*0.72,26+10*lie,13,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(24+14*lie,bodyY+bodyH*0.72,26+10*lie,13,0,0,7); ctx.fill();
+  }
 
   if(action==='scratch'){
     ctx.save(); ctx.translate(34,bodyY+15); ctx.rotate(-1.5+pulse*2.7);
@@ -320,7 +471,7 @@ function drawCat(tm){
     ctx.restore();
   }
   // 頭
-  const hx=-(6+42*lie), hy=-42+30*lie, tilt=(-0.06-0.5*lie);
+  const hx=-(6+42*lie), hy=-42+30*lie+(sleeping?8:0), tilt=(-0.06-0.5*lie)+(sleeping?.18:0);
   ctx.save(); ctx.translate(hx,hy); ctx.rotate(tilt);
   // 耳（警戒でピン、リラックスで寝る）
   const ear=1-relax;
@@ -336,7 +487,7 @@ function drawCat(tm){
   ctx.fillStyle='#f4e6cd';
   ctx.beginPath(); ctx.ellipse(0,0,50,44,0,0,7); ctx.fill();
   // 目
-  const openness=Math.max(0.06,1-relax*0.95);
+  const openness=sleeping?.025:Math.max(0.06,1-relax*0.95);
   ctx.fillStyle='#2b2333';
   [-19,19].forEach(ex=>{
     ctx.beginPath();
@@ -345,6 +496,16 @@ function drawCat(tm){
   if(relax>0.55){ // 細めた目のライン
     ctx.strokeStyle='#2b2333'; ctx.lineWidth=3; ctx.lineCap='round';
     [-19,19].forEach(ex=>{ ctx.beginPath(); ctx.moveTo(ex-9,-3); ctx.quadraticCurveTo(ex,-8,ex+9,-3); ctx.stroke(); });
+  }
+  if(kneading){
+    ctx.strokeStyle='#f6e9d1'; ctx.lineWidth=7; ctx.lineCap='round';
+    const knead=Math.sin(tm*4.8);
+    [-24,24].forEach((ex,n)=>{ctx.beginPath();ctx.moveTo(ex,31);ctx.lineTo(ex+(n?1:-1)*knead*7,48);ctx.stroke();});
+  }
+  if(sleeping){
+    ctx.strokeStyle='#6d5870'; ctx.lineWidth=2.5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-31,-3); ctx.quadraticCurveTo(-19,4,-8,-3); ctx.moveTo(8,-3); ctx.quadraticCurveTo(19,4,31,-3); ctx.stroke();
+    ctx.fillStyle='#ffca7a'; ctx.font='15px sans-serif'; ctx.fillText('z',42,-30);
   }
   if(angry){
     ctx.strokeStyle='#57404a';ctx.lineWidth=5;
@@ -470,6 +631,7 @@ function loop(now){
   const tm=now/1000, dt=Math.min(.1,Math.max(0,(now-previousFrame)/1000)); previousFrame=now;
   if(S.playing){
     const el=(performance.now()-S.t0)/1000;
+    updateCatMovement(el,dt);
     S.left=Math.max(0,60-el);
     // 静けさ：叩かない時間が続くとゆっくり眠くなる
     const last=S.hits.length?S.hits[S.hits.length-1].t:0;
@@ -551,6 +713,7 @@ function start(){
   if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(err){} }
   if(AC&&AC.state==='suspended') AC.resume();
   S.playing=true; S.t0=performance.now(); S.relax=50; S.hits=[]; S.tally={}; S.total=0; S.react=null;
+  S.room={x:.50,y:.66,tx:.50,ty:.66,place:'cushion',nextMove:1.8,walk:0,event:''};
   document.getElementById('start').classList.add('hide');
   document.getElementById('result').classList.add('hide');
 }
