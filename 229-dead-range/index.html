@@ -67,42 +67,250 @@ function resize(){
 window.addEventListener('resize', resize);
 resize();
 
-/* ---------- 音（Web Audio・その場合成） ---------- */
+/* ---------- 音（Web Audio・その場合成／音声ファイルは1本も使わない） ----------
+   設計:
+   1. 全ての音は master → destination を通す。銃声だけ「廃墟の残響」と
+      「向かいのビルからの返り」へ送り、夜の街の広さを出す
+   2. ゾンビの声はフォルマント合成（帯域3本）で母音を作る。単なる低音のブーンではなく
+      「喉から出ている」音にする
+   3. ゾンビの声は距離で音量と高域が変わり、左右へ振れる。姿が見えなくても
+      「どこに何体いるか」が音だけで分かる                                        */
 let AC = null;
 function ac(){ if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return AC; }
-function noiseBuf(sec){
+
+function noiseBuf(sec, pw){
   const a = ac(); const n = Math.floor(a.sampleRate*sec);
   const b = a.createBuffer(1,n,a.sampleRate); const d = b.getChannelData(0);
-  for(let i=0;i<n;i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/n, 2.2);
+  for(let i=0;i<n;i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/n, pw===undefined?2.2:pw);
   return b;
 }
+/* 廃墟の残響。ノイズ×指数減衰のインパルス応答をその場で作る（音源ファイル不要） */
+function irBuf(sec, decay){
+  const a = ac(); const n = Math.floor(a.sampleRate*sec);
+  const b = a.createBuffer(2,n,a.sampleRate);
+  for(let c=0;c<2;c++){
+    const d = b.getChannelData(c);
+    for(let i=0;i<n;i++){
+      const t = i/n;
+      const pre = t < .014 ? t/.014 : 1;      // 立ち上がりを遅らせる＝壁が遠い＝広い
+      d[i] = (Math.random()*2-1) * pre * Math.pow(1-t, decay);
+    }
+  }
+  return b;
+}
+
+let MASTER=null, REV=null, ECHO=null;
+function bus(){
+  const a = ac(); if(!a) return null;
+  if(!MASTER){
+    // DynamicsCompressor は実測で -13dB も持っていかれ、音全体が痩せた（測定値: ピーク 0.898→0.205）。
+    // リミッターに頼らず、銃声そのものを 0.75 前後へ収めて重なりの余地を残す
+    MASTER = a.createGain(); MASTER.gain.value = .72; MASTER.connect(a.destination);
+
+    // 残響（廃墟の壁）
+    REV = a.createConvolver(); REV.buffer = irBuf(2.1, 3.0);
+    const rg = a.createGain(); rg.gain.value = .50;
+    REV.connect(rg); rg.connect(MASTER);
+
+    // 返り（向かいのビル）。0.27秒遅れて高域が削れた複製が2〜3回返る
+    ECHO = a.createGain(); ECHO.gain.value = 1;
+    const dl = a.createDelay(1.0); dl.delayTime.value = .27;
+    const fb = a.createGain(); fb.gain.value = .34;
+    const lp = a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 820;
+    const eg = a.createGain(); eg.gain.value = .42;
+    ECHO.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl);
+    lp.connect(eg); eg.connect(MASTER);
+  }
+  return MASTER;
+}
+/* node を dry / 残響 / 返り の3系統へ配る */
+function out(node, dry, wet, echo){
+  const a = ac(), m = bus(); if(!m) return;
+  const g = a.createGain(); g.gain.value = dry; node.connect(g); g.connect(m);
+  if(wet && REV){  const w = a.createGain(); w.gain.value = wet;  node.connect(w); w.connect(REV); }
+  if(echo && ECHO){const e = a.createGain(); e.gain.value = echo; node.connect(e); e.connect(ECHO); }
+}
+/* 左右の定位。古い iOS Safari に無い場合は素通し */
+function panner(v){
+  const a = ac();
+  if(!a.createStereoPanner) return null;
+  const p = a.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, v)); return p;
+}
+
+/* ---- 銃声: ①撃発のクラック ②銃身から抜ける圧 ③腹に来る低音 ＋ 街の返り ---- */
 function shot(){
   const a = ac(); if(!a) return; const t = a.currentTime;
-  const s = a.createBufferSource(); s.buffer = noiseBuf(.35);
+
+  // ① クラック（0.05秒）。ここが無いと「布を叩く音」になる
+  const c = a.createBufferSource(); c.buffer = noiseBuf(.05, 1.1);
+  const cf = a.createBiquadFilter(); cf.type='highpass'; cf.frequency.value = 1900;
+  const cg = a.createGain();
+  cg.gain.setValueAtTime(.60,t); cg.gain.exponentialRampToValueAtTime(.001,t+.048);
+  c.connect(cf); cf.connect(cg); out(cg,1,.35,.55); c.start(t); c.stop(t+.06);
+
+  // ② ボディ。広い帯域を一気に閉じると「破裂して抜ける」形になる
+  const s = a.createBufferSource(); s.buffer = noiseBuf(.32);
   const f = a.createBiquadFilter(); f.type='lowpass';
-  f.frequency.setValueAtTime(2400,t); f.frequency.exponentialRampToValueAtTime(180,t+.3);
-  const g = a.createGain(); g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.001,t+.35);
-  s.connect(f); f.connect(g); g.connect(a.destination); s.start(t); s.stop(t+.36);
+  f.frequency.setValueAtTime(3400,t); f.frequency.exponentialRampToValueAtTime(170,t+.28);
+  const g = a.createGain();
+  g.gain.setValueAtTime(.48,t); g.gain.exponentialRampToValueAtTime(.001,t+.32);
+  s.connect(f); f.connect(g); out(g,1,.75,.85); s.start(t); s.stop(t+.33);
+
+  // ③ 腹に来る低音
   const o = a.createOscillator(); o.type='sine';
-  o.frequency.setValueAtTime(110,t); o.frequency.exponentialRampToValueAtTime(38,t+.18);
-  const g2 = a.createGain(); g2.gain.setValueAtTime(.4,t); g2.gain.exponentialRampToValueAtTime(.001,t+.2);
-  o.connect(g2); g2.connect(a.destination); o.start(t); o.stop(t+.21);
+  o.frequency.setValueAtTime(145,t); o.frequency.exponentialRampToValueAtTime(33,t+.20);
+  const g2 = a.createGain();
+  g2.gain.setValueAtTime(.42,t); g2.gain.exponentialRampToValueAtTime(.001,t+.24);
+  o.connect(g2); out(g2,1,.20,.18); o.start(t); o.stop(t+.25);
 }
+
 function click(freq, dur, vol, type){
   const a = ac(); if(!a) return; const t = a.currentTime;
   const o = a.createOscillator(); o.type = type||'square'; o.frequency.setValueAtTime(freq,t);
   const g = a.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
-  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+dur+.02);
+  o.connect(g); out(g,1,.10,0); o.start(t); o.stop(t+dur+.02);
 }
-function groan(){
+
+/* ---- 金属音: ボルト操作・装填。短いノイズ＋高い倍音で「鉄が擦れて噛む」 ---- */
+function metal(freq, dur, vol){
   const a = ac(); if(!a) return; const t = a.currentTime;
+  const s = a.createBufferSource(); s.buffer = noiseBuf(dur, 1.5);
+  const f = a.createBiquadFilter(); f.type='bandpass'; f.frequency.value = freq; f.Q.value = 2.2;
+  const g = a.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  s.connect(f); f.connect(g); out(g,1,.22,0); s.start(t); s.stop(t+dur+.02);
+  const o = a.createOscillator(); o.type='square'; o.frequency.setValueAtTime(freq*1.5,t);
+  const g2 = a.createGain(); g2.gain.setValueAtTime(vol*.34,t); g2.gain.exponentialRampToValueAtTime(.001,t+dur*.6);
+  o.connect(g2); out(g2,1,.14,0); o.start(t); o.stop(t+dur);
+}
+
+/* ---- ゾンビの唸り: フォルマント合成 ----
+   母音は「共鳴する3つの帯域」で決まる。声帯（鋸波）＋かすれ（ノイズ）を
+   バンドパス3本に通すと、低音のブーンではなく「うぅ／おぉ」に聞こえる       */
+const VOWEL = [[560,830,2400],[440,1000,2250],[320,860,2200],[640,1180,2300]];  // あ・お・う・え
+function groan(z){
+  const a = ac(); if(!a) return; const t = a.currentTime;
+
+  // 距離で音量と高域、横位置で左右が決まる。姿が見えなくても群れの居場所が分かる
+  let vol = .22, pan = 0, cut = 2600;
+  if(z){
+    const near = Math.max(0, Math.min(1, 1 - (z.d - REACH) / 900));
+    vol = .07 + near*.30;
+    pan = (z.x - S.camX) / 900;
+    cut = 460 + near*2400;                    // 遠いほど高域が減る＝距離が出る
+  }
+  const V  = VOWEL[(Math.random()*VOWEL.length)|0];
+  const f0 = 58 + Math.random()*40;
+  const dur = .55 + Math.random()*.35;
+
+  // 声帯
   const o = a.createOscillator(); o.type='sawtooth';
-  o.frequency.setValueAtTime(70+Math.random()*30,t);
-  o.frequency.linearRampToValueAtTime(45,t+.5);
-  const f = a.createBiquadFilter(); f.type='lowpass'; f.frequency.value=420;
-  const g = a.createGain(); g.gain.setValueAtTime(0,t);
-  g.gain.linearRampToValueAtTime(.14,t+.1); g.gain.exponentialRampToValueAtTime(.001,t+.6);
-  o.connect(f); f.connect(g); g.connect(a.destination); o.start(t); o.stop(t+.62);
+  o.frequency.setValueAtTime(f0,t);
+  o.frequency.linearRampToValueAtTime(f0*.68, t+dur);
+  // 声が震える（生きていない喉）
+  const lfo = a.createOscillator(); lfo.type='sine'; lfo.frequency.value = 4.5 + Math.random()*3;
+  const lg = a.createGain(); lg.gain.value = f0*.07;
+  lfo.connect(lg); lg.connect(o.frequency);
+  // かすれ
+  const n = a.createBufferSource(); n.buffer = noiseBuf(dur, .6);
+  const ng = a.createGain(); ng.gain.value = .12;
+  n.connect(ng);
+
+  const mix = a.createGain(); mix.gain.value = 1;
+  o.connect(mix); ng.connect(mix);
+
+  // フォルマント3本
+  const amp = [1, .55, .22];
+  const sum = a.createGain(); sum.gain.value = 1;
+  for(let i=0;i<3;i++){
+    const bp = a.createBiquadFilter(); bp.type='bandpass';
+    bp.frequency.value = V[i] * (.9 + Math.random()*.2); bp.Q.value = 7;
+    const bg = a.createGain(); bg.gain.value = amp[i];
+    mix.connect(bp); bp.connect(bg); bg.connect(sum);
+  }
+  const lp = a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = cut;
+  const g = a.createGain();
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.linearRampToValueAtTime(vol, t+.12);
+  g.gain.setValueAtTime(vol, t+dur*.55);
+  g.gain.exponentialRampToValueAtTime(.001, t+dur);
+
+  sum.connect(lp); lp.connect(g);
+  const p = panner(pan);
+  if(p){ g.connect(p); out(p, 1, .30, 0); } else out(g, 1, .30, 0);
+
+  o.start(t); lfo.start(t); n.start(t);
+  o.stop(t+dur+.05); lfo.stop(t+dur+.05); n.stop(t+dur+.05);
+}
+
+/* ---- 着弾: 頭は潰れる音、胴は鈍く重い音 ---- */
+function impact(head, z){
+  const a = ac(); if(!a) return; const t = a.currentTime;
+  const pan = z ? (z.x - S.camX)/900 : 0;
+  const dur = head ? .26 : .18;
+  const s = a.createBufferSource(); s.buffer = noiseBuf(dur, head ? 1.4 : 2.6);
+  const f = a.createBiquadFilter(); f.type = head ? 'bandpass' : 'lowpass';
+  f.frequency.setValueAtTime(head ? 900 : 700, t);
+  f.frequency.exponentialRampToValueAtTime(head ? 180 : 120, t+dur);
+  if(head) f.Q.value = 1.1;
+  const g = a.createGain();
+  g.gain.setValueAtTime(head ? .34 : .22, t); g.gain.exponentialRampToValueAtTime(.001, t+dur);
+  s.connect(f); f.connect(g);
+  const p = panner(pan);
+  if(p){ g.connect(p); out(p,1,.35,0); } else out(g,1,.35,0);
+  s.start(t); s.stop(t+dur+.02);
+
+  const o = a.createOscillator(); o.type='sine';
+  o.frequency.setValueAtTime(head ? 210 : 130, t);
+  o.frequency.exponentialRampToValueAtTime(head ? 44 : 38, t+dur);
+  const g2 = a.createGain();
+  g2.gain.setValueAtTime(head ? .26 : .18, t); g2.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.connect(g2); out(g2,1,.18,0); o.start(t); o.stop(t+dur+.02);
+}
+/* ---- 倒れた体が地面に落ちる ---- */
+function bodyFall(z){
+  const a = ac(); if(!a) return; const t = a.currentTime + .16;
+  const pan = z ? (z.x - S.camX)/900 : 0;
+  const s = a.createBufferSource(); s.buffer = noiseBuf(.30, 3.0);
+  const f = a.createBiquadFilter(); f.type='lowpass'; f.frequency.value = 300;
+  const g = a.createGain(); g.gain.setValueAtTime(.20,t); g.gain.exponentialRampToValueAtTime(.001,t+.30);
+  s.connect(f); f.connect(g);
+  const p = panner(pan);
+  if(p){ g.connect(p); out(p,1,.40,0); } else out(g,1,.40,0);
+  s.start(t); s.stop(t+.32);
+}
+
+/* ---- 肥大体の溜め: 低い唸りがせり上がる。「来る」という予告 ---- */
+function growl(z){
+  const a = ac(); if(!a) return; const t = a.currentTime;
+  const pan = z ? (z.x - S.camX)/900 : 0;
+  const o = a.createOscillator(); o.type='sawtooth';
+  o.frequency.setValueAtTime(36,t); o.frequency.exponentialRampToValueAtTime(98,t+.46);
+  const f = a.createBiquadFilter(); f.type='lowpass';
+  f.frequency.setValueAtTime(190,t); f.frequency.linearRampToValueAtTime(940,t+.46);
+  const g = a.createGain();
+  g.gain.setValueAtTime(.001,t);
+  g.gain.linearRampToValueAtTime(.32,t+.40); g.gain.exponentialRampToValueAtTime(.001,t+.55);
+  o.connect(f); f.connect(g);
+  const p = panner(pan);
+  if(p){ g.connect(p); out(p,1,.40,0); } else out(g,1,.40,0);
+  o.start(t); o.stop(t+.57);
+}
+/* ---- 突進の号砲 ---- */
+function roar(z){
+  const a = ac(); if(!a) return; const t = a.currentTime;
+  const pan = z ? (z.x - S.camX)/900 : 0;
+  const nz = a.createBufferSource(); nz.buffer = noiseBuf(.55, 1.2);
+  const f = a.createBiquadFilter(); f.type='bandpass'; f.frequency.value = 520; f.Q.value = 1.1;
+  const g = a.createGain(); g.gain.setValueAtTime(.34,t); g.gain.exponentialRampToValueAtTime(.001,t+.55);
+  nz.connect(f); f.connect(g);
+  const o = a.createOscillator(); o.type='square';
+  o.frequency.setValueAtTime(124,t); o.frequency.exponentialRampToValueAtTime(50,t+.40);
+  const g2 = a.createGain(); g2.gain.setValueAtTime(.22,t); g2.gain.exponentialRampToValueAtTime(.001,t+.45);
+  o.connect(g2);
+  const p = panner(pan);
+  if(p){ g.connect(p); g2.connect(p); out(p,1,.50,.18); }
+  else  { out(g,1,.50,.18); out(g2,1,.50,.18); }
+  nz.start(t); nz.stop(t+.57); o.start(t); o.stop(t+.47);
 }
 function buzz(ms){ navigator.vibrate && navigator.vibrate(ms||28); }
 function heart(){
@@ -111,7 +319,7 @@ function heart(){
   o.frequency.setValueAtTime(60,t); o.frequency.exponentialRampToValueAtTime(30,t+.13);
   const g = a.createGain(); g.gain.setValueAtTime(.0015,t);
   g.gain.linearRampToValueAtTime(.20,t+.02); g.gain.exponentialRampToValueAtTime(.001,t+.17);
-  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+.19);
+  o.connect(g); out(g,1,0,0); o.start(t); o.stop(t+.19);
 }
 function surgeSting(){
   const a = ac(); if(!a) return; const t = a.currentTime;
@@ -119,14 +327,14 @@ function surgeSting(){
   const f = a.createBiquadFilter(); f.type='lowpass';
   f.frequency.setValueAtTime(90,t); f.frequency.linearRampToValueAtTime(240,t+.6);
   const g = a.createGain(); g.gain.setValueAtTime(.34,t); g.gain.exponentialRampToValueAtTime(.001,t+1.0);
-  s.connect(f); f.connect(g); g.connect(a.destination); s.start(t); s.stop(t+1.02);
+  s.connect(f); f.connect(g); out(g,1,.45,0); s.start(t); s.stop(t+1.02);
 }
 function calmSting(){
   const a = ac(); if(!a) return; const t = a.currentTime;
   const o = a.createOscillator(); o.type='sine';
   o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(96,t+.7);
   const g = a.createGain(); g.gain.setValueAtTime(.10,t); g.gain.exponentialRampToValueAtTime(.001,t+.75);
-  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+.77);
+  o.connect(g); out(g,1,.35,0); o.start(t); o.stop(t+.77);
 }
 
 /* ---------- 定数 ---------- */
@@ -159,7 +367,8 @@ function newGame(){
     // 群れのリズム
     tide:'march', tideT:2.4, tideMul:1, surgeFlash:0,
     flash:0, hurt:0, recoil:0, shake:0, ejectT:0,
-    banner:'', bannerT:0, hits:0, shots:0
+    banner:'', bannerT:0, hits:0, shots:0,
+    spawnN:0, invDebt:0
   };
 }
 newGame();
@@ -187,7 +396,9 @@ function nextTide(){
   if(n === 'surge'){
     S.banner = '群れが' + T.label; S.bannerT = 1.5;
     S.surgeFlash = 1; S.shake = Math.max(S.shake, .8);
-    surgeSting(); groan(); groan(); groan(); buzz(60);
+    surgeSting(); buzz(60);
+    // 唸りは群れの実体から鳴らす。左右にばらけて「囲まれている」が音で出る
+    S.zombies.filter(z=>z.alive).sort((a,b)=>a.d-b.d).slice(0,3).forEach(groan);
   } else if(n === 'calm'){
     S.banner = T.label; S.bannerT = 1.1;
     S.surgeFlash = 0; calmSting();
@@ -198,7 +409,9 @@ const TYPES = {
   // lg=個体突進の倍率 / sw=歩幅 / hu=猫背の深さ / ar=腕の前方リーチ
   walker:{hp:2, sp:26, w:46, col:'#3f5638', cloth:'#212a1c', lg:2.05, sw:1.00, hu:.055, ar:.95, name:'歩行体'},
   runner:{hp:1, sp:58, w:36, col:'#5f6b28', cloth:'#2b2917', lg:2.70, sw:1.55, hu:.115, ar:.30, name:'走行体'},
-  brute :{hp:4, sp:17, w:72, col:'#2d5045', cloth:'#1a2922', lg:1.35, sw:.72, hu:.085, ar:1.15, name:'巨躯体'}
+  brute :{hp:4, sp:17, w:72, col:'#2d5045', cloth:'#1a2922', lg:1.35, sw:.72, hu:.085, ar:1.15, name:'巨躯体'},
+  // 肥大体: 基礎速度は全種で最も遅いが、溜めのあと lg=7.0 で走行体を超える速度になる
+  bloater:{hp:5, sp:12, w:88, col:'#8c4a9e', cloth:'#8e2436', lg:7.0, sw:.58, hu:.055, ar:1.05, name:'肥大体'}
 };
 
 function spawn(){
@@ -206,9 +419,22 @@ function spawn(){
   let k = 'walker';
   if(S.wave >= 2 && r < .3) k = 'runner';
   if(S.wave >= 3 && r > .86) k = 'brute';
+  // 出現比率は乱数ではなく通し番号で数える。運で偏らない
+  S.spawnN++;
+  // 7体に1体は「肥大体」。種別ごと差し替えるので反転種にはしない（固有の赤紫を潰さないため）
+  const fat = (S.spawnN % 7 === 0);
+  let inv = (S.spawnN % 3 === 0);
+  // 21体目は両方に当たる。そこで落ちた反転種は「借り」として次の非肥大体へ繰り越す。
+  // これで 肥大体 1/7 と 反転種 1/3 の両方が長期的に厳密に成立する
+  if(fat && inv){ S.invDebt++; inv = false; }
+  else if(!fat && !inv && S.invDebt > 0){ inv = true; S.invDebt--; }
+  if(fat) k = 'bloater';
   const T = TYPES[k];
   S.zombies.push({
     k, hp:T.hp, maxhp:T.hp,
+    // 反転種: 色が反転し、左右に蛇行して近づく（狙いを外させる個体）
+    inv, wa: inv ? 210 + Math.random()*130 : 0,
+    wf: inv ? 1.05 + Math.random()*.75 : 0,
     x:(Math.random()*2-1) * 900,
     d:FAR + Math.random()*260,
     sp:T.sp * (1 + (S.wave-1)*.11) * (.85 + Math.random()*.35),
@@ -218,9 +444,9 @@ function spawn(){
     limp:(Math.random()<.55?1:-1)*(.25+Math.random()*.55),
     tilt:(Math.random()*2-1)*.20,
     tatter:Math.random()*6.28,
-    lungeT:1.2+Math.random()*3.2, lunge:1, lungeLeft:0
+    lungeT:1.2+Math.random()*3.2, lunge:1, lungeLeft:0, tell:0
   });
-  if(Math.random() < .5) groan();
+  if(Math.random() < .5) groan(S.zombies[S.zombies.length-1]);
 }
 
 /* ---------- 入力 ---------- */
@@ -266,7 +492,7 @@ function begin(){ const b = S.best; newGame(); S.best = b; S.mode='play'; startW
 /* ---------- 射撃 ---------- */
 function fire(){
   if(S.mode !== 'play' || S.cycle > 0 || S.reloading > 0) return;
-  if(S.ammo <= 0){ click(180,.06,.25,'square'); reload(); return; }
+  if(S.ammo <= 0){ metal(320,.10,.26); reload(); return; }
   S.ammo--; S.shots++; S.cycle = CYCLE_MS;
   S.flash = 1; S.recoil = 1; S.shake = 1;
   S.ejectT = .30;
@@ -305,32 +531,86 @@ function fire(){
     target.pts = (base + dBonus) * Math.min(5, S.combo);
     target.head = headshot;
     S.score += target.pts;
-    click(headshot?880:420, .1, .2, headshot?'triangle':'square');
+    impact(headshot, target); bodyFall(target);
   } else {
     S.combo = Math.max(0, S.combo);
-    click(300, .05, .14, 'sawtooth');
+    impact(false, target);
   }
 }
 function reload(){
   if(S.mode!=='play' || S.reloading > 0 || S.ammo === MAG) return;
-  S.reloading = RELOAD_MS; click(220,.05,.16,'square');
+  S.reloading = RELOAD_MS; metal(280,.16,.30); setTimeout(()=>metal(190,.14,.22), 190);
 }
 
-/* 銃の据え位置（描画と薬莢排出で共有する） */
-function weaponAnchor(){
-  const sc = Math.max(.60, Math.min(1.32, Math.min(W,H)/560)) * (TOUCH ? .72 : 1.05);
-  return { ax: W*(TOUCH ? .46 : .74), ay: H*(TOUCH ? .90 : .93), s:sc, a:.40 };
+/* ---------- 銃の投影（一人称の前縮み） ----------
+   世界は f/z の透視で描いているのに、銃だけ真横向きの平面図だったため
+   「奥を狙っている」感じが出なかった。そこで銃もローカル3D
+   （X=銃の右 / Y=銃の下 / Z=銃口方向＝奥）で組み立て、断面ごとに f/z で縮めて
+   画面へ落とす。銃口ほど小さく・銃床ほど大きくなり、軸が照準へ収束する。 */
+const GUN = {
+  f:1150,          // 銃専用の焦点距離。世界の focal() より望遠にして前縮みを穏やかにする
+  zN:300, zF:700,  // 手前（銃床）と奥（銃口）の距離。比 2.3 倍ぶんだけ銃口が細くなる
+  cant:.20,        // 銃のロール（傾け）
+  // 据え位置は「画面中心からの割合」で持つ。縦長でも横長でも同じ構図に落ちる
+  nx:.30, ny:.36,  // 手前端（銃床）＝画面右下へ逃がす
+  fx:.145,fy:.075, // 奥端（銃口）＝照準のすぐ右下。標的を隠さない
+  tnx:.40, tny:.26, tfx:.22, tfy:.06   // 縦持ち（スマホ）用
+};
+let GX=0, GY=0, GK=1, GDZ=0, GPT=0, GRL=0, GAX0=0, GAY0=0, GAX1=0, GAY1=0;
+
+/* 銃の姿勢を毎フレーム決める。照準は画面中央に固定なので、揺れは銃だけが受ける */
+function gunSetup(){
+  const amp = S.amp || 0;
+  const rl  = S.reloading > 0 ? Math.sin((1 - S.reloading/RELOAD_MS) * Math.PI) : 0;
+  const swx = S.sway*.42 + Math.sin(S.t*1.15)*amp*.16 + (Math.random()*2-1)*S.shake*3.2;
+  const swy = Math.sin(S.t*1.6+.8)*amp*.42 + Math.sin(S.t*.83)*amp*.22 + (Math.random()*2-1)*S.shake*3.2;
+  GK  = Math.max(.40, Math.min(.78, Math.min(W,H)/912));
+  GX  = W/2 + swx;                       // 銃身の軸が収束する先＝照準（画面中心）
+  GY  = H/2 + swy + rl*44*GK;
+  // 画面比率で決めた据え位置を、その地点の縮尺で割ってローカルのずれへ戻す
+  const por = (H > W * 1.15);            // 縦持ち
+  const sN = GUN.f/GUN.zN*GK, sF = GUN.f/GUN.zF*GK;
+  GAX0 = W*(por?GUN.tnx:GUN.nx)/sN;  GAY0 = H*(por?GUN.tny:GUN.ny)/sN;
+  GAX1 = W*(por?GUN.tfx:GUN.fx)/sF;  GAY1 = H*(por?GUN.tfy:GUN.fy)/sF;
+  GDZ = -S.recoil*66 - rl*24;   // 反動で銃が手前へ下がる＝全体が大きくなる
+  GPT = -S.recoil*22 - rl*16;   // 銃口が跳ね上がる（支点は肩＝u:0）
+  GRL = GUN.cant + rl*.22;
+}
+/* u:0=銃床 1=銃口 / x,y:その断面内の位置 → 画面座標と、その地点の縮尺 */
+function gp(u, x, y){
+  const z  = GUN.zN + (GUN.zF - GUN.zN)*u + GDZ;
+  const ax = GAX0 + (GAX1 - GAX0)*u;
+  const ay = GAY0 + (GAY1 - GAY0)*u + GPT*u;
+  const s  = GUN.f / Math.max(70, z) * GK;
+  const c  = Math.cos(GRL), sn = Math.sin(GRL);
+  return [ GX + (ax + x*c - y*sn)*s, GY + (ay + x*sn + y*c)*s, s ];
+}
+function gpoly(pts, col){
+  ctx.fillStyle = col; ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath(); ctx.fill();
+}
+/* 奥へ伸びる箱。視点は銃の左上後方にあるので、見えるのは左側面と上面だけ */
+function gbox(u0,u1,x0,x1,y0,y1,cTop,cSide,cCap){
+  gpoly([gp(u0,x0,y0),gp(u1,x0,y0),gp(u1,x0,y1),gp(u0,x0,y1)], cSide);
+  gpoly([gp(u0,x0,y0),gp(u1,x0,y0),gp(u1,x1,y0),gp(u0,x1,y0)], cTop);
+  if(cCap) gpoly([gp(u0,x0,y0),gp(u0,x1,y0),gp(u0,x1,y1),gp(u0,x0,y1)], cCap);
+}
+/* 稜線: 箱の左上の角を u に沿ってなぞる */
+function gedge(u0,u1,x,y,col,wd,al){
+  const a = gp(u0,x,y), b = gp(u1,x,y);
+  ctx.globalAlpha = al; ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
 }
 function ejectShell(){
-  const A = weaponAnchor();
-  const lx = -8*A.s, ly = -26*A.s;
-  const px = A.ax + lx*Math.cos(A.a) - ly*Math.sin(A.a);
-  const py = A.ay + lx*Math.sin(A.a) + ly*Math.cos(A.a);
+  gunSetup();
+  const p = gp(.40, 15, -8);            // 排莢口は機関部の右側面
   for(let i=0;i<2;i++) S.parts.push({
-    x:px, y:py, vx:110+Math.random()*100, vy:-200-Math.random()*100,
+    x:p[0], y:p[1], vx:110+Math.random()*100, vy:-200-Math.random()*100,
     life:.95, c:'#c9a44e', r:3
   });
-  click(1650, .035, .06, 'triangle');
+  metal(2600,.09,.13); setTimeout(()=>metal(2100,.07,.07), 210);
 }
 
 /* ---------- 投影 ---------- */
@@ -363,8 +643,8 @@ function update(dt){
   S.shake = Math.max(0, S.shake - dt * 3.4);
   S.hurt = Math.max(0, S.hurt - dt * 1.6);
   S.bannerT = Math.max(0, S.bannerT - dt);
-  if(S.cycle > 0){ S.cycle -= dt*1000; if(S.cycle <= 0) click(520,.04,.1,'square'); }
-  if(S.reloading > 0){ S.reloading -= dt*1000; if(S.reloading <= 0){ S.ammo = MAG; click(640,.06,.14,'square'); } }
+  if(S.cycle > 0){ S.cycle -= dt*1000; if(S.cycle <= 0) metal(760,.13,.22); }
+  if(S.reloading > 0){ S.reloading -= dt*1000; if(S.reloading <= 0){ S.ammo = MAG; metal(520,.15,.26); } }
 
   // ---- 呼吸と手ブレ（銃・照準・HUDが同じ amp を共有する） ----
   const canHold = S.steady && S.breath > 0;
@@ -421,21 +701,32 @@ function update(dt){
     const T = TYPES[z.k];
 
     // 個体の突進: 群れ全体の潮とは別に、一体ずつ不意に踏み込む
-    if(z.lungeLeft > 0){
+    if(z.tell > 0){
+      // 肥大体の溜め。ほぼ止まって体が沈む。ここが撃ち抜くための猶予 0.5 秒
+      z.tell -= dt;
+      z.lunge += (.12 - z.lunge) * Math.min(1, dt*7);
+      if(z.tell <= 0){ z.lungeLeft = 1.25 + Math.random()*.55; roar(z); buzz(70); }
+    } else if(z.lungeLeft > 0){
       z.lungeLeft -= dt;
-      z.lunge += (T.lg - z.lunge) * Math.min(1, dt*8);
-      if(z.lungeLeft <= 0) z.lungeT = (z.k==='runner' ? 1.1 : 2.4) + Math.random()*3.2;
+      z.lunge += (T.lg - z.lunge) * Math.min(1, dt*(z.k==='bloater' ? 14 : 8));
+      if(z.lungeLeft <= 0) z.lungeT = (z.k==='runner' ? 1.1 : z.k==='bloater' ? 3.2 : 2.4) + Math.random()*3.2;
     } else {
-      z.lunge += (1 - z.lunge) * Math.min(1, dt*2.4);
+      z.lunge += (1 - z.lunge) * Math.min(1, dt*(z.k==='bloater' ? 5.0 : 2.4));
       z.lungeT -= dt;
       if(z.lungeT <= 0){
-        z.lungeLeft = .40 + Math.random()*.70;
-        if(Math.random() < .55) groan();
+        // 肥大体だけは「予告してから」来る。理不尽にしないための溜め
+        if(z.k === 'bloater'){ z.tell = .50; growl(z); }
+        else {
+          z.lungeLeft = .40 + Math.random()*.70;
+          if(Math.random() < .55) groan(z);
+        }
       }
     }
 
     z.d -= z.sp * z.lunge * S.tideMul * dt;
     z.x += Math.sin(S.t*1.4 + z.ph) * z.drift * dt * 6;
+    // 蛇行: 反転種は左右へ振れながら寄ってくる。近いほど振れ幅が詰まって当てにくい
+    if(z.inv) z.x += Math.cos(S.t * z.wf + z.ph) * z.wa * dt;
     z.hitT = Math.max(0, z.hitT - dt);
     if(z.d <= REACH){
       z.alive = false; z.dead = .01;
@@ -571,16 +862,30 @@ function drawZombie(z){
   ctx.beginPath(); ctx.ellipse(0, 1, w*.66, h*.040, 0, 0, 6.29); ctx.fill();
   ctx.globalAlpha = ga;
 
+  // 肥大体の溜め: 足元の赤い輪が広がる。音を切っていても「来る」が分かる
+  const tell = Math.max(0, Math.min(1, (z.tell||0)/.50));
+  if(tell > 0){
+    ctx.globalAlpha = ga*(.22 + .55*(1-tell));
+    ctx.strokeStyle = '#ff3a55'; ctx.lineWidth = Math.max(1.2, w*.055);
+    ctx.beginPath();
+    ctx.ellipse(0, 1, w*(.62 + .55*(1-tell)), h*.048*(1 + (1-tell)*.5), 0, 0, 6.29);
+    ctx.stroke();
+    ctx.globalAlpha = ga;
+  }
+
   if(!dying) ctx.rotate(z.tilt * (z.k === 'runner' ? 1.5 : 1));
 
   const hit   = z.hitT > 0;
-  const skin  = hit ? '#f4faea' : T.col;
-  const cloth = hit ? '#eef6e0' : T.cloth;
-  const rimc  = hit ? '#ffffff' : '#8fae86';
+  const invc  = c => '#' + c.slice(1).match(/../g).map(v => (255 - parseInt(v,16)).toString(16).padStart(2,'0')).join('');
+  const skin  = hit ? '#f4faea' : (z.inv ? invc(T.col)   : T.col);
+  const cloth = hit ? '#eef6e0' : (z.inv ? invc(T.cloth) : T.cloth);
+  const rimc  = hit ? '#ffffff' : (z.inv ? '#6f5279' : '#8fae86');
 
   // 上下動。引きずる脚のぶんだけ不均等に跳ねる
   const bob = Math.abs(Math.sin(g)) * h * .020 * (1 + Math.abs(z.limp)*.8);
   ctx.translate(0, -bob);
+  // 溜めで沈み込む → 解放した瞬間に伸び上がる
+  if(tell > 0){ ctx.translate(0, h*.09*tell); ctx.scale(1 + .07*tell, 1 - .12*tell); }
 
   // 頭の高さは全タイプ共通（ヘッドショット判定 top+.21h と一致させる）
   const hipY = -h*.50, shY = -h*.795, hr = h*.072;
@@ -718,134 +1023,124 @@ function drawZombie(z){
 function drawWeapon(){
   const vis = Math.pow(1 - S.zoom, .85);        // スコープを覗くと消える
   if(vis < .015) return;
-  const A = weaponAnchor();
-  const amp = S.amp || 0;
+  gunSetup();
 
-  const rl   = S.reloading > 0 ? Math.sin((1 - S.reloading/RELOAD_MS) * Math.PI) : 0;
   const cyc  = S.cycle > 0 ? 1 - S.cycle/CYCLE_MS : 1;
   const bolt = S.cycle > 0 ? (cyc < .45 ? cyc/.45 : 1 - (cyc - .45)/.55) : 0;
 
-  // ★呼吸の連動: 銃身は照準と同じ amp で揺れる。息を止めると目に見えて止まる
-  const swx = S.sway * .50 + Math.sin(S.t*1.15) * amp * .18;
-  const swy = Math.sin(S.t*1.6 + .8) * amp * .45 + Math.sin(S.t*.83) * amp * .24;
-  const shx = (Math.random()*2-1) * S.shake * 3.5;
-  const shy = (Math.random()*2-1) * S.shake * 3.5;
+  // 面の役割で色を分ける。視点は銃の左上後方なので「上面＝月明かり／左側面＝影」
+  const TOP='#43574a', TOP2='#33453a', SIDE='#0b100c', SIDE2='#131a14',
+        D='#05080600'.slice(0,7), CAP='#1b241c', R='#b6d3ac';
 
   ctx.save();
   ctx.globalAlpha = vis;
-  ctx.translate(A.ax + swx + shx + S.recoil*32*A.s,
-                A.ay + swy + shy + S.recoil*17*A.s + rl*52*A.s);
-  ctx.rotate(A.a - S.recoil*.17 - rl*.34);
-  ctx.scale(A.s, A.s);
+  ctx.lineJoin = 'round';
 
-  const B = '#161f1a', E = '#3a4d40', G = '#212a1f', R = '#b6d3ac';
-
-  // ---- 銃床 ----
-  ctx.fillStyle = B;
-  ctx.beginPath();
-  ctx.moveTo(38,-16); ctx.lineTo(196,-32); ctx.lineTo(208,6);
-  ctx.lineTo(120,24); ctx.lineTo(38,18); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = G; ctx.fillRect(94,-36,84,13);              // チークピース
-  ctx.fillStyle = E;
-  ctx.beginPath(); ctx.moveTo(196,-32); ctx.lineTo(210,-28);
-  ctx.lineTo(216,10); ctx.lineTo(208,6); ctx.closePath(); ctx.fill();
-
-  // ---- レシーバー ----
-  ctx.fillStyle = B; ctx.fillRect(-74,-20,116,38);
-  ctx.fillStyle = E; ctx.fillRect(-74,-20,116,3);
-  ctx.fillStyle = '#070b08'; ctx.fillRect(-30,-19,44,7);      // 排莢口
-
-  // ---- マガジン ----
-  ctx.save(); ctx.translate(-28,16); ctx.rotate(.13);
-  ctx.fillStyle = B; ctx.fillRect(0,0,34,56);
-  ctx.fillStyle = E; ctx.fillRect(0,0,34,4);
-  ctx.restore();
-
-  // ---- グリップ ----
-  ctx.save(); ctx.translate(24,14); ctx.rotate(.40);
-  ctx.fillStyle = G; ctx.fillRect(0,0,27,64);
-  ctx.fillStyle = '#0a0f0a';
-  for(let i=0;i<4;i++) ctx.fillRect(3, 12+i*13, 21, 4);       // 滑り止め
-  ctx.restore();
-
-  // ---- トリガーガード ----
-  ctx.strokeStyle = B; ctx.lineWidth = 6; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-2,18); ctx.quadraticCurveTo(6,46,32,42); ctx.stroke();
+  // ==== 奥（銃口）から手前（銃床）へ塗り重ねる ====
 
   // ---- 銃身 ----
-  ctx.fillStyle = B; ctx.fillRect(-330,-9,262,16);
-  ctx.fillStyle = E; ctx.fillRect(-330,-9,262,2);
-  ctx.fillStyle = B; ctx.fillRect(-364,-15,36,27);            // マズルブレーキ
-  ctx.fillStyle = '#070b08';
-  for(let i=0;i<3;i++) ctx.fillRect(-357+i*11,-15,4,27);
+  gbox(.70,.965, -7,7, -8,8, TOP, SIDE);
 
-  // ---- ハンドガード ----
-  ctx.fillStyle = G; ctx.fillRect(-208,-17,134,32);
-  ctx.fillStyle = '#080d09';
-  for(let i=0;i<5;i++) ctx.fillRect(-199+i*25,-12,6,22);      // 放熱スリット
+  // ---- マズルブレーキ（いちばん奥＝いちばん小さい）----
+  gbox(.955,1.00, -11,11, -12,12, TOP, SIDE);
+  { const m = gp(1.00,0,0);
+    ctx.fillStyle = '#050906';
+    ctx.beginPath(); ctx.ellipse(m[0],m[1], 7*m[2], 7*m[2], GRL, 0, 6.29); ctx.fill(); }
 
   // ---- バイポッド ----
-  ctx.strokeStyle = B; ctx.lineWidth = 5; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-238,8); ctx.lineTo(-272,68); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-238,8); ctx.lineTo(-212,72); ctx.stroke();
+  { const top = gp(.755,-3,13), la = gp(.72,-22,46), lb = gp(.79,10,50);
+    ctx.strokeStyle = SIDE2; ctx.lineWidth = Math.max(1.5, 4.5*top[2]); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(top[0],top[1]); ctx.lineTo(la[0],la[1]); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(top[0],top[1]); ctx.lineTo(lb[0],lb[1]); ctx.stroke(); }
+
+  // ---- ハンドガード ----
+  gbox(.455,.705, -13,13, -15,15, TOP, SIDE);
+  { ctx.fillStyle = D;                                    // 放熱スリット（奥ほど詰まって見える）
+    for(let i=0;i<5;i++){
+      const u0 = .48 + i*.042, u1 = u0 + .022;
+      gpoly([gp(u0,-13.2,-10),gp(u1,-13.2,-10),gp(u1,-13.2,8),gp(u0,-13.2,8)], '#050906');
+    } }
+
+  // ---- 左手＋前腕（ハンドガードを握る）----
+  { const h = gp(.575,-2,11), s = h[2];
+    ctx.strokeStyle='#161c15'; ctx.lineWidth = 26*s; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(h[0],h[1]); ctx.lineTo(h[0]-58*s, h[1]+152*s); ctx.stroke();
+    ctx.fillStyle='#1c231b';
+    ctx.beginPath(); ctx.ellipse(h[0],h[1], 20*s, 15*s, GRL-.25, 0, 6.29); ctx.fill();
+    ctx.fillStyle='#0f150f';
+    for(let i=0;i<4;i++){
+      ctx.beginPath(); ctx.ellipse(h[0]-14*s+i*8*s, h[1]-7*s, 4*s, 7.5*s, GRL-.2, 0, 6.29); ctx.fill(); } }
 
   // ---- スコープ ----
-  ctx.fillStyle = B;
-  ctx.fillRect(-152,-30,13,16); ctx.fillRect(-40,-30,13,16);  // マウント
-  ctx.fillRect(-178,-53,170,27);                              // 本体
-  ctx.fillRect(-200,-58,26,37);                               // 対物側
-  ctx.fillRect(-16,-51,22,23);                                // 接眼側
-  ctx.fillRect(-106,-66,24,15);                               // 調整ダイヤル
-  ctx.fillStyle = E; ctx.fillRect(-178,-53,170,3);
-  ctx.fillStyle = 'rgba(126,190,158,.32)'; ctx.fillRect(-197,-55,7,31);   // レンズの反射
+  gbox(.275,.315, -5,5, -28,-17, TOP2, SIDE);                   // 前マウント
+  gbox(.475,.515, -5,5, -28,-17, TOP2, SIDE);                   // 後マウント
+  gbox(.255,.545, -8,8, -41,-28, TOP, SIDE);                   // 本体
+  gbox(.235,.275, -10,10, -44,-25, TOP, SIDE2);                 // 対物側
+  gbox(.545,.585, -10,10, -44,-26, TOP, SIDE2, CAP);              // 接眼側（手前の端面が見える）
+  { const ey = gp(.545,0,-35);                            // 接眼レンズ
+    ctx.fillStyle='#0b120d';
+    ctx.beginPath(); ctx.ellipse(ey[0],ey[1], 8*ey[2], 8*ey[2], GRL, 0, 6.29); ctx.fill();
+    ctx.fillStyle='rgba(126,190,158,.30)';
+    ctx.beginPath(); ctx.ellipse(ey[0]-2*ey[2],ey[1]-2.5*ey[2], 3.4*ey[2], 3.4*ey[2], GRL, 0, 6.29); ctx.fill(); }
+  gbox(.375,.425, -6,6, -50,-41, TOP2, SIDE);                   // 調整ダイヤル
+
+  // ---- レシーバー ----
+  gbox(.215,.455, -15,15, -27,17, TOP, SIDE);
+  gpoly([gp(.30,15.2,-25),gp(.42,15.2,-25),gp(.42,15.2,-15),gp(.30,15.2,-15)], '#05080a');  // 排莢口（右側面）
 
   // ---- ボルトハンドル（射撃後に前後する）----
-  ctx.save(); ctx.translate(-4 + bolt*48, -18);
-  ctx.strokeStyle = E; ctx.lineWidth = 7; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(2,0); ctx.lineTo(28,-21); ctx.stroke();
-  ctx.fillStyle = E; ctx.beginPath(); ctx.arc(30,-23,8,0,6.29); ctx.fill();
-  ctx.restore();
+  { const a = gp(.415 - bolt*.075, 14, -18), b = gp(.415 - bolt*.075, 30, -30);
+    ctx.strokeStyle = TOP; ctx.lineWidth = Math.max(1.6, 6*a[2]); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+    ctx.fillStyle = TOP; ctx.beginPath(); ctx.arc(b[0],b[1], 6*a[2], 0, 6.29); ctx.fill(); }
 
-  // ---- 右手（グリップ）----
-  ctx.fillStyle = '#1c231b';
-  ctx.beginPath(); ctx.ellipse(40,36,27,22,.36,0,6.29); ctx.fill();
-  ctx.fillStyle = '#0f150f';
-  for(let i=0;i<3;i++){ ctx.beginPath(); ctx.ellipse(31+i*9,23+i*4,5,10,.52,0,6.29); ctx.fill(); }
+  // ---- マガジン ----
+  gbox(.335,.445, -11,11, 17,58, TOP2, SIDE, CAP);
 
-  // ---- 左手＋前腕（ハンドガード）----
-  ctx.strokeStyle = '#161c15'; ctx.lineWidth = 32; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-148,24); ctx.lineTo(-88,164); ctx.stroke();
-  ctx.fillStyle = '#1c231b';
-  ctx.beginPath(); ctx.ellipse(-152,16,31,23,-.24,0,6.29); ctx.fill();
-  ctx.fillStyle = '#0f150f';
-  for(let i=0;i<4;i++){ ctx.beginPath(); ctx.ellipse(-171+i*13,1,6,11,-.22,0,6.29); ctx.fill(); }
+  // ---- トリガーガード ----
+  { const a = gp(.245,-9,20), b = gp(.315,-9,44), c = gp(.335,-9,26);
+    ctx.strokeStyle = SIDE2; ctx.lineWidth = Math.max(1.6, 5*a[2]); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.quadraticCurveTo(b[0],b[1],c[0],c[1]); ctx.stroke(); }
 
-  // ---- 月明かりの稜線 ----
-  ctx.strokeStyle = R; ctx.globalAlpha = vis*.80; ctx.lineWidth = 2.4; ctx.lineCap = 'butt';
-  ctx.beginPath(); ctx.moveTo(-364,-15); ctx.lineTo(-68,-9);  ctx.stroke();   // 銃身の稜線
-  ctx.beginPath(); ctx.moveTo(-200,-58); ctx.lineTo(-8,-53);  ctx.stroke();   // スコープの稜線
-  ctx.beginPath(); ctx.moveTo(38,-16);   ctx.lineTo(196,-32); ctx.stroke();   // 銃床の稜線
-  ctx.beginPath(); ctx.moveTo(-208,-17); ctx.lineTo(-74,-17); ctx.stroke();   // ハンドガード上面
-  ctx.globalAlpha = vis*.34;
-  ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(-330,7); ctx.lineTo(-68,7); ctx.stroke();       // 銃身の下端
-  ctx.beginPath(); ctx.moveTo(-8,-26); ctx.lineTo(-178,-26); ctx.stroke();
+  // ---- グリップ ----
+  gbox(.215,.295, -10,10, 17,62, TOP2, SIDE, CAP);
+
+  // ---- 右手（グリップを握る）----
+  { const h = gp(.255,-6,36), s = h[2];
+    ctx.strokeStyle='#161c15'; ctx.lineWidth = 24*s; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(h[0],h[1]); ctx.lineTo(h[0]+46*s, h[1]+130*s); ctx.stroke();
+    ctx.fillStyle='#1c231b';
+    ctx.beginPath(); ctx.ellipse(h[0],h[1], 18*s, 14*s, GRL+.3, 0, 6.29); ctx.fill();
+    ctx.fillStyle='#0f150f';
+    for(let i=0;i<3;i++){
+      ctx.beginPath(); ctx.ellipse(h[0]-9*s+i*7*s, h[1]-8*s, 3.6*s, 7*s, GRL+.35, 0, 6.29); ctx.fill(); } }
+
+  // ---- 銃床（いちばん手前＝いちばん大きい）----
+  gbox(.00,.225, -14,14, -29,25, TOP2, SIDE, CAP);
+  gbox(.055,.185, -12,12, -37,-27, TOP2, SIDE);                 // チークピース
+
+  // ---- 月明かりの稜線（上面の左稜を奥までなぞる）----
+  gedge(.00,.225, -14,-29, R, 2.4, vis*.80);              // 銃床
+  gedge(.215,.455, -15,-27, R, 2.2, vis*.80);             // レシーバー
+  gedge(.455,.705, -13,-15, R, 2.0, vis*.70);             // ハンドガード
+  gedge(.70,1.00, -7,-8,   R, 1.9, vis*.66);              // 銃身〜銃口
+  gedge(.235,.585, -8,-41, R, 2.0, vis*.72);              // スコープ
   ctx.globalAlpha = vis;
 
-  // ---- マズルフラッシュ ----
+  // ---- マズルフラッシュ（奥で光る＝小さく、しかし鋭い）----
   if(S.flash > .04){
-    const f = S.flash;
+    const f = S.flash, m = gp(1.00,0,0), s = m[2];
     ctx.globalAlpha = vis * f;
-    const fg = ctx.createRadialGradient(-370,-2,0,-370,-2,150*f);
+    const fg = ctx.createRadialGradient(m[0],m[1],0,m[0],m[1],64*s*f);
     fg.addColorStop(0,  'rgba(255,247,216,.95)');
     fg.addColorStop(.32,'rgba(255,178,74,.50)');
     fg.addColorStop(1,  'rgba(255,120,40,0)');
     ctx.fillStyle = fg;
-    ctx.beginPath(); ctx.arc(-370,-2,150*f,0,6.29); ctx.fill();
+    ctx.beginPath(); ctx.arc(m[0],m[1],64*s*f,0,6.29); ctx.fill();
     ctx.fillStyle = 'rgba(255,240,196,.92)';
     ctx.beginPath();
-    ctx.moveTo(-370-104*f,-2); ctx.lineTo(-370,-2-38*f);
-    ctx.lineTo(-370+30*f,-2);  ctx.lineTo(-370,-2+38*f);
+    ctx.moveTo(m[0], m[1]-17*s*f); ctx.lineTo(m[0]+40*s*f, m[1]);
+    ctx.lineTo(m[0], m[1]+17*s*f); ctx.lineTo(m[0]-40*s*f, m[1]);
     ctx.closePath(); ctx.fill();
     ctx.globalAlpha = vis;
   }
