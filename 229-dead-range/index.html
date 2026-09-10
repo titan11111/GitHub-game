@@ -5,14 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
 <title>DEAD RANGE ─ ゾンビ狙撃</title>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;-webkit-user-select:none}
   html,body{width:100%;height:100%;overflow:hidden;background:#05070a;
-    font-family:"Courier New",ui-monospace,monospace;color:#c8d6c0;touch-action:none;user-select:none}
+    font-family:"Courier New",ui-monospace,monospace;color:#c8d6c0;touch-action:none;user-select:none;
+    overscroll-behavior:none;-webkit-text-size-adjust:100%}
   #g{display:block;position:fixed;inset:0}
 
   .pad{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));right:14px;
     display:flex;gap:10px;align-items:flex-end;z-index:5}
-  .btn{width:64px;height:64px;border-radius:50%;border:2px solid #3d5642;
+  .btn{width:64px;height:64px;border-radius:50%;border:2px solid #3d5642;touch-action:none;
     background:rgba(10,16,12,.72);color:#9fc39a;font:700 12px/1 "Courier New",monospace;
     display:flex;align-items:center;justify-content:center;letter-spacing:.04em;
     backdrop-filter:blur(2px)}
@@ -279,6 +281,41 @@ function bodyFall(z){
   s.start(t); s.stop(t+.32);
 }
 
+/* ---- 肥大体の足音: 地面を伝って腹に来る低音。距離で減衰させる ---- */
+function thud(z, vol){
+  const a = ac(); if(!a) return; const t = a.currentTime;
+  const pan = z ? (z.x - S.camX)/900 : 0;
+  const s = a.createBufferSource(); s.buffer = noiseBuf(.24, 3.4);
+  const f = a.createBiquadFilter(); f.type='lowpass'; f.frequency.value = 150;
+  const g = a.createGain();
+  g.gain.setValueAtTime(.26*vol,t); g.gain.exponentialRampToValueAtTime(.001,t+.24);
+  s.connect(f); f.connect(g);
+  const o = a.createOscillator(); o.type='sine';
+  o.frequency.setValueAtTime(58,t); o.frequency.exponentialRampToValueAtTime(26,t+.20);
+  const g2 = a.createGain();
+  g2.gain.setValueAtTime(.30*vol,t); g2.gain.exponentialRampToValueAtTime(.001,t+.22);
+  o.connect(g2);
+  const p = panner(pan);
+  if(p){ g.connect(p); g2.connect(p); out(p,1,.30,0); } else { out(g,1,.30,0); out(g2,1,.30,0); }
+  s.start(t); s.stop(t+.26); o.start(t); o.stop(t+.22);
+}
+
+/* ---- 匍匐種の擦過音: 爪と腹が土を掻く。高い帯から低い帯へ落として「引きずり」にする ---- */
+function scrape(z, vol){
+  const a = ac(); if(!a) return; const t = a.currentTime;
+  const pan = z ? (z.x - S.camX)/900 : 0;
+  const s = a.createBufferSource(); s.buffer = noiseBuf(.36, 1.0);
+  const f = a.createBiquadFilter(); f.type='bandpass'; f.Q.value = .8;
+  f.frequency.setValueAtTime(1500,t); f.frequency.exponentialRampToValueAtTime(520,t+.30);
+  const g = a.createGain();
+  g.gain.setValueAtTime(.001,t);
+  g.gain.linearRampToValueAtTime(.17*vol,t+.07); g.gain.exponentialRampToValueAtTime(.001,t+.36);
+  s.connect(f); f.connect(g);
+  const p = panner(pan);
+  if(p){ g.connect(p); out(p,1,.30,0); } else out(g,1,.30,0);
+  s.start(t); s.stop(t+.38);
+}
+
 /* ---- 肥大体の溜め: 低い唸りがせり上がる。「来る」という予告 ---- */
 function growl(z){
   const a = ac(); if(!a) return; const t = a.currentTime;
@@ -368,7 +405,7 @@ function newGame(){
     tide:'march', tideT:2.4, tideMul:1, surgeFlash:0,
     flash:0, hurt:0, recoil:0, shake:0, ejectT:0,
     banner:'', bannerT:0, hits:0, shots:0,
-    spawnN:0, invDebt:0
+    spawnN:0, invDebt:0, lowDebt:0
   };
 }
 newGame();
@@ -407,11 +444,14 @@ function nextTide(){
 
 const TYPES = {
   // lg=個体突進の倍率 / sw=歩幅 / hu=猫背の深さ / ar=腕の前方リーチ
+  // hs=背の高さ倍率。当たり判定の箱ごと縮むので、低い個体は素直に当てにくくなる
   walker:{hp:2, sp:26, w:46, col:'#3f5638', cloth:'#212a1c', lg:2.05, sw:1.00, hu:.055, ar:.95, name:'歩行体'},
   runner:{hp:1, sp:58, w:36, col:'#5f6b28', cloth:'#2b2917', lg:2.70, sw:1.55, hu:.115, ar:.30, name:'走行体'},
   brute :{hp:4, sp:17, w:72, col:'#2d5045', cloth:'#1a2922', lg:1.35, sw:.72, hu:.085, ar:1.15, name:'巨躯体'},
   // 肥大体: 基礎速度は全種で最も遅いが、溜めのあと lg=7.0 で走行体を超える速度になる
-  bloater:{hp:5, sp:12, w:88, col:'#8c4a9e', cloth:'#8e2436', lg:7.0, sw:.58, hu:.055, ar:1.05, name:'肥大体'}
+  bloater:{hp:5, sp:12, w:88, col:'#8c4a9e', cloth:'#8e2436', lg:7.0, sw:.58, hu:.055, ar:1.05, name:'肥大体'},
+  // 匍匐種: 地を這うので背が 0.34 倍。撃ちにくい代わりに遅く、体力は1（当てれば必ず倒れる）
+  crawler:{hp:1, sp:21, w:78, col:'#3d6a86', cloth:'#16303f', lg:2.30, sw:1.10, hu:0, ar:1.30, name:'匍匐種', hs:.34}
 };
 
 function spawn(){
@@ -421,14 +461,19 @@ function spawn(){
   if(S.wave >= 3 && r > .86) k = 'brute';
   // 出現比率は乱数ではなく通し番号で数える。運で偏らない
   S.spawnN++;
-  // 7体に1体は「肥大体」。種別ごと差し替えるので反転種にはしない（固有の赤紫を潰さないため）
+  // 7体に1体は「肥大体」、10体に1体は「匍匐種」。どちらも骨格が別物なので反転種にはしない
+  // （肥大体の赤紫・匍匐種の蒼を、色反転で潰さないため）
   const fat = (S.spawnN % 7 === 0);
+  let low = (S.spawnN % 10 === 0);
   let inv = (S.spawnN % 3 === 0);
-  // 21体目は両方に当たる。そこで落ちた反転種は「借り」として次の非肥大体へ繰り越す。
-  // これで 肥大体 1/7 と 反転種 1/3 の両方が長期的に厳密に成立する
-  if(fat && inv){ S.invDebt++; inv = false; }
-  else if(!fat && !inv && S.invDebt > 0){ inv = true; S.invDebt--; }
+  // 番号が重なった回に落ちたぶんは「借り」として次の空き番へ繰り越す。
+  // これで 肥大体1/7・匍匐種1/10・反転種1/3 が長期的にすべて厳密に成立する
+  if(fat && low){ S.lowDebt++; low = false; }
+  else if(!fat && !low && S.lowDebt > 0){ low = true; S.lowDebt--; }
+  if((fat || low) && inv){ S.invDebt++; inv = false; }
+  else if(!fat && !low && !inv && S.invDebt > 0){ inv = true; S.invDebt--; }
   if(fat) k = 'bloater';
+  else if(low) k = 'crawler';
   const T = TYPES[k];
   S.zombies.push({
     k, hp:T.hp, maxhp:T.hp,
@@ -439,6 +484,8 @@ function spawn(){
     d:FAR + Math.random()*260,
     sp:T.sp * (1 + (S.wave-1)*.11) * (.85 + Math.random()*.35),
     ph:Math.random()*6.28, alive:true, hitT:0, dead:0, drift:(Math.random()*2-1)*8,
+    // 歩調は積分して持つ。S.t に倍率を掛ける式だと lunge が跳ねた瞬間に位相まで飛んで脚がワープしていた
+    gait:0, step:0,
     // 個体差: 引きずる脚 / 首の傾き / 服のはためき / 突進タイマー
     seed:Math.random()*100,
     limp:(Math.random()<.55?1:-1)*(.25+Math.random()*.55),
@@ -618,11 +665,12 @@ function focal(){ return FOCAL_HIP + (FOCAL_ZOOM - FOCAL_HIP) * S.zoom; }
 function horizonY(){ return H * .44 - S.camY * (focal() / FOCAL_HIP) * .9 + S.recoil * 26; }
 function project(z){
   if(z.d < 30) return null;
-  const f = focal();
+  const f = focal(), T = TYPES[z.k];
   const x = W/2 + (z.x - S.camX) * f / z.d;
   const base = horizonY() + (CAMH * f) / z.d;
-  const h = (ZH * f) / z.d;
-  const w = (TYPES[z.k].w * f) / z.d;
+  // 背の低い種は箱ごと縮める。描画とヘッドショット帯(top+.21h)が同じ箱を共有し続ける
+  const h = (ZH * (T.hs || 1) * f) / z.d;
+  const w = (T.w * f) / z.d;
   return { x, base, top: base - h, h, w };
 }
 
@@ -751,6 +799,397 @@ function update(dt){
   }
 }
 
+/* ---------- 背景（3枚重ね・すべてその場で焼くオフスクリーン画像） ----------
+   far  : 夜空グラデ＋天の川＋星＋リアルな月（視差 .025）
+   mid  : ちぎれ雲の3帯。月の手前を流れて月を陰らせる（視差 .09 ＋ 常時ドリフト）
+   near : 廃墟のスカイライン＋枯れ木のシルエット（視差 .21）
+   画像ファイルは1枚も使わない。resize時に焼き直す。 */
+const BG = { w:0, h:0, dpr:0, far:null, mid:null, near:null, moon:null, tw:[] };
+
+function mulberry(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function mkLayer(w, h){
+  const c = document.createElement('canvas');
+  const d = Math.min(2, DPR);
+  c.width = Math.max(1, Math.round(w*d)); c.height = Math.max(1, Math.round(h*d));
+  const g = c.getContext('2d');
+  g.setTransform(d,0,0,d,0,0);
+  c._w = w; c._h = h;
+  return { c, g };
+}
+
+/* ---- 月：位相・海・クレーター・縁減光・月暈まで描く ---- */
+function paintMoon(g, cx, cy, R){
+  const rnd = mulberry(90210);
+
+  // 月暈（外側の大きな散乱）
+  let h = g.createRadialGradient(cx,cy,R*.9, cx,cy,R*8.5);
+  h.addColorStop(0,'rgba(146,166,172,.20)');
+  h.addColorStop(.16,'rgba(116,138,148,.093)');
+  h.addColorStop(.46,'rgba(88,108,120,.032)');
+  h.addColorStop(1,'rgba(88,108,120,0)');
+  g.fillStyle = h; g.beginPath(); g.arc(cx,cy,R*8.5,0,6.2832); g.fill();
+  // 内側の強いにじみ
+  h = g.createRadialGradient(cx,cy,R*.72, cx,cy,R*2.5);
+  h.addColorStop(0,'rgba(200,206,190,.36)'); h.addColorStop(.5,'rgba(178,188,180,.11)'); h.addColorStop(1,'rgba(178,188,180,0)');
+  g.fillStyle = h; g.beginPath(); g.arc(cx,cy,R*2.5,0,6.2832); g.fill();
+
+  g.save();
+  g.beginPath(); g.arc(cx,cy,R,0,6.2832); g.clip();
+
+  // 本体（光源は右上・周縁減光）
+  const b = g.createRadialGradient(cx+R*.30, cy-R*.30, R*.08, cx, cy, R*1.16);
+  b.addColorStop(0,'#efece0'); b.addColorStop(.38,'#d3d1c3');
+  b.addColorStop(.72,'#9fa091'); b.addColorStop(.92,'#7a7d70'); b.addColorStop(1,'#63665c');
+  g.fillStyle = b; g.fillRect(cx-R, cy-R, R*2, R*2);
+
+  // 海（マリア）——不規則な暗い斑
+  const maria = [[-.30,-.30,.36],[-.04,-.48,.23],[.22,-.22,.20],[-.40,.14,.27],
+                 [-.10,.10,.31],[.28,.30,.18],[.04,.46,.16],[.40,-.02,.15]];
+  for(const m of maria){
+    const px = cx+m[0]*R, py = cy+m[1]*R, mr = m[2]*R;
+    const mg = g.createRadialGradient(0,0,0, 0,0,mr);
+    mg.addColorStop(0,'rgba(92,98,94,.58)'); mg.addColorStop(.55,'rgba(102,108,104,.33)'); mg.addColorStop(1,'rgba(108,114,110,0)');
+    g.save(); g.translate(px,py); g.rotate(rnd()*3.1416); g.scale(1, .58+rnd()*.55);
+    g.fillStyle = mg; g.beginPath(); g.arc(0,0,mr,0,6.2832); g.fill(); g.restore();
+  }
+
+  // クレーター（暗い底＋光の当たる縁）
+  for(let i=0;i<40;i++){
+    const a = rnd()*6.2832, rr = Math.sqrt(rnd())*R*.95;
+    const px = cx+Math.cos(a)*rr, py = cy+Math.sin(a)*rr;
+    const s = R*(.025+rnd()*.085);
+    g.fillStyle = 'rgba(68,72,68,'+(.15+rnd()*.24).toFixed(3)+')';
+    g.beginPath(); g.arc(px,py,s,0,6.2832); g.fill();
+    g.fillStyle = 'rgba(240,238,224,'+(.13+rnd()*.20).toFixed(3)+')';
+    g.beginPath(); g.arc(px+s*.30, py-s*.30, s*.76, 0, 6.2832); g.fill();
+  }
+  // ティコの光条
+  const tx = cx-R*.16, ty = cy+R*.60;
+  g.globalAlpha = .30;
+  for(let i=0;i<13;i++){
+    const a = rnd()*6.2832, len = R*(.5+rnd()*1.1);
+    const rg = g.createLinearGradient(tx,ty, tx+Math.cos(a)*len, ty+Math.sin(a)*len);
+    rg.addColorStop(0,'rgba(244,242,228,.42)'); rg.addColorStop(1,'rgba(244,242,228,0)');
+    g.strokeStyle = rg; g.lineWidth = R*(.02+rnd()*.035);
+    g.beginPath(); g.moveTo(tx,ty); g.lineTo(tx+Math.cos(a)*len, ty+Math.sin(a)*len); g.stroke();
+  }
+  g.globalAlpha = 1;
+  g.fillStyle = 'rgba(236,234,220,.55)'; g.beginPath(); g.arc(tx,ty,R*.055,0,6.2832); g.fill();
+
+  // ---- 位相（欠け際）。凸月：暗部は左下、境界は楕円 ----
+  // 複数回に分けて重ねることで境界をなめらかにする
+  for(let i=0;i<12;i++){
+    const k = 0.25 + i*0.026;
+    g.beginPath();
+    g.arc(cx,cy,R, -Math.PI/2, Math.PI/2, true);
+    g.ellipse(cx,cy, k*R, R, 0, Math.PI/2, Math.PI*1.5, false);
+    g.closePath();
+    g.fillStyle = 'rgba(5,8,13,.175)';
+    g.fill();
+  }
+  // 地球照（暗部にうっすら残る青灰）
+  g.beginPath();
+  g.arc(cx,cy,R, -Math.PI/2, Math.PI/2, true);
+  g.ellipse(cx,cy, .25*R, R, 0, Math.PI/2, Math.PI*1.5, false);
+  g.closePath();
+  g.fillStyle = 'rgba(56,74,92,.085)'; g.fill();
+
+  // 暗い側のリムライト（大気の抜け）
+  g.strokeStyle = 'rgba(150,170,180,.16)'; g.lineWidth = Math.max(1, R*.045);
+  g.beginPath(); g.arc(cx,cy,R*.985, Math.PI*.62, Math.PI*1.42); g.stroke();
+  g.restore();
+
+  // 明るい側の輪郭を締める
+  g.strokeStyle = 'rgba(232,230,214,.22)'; g.lineWidth = Math.max(1, R*.035);
+  g.beginPath(); g.arc(cx,cy,R*.99, -Math.PI*.52, Math.PI*.42); g.stroke();
+}
+
+/* ---- far：夜空・天の川・星・月 ---- */
+function paintFar(g, w, h){
+  const rnd = mulberry(20260910);
+
+  // 空。天頂は青黒、地平近くは病んだ緑がかった靄
+  const sky = g.createLinearGradient(0,0,0,h);
+  sky.addColorStop(0,   '#04060a');
+  sky.addColorStop(.34, '#070c13');
+  sky.addColorStop(.62, '#0b1219');
+  sky.addColorStop(.85, '#121a1b');
+  sky.addColorStop(.96, '#1b241d');
+  sky.addColorStop(1,   '#232b22');
+  g.fillStyle = sky; g.fillRect(0,0,w,h);
+
+  // 天の川（斜めの薄い帯）
+  g.save();
+  g.translate(w*.34, h*.30); g.rotate(-0.62);
+  for(let i=0;i<3;i++){
+    const bw = w*1.9, bh = h*(.13 + i*.07);
+    const mg = g.createLinearGradient(0,-bh/2,0,bh/2);
+    mg.addColorStop(0,'rgba(120,136,168,0)');
+    mg.addColorStop(.5,`rgba(122,138,170,${.055 - i*.014})`);
+    mg.addColorStop(1,'rgba(120,136,168,0)');
+    g.fillStyle = mg; g.fillRect(-bw/2,-bh/2,bw,bh);
+  }
+  // 天の川の粒
+  for(let i=0;i<900;i++){
+    const x = (rnd()*2-1)*w*.95;
+    const y = (rnd()+rnd()+rnd()-1.5)*h*.075;
+    g.fillStyle = `rgba(198,206,224,${(.05+rnd()*.20).toFixed(3)})`;
+    g.fillRect(x, y, 1, 1);
+  }
+  // 暗黒星雲（帯を裂く影）
+  for(let i=0;i<7;i++){
+    const x = (rnd()*2-1)*w*.7, y = (rnd()*2-1)*h*.05;
+    const r = h*(.03+rnd()*.06);
+    const dg = g.createRadialGradient(x,y,0,x,y,r);
+    dg.addColorStop(0,'rgba(4,6,10,.55)'); dg.addColorStop(1,'rgba(4,6,10,0)');
+    g.fillStyle = dg; g.save(); g.translate(x,y); g.scale(1+rnd()*2.2,1);
+    g.beginPath(); g.arc(0,0,r,0,6.2832); g.fill(); g.restore();
+  }
+  g.restore();
+
+  // 星。地平に近いほど減光する（大気吸収）
+  const STARS = Math.round(w*h/900);
+  for(let i=0;i<STARS;i++){
+    const x = rnd()*w, y = Math.pow(rnd(), .78)*h;
+    const ext = 1 - Math.pow(y/h, 3.2)*.85;          // 地平で暗くなる
+    let a = (.10 + Math.pow(rnd(),2.4)*.90) * ext;
+    if(a < .035) continue;
+    const s = a > .74 ? 1.7 : a > .46 ? 1.2 : 1;
+    // 色温度をわずかに散らす
+    const c = rnd();
+    const col = c < .14 ? '214,224,255' : c < .26 ? '255,232,206' : c < .32 ? '255,206,196' : '236,242,248';
+    g.fillStyle = `rgba(${col},${a.toFixed(3)})`;
+    g.beginPath(); g.arc(x,y,s*.5,0,6.2832); g.fill();
+    if(a > .80){                                       // 明るい星だけ十字の光条
+      g.strokeStyle = `rgba(${col},${(a*.30).toFixed(3)})`; g.lineWidth = 1;
+      const L = 2.6 + a*3.4;
+      g.beginPath(); g.moveTo(x-L,y); g.lineTo(x+L,y); g.moveTo(x,y-L); g.lineTo(x,y+L); g.stroke();
+      const hg = g.createRadialGradient(x,y,0,x,y,L*1.7);
+      hg.addColorStop(0,`rgba(${col},${(a*.22).toFixed(3)})`); hg.addColorStop(1,`rgba(${col},0)`);
+      g.fillStyle = hg; g.beginPath(); g.arc(x,y,L*1.7,0,6.2832); g.fill();
+    }
+  }
+
+  // 月（右上・欠けた凸月）
+  const mx = w*.755, my = h - H*.26, mr = Math.max(22, Math.min(w,h)*.064);
+  paintMoon(g, mx, my, mr);
+  BG.moon = { x:mx, y:my, r:mr };
+
+  // 地平の靄（大気の層。ここだけ緑を残して不穏さを作る）
+  const hazeH = h*.20;
+  const hz1 = g.createLinearGradient(0,h-hazeH,0,h);
+  hz1.addColorStop(0,'rgba(26,42,34,0)'); hz1.addColorStop(.55,'rgba(28,44,36,.20)'); hz1.addColorStop(1,'rgba(38,54,40,.46)');
+  g.fillStyle = hz1; g.fillRect(0,h-hazeH,w,hazeH);
+  // 靄をちぎれさせる横筋
+  for(let i=0;i<16;i++){
+    const y = h - rnd()*hazeH*.95, hh = 2 + rnd()*7;
+    const x = rnd()*w, ww = w*(.15+rnd()*.5);
+    const sg = g.createLinearGradient(x,0,x+ww,0);
+    sg.addColorStop(0,'rgba(60,80,64,0)'); sg.addColorStop(.5,`rgba(64,86,68,${(.05+rnd()*.09).toFixed(3)})`); sg.addColorStop(1,'rgba(60,80,64,0)');
+    g.fillStyle = sg; g.fillRect(x,y,ww,hh);
+  }
+}
+
+/* ---- mid：ちぎれ雲 ---- */
+function paintCloud(g, cx, cy, cw, ch, a, mx, my, rnd){
+  const n = 11 + Math.floor(rnd()*9), P = [];
+  for(let i=0;i<n;i++){
+    const t = i/(n-1);
+    P.push([ cx + (t-.5)*cw + (rnd()*2-1)*cw*.05,
+             cy + (rnd()*2-1)*ch*.62 - Math.sin(t*3.1416)*ch*.55,
+             ch*(.50+rnd()*.95)*(1-Math.abs(t-.5)*.62) ]);
+  }
+  const dx = mx-cx, dy = my-cy, dl = Math.hypot(dx,dy)||1;
+  const ox = dx/dl*ch*.42, oy = dy/dl*ch*.42;
+  // 月に向いた縁の銀色
+  for(const p of P){
+    if(p[2] <= 0) continue;
+    const gg = g.createRadialGradient(p[0]+ox,p[1]+oy,0, p[0]+ox,p[1]+oy,p[2]);
+    gg.addColorStop(0,`rgba(154,172,176,${(a*.52).toFixed(3)})`);
+    gg.addColorStop(.6,`rgba(136,154,160,${(a*.18).toFixed(3)})`);
+    gg.addColorStop(1,'rgba(140,158,162,0)');
+    g.fillStyle = gg; g.beginPath(); g.arc(p[0]+ox,p[1]+oy,p[2],0,6.2832); g.fill();
+  }
+  // 本体
+  for(const p of P){
+    if(p[2] <= 0) continue;
+    const gg = g.createRadialGradient(p[0],p[1],0, p[0],p[1],p[2]);
+    gg.addColorStop(0,`rgba(8,12,17,${a.toFixed(3)})`);
+    gg.addColorStop(.62,`rgba(10,15,20,${(a*.68).toFixed(3)})`);
+    gg.addColorStop(1,'rgba(10,15,20,0)');
+    g.fillStyle = gg; g.beginPath(); g.arc(p[0],p[1],p[2],0,6.2832); g.fill();
+  }
+}
+function paintMid(g, w, h, mx, my){
+  const rnd = mulberry(4477);
+  for(let band=0; band<3; band++){
+    const yB = h*(.26 + band*.24);
+    const n  = 4 + band*2;
+    for(let i=0;i<n;i++){
+      const cx = (i + rnd()*.8) * (w/n);
+      const cy = yB + (rnd()*2-1)*h*.06;
+      const cw = w*(.13+rnd()*.20), ch = h*(.030+rnd()*.045)*(1+band*.35);
+      paintCloud(g, cx, cy, cw, ch, (.25 - band*.05)*(.62+rnd()*.72), mx, my, rnd);
+    }
+  }
+}
+
+/* ---- near：廃墟と枯れ木 ---- */
+function branch(g, x, y, len, ang, w, depth, rnd){
+  if(depth <= 0 || len < 2) return;
+  const x2 = x + Math.cos(ang)*len, y2 = y + Math.sin(ang)*len;
+  g.lineWidth = Math.max(.6, w);
+  g.beginPath(); g.moveTo(x,y); g.lineTo(x2,y2); g.stroke();
+  const k = 2 + (rnd() < .30 ? 1 : 0);
+  for(let i=0;i<k;i++){
+    branch(g, x2, y2, len*(.58+rnd()*.24), ang + (rnd()*2-1)*.85 - .06, w*.62, depth-1, rnd);
+  }
+}
+function paintNear(g, w, h, moonX){
+  const rnd = mulberry(1717);
+  const gy = h - 26;
+  for(let pass=0; pass<2; pass++){
+    const far = pass === 0;
+    const n = far ? 30 : 22;
+    g.fillStyle = far ? '#0a1013' : '#04070a';
+    for(let i=0;i<n;i++){
+      const bw = (far ? 30 : 42) + rnd()*(far ? 66 : 96);
+      const bx = (i + rnd()*.7) * (w/n) - bw*.5;
+      const bh = (far ? 24 : 34) + rnd()*(far ? 86 : 128);
+      const top = gy - bh;
+      g.fillRect(bx, top, bw, bh + 26);
+      // 崩れた天端
+      if(rnd() < .62){
+        const nw = bw*(.25+rnd()*.45), nx = bx + rnd()*(bw-nw);
+        g.clearRect(nx, top - 1, nw, (4+rnd()*14));
+        g.fillRect(bx, top + (4+rnd()*14), bw, 2);
+      }
+      // 露出した鉄筋・アンテナ
+      g.strokeStyle = far ? 'rgba(10,16,19,.9)' : 'rgba(4,7,10,.95)';
+      const rods = 1 + Math.floor(rnd()*3);
+      for(let r=0;r<rods;r++){
+        const rx = bx + 3 + rnd()*(bw-6), rl = 5 + rnd()*17;
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(rx, top); g.lineTo(rx + (rnd()*2-1)*4, top - rl); g.stroke();
+      }
+      // 月側の稜（右上から光が来る）
+      const lit = bx + bw > moonX ? bx + bw : bx;
+      g.strokeStyle = `rgba(126,146,138,${(far ? .10 : .15).toFixed(2)})`;
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(bx, top); g.lineTo(bx+bw, top); g.stroke();
+      g.beginPath(); g.moveTo(lit, top); g.lineTo(lit, gy); g.stroke();
+      // 生き残った窓（ごく暗い。数を絞るほど不気味になる）
+      if(!far && rnd() < .30){
+        const wc = 1 + Math.floor(rnd()*2);
+        for(let q=0;q<wc;q++){
+          const wx = bx + 5 + rnd()*(bw-13), wy = top + 8 + rnd()*Math.max(6,bh-20);
+          g.fillStyle = rnd() < .5 ? 'rgba(122,96,44,.30)' : 'rgba(86,104,92,.20)';
+          g.fillRect(wx, wy, 4, 6);
+          const wg = g.createRadialGradient(wx+2,wy+3,0, wx+2,wy+3,11);
+          wg.addColorStop(0,'rgba(140,110,52,.16)'); wg.addColorStop(1,'rgba(140,110,52,0)');
+          g.fillStyle = wg; g.fillRect(wx-9,wy-8,22,22);
+        }
+        g.fillStyle = '#04070a';
+      }
+    }
+  }
+  // 枯れ木
+  g.strokeStyle = '#030608'; g.lineCap = 'round';
+  const trees = 7;
+  for(let i=0;i<trees;i++){
+    const tx = (i + .2 + rnd()*.6) * (w/trees);
+    const th = 34 + rnd()*54;
+    branch(g, tx, gy + 6, th, -Math.PI/2 + (rnd()*2-1)*.18, 3.4, 5, rnd);
+  }
+  g.lineCap = 'butt';
+}
+
+/* ---- 3枚を焼く ---- */
+function buildBackdrop(){
+  if(BG.w === W && BG.h === H && BG.dpr === DPR) return;
+  BG.w = W; BG.h = H; BG.dpr = DPR;
+  BG.pad = 260;
+
+  // far（不透明。地平が下端）
+  const fw = W + 120, fh = H*.44 + BG.pad;
+  const F = mkLayer(fw, fh); paintFar(F.g, fw, fh); BG.far = F.c;
+
+  // mid（透明。地平が下端。横は2倍幅で巻き戻す）
+  const mw = W*2, mh = Math.max(200, H*.50);
+  const M = mkLayer(mw, mh);
+  // 月の位置を mid の座標系へ写して縁光の向きに使う
+  paintMid(M.g, mw, mh, BG.moon.x + W*.25, mh - H*.26);
+  BG.mid = M.c;
+
+  // near（透明。接地線が下端から26px上）
+  const nw = W + 560, nh = Math.max(190, H*.30);
+  const N = mkLayer(nw, nh); paintNear(N.g, nw, nh, BG.moon.x + 280); BG.near = N.c;
+
+  // 生きた瞬き用の星（焼き込まない分だけ live で描く）
+  BG.tw = [];
+  const rnd = mulberry(777);
+  for(let i=0;i<30;i++){
+    BG.tw.push({ x: rnd()*W, y: Math.pow(rnd(),.85)*H*.36, s: .8+rnd()*1.1,
+                 sp: .7+rnd()*2.2, ph: rnd()*6.2832 });
+  }
+}
+
+/* ---- 毎フレーム：3枚を視差差で重ねる ---- */
+function drawBackdrop(hz){
+  buildBackdrop();
+  const fh = BG.far._h, mh = BG.mid._h, nh = BG.near._h;
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(-12,-12, W+24, hz+12); ctx.clip();
+
+  // 1枚目：夜空＋星＋月（いちばん遠い＝ほとんど動かない）
+  const fx = -60 - S.camX*.025;
+  ctx.drawImage(BG.far, fx, hz - fh, BG.far._w, fh);
+
+  // 星の瞬き（焼けない要素だけ live）
+  for(const t of BG.tw){
+    const a = .30 + Math.sin(S.t*t.sp + t.ph)*.30 + Math.sin(S.t*t.sp*2.7 + t.ph)*.14;
+    if(a <= .04) continue;
+    ctx.fillStyle = `rgba(226,236,246,${Math.min(.72,a).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(t.x - S.camX*.025, t.y + (hz - H*.44), t.s*.5, 0, 6.2832); ctx.fill();
+  }
+
+  // 月の呼吸（薄雲の厚みが揺れているように光量が微動）
+  const mX = fx + BG.moon.x, mY = hz - fh + BG.moon.y;
+  const puls = .70 + Math.sin(S.t*.31)*.18 + Math.sin(S.t*.77)*.09;
+  const mg = ctx.createRadialGradient(mX,mY,BG.moon.r*.8, mX,mY,BG.moon.r*7);
+  mg.addColorStop(0,`rgba(164,182,186,${(.10*puls).toFixed(3)})`);
+  mg.addColorStop(.4,`rgba(132,154,164,${(.035*puls).toFixed(3)})`);
+  mg.addColorStop(1,'rgba(132,154,164,0)');
+  ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mX,mY,BG.moon.r*7,0,6.2832); ctx.fill();
+
+  // 2枚目：雲。月の手前を流れて月を陰らせる
+  const drift = (S.t*7.5) % BG.mid._w;
+  const my2 = hz - mh;
+  const mx0 = -W*.25 - S.camX*.09 - drift;
+  ctx.drawImage(BG.mid, mx0,                 my2, BG.mid._w, mh);
+  ctx.drawImage(BG.mid, mx0 + BG.mid._w,     my2, BG.mid._w, mh);
+
+  // 3枚目：廃墟と枯れ木
+  ctx.drawImage(BG.near, -280 - S.camX*.21, hz - (nh - 26), BG.near._w, nh);
+
+  // 地平の冷たい靄（3枚を溶かして奥行きをつなぐ）
+  const hg = ctx.createLinearGradient(0, hz - H*.075, 0, hz + 6);
+  hg.addColorStop(0,'rgba(28,44,38,0)');
+  hg.addColorStop(.65,`rgba(30,48,40,${(.13 + Math.sin(S.t*.23)*.03).toFixed(3)})`);
+  hg.addColorStop(1,'rgba(34,52,42,.30)');
+  ctx.fillStyle = hg; ctx.fillRect(-12, hz - H*.075, W+24, H*.075 + 6);
+
+  ctx.restore();
+}
+
 /* ---------- 描画 ---------- */
 function draw(){
   const hz = horizonY();
@@ -758,24 +1197,8 @@ function draw(){
   const sy = (Math.random()*2-1) * S.shake * 5;
   ctx.save(); ctx.translate(sx, sy);
 
-  // 空
-  const sky = ctx.createLinearGradient(0,0,0,hz);
-  sky.addColorStop(0,'#0a0f14'); sky.addColorStop(.55,'#121a1c'); sky.addColorStop(1,'#262b22');
-  ctx.fillStyle = sky; ctx.fillRect(-10,-10,W+20,hz+10);
-
-  // 月
-  const mx = W*.76 - S.camX*.06, my = hz - H*.26;
-  ctx.globalAlpha=.9; ctx.fillStyle='#c9d3b0'; ctx.beginPath(); ctx.arc(mx,my,26,0,6.29); ctx.fill();
-  ctx.fillStyle='#0f1418'; ctx.beginPath(); ctx.arc(mx+10,my-7,23,0,6.29); ctx.fill(); ctx.globalAlpha=1;
-
-  // 遠景の廃墟
-  ctx.fillStyle = '#0d1310';
-  for(let i=0;i<26;i++){
-    const s = ((i*257 % 1000)/1000*2-1)*1500;
-    const bx = W/2 + (s - S.camX*.35) * .6;
-    const bw = 40 + (i*37 % 70), bh = 30 + (i*53 % 90);
-    ctx.fillRect(bx, hz-bh, bw, bh+4);
-  }
+  // 背景（3枚重ね）
+  drawBackdrop(hz);
 
   // 地面
   const gr = ctx.createLinearGradient(0,hz,0,H);
