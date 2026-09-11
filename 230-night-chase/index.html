@@ -6,13 +6,13 @@
 <title>ナイトチェイス｜けもの注意</title>
 <style>
   :root{
-    --night:#101A2E;
-    --road:#2B2F3A;
-    --grass:#16301F;
-    --pink:#FF4FA3;
-    --cyan:#4FE3FF;
-    --amber:#FFD645;
-    --ink:#F2F5FF;
+    --night:#050507;   /* 地の黒 */
+    --road:#141419;
+    --grass:#0C110D;
+    --blood:#C8102E;
+    --bone:#EDE6D8;
+    --toxic:#E8DB00;
+    --ink:#EDE6D8;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;background:var(--night);}
@@ -43,30 +43,37 @@
   #pad{
     position:fixed;left:0;right:0;bottom:0;z-index:8;display:none;
     justify-content:space-between;align-items:flex-end;pointer-events:none;
-    padding:0 calc(16px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+    padding:0 calc(14px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));
   }
   #pad.on{display:flex}
+  .cluster{display:flex;gap:10px;align-items:flex-end;pointer-events:none}
+  .cluster.col{flex-direction:column;gap:8px}
   .pad{
     pointer-events:auto;margin:0;padding:0;
-    width:108px;height:108px;border-radius:50%;
-    font-size:38px;font-weight:900;line-height:1;letter-spacing:0;
-    color:var(--ink);background:rgba(18,26,46,.5);
-    border:2px solid rgba(79,227,255,.42);
-    box-shadow:inset 0 0 20px rgba(79,227,255,.16);
-    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
-    touch-action:none;transition:transform .06s linear;
+    width:84px;height:84px;border-radius:0;
+    font-size:30px;font-weight:900;line-height:1;letter-spacing:0;
+    color:var(--bone);background:rgba(10,10,12,.58);
+    border:2px solid rgba(237,230,216,.5);
+    box-shadow:inset 0 0 0 3px rgba(10,10,12,.7);
+    -webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
+    touch-action:none;transition:transform .05s linear, background .05s linear;
+    /* 角を落とした八角形＝パンクのステンシル */
+    clip-path:polygon(22% 0,78% 0,100% 22%,100% 78%,78% 100%,22% 100%,0 78%,0 22%);
   }
+  .pad.thr{width:76px;height:64px;font-size:26px}
   .pad.on{
-    background:rgba(255,79,163,.34);border-color:var(--pink);
-    box-shadow:0 0 26px rgba(255,79,163,.5);transform:scale(.94);
+    background:var(--blood);border-color:var(--bone);color:var(--bone);
+    transform:scale(.93);
   }
+  .pad.thr.on{background:var(--toxic);color:#0A0A0A}
   /* ミュート切替 */
   #mute{
     position:fixed;z-index:9;display:none;
     top:calc(74px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));
-    width:48px;height:48px;padding:0;margin:0;border-radius:50%;
-    font-size:19px;line-height:1;color:var(--ink);
-    background:rgba(18,26,46,.55);border:1px solid rgba(79,227,255,.35);box-shadow:none;
+    width:46px;height:46px;padding:0;margin:0;border-radius:0;
+    font-size:18px;line-height:1;color:var(--bone);
+    background:rgba(10,10,12,.6);border:2px solid rgba(237,230,216,.42);box-shadow:none;
+    clip-path:polygon(24% 0,76% 0,100% 24%,100% 76%,76% 100%,24% 100%,0 76%,0 24%);
   }
   #mute.on{display:block}
   /* ==========================================================
@@ -213,7 +220,7 @@
   <p class="jp">ナイトチェイス</p>
   <p class="tagline"><span>追う。逃げる。よける。</span></p>
   <button id="btn">START</button>
-  <p class="hint">なぞる ／ ◀ ▶ ／ ← →</p>
+  <p class="hint">アクセル ▲ ／ ブレーキ ▼ ／ ハンドル ◀ ▶</p>
 </div>
 
 <div id="wrap"><canvas id="c"></canvas></div>
@@ -221,8 +228,14 @@
 
 <button id="mute" aria-label="音のオン・オフ">🔊</button>
 <div id="pad">
-  <button class="pad" id="padL" aria-label="左へ">◀</button>
-  <button class="pad" id="padR" aria-label="右へ">▶</button>
+  <div class="cluster">
+    <button class="pad" id="padL" aria-label="左へ">◀</button>
+    <button class="pad" id="padR" aria-label="右へ">▶</button>
+  </div>
+  <div class="cluster col">
+    <button class="pad thr" id="padU" aria-label="アクセル">▲</button>
+    <button class="pad thr" id="padD" aria-label="ブレーキ">▼</button>
+  </div>
 </div>
 
 
@@ -236,24 +249,88 @@ const btn = document.getElementById('btn');
 let W = 0, H = 0, DPR = 1, SAFE_TOP = 0, SAFE_BOTTOM = 0;
 const safeProbe = document.getElementById('safe');
 const safeProbeB = document.getElementById('safeb');
+let grainTile = null, grainLayer = null, vigLayer = null, skyFill = null, meterCX = 0;
+function makeGrain(){
+  const gc = document.createElement('canvas'); gc.width = gc.height = 96;
+  const gx = gc.getContext('2d');
+  const img = gx.createImageData(96, 96);
+  for(let i=0; i<img.data.length; i+=4){
+    const v = 130 + Math.random()*120;
+    img.data[i] = img.data[i+1] = img.data[i+2] = v;
+    img.data[i+3] = 20;
+  }
+  gx.putImageData(img, 0, 0);
+  grainTile = gc;
+}
+/* 画面いっぱいの粒子とビネットを1枚ずつ焼く。毎フレームやると描画が持たない */
+function bakeLayers(){
+  if(!grainTile) makeGrain();
+  const gw = Math.ceil(W)+96, gh = Math.ceil(H)+96;
+  grainLayer = document.createElement('canvas');
+  grainLayer.width = Math.ceil(W); grainLayer.height = Math.ceil(H);
+  const g2 = grainLayer.getContext('2d');
+  g2.globalAlpha = 0.5;
+  g2.fillStyle = g2.createPattern(grainTile, 'repeat');
+  g2.fillRect(0, 0, W, H);
+  g2.globalAlpha = 1;
+  const vg = g2.createRadialGradient(W/2, H*0.46, Math.min(W,H)*0.30,
+                                     W/2, H*0.46, Math.max(W,H)*0.78);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.80)');
+  g2.fillStyle = vg; g2.fillRect(0, 0, W, H);
+  vigLayer = null;
+  // 空のグラデーションも毎フレーム作る必要がないので焼いておく
+  skyFill = ctx.createLinearGradient(0, 0, 0, H);
+  skyFill.addColorStop(0,'#07070B'); skyFill.addColorStop(0.62,'#0C0B10'); skyFill.addColorStop(1,'#1A0A0E');
+}
+
 function resize(){
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  DPR = Math.min(window.devicePixelRatio || 1, 1.6);   // 粒子の乗る絵なので2倍は要らない。描画量を4割落とす
   SAFE_TOP = safeProbe.getBoundingClientRect().height;
   SAFE_BOTTOM = safeProbeB.getBoundingClientRect().height;
   const r = cv.getBoundingClientRect();
   W = r.width; H = r.height;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  bakeLayers();
+  // メーターは画面中央ではなく「左右コントローラの隙間」に置く。実測して重なりを断つ
+  const lc = document.getElementById('padL').parentElement.getBoundingClientRect();
+  const rc = document.getElementById('padU').parentElement.getBoundingClientRect();
+  meterCX = (rc.left > lc.right) ? (lc.right + rc.left)/2 : W*0.62;
 }
 window.addEventListener('resize', resize);
 
 const GOAL = 16000;   // 約30秒。前後半それぞれを味わえる長さ
 const KINDS = {
-  boar:   {name:'いのしし', w:52, h:34, dash:200, dmg:0.50, body:'#6B4A32', dark:'#4A3122'},
-  tanuki: {name:'たぬき',   w:40, h:28, dash:250, dmg:0.34, body:'#8A7460', dark:'#5C4A3A'},
-  cat:    {name:'ねこ',     w:32, h:22, dash:340, dmg:0.30, body:'#D7CBB8', dark:'#8E8474'}
+  boar: {
+    name:'いのしし', w:56, h:36, dash:205, dmg:0.50,
+    body:'#5A4030', dark:'#372619', hair:'#241A11', eye:'#FFB43A',
+    /* 同じいのししでも個体で別物にする。spd=速さ stop=途中で固まる率
+       turn=引き返す率 warn=飛び出す前の予告の長さ（長いほど親切） */
+    traits:[
+      {id:'charge', label:'突進', spd:1.34, stop:0.00, turn:0.00, size:1.08, warn:0.55, accel:1.5},
+      {id:'heavy',  label:'のろま', spd:0.80, stop:0.28, turn:0.00, size:1.18, warn:1.30, accel:1.0},
+      {id:'wary',   label:'用心', spd:1.00, stop:0.50, turn:0.12, size:0.92, warn:1.45, accel:1.0}
+    ]
+  },
+  tanuki: {
+    name:'たぬき', w:42, h:30, dash:245, dmg:0.34,
+    body:'#7E6A55', dark:'#4E4033', hair:'#2C241C', eye:'#FFE27A',
+    traits:[
+      {id:'freeze', label:'かたまり', spd:1.00, stop:0.85, turn:0.05, size:1.00, warn:1.05, accel:1.0},
+      {id:'wander', label:'うろうろ', spd:0.82, stop:0.45, turn:0.45, size:1.06, warn:1.25, accel:1.0},
+      {id:'bold',   label:'ずぶとい', spd:1.18, stop:0.15, turn:0.00, size:0.94, warn:0.80, accel:1.1}
+    ]
+  },
+  cat: {
+    name:'ねこ', w:34, h:23, dash:335, dmg:0.30,
+    body:'#CFC2AE', dark:'#8A8071', hair:'#3A342C', eye:'#8FF0C8',
+    traits:[
+      {id:'feint',  label:'フェイント', spd:1.10, stop:0.20, turn:0.70, size:0.96, warn:0.85, accel:1.0},
+      {id:'sprint', label:'一直線', spd:1.42, stop:0.00, turn:0.00, size:0.92, warn:0.60, accel:1.2},
+      {id:'timid',  label:'びびり', spd:1.00, stop:0.60, turn:0.35, size:0.88, warn:1.40, accel:1.0}
+    ]
+  }
 };
-
 let G = null;
 function reset(){
   G = {
@@ -262,14 +339,18 @@ function reset(){
     px:0, aim:0, tilt:0,
     animals:[], props:[], floats:[],
     spawnT:1.2, propT:0, shake:0, flash:0,
+    thr:0, pz:0, stun:0,
     score:0, hits:0, near:0, banner:null, bannerT:0,
     kmh:0, kmhTop:0, meterPulse:0
   };
   G.px = G.aim = W/2;
+  banner('アクセルを踏み続けろ');
   for(let i=0;i<26;i++) G.props.push(makeProp(Math.random()*H));
 }
 
-const playerY = () => H*0.76;
+/* 自車は画面上でも前後に動く。踏めば前へ出て、前へ出るほど道幅が狭くなる */
+const PY_BACK = 0.800, PY_FRONT = 0.600;
+function playerY(){ return H * (PY_BACK + (PY_FRONT - PY_BACK) * (G ? G.pz : 0)); }
 const horizonY = () => H*0.13;
 function roadDepth(y){ return Math.max(0, Math.min(1, (y-horizonY()) / Math.max(1, H-horizonY()))); }
 function roadBoundsAt(y){
@@ -292,23 +373,117 @@ function makeProp(y){
   };
 }
 
+/* 出現の仕方を4通りから選ぶ。毎回おなじ「路肩の上の方から」だと
+   見る場所が固定されてしまい、2回目以降ただの作業になる */
+function pickEntry(p){
+  const r = Math.random();
+  if(r < 0.42) return 'side';                 // 路肩から（基本）
+  if(r < 0.62) return 'far';                  // 遠くに先に見える＝読ませる出し方
+  if(r < 0.84) return 'onroad';               // すでに道の上にいる
+  return p > 0.25 ? 'near' : 'side';          // 手前から。序盤は出さない
+}
+
 function spawnAnimal(){
   const p = G.dist / GOAL;
   const r = Math.random();
   const kind = r < 0.34 ? 'boar' : (r < 0.68 ? 'tanuki' : 'cat');
   const k = KINDS[kind];
+  const tr = k.traits[Math.floor(Math.random()*k.traits.length)];
   const side = Math.random() < 0.5 ? -1 : 1;
-  const startY = -70 - Math.random()*40, startRoad = roadBoundsAt(startY);
+  const entry = pickEntry(p);
+
+  let y, x, state = 'wait', trigger;
+  if(entry === 'far'){
+    y = -190 - Math.random()*70;
+    trigger = H*(0.10 + Math.random()*0.16);
+  } else if(entry === 'near'){
+    y = H*(0.30 + Math.random()*0.14);
+    trigger = y + 8;                            // ほぼ即。手前は反応時間が短い
+  } else if(entry === 'onroad'){
+    y = -60 - Math.random()*60;
+    trigger = H*(0.30 + Math.random()*0.22);
+    state = 'roam';                             // 道の上をうろついてから渡る
+  } else {
+    y = -70 - Math.random()*40;
+    trigger = H*(0.24 + Math.random()*0.20);
+  }
+
+  const rb = roadBoundsAt(y);
+  if(state === 'roam'){
+    x = rb.l + rb.width*(0.22 + Math.random()*0.56);
+  } else {
+    x = side < 0 ? rb.l - 34 : rb.r + 34;
+  }
+
+  const sz = tr.size * (0.88 + Math.random()*0.24);   // 同じ性格でも体格は個体差
   return {
-    kind, k, side,
-    dirX: -side,
-    x: side < 0 ? startRoad.l - 34 : startRoad.r + 34,
-    y: startY,
-    vx: 0, state:'wait', hit:false, scored:false,
-    trigger: H*(0.24 + Math.random()*0.20),
+    kind, k, trait:tr, entry, side,
+    dirX: state === 'roam' ? (Math.random()<0.5 ? -1 : 1) : -side,
+    x, y, vx:0, state, hit:false, scored:false,
+    trigger,
     bob: Math.random()*6,
-    speedUp: 1 + p*0.35
+    sz,
+    w: k.w*sz, h: k.h*sz,
+    dmg: k.dmg * (0.82 + sz*0.22),
+    speedUp: (1 + p*0.35) * tr.spd,
+    warnT: tr.warn * (0.85 + Math.random()*0.3),
+    stopT: 0,
+    turned: false,
+    roamPhase: Math.random()*6
   };
+}
+
+/* けもの1体の行動。種ではなく「その個体の性格」で分岐させる */
+function stepAnimal(a, dt){
+  if(a.state === 'roam'){
+    // 道の上をうろつく。近づかれると渡り始める
+    a.x += Math.sin(a.roamPhase + G.t*1.6) * 16 * dt;
+    if(a.y > a.trigger){
+      a.state = 'dash';
+      a.vx = a.dirX * a.k.dash * a.speedUp;
+    }
+    return;
+  }
+  if(a.state === 'wait'){
+    if(a.y > a.trigger){
+      a.state = 'dash';
+      a.vx = a.dirX * a.k.dash * a.speedUp;
+    }
+    return;
+  }
+  if(a.state === 'freeze'){
+    // ライトに固まる。時間が切れたらまた走り出す
+    a.stopT -= dt;
+    if(a.stopT <= 0){
+      a.state = 'dash';
+      a.vx = a.dirX * a.k.dash * a.speedUp * 1.15;   // 固まった分あわてて走る
+    }
+    return;
+  }
+  if(a.state === 'dash'){
+    a.x += a.vx * dt;
+    if(a.trait.accel > 1) a.vx *= (1 + (a.trait.accel-1)*dt*1.4);   // いのししは加速して突っ切る
+    const rb = roadBoundsAt(a.y);
+    const mid = Math.abs(a.x - rb.c) < rb.width*0.30;
+    if(mid && !a.didMid){
+      a.didMid = true;
+      if(Math.random() < a.trait.stop){
+        a.state = 'freeze';
+        a.stopT = 0.30 + Math.random()*0.55;
+        return;
+      }
+      if(!a.turned && Math.random() < a.trait.turn){
+        a.turned = true;
+        a.dirX *= -1;
+        a.vx = a.dirX * a.k.dash * a.speedUp * 0.9;   // 気が変わって引き返す
+      }
+    }
+    return;
+  }
+  if(a.state === 'flee'){
+    a.x += a.vx * dt;
+    a.y -= 40 * dt;
+  }
 }
 
 function addFloat(x,y,text,color){ G.floats.push({x,y,text,color,life:1}); }
@@ -398,6 +573,16 @@ muteBtn.addEventListener('click', ()=>{
 let key = 0;
 const held = new Set();
 const STEER_KEYS = ['ArrowLeft','ArrowRight','a','d'];
+const THR_KEYS   = ['ArrowUp','ArrowDown','w','s'];
+let padThr = 0;      // ▲▼ボタン
+let dragThr = 0;     // 縦なぞり
+/* アクセル -1..1。ボタン・キー・縦なぞりのどれでも同じ値になる */
+function throttle(){
+  let t = padThr + dragThr;
+  if(held.has('ArrowUp')   || held.has('w')) t += 1;
+  if(held.has('ArrowDown') || held.has('s')) t -= 1;
+  return Math.max(-1, Math.min(1, t));
+}
 function syncKey(){
   const l = held.has('ArrowLeft') || held.has('a');
   const r = held.has('ArrowRight') || held.has('d');
@@ -407,47 +592,51 @@ function syncKey(){
 addEventListener('keydown', e=>{
   if(e.key===' ' && G && G.mode!=='play'){ start(); return; }
   if(STEER_KEYS.includes(e.key)){ held.add(e.key); syncKey(); }
+  else if(THR_KEYS.includes(e.key)){ held.add(e.key); e.preventDefault(); }
 });
 addEventListener('keyup', e=>{
   if(held.delete(e.key)) syncKey();
 });
-let dragging = false, lastX = 0;
+let dragging = false, lastX = 0, baseY = 0;
 const DRAG_GAIN = 1.25;   // 指の移動量より少し大きく動かし、短いなぞりで端まで届かせる
+const THR_TRAVEL = 70;    // この距離を上へ引けば全開。短いストロークで踏み切れる
 cv.addEventListener('pointerdown', e=>{
-  dragging = true; lastX = e.clientX;
+  dragging = true; lastX = e.clientX; baseY = e.clientY; dragThr = 0;
   cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener('pointermove', e=>{
   if(!dragging || !G || G.mode!=='play') return;
-  G.aim += (e.clientX - lastX) * DRAG_GAIN;   // 相対ドラッグ：指の位置へワープさせない
+  G.aim += (e.clientX - lastX) * DRAG_GAIN;   // 横は相対ドラッグ：指の位置へワープさせない
   lastX = e.clientX;
+  // 縦は押した点を原点にした絶対量。上へ引く＝踏む、下へ引く＝緩める
+  dragThr = Math.max(-1, Math.min(1, (baseY - e.clientY) / THR_TRAVEL));
 });
-cv.addEventListener('pointerup', ()=>{ dragging=false; });
-cv.addEventListener('pointercancel', ()=>{ dragging=false; });
+const dragEnd = ()=>{ dragging=false; dragThr=0; };
+cv.addEventListener('pointerup', dragEnd);
+cv.addEventListener('pointercancel', dragEnd);
 
 /* 画面下の左右コントローラ（なぞり操作と併用可） */
 const padEl = document.getElementById('pad');
 let padDir = 0;
-function bindPad(el, dir){
+function bindPad(el, on, off){
   const press = e=>{
     e.preventDefault();
-    padDir = dir; syncKey();
+    on();
     el.classList.add('on');
     el.setPointerCapture && e.pointerId != null && el.setPointerCapture(e.pointerId);
   };
-  const release = ()=>{
-    if(padDir === dir) padDir = 0;
-    syncKey();
-    el.classList.remove('on');
-  };
+  const release = ()=>{ off(); el.classList.remove('on'); };
   el.addEventListener('pointerdown', press);
   el.addEventListener('pointerup', release);
   el.addEventListener('pointercancel', release);
   el.addEventListener('pointerleave', release);
   el.addEventListener('contextmenu', e=>e.preventDefault());
 }
-bindPad(document.getElementById('padL'), -1);
-bindPad(document.getElementById('padR'),  1);
+const $ = id => document.getElementById(id);
+bindPad($('padL'), ()=>{ padDir=-1; syncKey(); }, ()=>{ if(padDir===-1){ padDir=0; syncKey(); } });
+bindPad($('padR'), ()=>{ padDir= 1; syncKey(); }, ()=>{ if(padDir=== 1){ padDir=0; syncKey(); } });
+bindPad($('padU'), ()=>{ padThr= 1; },            ()=>{ if(padThr=== 1) padThr=0; });
+bindPad($('padD'), ()=>{ padThr=-1; },            ()=>{ if(padThr===-1) padThr=0; });
 
 /* ---------- update ---------- */
 function update(dt){
@@ -455,8 +644,18 @@ function update(dt){
   g.t += dt;
   if(g.mode !== 'play') return;
 
-  // speed recovers toward full
-  g.speed += (1 - g.speed) * 0.9 * dt;
+  // アクセル／ブレーキ。無操作の巡航は「じりじり不利」に置き、踏む判断を毎秒させる
+  const thrIn = throttle();
+  g.thr += (thrIn - g.thr) * Math.min(1, 12*dt);
+  const spTarget = 0.84 + g.thr * (g.thr >= 0 ? 0.40 : 0.46);
+  g.stun = Math.max(0, g.stun - dt);
+  // ぶつけた直後は吹け上がらない。これが無いと「当たっても踏み続ける」が最適解になる
+  const rate = g.thr < 0 ? 3.0 : (g.stun > 0 ? 0.45 : 1.85);
+  g.speed += (spTarget - g.speed) * rate * dt;
+  g.speed = Math.max(0.24, Math.min(1.26, g.speed));
+  // 画面上の前後位置。速度が乗るほど前へ出る＝道幅の狭い所へ自分から入る
+  const pzT = Math.max(0, Math.min(1, (g.speed - 0.70) / 0.48));
+  g.pz += (pzT - g.pz) * Math.min(1, 2.4*dt);
   const scroll = 560 * g.speed;
 
   // メーター表示（実速度に少し遅れて追従＝針の粘り）
@@ -515,33 +714,32 @@ function update(dt){
   const py = playerY();
   for(const a of g.animals){
     a.y += scroll * dt;
-    a.bob += dt * 12;
-    if(a.state === 'wait' && a.y > a.trigger){
-      a.state = 'dash';
-      a.vx = a.dirX * a.k.dash * a.speedUp;
-    }
-    if(a.state !== 'wait') a.x += a.vx * dt;
-    if(a.state === 'flee') a.y -= 40 * dt;
+    a.bob += dt * (a.state === 'freeze' ? 2 : 12);
+    stepAnimal(a, dt);
 
-    // collision
-    if(!a.hit && a.state === 'dash'){
+    // 当たり判定。固まっている個体も轢ける
+    const live = a.state === 'dash' || a.state === 'freeze' || a.state === 'roam';
+    if(!a.hit && live){
       const dx = Math.abs(a.x - g.px), dy = Math.abs(a.y - py);
-      if(dx < (a.k.w/2 + 17) && dy < (a.k.h/2 + 30)){
+      if(dx < (a.w/2 + 17) && dy < (a.h/2 + 30)){
         a.hit = true; a.state = 'flee';
         a.vx = a.dirX * 420;
-        g.speed = Math.max(0.30, g.speed - a.k.dmg);
+        g.speed = Math.max(0.26, g.speed - a.dmg);
+        g.stun = 1.3;
         g.shake = 1; g.hits++;
-        g.score = Math.max(0, g.score - 120);
-        addFloat(g.px, py-46, a.k.name + 'にドン！', '#FFD645');
+        g.score = Math.max(0, g.score - 240);
+        addFloat(g.px, py-46, `${a.k.name}（${a.trait.label}）にドン！`, '#E8DB00');
         g.meterPulse = 1; sfxHit();
       }
     }
-    // near miss
-    if(!a.hit && !a.scored && a.state === 'dash' && a.y > py + 26){
+    // ニアミス。ギリでよけた個体ほど高い
+    if(!a.hit && !a.scored && live && a.y > py + 26){
       a.scored = true;
-      if(Math.abs(a.x - g.px) < 78){
-        g.near++; g.score += 60;
-        addFloat(g.px, py-46, 'ニアミス +60', '#4FE3FF');
+      const d = Math.abs(a.x - g.px);
+      if(d < 78){
+        const bonus = d < 44 ? 240 : 120;
+        g.near++; g.score += bonus;
+        addFloat(g.px, py-46, `ニアミス +${bonus}`, d < 44 ? '#C8102E' : '#EDE6D8');
         sfxNear();
       }
     }
@@ -577,93 +775,346 @@ function rrect(x,y,w,h,r){
   ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
 }
 
-function drawCar(x,y,scale,c,opts){
-  const w = 42*scale, h = 74*scale;
+/* 奥が狭く手前が広い角丸台形。車体の遠近を1枚で作る土台 */
+function rtrap(topW, botW, h, r){
+  const t = topW/2, b = botW/2, y0 = -h/2, y1 = h/2;
+  ctx.beginPath();
+  ctx.moveTo(-t + r, y0);
+  ctx.arcTo( t, y0,  b, y1, r);
+  ctx.arcTo( b, y1, -b, y1, r);
+  ctx.arcTo(-b, y1, -t, y0, r);
+  ctx.arcTo(-t, y0,  t, y0, r);
+  ctx.closePath();
+}
+
+/* 後ろから見た車。屋根・リアガラス・トランク・バンパーを別々の面として塗り、
+   面ごとに明度を変えて立体にする。平面の角丸長方形とは作りが違う */
+function drawCar(x, y, scale, c, opts){
+  const o = opts || {};
+  const w = 46*scale, h = 80*scale;
+  const hi = c.hi || c.body;
   ctx.save();
-  ctx.translate(x,y);
-  if(opts && opts.tilt) ctx.rotate(opts.tilt*0.06);
-  ctx.fillStyle = 'rgba(0,0,0,.45)';
-  ctx.beginPath(); ctx.ellipse(0, h*0.42, w*0.56, h*0.13, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = c.body;
-  rrect(-w/2, -h/2, w, h, 9*scale); ctx.fill();
-  ctx.fillStyle = c.dark;
-  rrect(-w/2+3*scale, -h/2+13*scale, w-6*scale, h*0.34, 6*scale); ctx.fill();
-  ctx.fillStyle = 'rgba(150,200,255,.5)';
-  rrect(-w/2+6*scale, -h/2+16*scale, w-12*scale, h*0.17, 4*scale); ctx.fill();
-  // tail lights
-  ctx.fillStyle = c.light || '#FF3B5C';
-  ctx.shadowColor = c.light || '#FF3B5C'; ctx.shadowBlur = 14*scale;
-  rrect(-w/2+4*scale, h/2-9*scale, 11*scale, 5*scale, 2*scale); ctx.fill();
-  rrect(w/2-15*scale, h/2-9*scale, 11*scale, 5*scale, 2*scale); ctx.fill();
+  ctx.translate(x, y);
+  if(o.tilt) ctx.rotate(o.tilt*0.06);
+
+  // 路面への落ち影
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.beginPath(); ctx.ellipse(0, h*0.43, w*0.63, h*0.11, 0, 0, 7); ctx.fill();
+
+  // タイヤ。後方視点で実際に見えるのは後輪。車体より先に描いて外へ張り出させる
+  ctx.fillStyle = '#08080A';
+  rrect(-w*0.60,  h*0.02, w*0.20, h*0.34, 4*scale); ctx.fill();
+  rrect( w*0.40,  h*0.02, w*0.20, h*0.34, 4*scale); ctx.fill();
+  ctx.fillStyle = 'rgba(237,230,216,.13)';   // ホイールの照り返し
+  rrect(-w*0.58,  h*0.06, w*0.05, h*0.24, 2*scale); ctx.fill();
+  rrect( w*0.53,  h*0.06, w*0.05, h*0.24, 2*scale); ctx.fill();
+
+  // --- 車体シルエット（上面＝奥が狭い）
+  rtrap(w*0.84, w, h, 9*scale);
+  const side = ctx.createLinearGradient(-w/2, 0, w/2, 0);
+  side.addColorStop(0,    c.dark);
+  side.addColorStop(0.18, c.body);
+  side.addColorStop(0.46, hi);
+  side.addColorStop(0.74, c.body);
+  side.addColorStop(1,    c.dark);
+  ctx.fillStyle = side; ctx.fill();
+  // 上面は空あかりで明るく、リア面は落ちる＝縦の陰影を重ねる
+  const vert = ctx.createLinearGradient(0, -h/2, 0, h/2);
+  vert.addColorStop(0,   'rgba(255,255,255,.16)');
+  vert.addColorStop(0.4, 'rgba(255,255,255,0)');
+  vert.addColorStop(0.72,'rgba(0,0,0,.18)');
+  vert.addColorStop(1,   'rgba(0,0,0,.48)');
+  ctx.fillStyle = vert; ctx.fill();
+  // 縁の締め。暗い車は輪郭に骨色の光を足さないと路面に沈む
+  ctx.strokeStyle = o.rim ? 'rgba(237,230,216,.34)' : 'rgba(0,0,0,.6)';
+  ctx.lineWidth = Math.max(1, 1.4*scale); ctx.stroke();
+
+  // 骨色のレーシングストライプ。この後でキャビンを被せるので、トランク側だけが残る
+  if(o.stripe){
+    ctx.fillStyle = 'rgba(237,230,216,.88)';
+    rrect(-w*0.115, -h*0.34, w*0.075, h*0.80, 1*scale); ctx.fill();
+    rrect( w*0.040, -h*0.34, w*0.075, h*0.80, 1*scale); ctx.fill();
+  }
+
+  // --- キャビン（屋根）。車体より一段持ち上がって見えるよう影を先に落とす
+  ctx.save();
+  ctx.translate(0, -h*0.17);
+  rtrap(w*0.60, w*0.76, h*0.40, 6*scale);
+  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(0, -h*0.19);
+  rtrap(w*0.58, w*0.74, h*0.38, 6*scale);
+  const roof = ctx.createLinearGradient(-w*0.37, 0, w*0.37, 0);
+  roof.addColorStop(0, c.dark); roof.addColorStop(0.45, c.body); roof.addColorStop(1, c.dark);
+  ctx.fillStyle = roof; ctx.fill();
+  ctx.restore();
+
+  // --- リアガラス。上が暗く下に映り込みの帯
+  ctx.save();
+  ctx.translate(0, -h*0.14);
+  rtrap(w*0.48, w*0.62, h*0.22, 4*scale);
+  const glass = ctx.createLinearGradient(0, -h*0.11, 0, h*0.11);
+  glass.addColorStop(0,   '#05070C');
+  glass.addColorStop(0.62,'#0D131E');
+  glass.addColorStop(1,   'rgba(237,230,216,.26)');
+  ctx.fillStyle = glass; ctx.fill();
+  ctx.restore();
+
+  // 屋根の上に走るハイライト1本＝金属の照り
+  ctx.fillStyle = 'rgba(237,230,216,.34)';
+  rrect(-w*0.26, -h*0.41, w*0.52, 1.6*scale, 1*scale); ctx.fill();
+
+  // ボディサイドの稜線（左右の張り出し）
+  ctx.strokeStyle = 'rgba(237,230,216,.14)'; ctx.lineWidth = Math.max(1, 1.2*scale);
+  ctx.beginPath();
+  ctx.moveTo(-w*0.42, -h*0.04); ctx.lineTo(-w*0.47, h*0.34);
+  ctx.moveTo( w*0.42, -h*0.04); ctx.lineTo( w*0.47, h*0.34);
+  ctx.stroke();
+
+  // トランクの合わせ目
+  ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = Math.max(1, 1.2*scale);
+  ctx.beginPath(); ctx.moveTo(-w*0.44, h*0.09); ctx.lineTo(w*0.44, h*0.09); ctx.stroke();
+
+  // --- テールランプ：左右のブロック＋細い連結バー
+  const lc = c.light || '#FF3B3B';
+  ctx.shadowColor = lc; ctx.shadowBlur = 15*scale;
+  ctx.fillStyle = lc;
+  rrect(-w*0.41, h*0.20, w*0.26, h*0.075, 2*scale); ctx.fill();
+  rrect( w*0.15, h*0.20, w*0.26, h*0.075, 2*scale); ctx.fill();
+  ctx.globalAlpha = 0.55;
+  rrect(-w*0.14, h*0.225, w*0.28, h*0.028, 1.5*scale); ctx.fill();
+  ctx.globalAlpha = 1;
   ctx.shadowBlur = 0;
-  if(opts && opts.siren){
+
+  // --- リアバンパー：一段暗く落として、上辺に骨色の光を入れる
+  ctx.save();
+  ctx.translate(0, h*0.40);
+  rtrap(w*0.94, w*0.99, h*0.16, 4*scale);
+  ctx.fillStyle = 'rgba(0,0,0,.62)'; ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = 'rgba(237,230,216,.20)';
+  rrect(-w*0.44, h*0.325, w*0.88, 1.4*scale, 1*scale); ctx.fill();
+
+  // --- リアウイング（自車）。支柱2本の下に路面が透けて立体に見える
+  if(o.wing){
+    // 支柱を先に。羽根の下に路面の暗がりが残るので浮いて見える
+    ctx.fillStyle = '#141418';
+    rrect(-w*0.29, h*0.035, w*0.055, h*0.10, 1*scale); ctx.fill();
+    rrect( w*0.235, h*0.035, w*0.055, h*0.10, 1*scale); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.5)';   // 羽根の落ち影
+    rrect(-w*0.40, h*0.055, w*0.80, h*0.05, 2*scale); ctx.fill();
+    const wg = ctx.createLinearGradient(0, h*0.00, 0, h*0.06);
+    wg.addColorStop(0, hi); wg.addColorStop(1, c.dark);
+    ctx.fillStyle = wg;
+    rrect(-w*0.42, h*0.005, w*0.84, h*0.055, 2*scale); ctx.fill();
+    ctx.fillStyle = 'rgba(237,230,216,.34)';
+    rrect(-w*0.42, h*0.005, w*0.84, 1.4*scale, 1*scale); ctx.fill();
+  }
+
+  // --- 排気。速度が乗るとアフターバーンが出る
+  if(o.exhaust > 0.02){
+    ctx.globalAlpha = Math.min(0.85, o.exhaust);
+    ctx.shadowColor = '#FF7A1F'; ctx.shadowBlur = 18*scale;
+    ctx.fillStyle = '#FFC24A';
+    const fl = (4 + Math.random()*9) * scale * o.exhaust;
+    ctx.beginPath(); ctx.ellipse(-w*0.22, h*0.50, 3.2*scale, fl, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse( w*0.22, h*0.50, 3.2*scale, fl, 0, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  }
+
+  // --- パトランプ：屋根の上の棒。赤と骨色が入れ替わる
+  if(o.siren){
     const on = Math.floor(G.t*7)%2 === 0;
-    ctx.fillStyle = on ? '#FF2D55' : '#2D6BFF';
-    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 22*scale;
-    rrect(-w*0.34, -h*0.30, w*0.68, 7*scale, 3*scale); ctx.fill();
+    ctx.fillStyle = '#17171C';
+    rrect(-w*0.30, -h*0.50, w*0.60, 4*scale, 1*scale); ctx.fill();
+    ctx.fillStyle = on ? '#E8262C' : '#7FE9FF';
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 24*scale;
+    rrect(-w*0.30, -h*0.52, w*0.28, 6*scale, 2*scale); ctx.fill();
+    ctx.fillStyle = on ? '#7FE9FF' : '#E8262C';
+    ctx.shadowColor = ctx.fillStyle;
+    rrect( w*0.02, -h*0.52, w*0.28, 6*scale, 2*scale); ctx.fill();
     ctx.shadowBlur = 0;
   }
+
   ctx.restore();
 }
 
+/* けもの1体。種でシルエットを変え、個体の性格は姿勢（耳・前傾・腰の高さ）に出す。
+   夜道なので目の反射光を入れる。これが「ヘッドライトに照らされた獣」の要になる */
 function drawAnimal(a){
-  const k = a.k, dir = a.state==='wait' ? a.dirX : (Math.sign(a.vx) || a.dirX);
-  const hop = a.state==='wait' ? 0 : Math.sin(a.bob)*3;
-  const worldScale = 0.40 + roadDepth(a.y)*0.86;
+  const k = a.k, t = a.trait;
+  const moving = a.state === 'dash' || a.state === 'flee' || a.state === 'roam';
+  const dir = a.state === 'wait' ? a.dirX : (Math.sign(a.vx) || a.dirX);
+  const frozen = a.state === 'freeze';
+  const hop = moving ? Math.sin(a.bob)*3 : 0;
+  const sc = (0.40 + roadDepth(a.y)*0.86) * a.sz;
+  const W_ = k.w, H_ = k.h;
+
+  // 性格を姿勢に落とす
+  const timid  = t.id === 'timid' || t.id === 'wary' || t.id === 'freeze';
+  const fierce = t.id === 'charge' || t.id === 'sprint' || t.id === 'bold';
+  const crouch = timid ? H_*0.10 : 0;               // 臆病な個体は腰を落とす
+  const lean   = fierce ? 0.16 : (timid ? -0.10 : 0); // 気の強い個体は前傾
+
   ctx.save();
   ctx.translate(a.x, a.y + hop);
-  ctx.scale(worldScale, worldScale);
-  ctx.fillStyle = 'rgba(0,0,0,.4)';
-  ctx.beginPath(); ctx.ellipse(0, k.h*0.55 - hop*0.6, k.w*0.42, k.h*0.2, 0, 0, 7); ctx.fill();
+  ctx.scale(sc, sc);
+
+  // 接地影
+  ctx.fillStyle = 'rgba(0,0,0,.5)';
+  ctx.beginPath(); ctx.ellipse(0, H_*0.56 - hop*0.6, W_*0.44, H_*0.17, 0, 0, 7); ctx.fill();
+
   ctx.scale(dir, 1);
-  // legs
-  ctx.strokeStyle = k.dark; ctx.lineWidth = Math.max(2, k.h*0.11); ctx.lineCap='round';
-  const sw = a.state==='wait' ? 0 : Math.sin(a.bob)*k.w*0.13;
-  ctx.beginPath();
-  ctx.moveTo(-k.w*0.22, k.h*0.18); ctx.lineTo(-k.w*0.22 - sw, k.h*0.5);
-  ctx.moveTo( k.w*0.20, k.h*0.18); ctx.lineTo( k.w*0.20 + sw, k.h*0.5);
-  ctx.stroke();
-  // tail
-  ctx.beginPath();
-  if(a.kind==='cat'){ ctx.moveTo(-k.w*0.42,0); ctx.quadraticCurveTo(-k.w*0.72,-k.h*0.5,-k.w*0.55,-k.h*0.8); ctx.lineWidth=k.h*0.11; }
-  else { ctx.moveTo(-k.w*0.42,0); ctx.lineTo(-k.w*0.66,-k.h*0.22); ctx.lineWidth=k.h*0.16; }
-  ctx.stroke();
-  // body
-  ctx.fillStyle = k.body;
-  ctx.beginPath(); ctx.ellipse(0,0,k.w*0.44,k.h*0.42,0,0,7); ctx.fill();
-  // head
-  const hx = k.w*0.36;
-  ctx.beginPath(); ctx.ellipse(hx,-k.h*0.12,k.w*0.22,k.h*0.30,0,0,7); ctx.fill();
-  // ears
-  ctx.fillStyle = k.dark;
-  ctx.beginPath();
-  if(a.kind==='cat'){
-    ctx.moveTo(hx-k.w*0.08,-k.h*0.34); ctx.lineTo(hx-k.w*0.02,-k.h*0.62); ctx.lineTo(hx+k.w*0.08,-k.h*0.36);
-    ctx.moveTo(hx+k.w*0.10,-k.h*0.32); ctx.lineTo(hx+k.w*0.18,-k.h*0.56); ctx.lineTo(hx+k.w*0.22,-k.h*0.30);
+  ctx.rotate(-lean*0.18);
+  ctx.translate(0, crouch);
+
+  const stride = frozen ? 0 : (moving ? Math.sin(a.bob) : 0);
+  const legLen = a.kind === 'cat' ? 0.62 : (a.kind === 'boar' ? 0.40 : 0.46);
+
+  // --- 脚：付け根→ひざ→足先の2節。前後で位相を반転させて歩様を作る
+  ctx.strokeStyle = k.hair; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const lw = Math.max(1.6, H_*0.11);
+  const leg = (px, phase, back)=>{
+    const sw = stride*W_*0.15*phase;
+    const kneeY = H_*(0.18 + legLen*0.45);
+    const footY = H_*(0.18 + legLen);
+    ctx.lineWidth = back ? lw : lw*0.88;
+    ctx.beginPath();
+    ctx.moveTo(px, H_*0.16);
+    ctx.lineTo(px + sw*0.5, kneeY);
+    ctx.lineTo(px + sw,     footY);
+    ctx.stroke();
+  };
+  leg(-W_*0.24,  1, true);   // 後ろ脚
+  leg(-W_*0.14, -1, true);
+  leg( W_*0.20, -1, false);  // 前脚
+  leg( W_*0.29,  1, false);
+
+  // --- しっぽ（種で形が違う）
+  ctx.strokeStyle = k.dark; ctx.lineCap = 'round';
+  if(a.kind === 'cat'){
+    ctx.lineWidth = H_*0.10;
+    ctx.beginPath();
+    ctx.moveTo(-W_*0.42, -H_*0.02);
+    ctx.quadraticCurveTo(-W_*0.86, -H_*0.30, -W_*0.66, -H_*0.86);   // 長く反ったしっぽ
+    ctx.stroke();
+  } else if(a.kind === 'tanuki'){
+    ctx.lineWidth = H_*0.26;                                         // ふさふさ
+    ctx.beginPath();
+    ctx.moveTo(-W_*0.40, H_*0.02);
+    ctx.quadraticCurveTo(-W_*0.74, -H_*0.10, -W_*0.72, -H_*0.34);
+    ctx.stroke();
+    ctx.strokeStyle = k.hair; ctx.lineWidth = H_*0.09;               // しっぽの輪
+    ctx.beginPath(); ctx.moveTo(-W_*0.58, -H_*0.06); ctx.lineTo(-W_*0.66, -H_*0.12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-W_*0.70, -H_*0.22); ctx.lineTo(-W_*0.76, -H_*0.28); ctx.stroke();
   } else {
-    ctx.moveTo(hx-k.w*0.06,-k.h*0.32); ctx.lineTo(hx-k.w*0.02,-k.h*0.52); ctx.lineTo(hx+k.w*0.08,-k.h*0.34);
-    ctx.moveTo(hx+k.w*0.10,-k.h*0.30); ctx.lineTo(hx+k.w*0.16,-k.h*0.50); ctx.lineTo(hx+k.w*0.20,-k.h*0.28);
+    ctx.lineWidth = H_*0.13;
+    ctx.beginPath();
+    ctx.moveTo(-W_*0.40, -H_*0.02);
+    ctx.quadraticCurveTo(-W_*0.56, -H_*0.16, -W_*0.50, -H_*0.30);   // 短く立ったしっぽ
+    ctx.stroke();
   }
-  ctx.fill();
-  if(a.kind==='boar'){ // 牙と鼻
-    ctx.fillStyle='#EFE6D8';
-    ctx.beginPath(); ctx.moveTo(hx+k.w*0.20,-k.h*0.02); ctx.lineTo(hx+k.w*0.30,-k.h*0.26); ctx.lineTo(hx+k.w*0.25,0); ctx.fill();
+
+  // --- 胴。背を明るく腹を暗くして、毛の丸みを出す
+  const fur = ctx.createLinearGradient(0, -H_*0.5, 0, H_*0.4);
+  fur.addColorStop(0, k.body);
+  fur.addColorStop(0.55, k.body);
+  fur.addColorStop(1, k.dark);
+  ctx.fillStyle = fur;
+  ctx.beginPath();
+  if(a.kind === 'boar'){
+    // いのしし：肩が盛り上がり、尻が落ちる三角のシルエット
+    ctx.moveTo(-W_*0.40,  H_*0.10);
+    ctx.quadraticCurveTo(-W_*0.44, -H_*0.22, -W_*0.10, -H_*0.44);
+    ctx.quadraticCurveTo( W_*0.16, -H_*0.56,  W_*0.34, -H_*0.24);
+    ctx.quadraticCurveTo( W_*0.46,  H_*0.06,  W_*0.18,  H_*0.26);
+    ctx.quadraticCurveTo(-W_*0.14,  H_*0.34, -W_*0.40,  H_*0.10);
+  } else if(a.kind === 'cat'){
+    ctx.ellipse(0, 0, W_*0.42, H_*0.34, -0.05, 0, 7);               // 細長い
+  } else {
+    ctx.ellipse(0, 0, W_*0.44, H_*0.44, 0, 0, 7);                    // 丸い
   }
+  ctx.closePath(); ctx.fill();
+
+  if(a.kind === 'boar'){   // 背中の剛毛
+    ctx.strokeStyle = k.hair; ctx.lineWidth = Math.max(1, H_*0.05);
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+      const px = -W_*0.26 + i*W_*0.11, py = -H_*0.40 + Math.abs(i-2.5)*H_*0.035;
+      ctx.moveTo(px, py); ctx.lineTo(px + W_*0.02, py - H_*0.16);
+    }
+    ctx.stroke();
+  }
+
+  // --- 首・頭
+  const hx = W_*(a.kind === 'boar' ? 0.40 : 0.36);
+  const hy = -H_*(a.kind === 'boar' ? 0.06 : 0.14) + lean*H_*0.5;
+  ctx.fillStyle = k.body;
+  ctx.beginPath();
+  if(a.kind === 'boar'){
+    ctx.ellipse(hx, hy, W_*0.22, H_*0.26, -0.25, 0, 7); ctx.fill();
+    ctx.fillStyle = k.dark;                                           // 鼻づら
+    ctx.beginPath(); ctx.ellipse(hx + W_*0.20, hy + H_*0.10, W_*0.12, H_*0.11, -0.2, 0, 7); ctx.fill();
+    ctx.fillStyle = '#E9DFC9';                                        // 牙
+    ctx.beginPath();
+    ctx.moveTo(hx + W_*0.22, hy + H_*0.10);
+    ctx.lineTo(hx + W_*0.33, hy - H_*0.16);
+    ctx.lineTo(hx + W_*0.26, hy + H_*0.13);
+    ctx.closePath(); ctx.fill();
+  } else {
+    ctx.ellipse(hx, hy, W_*0.21, H_*0.27, 0, 0, 7); ctx.fill();
+    if(a.kind === 'tanuki'){                                          // 顔の隈取り
+      ctx.fillStyle = k.hair;
+      ctx.beginPath(); ctx.ellipse(hx + W_*0.06, hy - H_*0.06, W_*0.13, H_*0.12, -0.3, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = k.hair;                                           // 鼻
+    ctx.beginPath(); ctx.ellipse(hx + W_*0.17, hy + H_*0.02, W_*0.05, H_*0.06, 0, 0, 7); ctx.fill();
+  }
+
+  // --- 耳。臆病な個体は伏せ、気の強い個体は立てる
+  const earBack = timid ? 0.55 : (fierce ? -0.12 : 0.12);
   ctx.fillStyle = k.dark;
-  ctx.beginPath(); ctx.ellipse(hx+k.w*0.17,-k.h*0.06,k.w*0.07,k.h*0.09,0,0,7); ctx.fill();
-  // eye
-  ctx.fillStyle = '#FFF3B0';
-  ctx.beginPath(); ctx.ellipse(hx+k.w*0.02,-k.h*0.22,k.w*0.045,k.h*0.06,0,0,7); ctx.fill();
+  const ear = (ox, hgt, wid)=>{
+    ctx.beginPath();
+    ctx.moveTo(hx + ox - wid, hy - H_*0.20);
+    ctx.lineTo(hx + ox - wid*earBack*2.2, hy - H_*0.20 - hgt);
+    ctx.lineTo(hx + ox + wid, hy - H_*0.16);
+    ctx.closePath(); ctx.fill();
+  };
+  if(a.kind === 'cat'){ ear(-W_*0.03, H_*0.34, W_*0.07); ear(W_*0.12, H_*0.30, W_*0.06); }
+  else if(a.kind === 'tanuki'){ ear(-W_*0.02, H_*0.20, W_*0.08); ear(W_*0.13, H_*0.18, W_*0.07); }
+  else { ear(-W_*0.04, H_*0.17, W_*0.06); ear(W_*0.10, H_*0.15, W_*0.05); }
+
+  // --- 目の反射光。ヘッドライトを受けて光る＝夜道でいちばん最初に見えるもの
+  const staring = a.state === 'wait' || frozen;
+  const eyeR = (frozen ? 0.085 : 0.06) * W_;
+  ctx.shadowColor = k.eye;
+  ctx.shadowBlur = (staring ? 16 : 7);
+  ctx.fillStyle = k.eye;
+  ctx.beginPath(); ctx.ellipse(hx + W_*0.04, hy - H_*0.08, eyeR, eyeR*0.9, 0, 0, 7); ctx.fill();
+  if(staring){   // こちらを向いている個体は両目が光る
+    ctx.beginPath(); ctx.ellipse(hx + W_*0.15, hy - H_*0.05, eyeR*0.8, eyeR*0.75, 0, 0, 7); ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
   ctx.restore();
 
-  if(a.state === 'wait' && a.y > -10){
-    const blink = Math.sin(G.t*16) > -0.2;
-    if(blink){
-      ctx.fillStyle = '#FFD645';
-      ctx.font = '900 20px system-ui';
+  // --- 予告。飛び出す前と、固まっている間に出す
+  if((a.state === 'wait' || a.state === 'roam') && a.y > -10){
+    const near = a.y > a.trigger - H*0.16;
+    if(Math.sin(G.t*(near ? 22 : 13)) > -0.2){
+      ctx.fillStyle = near ? '#C8102E' : '#E8DB00';
+      ctx.font = "900 22px Impact, 'Hiragino Sans', system-ui, sans-serif";
       ctx.textAlign = 'center';
-      ctx.fillText('!', a.x, a.y - k.h*0.9);
+      ctx.fillText('!', a.x, a.y - k.h*a.sz*0.95);
     }
+  }
+  if(frozen){   // 固まっている個体は轢かれる。危険だと分かる印を出す
+    ctx.fillStyle = '#C8102E';
+    ctx.font = "900 11px Impact, 'Hiragino Sans', system-ui, sans-serif";
+    ctx.textAlign = 'center';
+    ctx.fillText('かたまった', a.x, a.y - k.h*a.sz*0.95);
   }
 }
 
@@ -676,18 +1127,16 @@ function draw(){
   }
 
   // night + grass
-  const sky = ctx.createLinearGradient(0,0,0,H);
-  sky.addColorStop(0,'#0B1226'); sky.addColorStop(1,'#16301F');
-  ctx.fillStyle = sky; ctx.fillRect(-20,-20,W+40,H+40);
+  ctx.fillStyle = skyFill || '#07070B'; ctx.fillRect(-20,-20,W+40,H+40);
 
   const topRoad = roadBoundsAt(horizonY()), bottomRoad = roadBoundsAt(H+28);
   const L = bottomRoad.l, R = bottomRoad.r;
   // road narrows toward the horizon, creating a rear-chase perspective
-  ctx.fillStyle = '#2B2F3A';
+  ctx.fillStyle = '#141419';
   ctx.beginPath();
   ctx.moveTo(topRoad.l, horizonY()); ctx.lineTo(topRoad.r, horizonY());
   ctx.lineTo(bottomRoad.r, H+28); ctx.lineTo(bottomRoad.l, H+28); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#3A3F4C';
+  ctx.fillStyle = '#0B0B0F';
   ctx.beginPath();
   ctx.moveTo(topRoad.l, horizonY()); ctx.lineTo(topRoad.l+5, horizonY());
   ctx.lineTo(bottomRoad.l+12, H+28); ctx.lineTo(bottomRoad.l, H+28); ctx.closePath(); ctx.fill();
@@ -696,7 +1145,7 @@ function draw(){
   ctx.lineTo(bottomRoad.r, H+28); ctx.lineTo(bottomRoad.r-12, H+28); ctx.closePath(); ctx.fill();
 
   // lane dashes converge at the horizon and grow toward the camera
-  ctx.strokeStyle = 'rgba(242,245,255,.30)'; ctx.lineCap = 'butt';
+  ctx.strokeStyle = 'rgba(237,230,216,.34)'; ctx.lineCap = 'butt';
   const dashPhase = (g.dist * 0.0016) % 1;
   for(let i=0;i<15;i++){
     const t = (i/15 + dashPhase/15) % 1;
@@ -709,8 +1158,8 @@ function draw(){
     }
   }
 
-  // edge neon also follows the road perspective
-  ctx.strokeStyle = 'rgba(79,227,255,.5)'; ctx.lineWidth = 2;
+  // 路肩線。シアンのネオンをやめ、毒の黄の路面標示にする
+  ctx.strokeStyle = 'rgba(232,219,0,.52)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(topRoad.l+2,horizonY()); ctx.lineTo(bottomRoad.l+2,H+28); ctx.moveTo(topRoad.r-2,horizonY()); ctx.lineTo(bottomRoad.r-2,H+28); ctx.stroke();
 
   // roadside props
@@ -718,20 +1167,20 @@ function draw(){
     const rb = roadBoundsAt(p.y), propScale = 0.38 + roadDepth(p.y)*0.95;
     const x = p.side < 0 ? rb.l - p.off*propScale : rb.r + p.off*propScale;
     if(p.kind === 'pole'){
-      ctx.fillStyle = '#5B6272'; ctx.fillRect(x-2*propScale, p.y-22*p.s*propScale, 4*propScale, 22*p.s*propScale);
-      ctx.fillStyle = '#FFD645'; ctx.fillRect(x-3*propScale, p.y-24*p.s*propScale, 6*propScale, 5*propScale);
+      ctx.fillStyle = '#33333C'; ctx.fillRect(x-2*propScale, p.y-22*p.s*propScale, 4*propScale, 22*p.s*propScale);
+      ctx.fillStyle = '#E8DB00'; ctx.fillRect(x-3*propScale, p.y-24*p.s*propScale, 6*propScale, 5*propScale);
     } else {
-      ctx.fillStyle = '#0F2417';
+      ctx.fillStyle = '#080B08';
       ctx.beginPath(); ctx.ellipse(x, p.y, 16*p.s*propScale, 20*p.s*propScale, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = '#1B3B26';
+      ctx.fillStyle = '#111A13';
       ctx.beginPath(); ctx.ellipse(x-4*p.s*propScale, p.y-5*p.s*propScale, 10*p.s*propScale, 12*p.s*propScale, 0, 0, 7); ctx.fill();
     }
   }
 
   // 高速域のスピードライン
-  const boost = Math.max(0, (g.speed - 0.72) / 0.28);
+  const boost = Math.max(0, Math.min(1.25, (g.speed - 0.72) / 0.34));
   if(boost > 0.02){
-    ctx.strokeStyle = `rgba(226,240,255,${0.07 + boost*0.20})`;
+    ctx.strokeStyle = `rgba(237,230,216,${0.07 + boost*0.24})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
     for(let i=0;i<16;i++){
@@ -748,34 +1197,41 @@ function draw(){
   if(g.phase === 1){
     const ry = py - 120 - (g.gap-46)*0.52;
     const sc = (0.42 + roadDepth(ry)*0.78) * Math.max(0.72, 1 - (g.gap-46)/1100);
-    drawCar(W/2 + Math.sin(g.t*1.6)*(W*0.13), ry, sc, {body:'#3C4A6B',dark:'#26304A',light:'#FF3B5C'});
+    drawCar(W/2 + Math.sin(g.t*1.6)*(W*0.13), ry, sc,
+            {body:'#2B2B35', dark:'#0E0E13', hi:'#4E4E5C', light:'#E8DB00'}, {rim:true});
   } else {
     const qy = py + 118 + (g.gap-18)*0.42;
-    drawCar(W/2 + Math.sin(g.t*2.2)*(W*0.15), qy, 0.96 + roadDepth(qy)*0.18, {body:'#E8ECF5',dark:'#2A3040',light:'#FF3B5C'}, {siren:true});
+    drawCar(W/2 + Math.sin(g.t*2.2)*(W*0.15), qy, 0.96 + roadDepth(qy)*0.18,
+            {body:'#CFC7B6', dark:'#4A463E', hi:'#F3EDE0', light:'#C8102E'}, {siren:true});
   }
 
   // headlight cone
   const grd = ctx.createLinearGradient(0, py-230, 0, py);
-  grd.addColorStop(0,'rgba(255,246,214,0)'); grd.addColorStop(1,'rgba(255,246,214,.16)');
+  grd.addColorStop(0,'rgba(255,248,228,0)'); grd.addColorStop(1,'rgba(255,248,228,.19)');
   ctx.fillStyle = grd;
   ctx.beginPath(); ctx.moveTo(g.px-15, py-30); ctx.lineTo(g.px-88, py-230);
   ctx.lineTo(g.px+88, py-230); ctx.lineTo(g.px+15, py-30); ctx.closePath(); ctx.fill();
 
   for(const a of g.animals) drawAnimal(a);
 
-  drawCar(g.px, py, 1.12, {body:'#FF4FA3',dark:'#8C1E53',light:'#FF3B5C'}, {tilt:g.tilt});
+  drawCar(g.px, py, 1.14,
+          {body:'#C8102E', dark:'#490810', hi:'#F0304E', light:'#FF5A3C'},
+          {tilt:g.tilt, stripe:true, wing:true, exhaust:Math.max(0,(g.speed-0.86)/0.34)});
 
   for(const f of g.floats){
     ctx.globalAlpha = Math.max(0, Math.min(1, f.life));
-    ctx.fillStyle = f.color; ctx.font = '900 17px system-ui'; ctx.textAlign='center';
+    ctx.fillStyle = f.color; ctx.font = "900 19px Impact, 'Hiragino Sans', system-ui, sans-serif"; ctx.textAlign='center';
     ctx.fillText(f.text, f.x, f.y);
     ctx.globalAlpha = 1;
   }
 
   ctx.restore();
 
+  // タイトルと同じ紙目をゲーム画面にも乗せ、世界観を1本に揃える
+  if(grainLayer) ctx.drawImage(grainLayer, 0, 0);   // 粒子とビネットを1枚にまとめて1回だけ貼る
+
   if(g.flash > 0){
-    ctx.fillStyle = `rgba(255,45,85,${g.flash*0.28})`;
+    ctx.fillStyle = `rgba(200,16,46,${g.flash*0.34})`;
     ctx.fillRect(0,0,W,H);
   }
   drawHUD();
@@ -785,87 +1241,102 @@ function drawHUD(){
   const g = G, pad = 16, top = 18 + SAFE_TOP;
   // progress
   const bw = W - pad*2, prog = Math.min(1, g.dist/GOAL);
-  ctx.fillStyle = 'rgba(10,16,32,.7)';
-  rrect(pad, top, bw, 10, 5); ctx.fill();
-  ctx.fillStyle = '#4FE3FF';
-  rrect(pad, top, Math.max(10, bw*prog), 10, 5); ctx.fill();
-  ctx.fillStyle = '#FFD645';
-  ctx.beginPath(); ctx.moveTo(pad+bw*0.5, top-4); ctx.lineTo(pad+bw*0.5+7, top+5); ctx.lineTo(pad+bw*0.5, top+14); ctx.fill();
+  ctx.fillStyle = 'rgba(5,5,7,.82)';
+  ctx.fillRect(pad, top, bw, 10);
+  ctx.fillStyle = '#EDE6D8';
+  ctx.fillRect(pad, top, Math.max(8, bw*prog), 10);
+  ctx.fillStyle = '#C8102E';
+  ctx.beginPath(); ctx.moveTo(pad+bw*0.5, top-5); ctx.lineTo(pad+bw*0.5+8, top+5); ctx.lineTo(pad+bw*0.5, top+15); ctx.fill();
+  ctx.strokeStyle = 'rgba(237,230,216,.35)'; ctx.lineWidth = 1;
+  ctx.strokeRect(pad+0.5, top+0.5, bw-1, 9);
 
   ctx.font = '800 12px system-ui'; ctx.textAlign='left';
-  ctx.fillStyle = '#B9C4DC';
+  ctx.fillStyle = '#8E97AB';
   ctx.fillText(`ゴールまで ${Math.max(0, Math.round((GOAL-g.dist)/10))} m`, pad, top+30);
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#F2F5FF';
-  ctx.fillText(`SCORE ${Math.round(g.score)}`, W-pad, top+30);
+  ctx.font = "900 17px Impact, 'Hiragino Sans', system-ui, sans-serif"; ctx.fillStyle = '#EDE6D8';
+  ctx.fillText(`SCORE ${Math.round(g.score)}`, W-pad, top+31);
 
   // gap gauge
   const gy = top+46, gw = W - pad*2;
   const label = g.phase===1 ? '前の車との距離' : 'パトカーとの距離';
   const danger = g.phase===1 ? g.gap>330 : g.gap<110;
-  ctx.textAlign='left'; ctx.fillStyle = danger ? '#FF4FA3' : '#7F8CA8';
+  ctx.textAlign='left'; ctx.fillStyle = danger ? '#C8102E' : '#69728A';
   ctx.font = '800 11px system-ui';
   ctx.fillText(label, pad, gy+2);
-  ctx.fillStyle = 'rgba(10,16,32,.7)';
-  rrect(pad, gy+8, gw, 7, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(5,5,7,.82)';
+  ctx.fillRect(pad, gy+8, gw, 7);
   const ratio = Math.max(0, Math.min(1, g.gap/430));
   const fill = g.phase===1 ? ratio : 1-ratio;
-  ctx.fillStyle = danger ? '#FF4FA3' : (g.phase===1 ? '#FFD645' : '#4FE3FF');
-  rrect(pad, gy+8, Math.max(8, gw*fill), 7, 4); ctx.fill();
+  ctx.fillStyle = danger ? '#C8102E' : (g.phase===1 ? '#E8DB00' : '#EDE6D8');
+  ctx.fillRect(pad, gy+8, Math.max(6, gw*fill), 7);
+  if(danger && Math.floor(g.t*6)%2===0){
+    ctx.strokeStyle = '#C8102E'; ctx.lineWidth = 2;
+    ctx.strokeRect(pad-1.5, gy+6.5, gw+3, 10);
+  }
 
   drawMeter();
 
   if(g.bannerT > 0){
     ctx.globalAlpha = Math.min(1, g.bannerT);
-    ctx.textAlign='center'; ctx.fillStyle='#FF4FA3';
-    ctx.font = '900 26px system-ui';
-    ctx.fillText(g.banner, W/2, H*0.36);
+    ctx.textAlign='center';
+    ctx.font = "900 30px Impact, 'Hiragino Sans', system-ui, sans-serif";
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#050507'; ctx.lineWidth = 7;
+    ctx.strokeText(g.banner, W/2, H*0.34);
+    ctx.fillStyle = '#C8102E';
+    ctx.fillText(g.banner, W/2, H*0.34);
+    ctx.fillStyle = 'rgba(237,230,216,.9)';
+    ctx.fillText(g.banner, W/2 - 2, H*0.34 - 2);
     ctx.globalAlpha = 1;
   }
 }
 
 function drawMeter(){
   const g = G;
-  const cx = W/2, cy = H - 46 - SAFE_BOTTOM;
-  const v = Math.max(0, Math.min(1, g.kmh/214));
-  const hot = g.speed > 0.94, mid = g.speed > 0.72;
-  const col = g.meterPulse > 0 ? '#FF3B5C' : (hot ? '#FF4FA3' : (mid ? '#FFD645' : '#4FE3FF'));
+  const cx = meterCX || W*0.62, cy = H - 44 - SAFE_BOTTOM;
+  const v = Math.max(0, Math.min(1, g.kmh/270));
+  const hot = g.speed > 1.06, mid = g.speed > 0.84;
+  const col = g.meterPulse > 0 ? '#FF3B3B' : (hot ? '#C8102E' : (mid ? '#E8DB00' : '#EDE6D8'));
 
   // 背後のアーク（-210°〜30°）
-  const r = 62, a0 = Math.PI*7/6, a1 = Math.PI*(7/6 + 4/3);
+  const r = 45, a0 = Math.PI*7/6, a1 = Math.PI*(7/6 + 4/3);
   ctx.lineCap = 'round';
-  ctx.strokeStyle = 'rgba(10,16,32,.75)'; ctx.lineWidth = 9;
+  ctx.strokeStyle = 'rgba(5,5,7,.85)'; ctx.lineWidth = 7;
   ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1); ctx.stroke();
-  ctx.strokeStyle = col; ctx.lineWidth = 9;
-  ctx.shadowColor = col; ctx.shadowBlur = 16 + g.meterPulse*20;
+  ctx.strokeStyle = col; ctx.lineWidth = 7;
+  ctx.shadowColor = col; ctx.shadowBlur = 14 + g.meterPulse*18;
   ctx.beginPath(); ctx.arc(cx, cy, r, a0, a0 + (a1-a0)*v); ctx.stroke();
   ctx.shadowBlur = 0;
 
   // 目盛り
-  ctx.strokeStyle = 'rgba(242,245,255,.28)'; ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(237,230,216,.30)'; ctx.lineWidth = 2;
   for(let i=0;i<=8;i++){
     const a = a0 + (a1-a0)*(i/8), c = Math.cos(a), sn = Math.sin(a);
-    const inner = i%2 ? r-13 : r-17;
-    ctx.beginPath(); ctx.moveTo(cx+c*inner, cy+sn*inner); ctx.lineTo(cx+c*(r-8), cy+sn*(r-8)); ctx.stroke();
+    const inner = i%2 ? r-9 : r-12;
+    ctx.beginPath(); ctx.moveTo(cx+c*inner, cy+sn*inner); ctx.lineTo(cx+c*(r-5), cy+sn*(r-5)); ctx.stroke();
   }
 
   // 数字（派手め：グロー＋ヒット時の赤フラッシュ）
   const jitter = g.meterPulse > 0 ? (Math.random()-0.5)*g.meterPulse*4 : 0;
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-  ctx.font = '900 52px system-ui';
+  ctx.font = "900 40px Impact, 'Hiragino Sans', system-ui, sans-serif";
   ctx.fillStyle = col;
   ctx.shadowColor = col; ctx.shadowBlur = 22 + (hot ? 16 : 0) + g.meterPulse*26;
-  ctx.fillText(String(Math.round(g.kmh)).padStart(3,' '), cx + jitter, cy + 8);
+  ctx.fillText(String(Math.round(g.kmh)), cx + jitter, cy + 6);
   ctx.shadowBlur = 0;
-  ctx.font = '900 13px system-ui'; ctx.fillStyle = 'rgba(242,245,255,.75)';
-  ctx.fillText('km/h', cx, cy + 26);
-  ctx.font = '800 10px system-ui'; ctx.fillStyle = 'rgba(185,196,220,.7)';
-  ctx.fillText(`TOP ${Math.round(g.kmhTop)}`, cx, cy - 34);
+  ctx.font = "900 13px Impact, 'Hiragino Sans', system-ui, sans-serif"; ctx.fillStyle = 'rgba(237,230,216,.8)';
+  ctx.fillText('km/h', cx, cy + 20);
+  ctx.font = "800 11px Impact, 'Hiragino Sans', system-ui, sans-serif"; ctx.fillStyle = 'rgba(142,151,171,.8)';
+  ctx.fillText(`TOP ${Math.round(g.kmhTop)}`, cx, cy - 26);
   if(hot){
-    ctx.font = '900 11px system-ui'; ctx.fillStyle = '#FF4FA3';
-    ctx.shadowColor = '#FF4FA3'; ctx.shadowBlur = 14;
-    ctx.fillText('FULL THROTTLE', cx, cy + 44);
+    ctx.font = "900 12px Impact, 'Hiragino Sans', system-ui, sans-serif"; ctx.fillStyle = '#C8102E';
+    ctx.shadowColor = '#C8102E'; ctx.shadowBlur = 14;
+    ctx.fillText('FULL', cx, cy + 36);
     ctx.shadowBlur = 0;
+  } else if(g.thr < -0.25){
+    ctx.font = "900 12px Impact, 'Hiragino Sans', system-ui, sans-serif"; ctx.fillStyle = '#E8DB00';
+    ctx.fillText('BRAKE', cx, cy + 36);
   }
   ctx.textBaseline = 'alphabetic';
 }
