@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1b1c1e">
+<meta name="description" content="カロリダス — ゲームボーイ様式の食べものカードダス×カロリーバトル">
+<title>カロリダス</title>
+<style>
+/* ============================================================
+   232 カロリダス — DMG-01 様式のシェル
+   4階調のみ。半透明・グラデ・影は画面内では使わない。
+   （シェル＝プラスチック筐体だけは陰影を許す。LCDの中が世界）
+   ============================================================ */
+:root{
+  --room:#17181a;
+  --shell:#c8c4bb;
+  --shell-hi:#d8d4cc;
+  --shell-lo:#a6a29a;
+  --shell-line:#8d8a83;
+  --bezel:#4c4d4c;
+  --bezel-hi:#5d5e5d;
+  --lcd-off:#8ba00f;
+  --btn:#9b2a55;
+  --btn-lo:#6f1c3c;
+  --gry:#77767a;
+  --gry-lo:#5a595d;
+  --led:#d8452f;
+  --ink:#2c2b29;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none}
+html,body{
+  margin:0;padding:0;height:100%;
+  background:var(--room);
+  color:#e6e4df;
+  font-family:ui-sans-serif,-apple-system,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+  overflow:hidden;overscroll-behavior:none;
+  -webkit-text-size-adjust:100%;
+  -webkit-user-select:none;user-select:none;
+  touch-action:manipulation;
+}
+/* iOSはツールバーの出入りで 100% が動くので dvh を優先する */
+@supports (height:100dvh){ html,body{height:100dvh} }
+#stage{
+  height:100%;display:flex;align-items:center;justify-content:center;
+  padding:max(4px,env(safe-area-inset-top)) max(4px,env(safe-area-inset-right))
+          max(4px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left));
+}
+
+/* ---------- 筐体 ---------- */
+.dmg{
+  position:relative;
+  background:linear-gradient(180deg,var(--shell-hi) 0%,var(--shell) 18%,var(--shell) 82%,var(--shell-lo) 100%);
+  border:1px solid var(--shell-line);
+  border-radius:12px 12px 58px 12px;
+  padding:10px 12px 12px;
+  box-shadow:0 10px 28px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.6);
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+}
+.dmg::after{ /* 筐体下部のうっすらした縦溝 */
+  content:"";position:absolute;left:12px;right:12px;top:8px;bottom:8px;
+  border-radius:8px 8px 50px 8px;pointer-events:none;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);
+}
+
+/* ---------- 画面まわり ---------- */
+.bezel{
+  width:100%;
+  background:var(--bezel);
+  border-radius:8px 8px 30px 8px;
+  padding:9px 14px 16px;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.55);
+}
+.bezel .ribs{display:flex;align-items:center;gap:5px;margin-bottom:7px}
+.bezel .ribs i{display:block;height:2px;background:#7c2a4d;border-radius:2px;flex:1}
+.bezel .ribs i:nth-child(2){background:#2b3f80}
+.bezel .cap{
+  font-size:7px;letter-spacing:.1em;color:#bdbdb8;white-space:nowrap;
+  font-weight:600;
+}
+.lcdwrap{position:relative;display:flex;align-items:center;justify-content:center}
+.led{
+  position:absolute;left:-8px;top:50%;transform:translateY(-50%);
+  width:7px;height:7px;border-radius:50%;
+  background:var(--led);box-shadow:0 0 5px rgba(216,69,47,.9);
+}
+canvas#lcd{
+  display:block;
+  image-rendering:pixelated;
+  image-rendering:-moz-crisp-edges;
+  image-rendering:crisp-edges;
+  background:var(--lcd-off);
+  touch-action:none;
+  border:0;
+}
+
+/* ---------- ブランド帯 ---------- */
+.brand{
+  width:100%;display:flex;align-items:baseline;justify-content:center;gap:6px;
+  color:var(--ink);
+}
+.brand b{
+  font-size:16px;font-weight:800;letter-spacing:.01em;font-style:italic;
+  font-family:Futura,"Trebuchet MS",ui-sans-serif,sans-serif;
+}
+.brand span{font-size:8px;letter-spacing:.24em;font-weight:700;color:#6d6a64}
+
+/* ---------- 操作部 ---------- */
+.pad{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:2px 2px 0;
+}
+.dpad{
+  position:relative;flex:none;
+  width:var(--dp);height:var(--dp);
+  touch-action:none;
+}
+.dpad .cross{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(180deg,#3a3a38,#232322) 50% 0/34% 100% no-repeat,
+    linear-gradient(180deg,#3a3a38,#232322) 0 50%/100% 34% no-repeat;
+  border-radius:6px;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.35));
+}
+.dpad .hit{position:absolute;background:transparent;border:0;padding:0;margin:0}
+.dpad .hit.u{left:33%;top:0;width:34%;height:38%}
+.dpad .hit.d{left:33%;bottom:0;width:34%;height:38%}
+.dpad .hit.l{top:33%;left:0;height:34%;width:38%}
+.dpad .hit.r{top:33%;right:0;height:34%;width:38%}
+.dpad .arr{
+  position:absolute;pointer-events:none;width:0;height:0;opacity:.55;
+}
+.dpad .arr.u{left:50%;top:9%;transform:translateX(-50%);
+  border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:7px solid #cfcdc7}
+.dpad .arr.d{left:50%;bottom:9%;transform:translateX(-50%);
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #cfcdc7}
+.dpad .arr.l{top:50%;left:9%;transform:translateY(-50%);
+  border-top:5px solid transparent;border-bottom:5px solid transparent;border-right:7px solid #cfcdc7}
+.dpad .arr.r{top:50%;right:9%;transform:translateY(-50%);
+  border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid #cfcdc7}
+.dpad.p-u .arr.u,.dpad.p-d .arr.d,.dpad.p-l .arr.l,.dpad.p-r .arr.r{opacity:1}
+.dpad.p-u .cross{background:
+    linear-gradient(180deg,#202020,#151514) 50% 0/34% 100% no-repeat,
+    linear-gradient(180deg,#3a3a38,#232322) 0 50%/100% 34% no-repeat}
+.dpad.p-d .cross{background:
+    linear-gradient(0deg,#202020,#151514) 50% 0/34% 100% no-repeat,
+    linear-gradient(180deg,#3a3a38,#232322) 0 50%/100% 34% no-repeat}
+.dpad.p-l .cross{background:
+    linear-gradient(180deg,#3a3a38,#232322) 50% 0/34% 100% no-repeat,
+    linear-gradient(90deg,#151514,#2e2e2c) 0 50%/100% 34% no-repeat}
+.dpad.p-r .cross{background:
+    linear-gradient(180deg,#3a3a38,#232322) 50% 0/34% 100% no-repeat,
+    linear-gradient(270deg,#151514,#2e2e2c) 0 50%/100% 34% no-repeat}
+
+.ab{
+  flex:none;display:flex;align-items:center;gap:var(--abgap);
+  transform:rotate(-18deg);
+}
+.rbtn{
+  position:relative;border:0;padding:0;margin:0;
+  width:var(--ab);height:var(--ab);border-radius:50%;
+  background:radial-gradient(circle at 36% 30%,#c1497c,var(--btn) 55%,var(--btn-lo));
+  box-shadow:0 3px 0 #4d1329, inset 0 1px 1px rgba(255,255,255,.35);
+  touch-action:none;
+}
+.rbtn:active,.rbtn.on{transform:translateY(2px);box-shadow:0 1px 0 #4d1329, inset 0 1px 1px rgba(255,255,255,.2)}
+.rbtn i{
+  position:absolute;left:50%;top:calc(100% + 3px);transform:translateX(-50%) rotate(18deg);
+  font-size:9px;font-style:normal;font-weight:800;color:#6d6a64;letter-spacing:.06em;
+}
+.startsel{
+  display:flex;gap:16px;justify-content:center;align-items:center;
+  transform:rotate(-18deg);margin:2px 0 0;
+}
+.pill{
+  position:relative;border:0;padding:0;margin:0;
+  width:var(--pw);height:9px;border-radius:9px;
+  background:linear-gradient(180deg,#8b8a8e,var(--gry) 50%,var(--gry-lo));
+  box-shadow:0 2px 0 #3e3d41, inset 0 1px 0 rgba(255,255,255,.3);
+  touch-action:none;
+}
+.pill:active,.pill.on{transform:translateY(1px);box-shadow:0 1px 0 #3e3d41}
+.pill i{
+  position:absolute;left:50%;top:calc(100% + 7px);transform:translateX(-50%) rotate(18deg);
+  font-size:7px;font-style:normal;font-weight:800;color:#6d6a64;letter-spacing:.1em;white-space:nowrap;
+}
+.speaker{
+  align-self:flex-end;display:flex;gap:4px;transform:rotate(-28deg);
+  margin:10px 6px 0 0;
+}
+.speaker i{display:block;width:3px;height:var(--spk);border-radius:3px;background:var(--shell-lo);
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.2)}
+
+/* ---------- サイズ変数（JSが --sc を書き換える） ---------- */
+.dmg{
+  --dp:calc(46px + 8px * var(--sc,2));
+  --ab:calc(20px + 5px * var(--sc,2));
+  --abgap:calc(6px + 3px * var(--sc,2));
+  --pw:calc(22px + 5px * var(--sc,2));
+  --spk:calc(14px + 5px * var(--sc,2));
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="dmg" id="dmg">
+    <div class="bezel">
+      <div class="ribs"><i></i><i></i><span class="cap">DOT MATRIX WITH CALORIE SOUND</span></div>
+      <div class="lcdwrap">
+        <span class="led" aria-hidden="true"></span>
+        <canvas id="lcd" width="160" height="144" aria-label="カロリダスの画面"></canvas>
+      </div>
+    </div>
+
+    <div class="brand"><b>CAROLYDAS</b><span>TITANS</span></div>
+
+    <div class="pad">
+      <div class="dpad" id="dpad" role="group" aria-label="十字キー">
+        <div class="cross"></div>
+        <span class="arr u"></span><span class="arr d"></span><span class="arr l"></span><span class="arr r"></span>
+        <button class="hit u" data-k="u" aria-label="上"></button>
+        <button class="hit d" data-k="d" aria-label="下"></button>
+        <button class="hit l" data-k="l" aria-label="左"></button>
+        <button class="hit r" data-k="r" aria-label="右"></button>
+      </div>
+      <div class="ab">
+        <button class="rbtn" data-k="b" aria-label="Bボタン もどる"><i>B</i></button>
+        <button class="rbtn" data-k="a" aria-label="Aボタン けってい"><i>A</i></button>
+      </div>
+    </div>
+
+    <div class="startsel">
+      <button class="pill" data-k="sel" aria-label="セレクト 音のオンオフ"><i>SELECT</i></button>
+      <button class="pill" data-k="sta" aria-label="スタート ポーズ"><i>START</i></button>
+    </div>
+
+    <div class="speaker" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+</div>
+<script>
+"use strict";
+/* 8x8 ビットマップフォント: <文字><幅><16進8バイト> の18文字づつ */
+const FONTBLOB="0600708898a8c888701600206020202020702600708808102040f83600f8102010088870460010305090f810105600f880f0080888706600304080f08888707600f8081020404040860070888870888870960070888878081060ア8fe0c183020604000イ80c1c7ccc0c0c0c00ウ818fec6c404083820エ800fe10101010fe00オ808fe1838c8981000カ810fe362664cc8000キ81014fc10fe101000ク83e66c40c18704000ケ800207ec808183000コ8fc06060606fefe00サ824fe242c08382000シ8402002c60c38e000ス800780818186cc600セ820207ee428203e00ソ88644040818704000タ83e26f49c18604000チ87c18fe1010304000ツ8b2d2060c08704000テ87e007e1810106000ト8c0f0d8c8c0c08000ナ810fe101030604000ニ8007e000000fefe00ヌ8007e043c1c36e000ネ8107c183cd2101000ノ8040c08183060c000ハ80028004444828200ヒ840c0dce0c0c07c00フ8fe0206040c187000ヘ8000070488c060200ホ810fe1054d6901000マ800fe060c38180800ミ81e00701c00f03e00ム8101030286446fe00メ8046c381c1620c000モ87c3030fe30303e00ヤ826feb61410101000ユ8007c040404fefe00ヨ8fe0606fe0606fe00ラ878fc0c0818704000リ8c8c8c8c808302000ル8002828282a4ecc00レ88082868498f0e000ロ8fec2c2c2c2fec600ワ8fec6c40408382000ヲ806fe040c18704000ン8406022060c186000ー8000000fe00000000・800000c0c00000000ガ80a0020fc242464ccギ80a20f810fc101010グ80a00206cc8881060ゲ80a00207ec8081830ゴ80a00007c0404047cザ80a24fe242c083820ジ80a00304222040870ズ80a00780818186cc6ゼ80a0020fe2428203cゾ80a84cc0808106040ダ80a1012205c081830ヂ80a7c18fe10103040ヅ80a20a40408187040デ80a7c00fc10306040ド80a00202038262020バ80a00280044448282ビ80a0080b8e08080f8ブ80a00f80408183060ベ80a000070488c0602ボ80a10fe1054d69010パ80400280044448282ピ8040080b8e08080f8プ80400f80408183060ペ804000070488c0602ポ80410fe1054d69010ッ80000002444081830ャ80000007ce0282020ュ800000078080808fcョ8000000f808f808f8ァ8000000fc18302060ィ80000000830d01010ェ8000000f8202020fcォ8000000087c386898A600708888f8888888B600f08888f08888f0C60070888080808870D600f08888888888f0E600f88080f08080f8F600f88080f0808080G600708880b8888878H600888888f8888888I60070202020202070J60038101010109060K6008890a0c0a09088L600808080808080f8M60088d8a8a8888888N60088c8a898888888O60070888888888870P600f08888f0808080Q60070888888a89068R600f08888f0a09088S600788080700808f0T600f8202020202020U60088888888888870V60088888888885020W600888888a8a8d888X60088885020508888Y60088885020202020Z600f80810204080f8!60020202020200020?60070880810200020.60000000000000020,60000000000002040:60000200000200000-600000000f8000000+600002020f8202000/60008101020404080(60010204040402010)60040201010102040%600c8d01020405898¥600888850f820f820★6002070f870500000▶60000406070604000↓60020202020a87020↑6002070a820202020 40000000000000000";
+
+/* 16x16 タイトルロゴ (1bit) */
+const LOGO=["......................###.............###.........############...##############..##############......####..###.......###...###.......###...###......####...###.....####....###....#####....###...#####..######...####...#####.....##.....###....................","..................#############...#############...###.......###...###.......###...###.......###...###.......###...###.......###...###.......###...###.......###...#############...#############...#############...#############...###.......###.................","...####....####....####....####....####....####....####....####....####....####....####....####....####....####....####....###.............###............####...........#####..........#####........########.........#####............###......................",".....................##....###......####..#####.....##########.....##########......#####.####.....#####...###....#######.###.....###.#######..........#####............###...........#####.........######..........####............###..........................","...........................#......###########.....###########............###............####............###............####...........#####..........#######........#########.....#####...####...#####.....####...###.......###...#.........##.................."];
+
+/* 16x16 食べものスプライト: . 透明 / 1 明 / 2 中 / 3 暗 */
+const SPR={
+  salad:"......................................33............33223333.......3221112223.....332211122233...32211111122223..32112211122123.3333333333333333.31111111111113..32111111111123...3221111112233....3322222233........333333.....................................",
+  ichigo:".......................33...........22.22.22........2222222..........3333333.......33322222333....3321221221233...3212212212123...3221221221223...3212212212123....33212212233......332122233........33222333.........33333............333......................",
+  banana:"...................................33..............3113...........331123..........3211223.........32111223........321111223.......3211111223......33211111223......332111112233.....33211111223......3321111223.......33211223.........333333...................",
+  onigiri:".......................3..............333............31113..........3111113........311111113.......311111113......31111111113.....31111111113....3111111111113...3113333333113...3323333333233...3233333333323...3333333333333....333333333333..................",
+  tamago:"....................................33333333......333111111133...33111111111113..31133331111113..31311131111113..31313131111113..31311331111113..31133311111113..31111111111113..33111111111133...333111111333......33333333....................................",
+  milk:".....................33333..........3222223.........3122213........33333333........31111113........31122113........31212113........31122113........31111113........31111113........31111113........31111113........33333333.....................................",
+  karaage:"...................................333.33333......3322233222233..33211122111123.33211111111112333211121111211123321111111111112332111211112111233321111111111233.33211111111233...332222222233.....3332222333.......33333333....................................",
+  pizza:".......................33.............3223............3223...........322113..........321113.........32113213........32111123.......3211331123......3211331123.....321111111123....321133111123...32111331111123..32111111111123..32222222222223...333333333333..",
+  ice:"....................333..333.......32223322223....3211122111123...3211122111123...3221122211223....32222222223....3333333333333....3212121213......3121212123.......32121213........31212123.........321213...........3123.............33.......................",
+  latte:"..................................3333333333......3222222223......321111112331....321221112313....321212112313....321221112313....321111112331....32111111233.....3321111123.......33222223.........333333........333333333333...33222222222233...333333333333..",
+  natto:".....................2..2..2........2..2..2.......333333333333....311111111113....321212121213....312121212123....321212121213....312121212123....321212121213....312121212123....311111111113....333333333333..................................................",
+  ramen:"....................2...2..2.......2...2..2.....................333333333333333331333311111331133133331111133113311111111111111331222222222222133322222222222233.33222222222233...332222222233.....3322222233.......33333333....................................",
+  potato:"..................313.313.313.....313.313.313.....313.313.313.....313.313.313.....333333333333....322222222223....321111111123....321111111123....321133331123....321111111123....321111111123.....3211111123.......33333333....................................",
+  cake:"........................33.............3223...........332233.........33333333.......3111111113.....31111111113....333333333333....322222222223....311111111113....333333333333....322222222223....322222222223....333333333333..................................",
+  tonkatsu:"..................................33333333333....3222222222223...32113211321123..32113211321123..32113211321123..32113211321123..32222222222223...33333333333.....2.2.2.2.2.2....2.2.2.2.2.2.2....2.2.2.2.2.2...................................................",
+  curry:"....................................................33333333......331111111133...33111111112233..31111111222223..31111112222223..31111222222223..33112222222223...333222222233..333333333333333331111111111111133322222222222233..333333333333.................."
+};
+
+/* ============================================================
+   1. 4階調フレームバッファ（DMGの制約を機械的に強制する層）
+   ここを通さない描画は存在しない = 第5の色もアンチエイリアスも
+   物理的に発生しない。
+   ============================================================ */
+const VW = 160, VH = 144;
+const PAL = [[0x9b,0xbc,0x0f],[0x8b,0xac,0x0f],[0x30,0x62,0x30],[0x0f,0x38,0x0f]];
+const cv  = document.getElementById('lcd');
+const ctx = cv.getContext('2d', { alpha: false });
+ctx.imageSmoothingEnabled = false;
+const fb  = new Uint8Array(VW * VH);
+const imgd = ctx.createImageData(VW, VH);
+
+function cls(c){ fb.fill(c); }
+function px(x, y, c){
+  x = x|0; y = y|0;
+  if(x < 0 || y < 0 || x >= VW || y >= VH) return;
+  fb[y * VW + x] = c;
+}
+function rect(x, y, w, h, c){
+  x = x|0; y = y|0; w = w|0; h = h|0;
+  const x1 = Math.min(VW, x + w), y1 = Math.min(VH, y + h);
+  for(let yy = Math.max(0, y); yy < y1; yy++){
+    const o = yy * VW;
+    for(let xx = Math.max(0, x); xx < x1; xx++) fb[o + xx] = c;
+  }
+}
+function box(x, y, w, h, c){
+  rect(x, y, w, 1, c); rect(x, y + h - 1, w, 1, c);
+  rect(x, y, 1, h, c); rect(x + w - 1, y, 1, h, c);
+}
+/* 市松ディザ。GBは4階調しかないので中間の明るさはこれで作る */
+function dither(x, y, w, h, c, par){
+  x = x|0; y = y|0;
+  for(let yy = 0; yy < h; yy++) for(let xx = 0; xx < w; xx++)
+    if(((x + xx + y + yy) & 1) === (par ? 1 : 0)) px(x + xx, y + yy, c);
+}
+/* GBのメッセージ窓: 角を落とした二重枠 */
+function win(x, y, w, h){
+  rect(x, y, w, h, 0);
+  box(x, y, w, h, 3);
+  box(x + 1, y + 1, w - 2, h - 2, 2);
+  px(x, y, 0); px(x + w - 1, y, 0); px(x, y + h - 1, 0); px(x + w - 1, y + h - 1, 0);
+  px(x + 1, y + 1, 0); px(x + w - 2, y + 1, 0); px(x + 1, y + h - 2, 0); px(x + w - 2, y + h - 2, 0);
+}
+function blit(){
+  const d = imgd.data;
+  for(let i = 0, j = 0; i < fb.length; i++, j += 4){
+    const p = PAL[fb[i]];
+    d[j] = p[0]; d[j+1] = p[1]; d[j+2] = p[2]; d[j+3] = 255;
+  }
+  ctx.putImageData(imgd, 0, 0);
+}
+
+/* ============================================================
+   2. フォント / スプライト
+   ============================================================ */
+const GLY = new Map();
+for(let i = 0; i + 18 <= FONTBLOB.length; i += 18){
+  const ch = FONTBLOB[i], w = +FONTBLOB[i + 1], hex = FONTBLOB.substr(i + 2, 16);
+  const rows = [];
+  for(let r = 0; r < 8; r++) rows.push(parseInt(hex.substr(r * 2, 2), 16));
+  GLY.set(ch, { w, rows });
+}
+const MISSING = new Set();
+function glyph(ch){
+  const g = GLY.get(ch);
+  if(!g){ MISSING.add(ch); return GLY.get('?'); }
+  return g;
+}
+function textW(s){
+  let w = 0;
+  for(const ch of s) w += glyph(ch).w;
+  return w;
+}
+function text(s, x, y, c){
+  x = x|0; y = y|0;
+  if(c === undefined) c = 3;
+  for(const ch of s){
+    const g = glyph(ch);
+    for(let r = 0; r < 8; r++){
+      const bits = g.rows[r];
+      if(!bits) continue;
+      for(let b = 0; b < 8; b++) if(bits & (128 >> b)) px(x + b, y + r, c);
+    }
+    x += g.w;
+  }
+}
+function textC(s, y, c){ text(s, (VW - textW(s)) >> 1, y, c); }
+/* 文字の縁取り（タイトル等で主役を背景から浮かせる） */
+function textO(s, x, y, c, oc){
+  for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++)
+    if(dx || dy) text(s, x + dx, y + dy, oc);
+  text(s, x, y, c);
+}
+
+const SPRC = {};
+for(const k in SPR){
+  const s = SPR[k], a = new Uint8Array(256);
+  for(let i = 0; i < 256; i++){ const ch = s[i]; a[i] = ch === '.' ? 255 : +ch; }
+  SPRC[k] = a;
+}
+function spr(id, x, y){
+  const a = SPRC[id];
+  if(!a) return;
+  x = x|0; y = y|0;
+  for(let r = 0; r < 16; r++) for(let cc = 0; cc < 16; cc++){
+    const v = a[r * 16 + cc];
+    if(v !== 255) px(x + cc, y + r, v);
+  }
+}
+/* 16x16 ロゴ（等倍・影つき。拡大縮小はしない） */
+function logo(x, y){
+  for(let i = 0; i < LOGO.length; i++){
+    const s = LOGO[i], ox = x + i * 16;
+    for(let r = 0; r < 16; r++) for(let cc = 0; cc < 16; cc++)
+      if(s[r * 16 + cc] === '#'){ px(ox + cc + 1, y + r + 1, 2); }
+    for(let r = 0; r < 16; r++) for(let cc = 0; cc < 16; cc++)
+      if(s[r * 16 + cc] === '#'){ px(ox + cc, y + r, 3); }
+  }
+}
+
+/* ============================================================
+   3. データ
+   栄養値は1食あたりの一般的な目安。ゲーム都合で歪めない。
+   ============================================================ */
+const FOODS = [
+  {id:'salad',   n:'サラダ',    u:'1サラ',   k:45,  p:2,  f:2,  c:6,   r:1, mv:'ミドリノカゼ',     ln:'ヘルシーノ オウジャ'},
+  {id:'ichigo',  n:'イチゴ',    u:'100G',    k:34,  p:1,  f:0,  c:9,   r:1, mv:'アカイホウセキ',   ln:'アマイノニ カルイ'},
+  {id:'banana',  n:'バナナ',    u:'1ポン',   k:86,  p:1,  f:0,  c:23,  r:1, mv:'イッポンヅリ',     ln:'テガルニ エネルギー'},
+  {id:'onigiri', n:'オニギリ',  u:'1コ',     k:180, p:3,  f:1,  c:40,  r:1, mv:'ニギリコブシ',     ln:'コメハ チカラノ モト'},
+  {id:'tamago',  n:'タマゴヤキ',u:'1キレ',   k:90,  p:6,  f:6,  c:2,   r:1, mv:'キイロイマク',     ln:'チイサクテ タンパクシツ'},
+  {id:'milk',    n:'ミルク',    u:'200ML',   k:138, p:7,  f:8,  c:10,  r:1, mv:'シロイナミ',       ln:'ホネヲ ツヨクスル'},
+  {id:'karaage', n:'カラアゲ',  u:'100G',    k:290, p:22, f:18, c:13,  r:2, mv:'アブラジゴク',     ln:'アブラト タンパクノ カタマリ'},
+  {id:'pizza',   n:'ピザ',      u:'1キレ',   k:280, p:12, f:10, c:36,  r:2, mv:'チーズノイト',     ln:'イッキレデ ゴハン イチゼン'},
+  {id:'ice',     n:'アイス',    u:'1コ',     k:180, p:3,  f:10, c:21,  r:2, mv:'ゼッタイレイド',   ln:'ツメタクテ アブラオオメ'},
+  {id:'latte',   n:'カフェラテ',u:'1ハイ',   k:110, p:6,  f:6,  c:9,   r:2, mv:'メザメノイチゲキ', ln:'ミルクノブン オモイ'},
+  {id:'natto',   n:'ナットウ',  u:'1パック', k:100, p:8,  f:5,  c:6,   r:2, mv:'ネバリゴシ',       ln:'ネバリデ カツ タイプ'},
+  {id:'ramen',   n:'ラーメン',  u:'1ハイ',   k:500, p:20, f:16, c:66,  r:3, mv:'ユゲノジン',       ln:'スープマデ ノムト ノビル'},
+  {id:'potato',  n:'ポテト',    u:'Mサイズ', k:410, p:5,  f:20, c:53,  r:3, mv:'キンイロノヤリ',   ln:'アブラヲ スッタ イモ'},
+  {id:'cake',    n:'ケーキ',    u:'1キレ',   k:340, p:5,  f:15, c:45,  r:3, mv:'イチゴノオウカン', ln:'シアワセノ ネダンハ タカイ'},
+  {id:'tonkatsu',n:'トンカツ',  u:'1マイ',   k:430, p:25, f:30, c:13,  r:4, mv:'ショウブノコロモ', ln:'カツ タメノ イッパイ'},
+  {id:'curry',   n:'カレー',    u:'1サラ',   k:700, p:18, f:25, c:100, r:4, mv:'オウジャノルー',   ln:'ゼンブ ノセタ サイキョウ'}
+];
+const FI = {}; FOODS.forEach((f, i) => { FI[f.id] = i; });
+
+/* おだい: 5種。ヘルシーだけ「低いほうが勝ち」= 最強札を作らないための逆転枠 */
+const ODAI = [
+  {n:'チカラ',   key:'k', low:0, d:'カロリーガ タカイホウ'},
+  {n:'キンニク', key:'p', low:0, d:'タンパクシツガ オオイホウ'},
+  {n:'アブラ',   key:'f', low:0, d:'シシツガ オオイホウ'},
+  {n:'アマサ',   key:'c', low:0, d:'タンスイカブツガ オオイホウ'},
+  {n:'ヘルシー', key:'k', low:1, d:'カロリーガ ヒクイホウ'}
+];
+const PRICE = 100, REWARD = 100, DUP = 30;
+const RATE = [0, 45, 33, 17, 5]; /* ★1..★4 の排出率(%) */
+
+/* ---- セーブ（キーは tg.<番号>.<key> 規約） ---- */
+const SKEY = 'tg.232.save';
+const DEF = { coin: 500, got: {}, sound: 1, wins: 0, loses: 0, pulls: 0, cleared: 0 };
+let S = Object.assign({}, DEF);
+function load(){
+  try{
+    const o = JSON.parse(localStorage.getItem(SKEY));
+    if(o && typeof o === 'object') S = Object.assign({}, DEF, o, { got: Object.assign({}, o.got) });
+  }catch(e){ /* 壊れていても初期値で続行する */ }
+}
+function save(){ try{ localStorage.setItem(SKEY, JSON.stringify(S)); }catch(e){} }
+const owned = () => FOODS.filter(f => S.got[f.id]);
+const ownedN = () => owned().length;
+
+function pull(){
+  let r = Math.random() * 100, star = 1;
+  for(let i = 1; i <= 4; i++){ if(r < RATE[i]){ star = i; break; } r -= RATE[i]; }
+  let pool = FOODS.filter(f => f.r === star);
+  if(!pool.length) pool = FOODS;
+  return pool[(Math.random() * pool.length) | 0];
+}
+
+/* ============================================================
+   4. 音（GBの4ch を模す: pulse1 / pulse2 / wave / noise）
+   ============================================================ */
+let AC = null, MASTER = null, PW = null, NOISE = null;
+function audioInit(){
+  if(AC) return;
+  try{
+    const C = window.AudioContext || window.webkitAudioContext;
+    if(!C) return;
+    AC = new C();
+    MASTER = AC.createGain();
+    MASTER.gain.value = 0.3;
+    MASTER.connect(AC.destination);
+    const mk = duty => {
+      const N = 24, re = new Float32Array(N), im = new Float32Array(N);
+      for(let k = 1; k < N; k++) im[k] = (2 / (k * Math.PI)) * Math.sin(Math.PI * k * duty);
+      return AC.createPeriodicWave(re, im);
+    };
+    PW = [mk(0.125), mk(0.25), mk(0.5)];
+    const len = (AC.sampleRate * 0.4) | 0;
+    NOISE = AC.createBuffer(1, len, AC.sampleRate);
+    const d = NOISE.getChannelData(0);
+    let r = 0x7f;
+    for(let i = 0; i < len; i++){ r = ((r * 1103515245 + 12345) >>> 0) & 0x7fffffff; d[i] = (r / 0x40000000) - 1; }
+  }catch(e){ AC = null; } /* 音が出せなくてもゲームは止めない */
+}
+function unlock(){
+  audioInit();
+  if(AC && AC.state === 'suspended') AC.resume();
+}
+const mute = () => !S.sound;
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+function tone(m, t, dur, vol, duty, type){
+  if(!AC || mute()) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  if(type === 'tri'){ o.type = 'triangle'; } else { o.setPeriodicWave(PW[duty || 0]); }
+  o.frequency.setValueAtTime(hz(m), t);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(MASTER);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function drum(t, kind){
+  if(!AC || mute()) return;
+  const s = AC.createBufferSource(), g = AC.createGain(), bp = AC.createBiquadFilter();
+  s.buffer = NOISE;
+  bp.type = kind === 'K' ? 'lowpass' : 'highpass';
+  bp.frequency.value = kind === 'K' ? 180 : (kind === 'S' ? 1400 : 5200);
+  const v = kind === 'K' ? 0.5 : (kind === 'S' ? 0.3 : 0.12);
+  const dur = kind === 'h' ? 0.03 : 0.09;
+  g.gain.setValueAtTime(v, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(bp); bp.connect(g); g.connect(MASTER);
+  s.start(t); s.stop(t + dur + 0.02);
+}
+
+/* メロ(pulse1) + ハモリ(pulse2) + ベース(wave) + ドラム(noise) の4声 */
+const BGM = {
+  shop: {
+    spb: 60 / 132 / 4,
+    mel: [72,0,76,0,79,0,76,0, 81,0,79,0,76,0,0,0, 77,0,81,0,84,0,81,0, 79,0,76,0,72,0,0,0],
+    har: [0,0,72,0,74,0,72,0, 76,0,74,0,72,0,0,0, 72,0,76,0,79,0,76,0, 74,0,72,0,67,0,0,0],
+    bas: [48,0,0,0,55,0,0,0, 45,0,0,0,52,0,0,0, 41,0,0,0,48,0,0,0, 43,0,0,0,43,0,0,0],
+    drm: 'K.h.S.h.K.h.S.h.K.h.S.h.K.hKS.h',
+    duty: 1
+  },
+  battle: {
+    spb: 60 / 152 / 4,
+    mel: [69,0,69,72,71,0,67,0, 69,0,76,0,74,0,72,0, 71,0,67,0,69,0,72,0, 76,0,74,0,69,0,0,0],
+    har: [0,0,0,0,64,0,60,0, 61,0,69,0,67,0,64,0, 62,0,59,0,61,0,64,0, 69,0,67,0,61,0,0,0],
+    bas: [45,0,45,0,45,0,45,0, 41,0,41,0,41,0,41,0, 43,0,43,0,43,0,43,0, 45,0,45,0,45,0,45,0],
+    drm: 'K.hKS.h.K.hKS.h.K.hKS.h.K.hKS.h',
+    duty: 0
+  }
+};
+let bgmCur = null, bgmStep = 0, bgmAt = 0;
+function bgmSet(name){
+  if(bgmCur === name) return;
+  bgmCur = name; bgmStep = 0; bgmAt = 0;
+}
+function bgmTick(){
+  if(!AC || mute() || !bgmCur) return;
+  const t = BGM[bgmCur], now = AC.currentTime;
+  if(bgmAt < now) bgmAt = now + 0.06;
+  while(bgmAt < now + 0.3){
+    const i = bgmStep % 32;
+    if(t.mel[i]) tone(t.mel[i], bgmAt, t.spb * 1.7, 0.16, t.duty);
+    if(t.har[i]) tone(t.har[i], bgmAt, t.spb * 1.5, 0.09, 2);
+    if(t.bas[i]) tone(t.bas[i], bgmAt, t.spb * 1.9, 0.22, 0, 'tri');
+    const dc = t.drm[i];
+    if(dc && dc !== '.') drum(bgmAt, dc);
+    bgmAt += t.spb; bgmStep++;
+  }
+}
+function se(kind){
+  if(!AC || mute()) return;
+  const t = AC.currentTime;
+  switch(kind){
+    case 'cur':  tone(84, t, 0.05, 0.18, 1); break;
+    case 'ok':   tone(79, t, 0.05, 0.2, 1); tone(86, t + 0.05, 0.09, 0.2, 1); break;
+    case 'back': tone(72, t, 0.05, 0.16, 2); tone(64, t + 0.05, 0.08, 0.16, 2); break;
+    case 'ng':   tone(55, t, 0.14, 0.2, 2); break;
+    case 'coin': tone(88, t, 0.05, 0.2, 0); tone(93, t + 0.05, 0.12, 0.2, 0); break;
+    case 'lever':drum(t, 'S'); tone(50, t, 0.08, 0.16, 2); break;
+    case 'drop': tone(60, t, 0.06, 0.2, 1); tone(48, t + 0.06, 0.14, 0.2, 1); drum(t + 0.06, 'K'); break;
+    case 'rare': [76,79,83,88,91].forEach((m, i) => tone(m, t + i * 0.07, 0.18, 0.22, 0)); break;
+    case 'win':  [72,76,79,84].forEach((m, i) => tone(m, t + i * 0.09, 0.3, 0.24, 1)); break;
+    case 'lose': [67,64,60,55].forEach((m, i) => tone(m, t + i * 0.11, 0.32, 0.22, 2)); break;
+    case 'hit':  drum(t, 'S'); tone(45, t, 0.12, 0.24, 2); break;
+  }
+}
+
+/* ============================================================
+   5. 入力（Pointer Events に統一 + setPointerCapture）
+   ============================================================ */
+const KEYS = ['u','d','l','r','a','b','sta','sel'];
+const hold = {}, just = {}, latch = {};
+KEYS.forEach(k => { hold[k] = 0; just[k] = false; latch[k] = false; });
+const DPAD = document.getElementById('dpad');
+const PRESS = { u:'p-u', d:'p-d', l:'p-l', r:'p-r' };
+
+function keyDown(k){
+  /* 押した瞬間を latch に残す。1フレーム未満で離されても取りこぼさない */
+  if(hold[k] === 0){ hold[k] = 1; latch[k] = true; }
+  if(PRESS[k]) DPAD.classList.add(PRESS[k]);
+}
+function keyUp(k){
+  hold[k] = 0;
+  if(PRESS[k]) DPAD.classList.remove(PRESS[k]);
+}
+document.querySelectorAll('[data-k]').forEach(el => {
+  const k = el.dataset.k;
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    el.classList.add('on');
+    unlock();
+    keyDown(k);
+  }, { passive: false });
+  const off = e => {
+    try{ el.releasePointerCapture(e.pointerId); }catch(_){}
+    el.classList.remove('on');
+    keyUp(k);
+  };
+  el.addEventListener('pointerup', off);
+  el.addEventListener('pointercancel', off);
+  el.addEventListener('lostpointercapture', off);
+  el.addEventListener('contextmenu', e => e.preventDefault());
+});
+/* iOS: 素早い2連打をズームに取られないようにする（touch-action だけでは端末差が出る） */
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if(now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+const KMAP = {
+  ArrowUp:'u', ArrowDown:'d', ArrowLeft:'l', ArrowRight:'r',
+  w:'u', s:'d', a:'l', d:'r', W:'u', S:'d', A:'l', D:'r',
+  z:'a', Z:'a', ' ':'a', Enter:'sta', x:'b', X:'b', Backspace:'b', Shift:'sel'
+};
+addEventListener('keydown', e => {
+  const k = KMAP[e.key];
+  if(!k) return;
+  e.preventDefault(); unlock(); keyDown(k);
+});
+addEventListener('keyup', e => { const k = KMAP[e.key]; if(k) keyUp(k); });
+addEventListener('blur', () => KEYS.forEach(keyUp));
+
+/* 押しはじめ + 長押しリピート（十字キーのみ） */
+function pollInput(){
+  for(const k of KEYS){
+    const h = hold[k];
+    if(latch[k]){
+      just[k] = true; latch[k] = false;
+      if(h > 0) hold[k] = 2;
+    } else if(h > 0){
+      just[k] = !!(PRESS[k] && h > 16 && (h % 5) === 0);
+      hold[k] = h + 1;
+    } else just[k] = false;
+  }
+}
+
+/* ============================================================
+   6. 共通パーツの描画
+   ============================================================ */
+function stars(n, x, y, c){ for(let i = 0; i < n; i++) text('★', x + i * 6, y, c); }
+function textIn(s, x, w, y, c){ text(s, x + ((w - textW(s)) >> 1) | 0, y, c); }
+const pad2 = n => (n < 10 ? '0' : '') + n;
+
+function hud(right){
+  rect(0, 0, VW, 9, 2);
+  rect(0, 9, VW, 1, 3);
+  text('¥' + S.coin, 3, 1, 0);
+  const r = right || ('ズカン ' + pad2(ownedN()) + '/' + FOODS.length);
+  text(r, VW - 3 - textW(r), 1, 0);
+}
+
+/* カードダス自販機（80x76・全部矩形。曲線は1本も引かない） */
+function machine(ox, oy, lever, sample){
+  rect(ox, oy, 80, 76, 2);
+  box(ox, oy, 80, 76, 3);
+  dither(ox + 1, oy + 1, 78, 74, 1, 0);
+  win(ox + 4, oy + 3, 72, 13);
+  text('カロリダス', ox + 20, oy + 6, 3);
+  /* 見本の窓 */
+  rect(ox + 5, oy + 19, 44, 32, 0);
+  box(ox + 5, oy + 19, 44, 32, 3);
+  box(ox + 13, oy + 22, 28, 26, 2);
+  if(sample) spr(sample, ox + 19, oy + 27);
+  /* コイン投入口と値段 */
+  rect(ox + 56, oy + 21, 16, 3, 3);
+  rect(ox + 50, oy + 25, 28, 9, 0);
+  box(ox + 50, oy + 25, 28, 9, 2);
+  text('¥100', ox + 52, oy + 26, 3);
+  /* レバー（4コマ。回転描画はしない） */
+  rect(ox + 57, oy + 34, 15, 15, 0);
+  box(ox + 57, oy + 34, 15, 15, 3);
+  const cx = ox + 64, cy = oy + 41, d = [[4,0],[0,4],[-4,0],[0,-4]][lever & 3];
+  rect(cx - 1, cy - 1, 3, 3, 3);
+  rect(cx + d[0] - 1, cy + d[1] - 1, 3, 3, 3);
+  rect(cx + (d[0] >> 1) - 1, cy + (d[1] >> 1) - 1, 3, 3, 2);
+  /* 排出口 */
+  rect(ox + 5, oy + 54, 62, 3, 2);
+  rect(ox + 5, oy + 57, 62, 12, 3);
+  rect(ox + 8, oy + 60, 56, 6, 2);
+  rect(ox + 5, oy + 71, 62, 1, 3);
+}
+
+/* カード1枚（132x106） */
+function cardFull(f, x, y, shine){
+  rect(x, y, 132, 106, 0);
+  box(x, y, 132, 106, 3);
+  box(x + 2, y + 2, 128, 102, 2);
+  if(shine) dither(x + 3, y + 3, 126, 100, 1, shine & 1);
+  text(f.n, x + 8, y + 5, 3);
+  stars(f.r, x + 126 - f.r * 6, y + 5, 3);
+  rect(x + 6, y + 14, 120, 1, 2);
+  /* 絵 */
+  box(x + 6, y + 17, 20, 20, 2);
+  spr(f.id, x + 8, y + 19);
+  /* 攻撃力＝カロリー */
+  text(String(f.k), x + 32, y + 18, 3);
+  text('KCAL', x + 32, y + 28, 2);
+  text(f.u, x + 74, y + 18, 2);
+  text('P' + f.p + ' F' + f.f + ' C' + f.c, x + 6, y + 42, 3);
+  rect(x + 6, y + 53, 120, 1, 2);
+  text('ヒッサツ', x + 6, y + 57, 2);
+  text(f.mv, x + 6, y + 68, 3);
+  rect(x + 6, y + 80, 120, 1, 2);
+  text(f.ln, x + 6, y + 85, 3);
+}
+
+/* 対戦中の小さいカード（66x54） */
+function cardMini(f, x, y, faceUp, val, label){
+  rect(x, y, 66, 54, 0);
+  box(x, y, 66, 54, 3);
+  if(!faceUp){
+    dither(x + 3, y + 3, 60, 48, 2, 0);
+    box(x + 3, y + 3, 60, 48, 2);
+    box(x + 8, y + 8, 50, 38, 3);
+    rect(x + 24, y + 18, 18, 18, 0);
+    box(x + 24, y + 18, 18, 18, 3);
+    textIn('?', x + 24, 18, y + 22, 3);
+    return;
+  }
+  textIn(f.n, x, 66, y + 4, 3);
+  spr(f.id, x + 25, y + 14);
+  rect(x + 6, y + 32, 54, 1, 2);
+  if(val !== undefined) textIn((label ? label + ' ' : '') + val, x, 66, y + 37, 3);
+}
+
+/* ============================================================
+   7. シーン
+   ============================================================ */
+let scene = 'title', ft = 0;
+let sample = FOODS[0].id;
+function go(n){ scene = n; ft = 0; if(SCENE[n].enter) SCENE[n].enter(); }
+
+/* ---- ポーズ（明示ポーズ。START で開閉） ---- */
+let paused = false, pcur = 0;
+const PAUSABLE = { shop:1, dex:1, select:1, battle:1 };
+function drawPause(){
+  win(24, 40, 112, 64);
+  textIn('ポーズ', 24, 112, 45, 3);
+  rect(30, 56, 100, 1, 2);
+  const items = ['ツヅケル', 'オト ' + (S.sound ? 'ON' : 'OFF'), 'タイトルヘ'];
+  items.forEach((s, i) => {
+    text(s, 42, 62 + i * 12, 3);
+    if(i === pcur) text('▶', 32, 62 + i * 12, 3);
+  });
+}
+function updatePause(){
+  if(just.u){ pcur = (pcur + 2) % 3; se('cur'); }
+  if(just.d){ pcur = (pcur + 1) % 3; se('cur'); }
+  if(just.sta || just.b){ paused = false; se('back'); return; }
+  if(just.a){
+    if(pcur === 0){ paused = false; se('back'); }
+    else if(pcur === 1){ S.sound = S.sound ? 0 : 1; save(); if(S.sound){ unlock(); se('ok'); } }
+    else { paused = false; se('back'); go('title'); }
+  }
+}
+
+/* ---- タイトル ---- */
+const SCENE = {};
+SCENE.title = {
+  enter(){ bgmSet(null); },
+  update(){
+    if(just.a || just.sta){ unlock(); se('ok'); go('shop'); }
+    if(just.sel){ S.sound = S.sound ? 0 : 1; save(); if(S.sound) unlock(); se('ok'); }
+  },
+  draw(){
+    cls(0);
+    dither(0, 0, VW, 24, 1, 0);
+    logo(40, 4);
+    rect(0, 24, VW, 12, 2);
+    textIn('タベモノ カードダス', 0, VW, 26, 0);
+    rect(0, 36, VW, 1, 3);
+    machine(40, 40, (ft >> 4) & 3, sample);
+    if(((ft >> 4) & 1) === 0) textIn('PUSH START', 0, VW, 120, 3);
+    text(S.sound ? 'SE ON' : 'SE OFF', 3, 120, 2);
+    textIn('(C) 2026 TITANS', 0, VW, 133, 2);
+  }
+};
+
+/* ---- ショップ（自販機） ---- */
+let shopCur = 0, shopPhase = 'menu', shopMsg = '';
+const MENU = ['コインヲイレル', 'ショウブスル', 'ズカンヲミル'];
+const HINT = ['カードガ 1マイ デル', 'テフダ 3マイデ ショウブ', 'アツメタ カードヲ ミル'];
+let pulled = null, pulledDup = false;
+
+SCENE.shop = {
+  enter(){ bgmSet('shop'); shopPhase = 'menu'; shopMsg = ''; },
+  update(){
+    if(shopPhase === 'gacha'){
+      if(ft === 1) se('coin');
+      if(ft === 18) se('lever');
+      if(ft === 50) se('drop');
+      if(ft > 74){
+        pulled = pull();
+        pulledDup = !!S.got[pulled.id];
+        if(pulledDup){ S.coin += DUP; } else { S.got[pulled.id] = 1; }
+        S.pulls++;
+        sample = pulled.id;
+        save();
+        go('card');
+      }
+      return;
+    }
+    if(just.sta){ paused = true; pcur = 0; se('ok'); return; }
+    if(just.sel){ S.sound = S.sound ? 0 : 1; save(); if(S.sound) unlock(); se('ok'); return; }
+    if(just.u){ shopCur = (shopCur + 2) % 3; shopMsg = ''; se('cur'); }
+    if(just.d){ shopCur = (shopCur + 1) % 3; shopMsg = ''; se('cur'); }
+    if(just.a){
+      if(shopCur === 0){
+        if(S.coin < PRICE){ shopMsg = 'オカネガ タリナイ'; se('ng'); }
+        else { S.coin -= PRICE; save(); shopPhase = 'gacha'; ft = 0; }
+      } else if(shopCur === 1){
+        if(ownedN() < 3){ shopMsg = 'カードガ 3マイ ヒツヨウ'; se('ng'); }
+        else { se('ok'); go('select'); }
+      } else { se('ok'); go('dex'); }
+    }
+  },
+  draw(){
+    cls(0);
+    hud();
+    const gach = shopPhase === 'gacha';
+    machine(40, 12, gach ? (ft >> 3) : 0, sample);
+    if(gach){
+      if(ft < 18) rect(102, 14 + ft, 4, 4, 3);                    /* 落ちるコイン */
+      if(ft > 50) rect(52, 66 + Math.min(12, ft - 50), 40, 4, 3); /* 出てくるカード */
+    }
+    win(2, 92, 156, 50);
+    if(gach){
+      textIn(ft < 18 ? 'コインヲ イレタ' : (ft < 50 ? 'レバーヲ マワス' : 'カードガ デタ!'), 2, 156, 112, 3);
+      return;
+    }
+    for(let i = 0; i < 3; i++){
+      text(MENU[i], 18, 98 + i * 11, 3);
+      if(i === shopCur) text('▶', 8, 98 + i * 11, 3);
+    }
+    text('¥100', 122, 98, 2);
+    rect(8, 127, 144, 1, 2);
+    textIn(shopMsg || HINT[shopCur], 2, 156, 131, shopMsg ? 3 : 2);
+  }
+};
+
+/* ---- 引いたカードの表示 ---- */
+SCENE.card = {
+  enter(){ if(pulled && pulled.r >= 4) se('rare'); },
+  update(){
+    if(just.a || just.b || just.sta){
+      se('ok');
+      if(ownedN() === FOODS.length && !S.cleared){ S.cleared = 1; save(); go('ending'); }
+      else go('shop');
+    }
+  },
+  draw(){
+    cls(0);
+    dither(0, 0, VW, VH, 1, (ft >> 3) & 1);
+    const yy = Math.max(6, 40 - ft * 4);
+    cardFull(pulled, 14, yy, pulled.r >= 4 ? (ft >> 2) : 0);
+    if(yy <= 6){
+      win(2, 118, 156, 24);
+      textIn(pulledDup ? 'ダブリ! ¥' + DUP + ' カエス' : 'アタラシイ カード!', 2, 156, 126, 3);
+    }
+  }
+};
+
+/* ---- ずかん ---- */
+let dexCur = 0, dexView = false;
+SCENE.dex = {
+  enter(){ dexView = false; bgmSet('shop'); },
+  update(){
+    if(just.sta){ paused = true; pcur = 0; se('ok'); return; }
+    if(just.sel){ S.sound = S.sound ? 0 : 1; save(); if(S.sound) unlock(); se('ok'); return; }
+    if(dexView){ if(just.a || just.b){ dexView = false; se('back'); } return; }
+    if(just.l){ dexCur = (dexCur + 15) % 16; se('cur'); }
+    if(just.r){ dexCur = (dexCur + 1) % 16; se('cur'); }
+    if(just.u){ dexCur = (dexCur + 12) % 16; se('cur'); }
+    if(just.d){ dexCur = (dexCur + 4) % 16; se('cur'); }
+    if(just.a){ if(S.got[FOODS[dexCur].id]){ dexView = true; se('ok'); } else se('ng'); }
+    if(just.b){ se('back'); go('shop'); }
+  },
+  draw(){
+    cls(0);
+    if(dexView){ dither(0, 0, VW, VH, 1, 0); cardFull(FOODS[dexCur], 14, 18, 0); return; }
+    hud();
+    for(let i = 0; i < 16; i++){
+      const gx = 32 + (i % 4) * 24, gy = 14 + ((i / 4) | 0) * 24;
+      box(gx, gy, 22, 22, 2);
+      const f = FOODS[i];
+      if(S.got[f.id]) spr(f.id, gx + 3, gy + 3);
+      else textIn('?', gx, 22, gy + 7, 2);
+      if(i === dexCur && ((ft >> 3) & 1) === 0) box(gx - 1, gy - 1, 24, 24, 3);
+    }
+    win(2, 110, 156, 32);
+    const f = FOODS[dexCur];
+    if(S.got[f.id]){
+      text(f.n, 8, 115, 3);
+      stars(f.r, 150 - f.r * 6, 115, 3);
+      text(f.k + ' KCAL  P' + f.p + ' F' + f.f + ' C' + f.c, 8, 127, 3);
+    } else {
+      text('ミカクニン', 8, 115, 2);
+      text('ジハンキヲ マワソウ', 8, 127, 2);
+    }
+  }
+};
+
+/* ---- テフダえらび ---- */
+let chosen = [];
+SCENE.select = {
+  enter(){ chosen = []; dexCur = FOODS.findIndex(f => S.got[f.id]); bgmSet('shop'); },
+  update(){
+    if(just.sta){ paused = true; pcur = 0; se('ok'); return; }
+    if(just.sel){ S.sound = S.sound ? 0 : 1; save(); if(S.sound) unlock(); se('ok'); return; }
+    if(just.l){ dexCur = (dexCur + 15) % 16; se('cur'); }
+    if(just.r){ dexCur = (dexCur + 1) % 16; se('cur'); }
+    if(just.u){ dexCur = (dexCur + 12) % 16; se('cur'); }
+    if(just.d){ dexCur = (dexCur + 4) % 16; se('cur'); }
+    if(just.a){
+      const f = FOODS[dexCur];
+      if(!S.got[f.id]){ se('ng'); return; }
+      const at = chosen.indexOf(dexCur);
+      if(at >= 0){ chosen.splice(at, 1); se('back'); return; }
+      if(chosen.length >= 3){ se('ng'); return; }
+      chosen.push(dexCur);
+      se('ok');
+      if(chosen.length === 3) go('battle');
+    }
+    if(just.b){
+      if(chosen.length){ chosen.pop(); se('back'); }
+      else { se('back'); go('shop'); }
+    }
+  },
+  draw(){
+    cls(0);
+    hud('テフダ ' + chosen.length + '/3');
+    for(let i = 0; i < 16; i++){
+      const gx = 32 + (i % 4) * 24, gy = 14 + ((i / 4) | 0) * 24, f = FOODS[i];
+      box(gx, gy, 22, 22, 2);
+      if(S.got[f.id]) spr(f.id, gx + 3, gy + 3);
+      else { dither(gx + 1, gy + 1, 20, 20, 2, 0); textIn('?', gx, 22, gy + 7, 3); }
+      const at = chosen.indexOf(i);
+      if(at >= 0){ rect(gx + 13, gy + 13, 9, 9, 3); text(String(at + 1), gx + 15, gy + 13, 0); }
+      if(i === dexCur && ((ft >> 3) & 1) === 0) box(gx - 1, gy - 1, 24, 24, 3);
+    }
+    win(2, 110, 156, 32);
+    const f = FOODS[dexCur];
+    text(S.got[f.id] ? f.n : 'ミカクニン', 8, 115, 3);
+    textIn('Aデ エラブ  Bデ トリケシ', 2, 156, 127, 2);
+  }
+};
+
+/* ---- バトル ---- */
+const B = { hand: [], cpu: [], hu: [], cu: [], round: 0, pw: 0, cw: 0, ods: [], odai: null,
+            phase: 'odai', tt: 0, pick: 0, pi: -1, ci: -1, res: 0 };
+let bres = 'draw';
+const statOf = (f, o) => f[o.key];
+const better = (a, b, o) => (o.low ? a < b : a > b);
+
+function cpuDeck(){
+  const prog = ownedN() / FOODS.length, out = [];
+  for(let guard = 0; out.length < 3 && guard < 200; guard++){
+    const r = Math.random();
+    let star;
+    if(prog < 0.3)      star = r < 0.7 ? 1 : 2;
+    else if(prog < 0.6) star = r < 0.4 ? 1 : (r < 0.8 ? 2 : 3);
+    else                star = r < 0.25 ? 1 : (r < 0.55 ? 2 : (r < 0.85 ? 3 : 4));
+    const pool = FOODS.filter(f => f.r === star && out.indexOf(f) < 0);
+    if(pool.length) out.push(pool[(Math.random() * pool.length) | 0]);
+  }
+  while(out.length < 3) out.push(FOODS[(Math.random() * FOODS.length) | 0]);
+  return out;
+}
+function cpuPick(){
+  const idx = [0,1,2].filter(i => !B.cu[i]);
+  idx.sort((a, b) => better(statOf(B.cpu[a], B.odai), statOf(B.cpu[b], B.odai), B.odai) ? -1 : 1);
+  /* 完全読みにしない: 4回に1回は2番手を出す */
+  return (idx.length > 1 && Math.random() < 0.25) ? idx[1] : idx[0];
+}
+function movePick(dir){
+  let i = B.pick;
+  for(let n = 0; n < 3; n++){ i = (i + dir + 3) % 3; if(!B.hu[i]) break; }
+  B.pick = i;
+}
+
+SCENE.battle = {
+  enter(){
+    bgmSet('battle');
+    B.hand = chosen.map(i => FOODS[i]);
+    B.cpu = cpuDeck();
+    B.hu = [0,0,0]; B.cu = [0,0,0];
+    B.round = 0; B.pw = 0; B.cw = 0;
+    B.ods = ODAI.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+    B.odai = B.ods[0];
+    B.phase = 'odai'; B.tt = 0; B.pick = 0; B.pi = -1; B.ci = -1; B.res = 0;
+  },
+  update(){
+    if(just.sta){ paused = true; pcur = 0; se('ok'); return; }
+    if(just.sel){ S.sound = S.sound ? 0 : 1; save(); if(S.sound) unlock(); se('ok'); return; }
+    B.tt++;
+    if(B.phase === 'odai'){
+      if(B.tt > 55 || just.a){ B.phase = 'choose'; B.tt = 0; B.pick = 0; if(B.hu[0]) movePick(1); se('cur'); }
+      return;
+    }
+    if(B.phase === 'choose'){
+      if(just.u){ movePick(-1); se('cur'); }
+      if(just.d){ movePick(1); se('cur'); }
+      if(just.a){
+        B.pi = B.pick; B.ci = cpuPick();
+        B.hu[B.pi] = 1; B.cu[B.ci] = 1;
+        B.phase = 'reveal'; B.tt = 0; se('ok');
+      }
+      return;
+    }
+    if(B.phase === 'reveal'){
+      if(B.tt === 22) se('hit');
+      if(B.tt > 42){
+        const pv = statOf(B.hand[B.pi], B.odai), cv = statOf(B.cpu[B.ci], B.odai);
+        B.res = pv === cv ? 0 : (better(pv, cv, B.odai) ? 1 : -1);
+        if(B.res > 0){ B.pw++; se('win'); } else if(B.res < 0){ B.cw++; se('lose'); } else se('ng');
+        B.phase = 'judge'; B.tt = 0;
+      }
+      return;
+    }
+    if(B.phase === 'judge'){
+      if(B.tt > 70 || just.a){
+        B.round++;
+        if(B.pw >= 2 || B.cw >= 2 || B.round >= 3){
+          bres = B.pw > B.cw ? 'win' : (B.pw < B.cw ? 'lose' : 'draw');
+          go('result');
+        } else {
+          B.odai = B.ods[B.round];
+          B.phase = 'odai'; B.tt = 0;
+        }
+      }
+    }
+  },
+  draw(){
+    cls(0);
+    rect(0, 0, VW, 9, 2); rect(0, 9, VW, 1, 3);
+    text('キミ', 3, 1, 0); stars(B.pw, 28, 1, 0);
+    text('ラウンド' + (B.round + 1), 58, 1, 0);
+    text('ケンタ', 134, 1, 0); stars(B.cw, 132 - B.cw * 6, 1, 0);
+
+    win(2, 11, 156, 26);
+    text('オダイ', 8, 15, 2);
+    text(B.odai.n, 48, 15, 3);
+    text(B.odai.d, 8, 25, 3);
+
+    const up = B.phase === 'reveal' || B.phase === 'judge';
+    const o = B.odai;
+    const pf = B.pi >= 0 ? B.hand[B.pi] : B.hand[B.pick];
+    cardMini(pf, 6, 41, B.phase === 'choose' || up, statOf(pf, o), o.n);
+    cardMini(B.ci >= 0 ? B.cpu[B.ci] : B.cpu[0], 88, 41,
+             up, up ? statOf(B.cpu[B.ci], o) : undefined, up ? o.n : undefined);
+    text('VS', 74, 62, 3);
+
+    win(2, 98, 156, 44);
+    if(B.phase === 'choose'){
+      for(let i = 0; i < 3; i++){
+        const f = B.hand[i], y = 103 + i * 12, c = B.hu[i] ? 2 : 3;
+        text(f.n, 18, y, c);
+        const v = String(statOf(f, o));
+        text(v, 140 - textW(v), y, c);
+        if(B.hu[i]) rect(16, y + 3, 128, 1, 2);
+        if(i === B.pick && ((ft >> 3) & 1) === 0) text('▶', 8, y, 3);
+      }
+    } else if(B.phase === 'odai'){
+      textIn('オダイハ ' + B.odai.n + '!', 2, 156, 108, 3);
+      textIn('テフダヲ エラベ', 2, 156, 124, 2);
+    } else if(B.phase === 'reveal'){
+      textIn('ショウブ!', 2, 156, 114, 3);
+    } else {
+      textIn(B.res > 0 ? 'カチ!' : (B.res < 0 ? 'マケ...' : 'ヒキワケ'), 2, 156, 106, 3);
+      const w = B.res > 0 ? B.hand[B.pi] : (B.res < 0 ? B.cpu[B.ci] : null);
+      textIn(w ? w.mv + '!' : 'オナジ カズ ダッタ', 2, 156, 122, 3);
+    }
+  }
+};
+
+/* ---- けっか ---- */
+let reward = null;
+SCENE.result = {
+  enter(){
+    bgmSet(null);
+    reward = null;
+    if(bres === 'win'){
+      S.coin += REWARD; S.wins++;
+      const rest = FOODS.filter(f => !S.got[f.id]);
+      if(rest.length){
+        reward = rest[(Math.random() * rest.length) | 0];
+        S.got[reward.id] = 1;
+        sample = reward.id;
+      }
+      se('win');
+    } else if(bres === 'lose'){ S.loses++; se('lose'); }
+    save();
+  },
+  update(){
+    if(just.a || just.sta){
+      se('ok');
+      if(ownedN() === FOODS.length && !S.cleared){ S.cleared = 1; save(); go('ending'); return; }
+      if(reward){ pulled = reward; pulledDup = false; reward = null; go('card'); }
+      else go('shop');
+    }
+  },
+  draw(){
+    cls(0);
+    dither(0, 0, VW, VH, 1, 0);
+    win(10, 30, 140, 84);
+    const head = bres === 'win' ? 'キミノ カチ!' : (bres === 'lose' ? 'キミノ マケ' : 'ヒキワケ');
+    textIn(head, 10, 140, 40, 3);
+    rect(20, 54, 120, 1, 2);
+    textIn('キミ ' + B.pw + ' - ' + B.cw + ' ケンタ', 10, 140, 62, 3);
+    if(bres === 'win'){
+      textIn('¥' + REWARD + ' テニイレタ', 10, 140, 80, 3);
+      textIn(reward ? 'カード モ モラッタ!' : 'カードハ ゼンブ アル', 10, 140, 94, 3);
+    } else if(bres === 'lose'){
+      textIn('マタ オイデヨ', 10, 140, 80, 3);
+      textIn('カードハ ヘラナイ', 10, 140, 94, 2);
+    } else {
+      textIn('ヒキワケ ダッタ', 10, 140, 80, 3);
+      textIn('モウ イッカイ ヤロウ', 10, 140, 94, 2);
+    }
+    if(((ft >> 4) & 1) === 0) textIn('Aデ ツヅケル', 10, 140, 118, 2);
+  }
+};
+
+/* ---- エンディング ---- */
+SCENE.ending = {
+  enter(){ bgmSet('shop'); se('rare'); },
+  update(){ if(just.a || just.sta){ se('ok'); go('shop'); } },
+  draw(){
+    cls(0);
+    dither(0, 0, VW, 34, 1, (ft >> 4) & 1);
+    logo(40, 6);
+    textIn('ズカン コンプリート!', 0, VW, 26, 3);
+    win(6, 38, 148, 58);
+    textIn('16シュルイ ゼンブ アツメタ', 6, 148, 44, 3);
+    textIn('カロリーハ チカラ', 6, 148, 57, 3);
+    textIn('デモ ツヨサハ ソレダケ デハナイ', 6, 148, 69, 3);
+    textIn('ショウブ ' + S.wins + 'カイ カチ', 6, 148, 82, 2);
+    for(let i = 0; i < 16; i++) spr(FOODS[i].id, (i % 8) * 20 + 1, 100 + ((i / 8) | 0) * 16);
+    if(((ft >> 4) & 1) === 0) textIn('Aデ モドル', 0, VW, 134, 3);
+  }
+};
+
+/* ============================================================
+   8. メインループ
+   ============================================================ */
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+  unlock(); keyDown('a');
+}, { passive: false });
+const cvUp = e => { try{ cv.releasePointerCapture(e.pointerId); }catch(_){}; keyUp('a'); };
+cv.addEventListener('pointerup', cvUp);
+cv.addEventListener('pointercancel', cvUp);
+
+function fit(){
+  const stage = document.getElementById('stage'), dmg = document.getElementById('dmg');
+  for(let s = 6; s >= 1; s--){
+    dmg.style.setProperty('--sc', s);
+    cv.style.width = (VW * s) + 'px';
+    cv.style.height = (VH * s) + 'px';
+    if(dmg.offsetHeight <= stage.clientHeight && dmg.offsetWidth <= stage.clientWidth) break;
+  }
+}
+addEventListener('resize', fit);
+addEventListener('orientationchange', () => setTimeout(fit, 120));
+document.addEventListener('visibilitychange', () => {
+  KEYS.forEach(keyUp);
+  if(document.hidden && PAUSABLE[scene]) paused = true;
+  bgmAt = 0;
+});
+
+function frame(){
+  pollInput();
+  bgmTick();
+  const pz = paused && PAUSABLE[scene];
+  if(pz) updatePause(); else SCENE[scene].update();
+  SCENE[scene].draw();
+  if(paused && PAUSABLE[scene]) drawPause();
+  blit();
+  ft++;
+  requestAnimationFrame(frame);
+}
+
+load();
+fit();
+go('title');
+frame();
+
+/* 検証用: 未定義グリフが出ていないかを外から確認できるようにする */
+window.__gb = { missing: () => Array.from(MISSING), scene: () => scene, state: () => S, go };
+</script>
+</body>
+</html>
