@@ -1,4 +1,4 @@
-# 231-day055 ｜ SKY REIGN 〜蒼穹の覇者〜
+# 231-sky-reign ｜ SKY REIGN 〜蒼穹の覇者〜
 
 ## 一言
 
@@ -9,10 +9,10 @@
 | 項目 | 内容 |
 |---|---|
 | ジャンル | 見下ろし型 ダイブアクション（1本指・90秒スコアアタック） |
-| 構成 | `index.html`（`soten-dive.html` へ即リダイレクト）＋ 本体1ファイル。外部依存ゼロ・画像/音声ファイルなし |
-| サイズ | 約35KB / フォルダ計40KB（20MB鉄則の0.2%） |
-| 画面 | Canvas 全画面（DPR最大2・safe-area追従） |
-| 音 | WebAudio 合成のみ（風切り音をノイズバッファで生成。iOSは開始タップで解錠） |
+| 構成 | `index.html` → `soten-dive.html` ＋ `style.css` ＋ `script.js`。BGMは `audio/*.m4a` |
+| サイズ | 公開実体 約5.3MB（20MB鉄則の27%。元MP3 2本計10MBを AAC-LC 96kbps へ圧縮） |
+| 画面 | iOS 75/25シェル（`#game-shell` / `#game-stage` 75% / `#control-deck` 25%）。Canvas は上段のみ（DPR最大2） |
+| 音 | BGM 2曲＋ WebAudio SE。ミュートは操作盤。`localStorage` 保存 |
 | 1プレイ | 90秒固定 |
 | 保存 | `localStorage['soten-dive-best']` に最高記録 |
 
@@ -40,6 +40,8 @@
 3. **獲物が先にこちらを見る**
    鳥は高度差と距離で鷹を感知し、カラスは感知範囲300・鳩は210。気づかれると回避方向へ逃げる。カラス（基礎190点）は鳩（110点）より速く、警戒も早い
 
+鷹の見た目は3ポーズ（約0.15秒で補間）。上昇（`vAlt>28`）は大きく羽ばたく。ほぼ水平は翼を広げた滑空。急降下ボタンまたは `vAlt<-90` は翼を畳んだ流線型。
+
 ## スコア
 
 - 基礎点: カラス190 / 鳩110 ＋ 落下速度ボーナス最大90
@@ -51,21 +53,55 @@
 
 | 入力 | 動作 |
 |---|---|
-| 画面を押している間 / クリック / スペース | 急降下 |
+| 急降下ボタン（HOLD） / 画面を押している間 / スペース | 急降下 |
 | 指・マウスを動かす | 狙い（水平移動。降下中は最大305、上昇中は190） |
 | 離す | 上昇（体力消費） |
 | 矢印 / WASD | 水平移動（PC） |
+| 操作盤の ⏸ / Esc / P | 明示ポーズ。復帰は ▶ か「再開する」 |
 
 ## iOS対応（実装済み）
 
 - viewport `user-scalable=no, viewport-fit=cover`
+- ハーネス契約の 75/25：`#game-shell` `#game-stage` `#screen-wrap` `#control-deck`。操作盤は画面下 25%、ゲームと重ならない
+- ミュートは操作盤に置く（ステータスHUDの右上には置かない）
 - `touch-action:none` / `overscroll-behavior:none` / 300ms以内の二度押しを `preventDefault`
 - `dblclick` `contextmenu` を無効化
-- WebAudio は開始タップで `resume()`
-- safe-area はダミー要素から実測して HUD 配置に反映
-- Canvas DPR 追従（上限2）
+- WebAudio は開始タップで `resume()` ＋無音バッファ再生で解錠
+- `visibilitychange` でプレイ中なら明示ポーズ。`pageshow` で BGM 再開を試行
+- ボタンは `pointerdown` ＋ `setPointerCapture`
+- Canvas DPR 追従（上限2）。論理サイズは `data-logical-width/height`
+
+## 音声
+
+- **BGM**: DOM の `<audio id="bgmTitle|bgmPlay">` が `audio/open-sky.m4a`（タイトル・リザルト）と `audio/soaring-horizons.m4a`（プレイ中）をループ。開始タップの `pointerdown` で `play()`。デコードできたら WebAudio バッファへ切替。元は Suno の MP3 を AAC-LC 96kbps へ圧縮
+- **連動**: 降下速度に合わせてプレイBGMの Gain をわずかに上げる。リザルトでは Open Sky に切り替え
+- **SE**: 開始の風切り、捕獲（カラス／鳩で音程違い）、地面激突（WebAudio 合成）
+- **ミュート**: 操作盤左の 🔊／🔇。`localStorage['soten-dive-muted']` に保存。iOS は `audio.volume` を無視するので、HTML は `muted`、SE/バッファはマスターゲインを落とす
+
+## タイトル／エンディングの画面設計（2026-09-13）
+
+同じ世界（田園上空）を、朝と夕で撮り分ける。幕は「別画面」ではなく、**生きている風景の上に置いた額縁**として作る。
+
+| 画面 | 光 | 待機カメラ | 文字 |
+|---|---|---|---|
+| タイトル | 朝（上から青白い光・下に金の靄） | 高度300±34・旋回0.05rad/s・流速42 | `SKY REIGN` に金グラデーション、`蒼穹の覇者`・リード文は明朝 |
+| エンディング | 夕（紫→橙のグラデーションをCanvasへ重ねる） | 高度245±20・旋回0.034rad/s・流速26。鷹は画面下80%へ降りる | 見出しも明朝。`.rank-high` で金の輝きを足す |
+
+- **待機カメラ（`idleUpdate`）**: プレイしていない間も田園の上をゆっくり旋回し続ける。止まった絵を出さない
+- **HUD はプレイ中のみ**（`if(running) drawHUD()`）。タイトル・エンディングでスコア帯が絵に重ならない
+- **額縁**: `.frame` の細い金罫＋左上/右下のコーナー。`.kicker` は「田園上空 1,200m」「日暮れ・帰巣」の見出し
+- **リザルトの称号**: 捕獲20以上 `蒼穹の覇者` / 10以上 `上々の狩り` / それ未満 `一日の終わり`。それぞれに2行の情景文を出す
+- タイトルの最高記録は `#titleBest`、リザルトは `#bestScore`（どちらも `showBest()` が更新）
+
+## ファイル構成
+
+- `index.html` — `soten-dive.html` へリダイレクト
+- `soten-dive.html` — マークアップ
+- `style.css` / `script.js` — 見た目と本体
+- `audio/open-sky.m4a` — タイトル／リザルト BGM
+- `audio/soaring-horizons.m4a` — プレイ中 BGM
+- `SPEC.md` / `LEARNINGS.md`
 
 ## 未確定事項
 
-- BGMなし（風切り音とSEのみ）。追加するかは未定
 - 難易度カーブはレベル14で頭打ち。90秒では到達しにくい想定
