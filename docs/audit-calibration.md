@@ -137,3 +137,16 @@ Obsidian / Notion のMCPは**認証が通っていない**ため、このセッ�
 
 同期するとしても、**正はこのリポジトリ内のファイル**にしたい。理由は `audit.mjs` のコードと同じコミットに乗るから。
 「判定を変えた」と「台帳に書いた」がgit上で1つの変更として残るのが、あとから追える唯一の形。
+
+### 2026-09-14 同じ偽陽性の再発 — `234-kitaku-onigokko`
+
+**harness判定**: `タップ FAIL（失敗: locator.tap: Timeout 3000ms exceeded.）`
+**実際**: タップは通る。修正不要（2026-09-12 の 233 と同一原因）。
+
+**裏取り（Playwright WebKit 390×844・hasTouch で実測）**:
+- `document.elementFromPoint(canvas中心)` → **`DIV`（`#overlay` のタイトル幕）**。`<canvas id="game">` はDOM順1番目だが全面を幕が覆う
+- 幕を `page.touchscreen.tap(195,300)` → `#overlay` の `display` が `flex` → **`none`** ＝ タッチでゲームが開始している
+- 併せて 仮想スティック追従／押しっぱなし保持／ダッシュの press 付与・解除／ミュート（`tg.234.mute`）／ポーズ・再開／Pキー／エンディング2種／JSエラー0件 の **17項目 ALL PASS**
+
+**結論**: 「幕付きタイトル＋canvas」構成では harness のタップ判定は**構造的に必ずFAILになる**（2件目）。
+単独FAIL時は `elementFromPoint` で幕を確認し、偽陽性として扱う。採点基準（`game-harness.mjs`）は書き換えない。
