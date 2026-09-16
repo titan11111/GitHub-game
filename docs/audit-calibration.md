@@ -150,3 +150,36 @@ Obsidian / Notion のMCPは**認証が通っていない**ため、このセッ�
 
 **結論**: 「幕付きタイトル＋canvas」構成では harness のタップ判定は**構造的に必ずFAILになる**（2件目）。
 単独FAIL時は `elementFromPoint` で幕を確認し、偽陽性として扱う。採点基準（`game-harness.mjs`）は書き換えない。
+
+### 2026-09-16 3件目 — `241-shichirin-sanma`。ただし今回は**偽陽性として見送らず、実際に直せた**
+
+**harness判定**: `タップ FAIL（失敗: locator.tap: Timeout 3000ms exceeded.）`
+**実際**: 233・234 と同一原因（幕付きタイトル＋canvas）。**しかし今回はゲーム側の構造を直して PASS にした。**
+
+**裏取り（Playwright Chromium 390×844・hasTouch・dsf3 で実測）**:
+- `document.elementFromPoint(canvas中心)` → **`DIV.how`**（タイトル幕の説明ブロック）。canvas は `document.body.prepend()` でDOM先頭に挿入されていた
+- 幕の `#startBtn` を `.tap()` → `state` が `title` → `play` ＝ タッチ自体は通っている
+
+**どう直したか（2行）**:
+1. 重なり順を**DOM順ではなく z-index で明示**した（canvas:0 / HUD・パッド:3 / 幕:5）
+2. `document.body.prepend(renderer.domElement)` → `appendChild` に変え、**タイトル幕を body 先頭へ移動**した
+
+結果、DOM先頭の操作対象が「押せない canvas」から「実際に見えている開始ボタン」になり、`タップ PASS`。
+表示は z-index で制御しているので、幕を前に置いても見た目は1ピクセルも変わらない。
+
+**結論の更新**: 「幕付きタイトル＋canvas」は**必ず偽陽性**ではない。
+**canvas がDOM先頭にあること**が原因なので、z-index を明示して幕を先頭に置けば直せる。
+これは 238-cactus-oasis の LEARNINGS「開始ボタンを canvas より前に置く」と同じ結論。
+→ **単独FAIL時の手順を差し替える**: まず `elementFromPoint` で幕を確認し、
+  (a) canvas がDOM先頭なら**直す**（z-index明示＋幕を前へ）、
+  (b) 構造上どうしても直せない場合のみ偽陽性として扱う。
+採点基準（`game-harness.mjs`）は今回も書き換えていない。
+
+**同時に見つかった偽陰性に近い穴（harnessが拾わない／拾い方が環境に左右される）**:
+`描画ループ` の RAF 計測は**機械の負荷に丸ごと引きずられる**。
+2026-09-16 のセッションで、**同一コードの 241 が 60 RAF → 3 RAF まで振れた**。
+原因は別アプリ（Cursor）が約310%のCPUを占有していたこと（`load average 22.5`）。
+2Dキャンバスの 239 は同じ負荷でも 43 RAF で PASS したので、
+**WebGL（ソフトウェア描画）だけがCPU競合で潰れる**と切り分けられる。
+→ `描画ループ` が FAIL したら、**コードを削る前に `uptime` の load average と `ps aux -r` を見る**。
+  負荷が高いときの数値でチューニングすると、実機では不要な画質劣化だけが残る。
