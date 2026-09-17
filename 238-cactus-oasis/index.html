@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a140e">
+<meta name="description" content="砂漠でサボテンを育て、ラクダの食害を体と声で止める3Dオアシス守り。">
+<title>238｜サボテンオアシス</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./three.module.min.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="game-shell">
+  <div id="game-stage">
+    <div id="overlay">
+      <div class="panel">
+        <h1>サボテンオアシス</h1>
+        <p id="overlayBody">砂漠の井戸で棘を育てる。ラクダは必ず食べに来る。植えて、水をやり、進路を塞いで、声で退けろ。</p>
+        <button type="button" class="game-btn" id="btnStart">タップして始める</button>
+      </div>
+    </div>
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <div id="hud-left" class="box">
+        <div>水 <span id="hudWater">4</span></div>
+        <div>開花 <span id="hudBloom">0</span> / 6</div>
+        <div>食害 <span id="hudEaten">0</span> / 5</div>
+      </div>
+      <div id="hud-right">
+        <button type="button" class="icon-btn" id="btnMute" aria-label="ミュート">♪</button>
+        <button type="button" class="icon-btn" id="btnPause" aria-label="一時停止">Ⅱ</button>
+      </div>
+    </div>
+    <div id="err" hidden>起動できませんでした</div>
+  </div>
+
+  <div id="control-deck">
+    <div class="dpad" id="dpad" aria-label="十字キー">
+      <span class="arr u">▲</span>
+      <span class="arr l">◀</span>
+      <span class="arr r">▶</span>
+      <span class="arr d">▼</span>
+      <span class="dpad-nub"></span>
+    </div>
+    <div class="actions">
+      <button type="button" class="game-btn plant" id="btnA" aria-label="植える 水をやる">A<small>植える / 水</small></button>
+      <button type="button" class="game-btn scare" id="btnB" aria-label="威嚇">B<small>威嚇</small></button>
+    </div>
+  </div>
+</div>
+
+<dialog id="pauseDlg" aria-labelledby="pauseTitle">
+  <h2 id="pauseTitle">一時停止</h2>
+  <div class="col">
+    <button type="button" class="game-btn" id="btnResume">再開</button>
+    <button type="button" class="game-btn" id="btnMuteDlg">音の切り替え</button>
+    <button type="button" class="game-btn" id="btnQuit">タイトルへ</button>
+  </div>
+</dialog>
+
+<script type="module" src="script.js"></script>
+</body>
+</html>
