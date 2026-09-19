@@ -21,6 +21,7 @@
 5. リファクタ・改修の完了報告は、旧ファイル削除の確認＋動作確認の証跡（preview実行結果・テスト出力）を添えて言い切る。証跡の無い項目は「未検証」と明言する（「動いている」≠「指示通り完成」）
 6. iOS対応の鉄則は `/ios-game-base` スキル参照（ダブルタップ防止・WebAudio unlock・safe-area等）
 7. 改修は優先リストの該当項目の範囲のみ。他ゲームへの横展開・共通化・抽象化を頼まれずに始めない
+8. **エントリHTMLの名前を変えたら、旧名をリダイレクトとして必ず残す**（2026-09-19 制定）。`foo.html` → `index.html` の改名は**本体URLが200のままなので誰も気づかず**、改名前に配ったリンクだけが静かに404になる。harness も audit も公開URLを叩かないため検出できない。`_tools/check-legacy-entry.sh` で検査すること
 
 ## いますぐ使うコマンド・ツール
 
@@ -31,6 +32,7 @@
 | iPhone実機サイズ確認 | `/game-local-test` スキル（Xcodeシミュレータ） |
 | 公開＋Slack通知 | 「公開して／できた」→ `.cursor/rules/.../game-ship-pipeline.mdc`（SPEC→iOS→harness→`publish.sh`→Slack）。確認質問しない |
 | セキュリティスキャン | `_tools/security-scan.sh` |
+| **旧エントリURLの404検出**（エントリを`index.html`へ改名した作品の旧リンクが死んでいないか、本番URLへcurlを撃って実測） | `_tools/check-legacy-entry.sh`（404が1件でもあれば exit 1。除外は`_tools/legacy-entry-ignore.txt`に根拠付きで） |
 | スクリーンショット一括 | `docs/capture-screenshots.js` |
 
 ## 作業の入口（ループ運用）

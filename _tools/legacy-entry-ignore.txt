@@ -1,0 +1,11 @@
+# 旧エントリ404チェックの除外リスト（根拠必須・推測で足さない）
+# 形式: フォルダ/ファイル名  # 根拠
+#
+# ここに入れてよいのは「そのファイル名が公開URLになったことが一度も無い」と
+# 裏が取れたものだけ。「404だが困っていない」では入れない。
+
+025-kamigonn/code_artifact.html          # LEARNINGS「単一 code_artifact.html を index.html + CSS/JS に分割」＝分割前の作業ファイル。公開名ではない
+033-nekubi/controller-wrapper.html       # LEARNINGS「本体への互換リダイレクトへ変更」＝すでに一本化済みの内部ファイル
+232-carorydas/carorydas.html             # LEARNINGS「git履歴に一度も入っていなかった」と明記（公開されていない）
+232-carorydas/card-dispenser.html        # 同上
+278-elevator-chanbara/elevator-chanbara.html  # LEARNINGS「Desktopの単体HTMLをリポジトリへ採番配置」＝取り込み元のローカルファイル名

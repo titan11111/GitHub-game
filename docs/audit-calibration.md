@@ -212,3 +212,40 @@ canvas がDOM先頭なら**直す**（z-index明示＋操作対象を前へ）�
 243 は harness を通しても **GitHub上にリポジトリが無く 404 のまま**だった（親リポジトリでも未追跡 `??`）。
 公開確認は `curl -o /dev/null -w "%{http_code}"` を本番URLに撃つしかない。
 
+
+### 2026-09-19 新種の穴 — 「本体200・旧エントリだけ404」は harness も audit も検出できない
+
+**症状**: タイタンから「245-raiken-hikari が404」。調べると本体 `https://titan11111.github.io/245-raiken-hikari/` は **200**、
+Pages も `status=built`、アセットも全部 200。**壊れていないのに404が出る**状態。
+
+**原因**: 同日の改修で **エントリHTMLを `raiken-hikari.html` → `index.html` に改名**していた。
+フォルダ改名はリポジトリごと作り直すので影響が目に見えるが、**エントリ改名は本体URLが200のままなので誰も気づかない**。
+改名前に配ったリンク（Slack・メモ・iPhoneのホーム画面）だけが静かに死ぬ。
+
+**なぜ既存の検査を素通りしたか**:
+- `game-harness.mjs` は **ローカルの index.html** を見る。旧ファイル名は視界に入らない
+- `audit.mjs` は静的監査。**公開URLを一切叩かない**（2026-09-19の243で判明した「harnessが公開状態を見ない穴」と同根）
+- publish.sh は `index.html` の存在しか見ない。**消えた旧エントリを検知しない**
+
+**対処（2段）**:
+1. 旧ファイル名で1行リダイレクトHTMLを置き直す（meta refresh ＋ `location.replace()`。`?query`・`#hash` も引き継ぐ）
+2. `_tools/check-legacy-entry.sh` を新設。LEARNINGS本文から旧エントリ名を拾い、**本番URLへ実際にcurlを撃って** 404を検出する。404が1件でもあれば exit 1
+
+**実測結果（修復済み4本）**: 245 / 242 / 246 / 247 の旧URLが **404 → 200**。本体URLはいずれも200のまま非退行。
+
+**偽陽性を5件出して、証拠付き除外リストで潰した**（`_tools/legacy-entry-ignore.txt`）。
+LEARNINGS本文に出てくる `.html` が全部「旧エントリ」ではないため、初版は網を張りすぎていた:
+- `025-kamigonn/code_artifact.html` … 分割前の作業ファイル。公開名ではない
+- `033-nekubi/controller-wrapper.html` … すでに互換リダイレクト済みの内部ファイル
+- `232-carorydas/carorydas.html`・`card-dispenser.html` … LEARNINGSに「git履歴に一度も入っていない」と明記
+- `278-elevator-chanbara/elevator-chanbara.html` … 取り込み元のローカルファイル名
+
+**除外に入れてよい条件**: 「そのファイル名が公開URLになったことが一度も無い」と**裏が取れたものだけ**。
+「404だが困っていない」では入れない（ここを緩めると検出器が死ぬ）。
+
+**未修復で残っている4件**（同じ型。タイタン判断待ち）:
+`231-sky-reign/soten-dive.html` / `237-iai-samurai/iai-samurai.html` /
+`240-bear-studio/3d_bear_model_animator.html` / `241-shichirin-sanma/shichirin-sanma-battle.html`
+
+**鉄則化した学び**: **エントリファイル名を変えるときは、旧名をリダイレクトとして必ず残す。**
+そして「公開できたか」は自己申告ではなく **本番URLへのcurlの数字**でしか判定しない。
