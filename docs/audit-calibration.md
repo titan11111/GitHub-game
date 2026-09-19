@@ -183,3 +183,32 @@ Obsidian / Notion のMCPは**認証が通っていない**ため、このセッ�
 **WebGL（ソフトウェア描画）だけがCPU競合で潰れる**と切り分けられる。
 → `描画ループ` が FAIL したら、**コードを削る前に `uptime` の load average と `ps aux -r` を見る**。
   負荷が高いときの数値でチューニングすると、実機では不要な画質劣化だけが残る。
+
+### 2026-09-19 4件目 — `243-shiosai-no-yoru`。241と同じ直し方で PASS（偽陽性扱いはしていない）
+
+**harness判定**: `タップ FAIL（失敗: locator.tap: Timeout 3000ms exceeded.）`
+**実際**: 233・234・241 と同一原因（幕付きタイトル＋canvasがDOM先頭）。**ゲーム側を直して PASS にした。**
+
+**裏取り（Playwright Chromium 390×844・hasTouch・dsf3 で実測）**:
+- `index.html` は `shiosai-no-yoru.html` への meta-refresh。harness はリダイレクト先を計測している（`page.url()` で確認）
+- `document.querySelector('button,[role="button"],canvas')` → **`CANVAS#cv`**（DOM順1番目）
+- `document.elementFromPoint(canvas中心)` → **`BUTTON#startBtn`**（`#title` の幕が全面を覆う）
+- `#startBtn` を `.tap()` → `#title` hidden / `#stage` 表示 ＝ **タッチは元から通っている**
+- 幕が消えた後に canvas を `.tap()` → **なお FAIL**。`#stage{position:fixed;inset:0}` が覆うため、
+  この作品の canvas は**設計上いつまでもタップ対象にならない**（233・234 との違い。幕を消しても解決しない）
+
+**どう直したか（2手・241と同じ）**:
+1. 重なり順を DOM順ではなく **z-index で明示**（canvas:0 / `#stage`:2 / `#dash`・`#hint`:3 / `#title`:5）
+2. `<canvas id="cv">` を **body末尾へ移動**（DOM順1番目が `#startBtn` になる）
+
+**結果**: `タップ PASS`（8項目 ALL PASS。`docs/harness-reports/243-shiosai-no-yoru-2026-09-19T09-35-26-329Z.md`）。
+見た目の非退行も実測: `getImageData` で背景canvasの描画あり／`verified-title.png` に雨・灯台の背景が写っている。
+公開後の本番URLでも JSエラー0・失敗リクエスト0・タップで本文が進むことを確認（`verified-live.png`）。
+
+**この4件で確定した手順**: 単独タップFAILは、まず `elementFromPoint` を見る。
+canvas がDOM先頭なら**直す**（z-index明示＋操作対象を前へ）。3件連続で同じ直し方が効いている。
+
+**併せて見つかった穴（harnessが見ない領域）**: harness は「公開されているか」を一切見ない。
+243 は harness を通しても **GitHub上にリポジトリが無く 404 のまま**だった（親リポジトリでも未追跡 `??`）。
+公開確認は `curl -o /dev/null -w "%{http_code}"` を本番URLに撃つしかない。
+
