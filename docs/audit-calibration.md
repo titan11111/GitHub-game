@@ -256,3 +256,51 @@ Pagesは独自リポジトリを見ているため公開物への実害はない
 
 **鉄則化した学び**: **エントリファイル名を変えるときは、旧名をリダイレクトとして必ず残す。**
 そして「公開できたか」は自己申告ではなく **本番URLへのcurlの数字**でしか判定しない。
+
+### 2026-09-19【重要な自己訂正】上の「旧エントリ404」の記述は、8件中7件が誤認だった
+
+**何を間違えたか**: 検出器v1は **LEARNINGS.md の本文** から旧エントリ名を拾っていた。
+「エントリを `foo.html` から `index.html` へ変更」と書いてあれば、`…/フォルダ/foo.html` が
+かつて生きていたURLだと解釈した。**この解釈が誤り。**
+
+**gitで裏を取った結果**（`git cat-file -e <修復コミット>^:<旧ファイル名>`）:
+
+| フォルダ | 旧名 | 修復直前にリポジトリに実在したか |
+|---|---|---|
+| 231-sky-reign | `soten-dive.html` | **あり**（`fb6cbda add 231-day055` に実在）★本物 |
+| 245-raiken-hikari | `raiken-hikari.html` | なし |
+| 242-konta-factory | `konta-factory.html` | なし |
+| 246-gesshoku-no-keiyakusha | `gesshoku.html` | なし |
+| 247-shiomiso | `shiomiso_game.html` | なし |
+| 237-iai-samurai | `iai-samurai.html` | なし |
+| 240-bear-studio | `3d_bear_model_animator.html` | なし |
+| 241-shichirin-sanma | `shichirin-sanma-battle.html` | なし |
+
+**なぜ「なし」になるのか**: 改名は**ローカルフォルダ内で完結**しており、GitHubリポジトリは
+**改名後に新規作成**されている（`git show --stat <初回コミット>` に旧名が無い）。
+つまり旧名のURLは**一度も公開されたことがない**。死んでいたのではなく、最初から存在しなかった。
+
+**本当に壊れていたのは 231 の1本だけ**。残り7本に置いたリダイレクトは害はないが、
+**壊れていたものを直したわけではない**（将来その名前で来た人を受ける保険にすぎない）。
+
+**根本原因（これが今回いちばんの学び）**:
+> **LEARNINGS.md の本文を「証拠」として扱った。本文は作業メモであって証拠ではない。**
+> 公開されていたかどうかの証拠は **git履歴** にしかない。
+
+`audit.mjs` の設計思想（○/×に必ず根拠1行）を、自分の調査では守れていなかった。
+「LEARNINGSにこう書いてある」は根拠ではなく伝聞。
+
+**検出器をv2へ作り直した**: `_tools/check-legacy-entry.sh`
+- 判定を「git履歴に **存在した** かつ HEADに **不在**」に変更（本文は一切読まない）
+- 除外リスト `legacy-entry-ignore.txt` は**不要になったので廃止**（本文を読まないので偽陽性の入口が消えた）
+- v2の実測結果は v1 と**完全に別のリスト**になった（下記10件。すべて公開実績がgitにある）:
+  `012-rocket/index1.html` / `033-nekubi/controller-wrapper.html` /
+  `101-nikkisakusei/114-battle_arena/{index,battle_arena_full}.html` /
+  `108-bearfait/dogs/slime-reference.html` / `131-oldman-run/ojii-action.html` /
+  `151-racing3/gpt-race.html` / `180-action-z/_test_debug.html` ほか
+  ※ `_test_debug.html` のようにリダイレクトを置く意味がないものも含む。**機械の出力は候補であって判決ではない**
+
+**未解決のまま残っていること**: タイタンが最初に踏んで404になった実際のURLは、**いまも不明**。
+`…/245-raiken-hikari/` は最初から200であり、旧名URLは元々存在しなかった。
+つまり**今日の修復8本は、報告された症状の再現には一度も成功していない**。
+「それらしい原因を見つけて直した」だけで、症状そのものは未再現。ここを曖昧にしない。

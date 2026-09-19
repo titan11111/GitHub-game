@@ -1,17 +1,21 @@
 #!/bin/bash
-# 旧エントリURLの404検出（2026-09-19 新設）
+# 「かつて公開されていたHTMLが、今は消えている」を検出する（v2: git履歴を証拠にする）
 #
-# 背景: エントリHTMLを `foo.html` → `index.html` に改名すると、
-#       本体（フォルダURL）は 200 のままなので気づけないが、
-#       改名前に配った `…/foo.html` のリンクだけが静かに 404 になる。
-#       harness も audit も「公開されているか」を見ないため、この穴は検出されない。
+# 背景と、v1が間違っていた理由（2026-09-19）:
+#   v1 は LEARNINGS.md の本文から旧エントリ名を拾っていた。しかし本文は「作業メモ」であり、
+#   そのファイルが実際に公開されたかどうかを何も保証しない。結果、
+#   「一度も公開されていないファイル名」を8件中7件も『404の被害』と誤認した。
+#   本文は証拠ではない。git履歴が証拠。
+#
+# v2の判定:
+#   各ゲームの独自リポジトリで、
+#     (1) git履歴のどこかに存在した .html で
+#     (2) HEAD には存在しない もの
+#   を「かつて公開され、今は消えたURL」と見なし、本番URLへcurlを撃って404を確認する。
 #
 # 使い方:
-#   _tools/check-legacy-entry.sh            # 全フォルダを検査
-#   _tools/check-legacy-entry.sh 245-raiken-hikari
-#
-# 判定: 旧エントリ名が (1) ローカルに存在せず (2) 本番URLで 404 → NG
-#       exit 1 で落ちる。直し方は同フォルダに1行リダイレクトHTMLを置くこと。
+#   _tools/check-legacy-entry.sh            # 全フォルダ
+#   _tools/check-legacy-entry.sh 231-sky-reign
 
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,41 +24,38 @@ cd "$ROOT"
 
 targets=("$@")
 if [ ${#targets[@]} -eq 0 ]; then
-  targets=()
-  for d in */; do targets+=("${d%/}"); done
+  targets=(); for d in */; do targets+=("${d%/}"); done
 fi
 
 ng=0; checked=0
 for d in "${targets[@]}"; do
-  [ -f "$d/index.html" ]   || continue
-  [ -f "$d/LEARNINGS.md" ] || continue
+  [ -d "$d/.git" ]       || continue
+  [ -f "$d/index.html" ] || continue
 
-  # LEARNINGS 本文のバッククォート内から .html を拾う（_ . - 数字を許容）
-  olds=$(grep -oE '`[A-Za-z0-9_.-]+\.html`' "$d/LEARNINGS.md" 2>/dev/null \
-         | tr -d '`' | grep -v '^index\.html$' | sort -u)
-  [ -n "$olds" ] || continue
+  # 履歴に一度でも登場した .html
+  past=$(git -C "$d" log --all --pretty=format: --name-only --diff-filter=A -- '*.html' 2>/dev/null | sort -u | grep -v '^$')
+  [ -n "$past" ] || continue
 
-  for o in $olds; do
-    # ローカルに実体がある＝現役ファイル or リダイレクト設置済み。対象外
-    [ -f "$d/$o" ] && continue
-    # 除外リスト（公開名になったことが無いと裏取り済みのもの）
-    grep -qE "^$d/$o([[:space:]]|#|$)" "$ROOT/_tools/legacy-entry-ignore.txt" 2>/dev/null && continue
+  for f in $past; do
+    # HEAD にあるなら現役。対象外
+    git -C "$d" cat-file -e "HEAD:$f" 2>/dev/null && continue
     checked=$((checked+1))
-    code=$(curl -s -m 15 -o /dev/null -w '%{http_code}' "https://$USER_NAME.github.io/$d/$o")
+    code=$(curl -s -m 15 -o /dev/null -w '%{http_code}' "https://$USER_NAME.github.io/$d/$f")
+    added="$(git -C "$d" log --diff-filter=A --date=short --pretty=tformat:'%h %ad' -1 -- "$f")"
     if [ "$code" = "404" ]; then
-      echo "NG  $d/$o  -> 404"
+      echo "NG  $d/$f -> 404   （公開されていた証拠: ${added}）"
       ng=$((ng+1))
     else
-      echo "ok  $d/$o  -> $code"
+      echo "ok  $d/$f -> $code"
     fi
   done
 done
 
 echo "---"
-echo "検査した旧エントリ候補: ${checked}件 / 404: ${ng}件"
+echo "かつて公開され今はHEADに無いHTML: ${checked}件 / うち404: ${ng}件"
 if [ "$ng" -gt 0 ]; then
   echo ""
-  echo "直し方: 該当フォルダに旧ファイル名で以下を置き、publish.sh で公開する"
+  echo "直し方: 旧ファイル名で1行リダイレクトHTMLを置き直す"
   echo '  <meta http-equiv="refresh" content="0; url=./index.html">'
   echo '  <script>location.replace("./index.html" + location.search + location.hash);</script>'
   exit 1
