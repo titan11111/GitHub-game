@@ -20,7 +20,12 @@
   --f-go:"Hiragino Sans","Yu Gothic",YuGothic,"Noto Sans JP",system-ui,sans-serif;
 }
 
-*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;   /* タップ時の青い箱を出さない */
+  -webkit-touch-callout:none;                /* 長押しの「画像を保存」メニューを出さない */
+  -webkit-user-drag:none;
+}
 
 html,body{
   margin:0; padding:0; height:100%;
@@ -285,7 +290,81 @@ html,body{
 .veil h2{ font-family:var(--f-min); font-size:27px; margin:0; color:var(--fuda); letter-spacing:.12em; }
 .veil p{ margin:0; font-size:12.5px; color:var(--usu); line-height:1.95; max-width:32ch; }
 .veil .rank{ font-family:var(--f-min); font-size:13px; color:var(--kin); letter-spacing:.2em; }
+
+/* ── 開始画面の店先（のれん・湯気・落款）─────────────
+   HTMLだけ先に入って装飾が付いていなかった分をここで埋める。
+   すべて aria-hidden の飾りで、ゲームの状態には一切つながっていない。 */
+.veil .kawa{
+  position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(125% 62% at 50% -12%, rgba(201,162,39,.17), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(159,179,200,.05) 0 2px, transparent 2px 10px);
+}
+.veil .yuge{
+  position:absolute; top:12%; left:50%; width:126px; height:96px;
+  transform:translateX(-50%); pointer-events:none;
+}
+.veil .yuge i{
+  position:absolute; bottom:0; width:8px; height:8px; border-radius:50%;
+  background:rgba(240,230,210,.34); filter:blur(3px);
+  animation:yuge 5.4s ease-in-out infinite;
+}
+.veil .yuge i:nth-child(1){ left:24%; }
+.veil .yuge i:nth-child(2){ left:50%; animation-delay:-1.8s; }
+.veil .yuge i:nth-child(3){ left:74%; animation-delay:-3.6s; }
+@keyframes yuge{
+  0%{ transform:translateY(0) scale(.6); opacity:0 }
+  20%{ opacity:.5 }
+  100%{ transform:translateY(-82px) scale(2.2); opacity:0 }
+}
+
+.veil .noren{
+  position:absolute; top:0; left:0; right:0; height:72px;
+  display:flex; gap:3px; padding:0 7px; pointer-events:none;
+}
+.veil .noren span{
+  flex:1; border-radius:0 0 2px 2px;
+  background:linear-gradient(#7E1F17,#9A2A1F);
+  box-shadow:inset 0 -16px 20px rgba(0,0,0,.3), 0 3px 7px rgba(0,0,0,.42);
+  display:flex; align-items:flex-end; justify-content:center; padding-bottom:12px;
+  transform-origin:50% 0;
+  animation:noren 6.2s ease-in-out infinite;
+  animation-delay:calc(var(--i) * -.75s);
+}
+.veil .noren span b{
+  font-family:var(--f-min); font-size:23px; color:var(--fuda);
+  letter-spacing:.1em; text-shadow:0 1px 0 rgba(0,0,0,.45);
+}
+@keyframes noren{ 0%,100%{ transform:skewX(0deg) } 50%{ transform:skewX(1.1deg) } }
+
+.titlewrap{ display:flex; flex-direction:column; align-items:center; gap:13px; margin-top:34px; }
+.veil h2.gold{ display:flex; gap:.04em; font-size:30px; letter-spacing:.1em; }
+.veil h2.gold span{
+  display:inline-block; opacity:0;
+  background:linear-gradient(#F8ECC6,#D8B43C 52%,#9A7B18);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:tchar .66s ease-out forwards;
+  animation-delay:calc(var(--i) * .09s + .18s);
+}
+@keyframes tchar{ from{ opacity:0; transform:translateY(9px) } to{ opacity:1; transform:translateY(0) } }
+
+/* 落款（段位の朱印）。中身は startRank のままなので JS 側は触らない */
+.seal{
+  font-family:var(--f-min); font-size:12.5px; letter-spacing:.26em;
+  color:#FBD9D2; background:rgba(176,58,46,.24);
+  border:1.5px solid rgba(176,58,46,.85); border-radius:2px;
+  padding:5px 10px 5px 16px;
+}
+
+.rules div{ opacity:0; animation:rfade .6s ease-out forwards; animation-delay:calc(var(--i) * .12s + .6s); }
+@keyframes rfade{ from{ opacity:0; transform:translateY(6px) } to{ opacity:1; transform:translateY(0) } }
+
+@media (prefers-reduced-motion:reduce){
+  .veil .yuge i,.veil .noren span{ animation:none; }
+  .veil h2.gold span,.rules div{ animation:none; opacity:1; }
+}
 .bigbtn{
+  touch-action:manipulation;                 /* 継承しないので要素ごとに要る */
   font-family:var(--f-min); font-size:17px; letter-spacing:.14em;
   color:var(--sumi); background:linear-gradient(#F4EBD8,#E2D3B4);
   border:0; border-radius:3px; padding:14px 34px; min-height:52px; cursor:pointer;
@@ -309,6 +388,7 @@ html,body{
 /* ── 相手選び ───────────────────────────── */
 #picks{ display:flex; flex-direction:column; gap:9px; width:100%; max-width:28ch; }
 .pick{
+  touch-action:manipulation;
   display:grid; grid-template-columns:1fr auto; gap:2px 10px; align-items:center;
   font-family:var(--f-go); text-align:left; cursor:pointer;
   color:var(--sumi); background:linear-gradient(#F4EBD8,#E2D3B4);
@@ -347,14 +427,21 @@ html,body{
 <div id="app">
 
   <div class="veil on" id="veilStart">
-    <h2>寿司漢字勝負</h2>
-    <span class="rank" id="startRank">一 人 前</span>
-    <div class="rules">
-      <div><b>一</b><span>客はカタカナで注文します。品書きから漢字の札を選んでください。</span></div>
-      <div><b>二</b><span>間違えると2秒手が止まり、<strong>その注文は相手のものになります</strong>。</span></div>
-      <div><b>三</b><span>握っている間は次の注文が取れません。<strong>「次」を見て、見送るのも手です。</strong></span></div>
+    <div class="kawa" id="kawa" aria-hidden="true"></div>
+    <div class="yuge" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="noren" aria-hidden="true">
+      <span style="--i:0"></span><span style="--i:1"></span><span style="--i:2"><b>鮨</b></span><span style="--i:3"></span><span style="--i:4"></span>
     </div>
-    <button class="bigbtn" id="btnStart">始 め る</button>
+    <div class="titlewrap">
+      <h2 class="gold" id="mainTitle" aria-label="寿司漢字勝負"><span style="--i:0" aria-hidden="true">寿</span><span style="--i:1" aria-hidden="true">司</span><span style="--i:2" aria-hidden="true">漢</span><span style="--i:3" aria-hidden="true">字</span><span style="--i:4" aria-hidden="true">勝</span><span style="--i:5" aria-hidden="true">負</span></h2>
+      <div class="seal" aria-label="段位"><span id="startRank">一人前</span></div>
+    </div>
+    <div class="rules">
+      <div style="--i:0"><b>一</b><span>客はカタカナで注文します。品書きから漢字の札を選んでください。</span></div>
+      <div style="--i:1"><b>二</b><span>間違えると2秒手が止まり、<strong>その注文は相手のものになります</strong>。</span></div>
+      <div style="--i:2"><b>三</b><span>握っている間は次の注文が取れません。<strong>「次」を見て、見送るのも手です。</strong></span></div>
+    </div>
+    <button class="bigbtn breathe" id="btnStart">の れ ん を く ぐ る</button>
   </div>
 
   <div class="veil" id="veilPick">
@@ -1334,7 +1421,10 @@ window.addEventListener('keydown', function(e){
 
 /* 起動時は品書きだけ組んでおく（一席はまだ始まらない） */
 buildBoard();
-console.log('[251] ready / rank=' + state.rank + ' cpu=' + state.cpu + ' best=' + state.best + ' muted=' + state.muted);
+/* 公開版はコンソールに何も出さない。?debug=1 のときだけ状態を出す */
+if(location.search.indexOf('debug=1') >= 0){
+  console.info('[251] rank=' + state.rank + ' cpu=' + state.cpu + ' best=' + state.best + ' muted=' + state.muted);
+}
 </script>
 </body>
 </html>
