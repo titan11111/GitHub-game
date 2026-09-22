@@ -8,8 +8,8 @@
 <title>寿司漢字勝負</title>
 <style>
 /* ============================================================
-   251-sushi-kanji-shobu ── コントロールパネル（実装1手目）
-   鉄則4: ゲームロジックより先に操作/設定UIを動く状態にする
+   251-sushi-kanji-shobu ── 寿司漢字勝負
+   客はカタカナで注文し、職人は漢字の札で応える。
    ============================================================ */
 
 :root{
@@ -61,31 +61,143 @@ html,body{
   font-size:11px; letter-spacing:.04em;
 }
 .side{ display:flex; align-items:baseline; gap:5px; color:var(--hinoki); }
-.side .n{ font-family:var(--f-min); font-size:19px; color:var(--fuda); font-variant-numeric:tabular-nums; }
+.side .n{ font-family:var(--f-min); font-size:19px; color:var(--fuda); font-variant-numeric:tabular-nums; min-width:1.4em; text-align:center; }
 .side.me .n{ color:var(--kin); }
 #clock{ font-family:var(--f-min); font-size:17px; color:var(--fuda); font-variant-numeric:tabular-nums; letter-spacing:.06em; }
+#clock.hurry{ color:#F08A7C; }
 
 /* ── 二 客席 ──────────────────────────────── */
 #guest{
   flex:0 0 26%; position:relative;
-  display:flex; align-items:center; justify-content:center; padding:8px 14px;
+  display:flex; align-items:center; justify-content:center; padding:6px 14px;
   background:linear-gradient(#0E2136 0%,rgba(14,33,54,0) 60%),
              repeating-linear-gradient(90deg,#132C46 0 16px,#16324F 16px 32px);
 }
 #bubble{
   background:var(--fuda); color:var(--sumi);
-  border-radius:12px; padding:10px 16px; text-align:center;
+  border-radius:12px; padding:9px 18px; text-align:center;
   box-shadow:0 5px 16px rgba(0,0,0,.4);
-  position:relative;
+  position:relative; z-index:2; min-width:7em;
+  transition:transform .12s ease-out, opacity .12s linear;
 }
 #bubble::after{
   content:""; position:absolute; bottom:-8px; left:50%; transform:translateX(-50%);
   border:8px solid transparent; border-top-color:var(--fuda); border-bottom:0;
 }
-#order{ display:block; font-weight:700; font-size:22px; letter-spacing:.14em; line-height:1.25; }
+#bubble.gone{ opacity:0; transform:translateY(-8px) scale(.94); }
+#order{ display:block; font-weight:700; font-size:23px; letter-spacing:.14em; line-height:1.25; }
 #orderTail{ font-size:10px; color:#6B5E4E; letter-spacing:.06em; }
-.head{ position:absolute; bottom:0; width:30px; height:22px; border-radius:15px 15px 0 0; background:#0A1826; }
-.head.a{ left:20%; } .head.b{ right:20%; height:17px; }
+
+/* 客の待ち時間 */
+#patience{ position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(159,179,200,.14); z-index:3; }
+#patience i{ display:block; height:100%; width:100%; background:linear-gradient(90deg,#C9A227,#E8C447); }
+#patience i.low{ background:linear-gradient(90deg,#B03A2E,#E06A58); }
+
+/* 次の注文（これが「取るか見送るか」の判断材料） */
+#next{
+  position:absolute; right:10px; top:8px; z-index:2;
+  display:flex; align-items:center; gap:6px;
+  background:rgba(10,24,40,.72); border:1px solid rgba(159,179,200,.28);
+  border-radius:3px; padding:4px 9px;
+}
+#next .lb{ font-size:8px; letter-spacing:.2em; color:var(--usu); }
+#next .yo{ font-size:13px; font-weight:700; letter-spacing:.08em; color:var(--hinoki); }
+#next .tg{ font-family:var(--f-min); font-size:10px; padding:1px 5px; border-radius:2px; }
+.tg.t0{ background:rgba(159,179,200,.25); color:#D6E2EC; }
+.tg.t1{ background:rgba(201,162,39,.3); color:#F0DFA6; }
+.tg.t2{ background:rgba(176,58,46,.45); color:#FBD9D2; }
+
+/* ── 二-2 客（顔と表情） ─────────────────────
+   黒い角丸2つだった客を、顔・髪・衣服・持ち物を持った2人へ置き換える。
+   表情のために新しい状態は一切作らない。注文・待ち時間・お手つき・
+   CPUの取得・提供・退店という、すでに動いている値をそのまま顔へ流す。
+   出し分けは #guest[data-mood] の属性1つ。DOM差し替えゼロ。 */
+.gfig{
+  position:absolute; bottom:0; z-index:1;
+  height:min(138px,92%); width:auto;   /* 注文の読みは最長3文字＝吹き出し幅は112px固定。左右に寄せれば重ならない */
+  overflow:visible; pointer-events:none;
+  filter:drop-shadow(0 4px 7px rgba(0,0,0,.45));
+  animation:breathe 4.4s ease-in-out infinite;   /* 何も起きていない間も呼吸している */
+}
+.gfig.ga{ left:0.5%; }
+.gfig.gb{ right:0.5%; height:min(130px,87%); animation-duration:3.7s; animation-delay:-1.5s; }
+/* 2人が同時に同じ動きをすると人形に見える。反応を一拍ずらす */
+.gfig.gb .fig,.gfig.gb .head{ transition-delay:.07s; }
+
+@keyframes breathe{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.6px)} }
+
+/* 体と首から上を別々に動かす（身を乗り出す／のけぞる／そっぽを向く） */
+.gfig .fig { transform-origin:50px 112px; transition:transform .22s cubic-bezier(.34,1.26,.64,1), opacity .3s linear; }
+.gfig .head{ transform-origin:50px 70px;  transition:transform .22s cubic-bezier(.34,1.26,.64,1); }
+.gfig .pupils{ transition:transform .18s ease-out; }
+
+/* 表情パーツは重ねて置き、mood で出し分ける（再描画ゼロ） */
+.gfig .v{ opacity:0; }
+.gfig .v-eO,.gfig .v-bN,.gfig .v-mN{ opacity:1; }   /* data-mood が付く前の初期顔 */
+#guest[data-mood] .v{ opacity:0; }                   /* 以降は mood で指定したものだけ出す */
+
+/* 目 */
+#guest[data-mood="idle"]  .v-eO,#guest[data-mood="wait"]  .v-eO,
+#guest[data-mood="order"] .v-eO,#guest[data-mood="hurry"] .v-eO,
+#guest[data-mood="cpu"]   .v-eO{ opacity:1; }
+#guest[data-mood="impatient"] .v-eN,#guest[data-mood="leave"] .v-eN{ opacity:1; }
+#guest[data-mood="joy"] .v-eH,#guest[data-mood="served"] .v-eH{ opacity:1; }
+#guest[data-mood="oops"] .v-eW{ opacity:1; }
+
+/* 眉 */
+#guest[data-mood="idle"] .v-bN,#guest[data-mood="wait"] .v-bN,#guest[data-mood="cpu"] .v-bN{ opacity:1; }
+#guest[data-mood="order"] .v-bU,#guest[data-mood="joy"] .v-bU,
+#guest[data-mood="oops"]  .v-bU,#guest[data-mood="served"] .v-bU{ opacity:1; }
+#guest[data-mood="hurry"] .v-bW{ opacity:1; }
+#guest[data-mood="impatient"] .v-bA,#guest[data-mood="leave"] .v-bA{ opacity:1; }
+
+/* 口 */
+#guest[data-mood="idle"] .v-mN,#guest[data-mood="hurry"] .v-mN{ opacity:1; }
+#guest[data-mood="wait"] .v-mS,#guest[data-mood="cpu"] .v-mS{ opacity:1; }
+#guest[data-mood="order"] .v-mO,#guest[data-mood="oops"] .v-mO{ opacity:1; }
+#guest[data-mood="joy"] .v-mB{ opacity:1; }
+#guest[data-mood="impatient"] .v-mF,#guest[data-mood="leave"] .v-mF{ opacity:1; }
+#guest[data-mood="served"] .v-mC{ opacity:1; }
+
+/* まばたき（2人で周期をずらす） */
+.gfig .v-eO,.gfig .v-eN{ transform-origin:50px 45px; animation:blink 5.6s infinite; }
+.gfig.gb .v-eO,.gfig.gb .v-eN{ animation-duration:6.9s; animation-delay:-2.3s; }
+@keyframes blink{ 0%,93%,100%{transform:scaleY(1)} 96%{transform:scaleY(.1)} }
+
+/* 体ごとの反応 */
+#guest[data-mood="order"] .fig { transform:translateY(-3.5px); }
+#guest[data-mood="order"] .head{ transform:translateY(-1.5px) rotate(-2.5deg); }
+#guest[data-mood="hurry"] .pupils{ animation:dart 1.15s ease-in-out infinite; }   /* 視線が泳ぐ */
+#guest[data-mood="impatient"] .head{ animation:fidget .62s ease-in-out infinite; }
+#guest[data-mood="joy"]  .fig { animation:pop .52s ease-out; }
+#guest[data-mood="joy"]  .head{ transform:rotate(-3deg); }
+#guest[data-mood="oops"] .fig { transform:translateY(2.5px) rotate(1.6deg); }     /* のけぞる */
+#guest[data-mood="oops"] .head{ transform:translateY(2.5px) rotate(4deg); }
+#guest[data-mood="cpu"]  .head{ transform:rotate(9deg); }                          /* CPU側を向く */
+#guest[data-mood="cpu"]  .pupils{ transform:translateX(2.8px); }
+#guest[data-mood="leave"] .fig { transform:translateY(16px) rotate(-7deg); opacity:.42; }
+#guest[data-mood="leave"] .head{ transform:rotate(-11deg); }
+#guest[data-mood="served"] .head{ animation:chew .3s ease-in-out 3; }
+
+@keyframes pop   { 0%{transform:translateY(0)} 34%{transform:translateY(-8px)} 66%{transform:translateY(-1px)} 100%{transform:translateY(0)} }
+@keyframes fidget{ 0%,100%{transform:rotate(-2.6deg)} 50%{transform:rotate(2.6deg)} }
+@keyframes dart  { 0%,100%{transform:translateX(-2.4px)} 50%{transform:translateX(2.4px)} }
+@keyframes chew  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(1.8px)} }
+
+/* 頬の血色・汗・怒りマーク・湯気の心 */
+.gfig .blush{ opacity:0; transition:opacity .2s linear; }
+#guest[data-mood="joy"] .blush,#guest[data-mood="served"] .blush{ opacity:.5; }
+.gfig .sweat{ opacity:0; }
+#guest[data-mood="hurry"] .sweat,#guest[data-mood="impatient"] .sweat,
+#guest[data-mood="oops"]  .sweat,#guest[data-mood="leave"] .sweat{ animation:drip 1.25s ease-in infinite; }
+.gfig.gb .sweat{ animation-delay:.4s; }
+@keyframes drip{ 0%{opacity:0;transform:translateY(-3px)} 22%{opacity:.9} 100%{opacity:0;transform:translateY(10px)} }
+.gfig .anger{ opacity:0; }
+#guest[data-mood="leave"] .anger,#guest[data-mood="impatient"] .anger{ opacity:1; animation:throb .5s ease-in-out infinite; }
+@keyframes throb{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.18)} }
+.gfig .heart{ opacity:0; transform-origin:84px 22px; }
+#guest[data-mood="served"] .heart,#guest[data-mood="joy"] .heart{ animation:rise 1.1s ease-out; }
+@keyframes rise{ 0%{opacity:0;transform:translateY(0) scale(.5)} 25%{opacity:.95} 100%{opacity:0;transform:translateY(-16px) scale(1)} }
 
 /* ── 三 カウンター（対決ライン） ─────────── */
 #counter{
@@ -105,15 +217,18 @@ html,body{
 .gauge i{ display:block; height:100%; width:0; }
 .chef.me .gauge i{ background:linear-gradient(90deg,#C9A227,#E8C447); }
 .chef.cpu .gauge i{ background:linear-gradient(90deg,#7C8FA3,#A9BBCC); }
+.gauge.stun i{ background:linear-gradient(90deg,#8E2B20,#C4503F) !important; }
 .state{ font-size:9px; color:#5C4B30; letter-spacing:.04em; min-height:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.state b{ font-family:var(--f-min); font-size:12px; color:#3E3220; }
+.state .res{ color:#8A5A1E; }
 #vline{ background:rgba(90,72,44,.4); }
 
 /* ── 四 品書き（親指圏・主戦場） ───────────── */
 #menu{
   flex:1 1 auto; min-height:0;
-  padding:12px 10px;
+  padding:10px;
   background:linear-gradient(#0D1F32,#0A1828);
-  display:flex; flex-direction:column; gap:8px;
+  display:flex; flex-direction:column; gap:7px;
   touch-action:none;                  /* 格子は none（2段構え） */
 }
 #menuLabel{ font-size:9px; letter-spacing:.26em; color:var(--usu); text-align:center; }
@@ -138,6 +253,8 @@ html,body{
 .fuda.press{ transform:translateY(3px); box-shadow:0 0 0 rgba(0,0,0,.4), inset 0 0 0 1px rgba(120,96,56,.3); }
 .fuda.hit{ background:linear-gradient(#F6E6A8,#E3C75E); box-shadow:0 0 0 2px var(--kin),0 3px 0 rgba(0,0,0,.4); }
 .fuda.miss{ background:linear-gradient(#D8A79F,#C08379); color:#4A1F19; box-shadow:0 0 0 2px var(--akami),0 3px 0 rgba(0,0,0,.4); }
+.fuda.cpu{ background:linear-gradient(#C3CFDA,#A5B5C4); }
+#menu.locked .fuda{ opacity:.5; }
 .fuda:focus-visible{ outline:3px solid var(--kin); outline-offset:2px; }
 
 /* ── 五 中断・ミュート帯 ───────────────────── */
@@ -156,26 +273,48 @@ html,body{
 .sysbtn.press{ transform:translateY(2px); }
 .sysbtn[aria-pressed="true"]{ color:var(--kin); border-color:rgba(201,162,39,.6); }
 .sysbtn:focus-visible{ outline:3px solid var(--kin); outline-offset:2px; }
-#best{ font-size:11px; color:#6E8399; letter-spacing:.06em; font-variant-numeric:tabular-nums; }
+#best{ font-size:11px; color:#6E8399; letter-spacing:.06em; font-variant-numeric:tabular-nums; text-align:center; }
 
-/* ── 覆い（中断・開始・決着） ───────────────── */
+/* ── 覆い（開始・中断・決着） ───────────────── */
 .veil{
   position:absolute; inset:0; z-index:20;
-  display:none; flex-direction:column; align-items:center; justify-content:center; gap:18px;
-  background:rgba(8,20,34,.9); padding:28px; text-align:center;
+  display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+  background:rgba(8,20,34,.93); padding:26px; text-align:center;
 }
 .veil.on{ display:flex; }
-.veil h2{ font-family:var(--f-min); font-size:26px; margin:0; color:var(--fuda); letter-spacing:.1em; }
-.veil p{ margin:0; font-size:13px; color:var(--usu); line-height:1.9; max-width:30ch; }
+.veil h2{ font-family:var(--f-min); font-size:27px; margin:0; color:var(--fuda); letter-spacing:.12em; }
+.veil p{ margin:0; font-size:12.5px; color:var(--usu); line-height:1.95; max-width:32ch; }
+.veil .rank{ font-family:var(--f-min); font-size:13px; color:var(--kin); letter-spacing:.2em; }
 .bigbtn{
   font-family:var(--f-min); font-size:17px; letter-spacing:.14em;
   color:var(--sumi); background:linear-gradient(#F4EBD8,#E2D3B4);
   border:0; border-radius:3px; padding:14px 34px; min-height:52px; cursor:pointer;
-  box-shadow:0 3px 0 rgba(0,0,0,.45);
+  box-shadow:0 3px 0 rgba(0,0,0,.45); transition:transform .04s linear;
 }
 .bigbtn.press{ transform:translateY(3px); box-shadow:0 0 0 rgba(0,0,0,.45); }
 .bigbtn:focus-visible{ outline:3px solid var(--kin); outline-offset:3px; }
+.rules{ display:flex; flex-direction:column; gap:7px; font-size:12px; color:var(--usu); text-align:left; max-width:30ch; }
+.rules div{ display:flex; gap:9px; }
+.rules b{ color:var(--kin); font-weight:700; flex:0 0 auto; }
+#resultScore{ font-family:var(--f-min); font-size:20px; color:var(--fuda); letter-spacing:.08em; }
+#resultScore em{ font-style:normal; color:var(--kin); font-size:30px; }
+#promo{ font-family:var(--f-min); font-size:14px; color:var(--kin); letter-spacing:.14em; }
 
+/* 立合いのカウント */
+#count{
+  position:absolute; inset:0; z-index:15; display:none;
+  align-items:center; justify-content:center;
+  font-family:var(--f-min); font-size:84px; color:var(--fuda);
+  background:rgba(8,20,34,.55); pointer-events:none;
+  text-shadow:0 4px 18px rgba(0,0,0,.6);
+}
+#count.on{ display:flex; }
+
+@media (max-height:620px){
+  #guest{ flex-basis:22%; }
+  .fuda{ font-size:22px; min-height:48px; }
+  .fuda.w2{ font-size:15px; }
+}
 @media (prefers-reduced-motion:reduce){
   *{ transition:none !important; animation:none !important; }
 }
@@ -185,31 +324,233 @@ html,body{
 
 <div id="app">
 
+  <div class="veil on" id="veilStart">
+    <h2>寿司漢字勝負</h2>
+    <span class="rank" id="startRank">一 人 前</span>
+    <div class="rules">
+      <div><b>一</b><span>客はカタカナで注文します。品書きから漢字の札を選んでください。</span></div>
+      <div><b>二</b><span>間違えると2秒手が止まり、<strong>その注文は相手のものになります</strong>。</span></div>
+      <div><b>三</b><span>握っている間は次の注文が取れません。<strong>「次」を見て、見送るのも手です。</strong></span></div>
+    </div>
+    <button class="bigbtn" id="btnStart">始 め る</button>
+  </div>
+
   <header id="score">
     <div class="side me"><span>あなた</span><span class="n" id="pScore">0</span><span>貫</span></div>
-    <div id="clock">--:--</div>
+    <div id="clock">1:30</div>
     <div class="side cpu"><span class="n" id="cScore">0</span><span>貫</span><span>職人</span></div>
   </header>
 
   <section id="guest">
-    <div class="head a"></div>
-    <div class="head b"></div>
+    <!-- 客A｜常連の親父。手拭いの鉢巻・太眉・口ひげ。手元に湯呑み -->
+    <svg class="gfig ga" viewBox="0 0 100 112" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="skA" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#F5D2A8"/><stop offset=".62" stop-color="#E4B285"/><stop offset="1" stop-color="#C79060"/>
+        </linearGradient>
+        <linearGradient id="clA" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#22486F"/><stop offset="1" stop-color="#0D2338"/>
+        </linearGradient>
+        <linearGradient id="haA" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#3C3833"/><stop offset="1" stop-color="#191715"/>
+        </linearGradient>
+      </defs>
+      <g class="fig">
+        <path d="M4,112 C5,90 15,79 30,74 C37,72 41,70 43,67 L57,67 C59,70 63,72 70,74 C85,79 95,90 96,112 Z" fill="url(#clA)"/>
+        <path d="M4,112 C5,96 12,86 22,80 C18,90 15,100 14,112 Z" fill="#000" opacity=".18"/>
+        <path d="M43,67 L50,86 L57,67 L52.6,65.2 L50,77 L47.4,65.2 Z" fill="#E7DCC4"/>
+        <path d="M43,67 L50,86 L57,67" fill="none" stroke="#07172A" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M42.4,53 h15.2 v14 c0,4 -15.2,4 -15.2,0 Z" fill="#D2996A"/>
+        <ellipse cx="50" cy="57" rx="12.4" ry="5" fill="#000" opacity=".22"/>
+        <g class="head">
+          <ellipse cx="50" cy="40" rx="24.6" ry="26.4" fill="url(#skA)"/>
+          <ellipse cx="25.6" cy="42" rx="4.4" ry="6.6" fill="#E0AE80"/>
+          <ellipse cx="74.4" cy="42" rx="4.4" ry="6.6" fill="#E0AE80"/>
+          <g class="blush">
+            <ellipse cx="31.5" cy="50.5" rx="6.6" ry="3.8" fill="#E06E5E"/>
+            <ellipse cx="68.5" cy="50.5" rx="6.6" ry="3.8" fill="#E06E5E"/>
+          </g>
+          <path d="M25.6,35 C26,16 36,7.6 50,7.6 C64,7.6 74,16 74.4,35 C71,25.6 63,21.4 50,21.4 C37,21.4 29,25.6 25.6,35 Z" fill="url(#haA)"/>
+          <path d="M25.4,30.6 C33,23.4 67,23.4 74.6,30.6 L73.4,37.2 C66,30.2 34,30.2 26.6,37.2 Z" fill="#EFE7D6"/>
+          <path d="M74,28 l8.4,-3.8 -2.6,6.2 6.6,1.4 -8.8,2.8 Z" fill="#DFD3BC"/>
+          <path d="M50,44.6 C48.6,50.6 47.2,52.8 46.2,53.6 C48.4,55 51.2,54.8 52.8,53.2" fill="none" stroke="#BE875A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <g class="v v-bN" fill="#241F1A">
+            <path d="M31.4,32.6 C36,29.4 42,29.2 46.4,31.6 L45.8,35.2 C41.8,33 36.6,33.2 32.2,36 Z"/>
+            <path d="M68.6,32.6 C64,29.4 58,29.2 53.6,31.6 L54.2,35.2 C58.2,33 63.4,33.2 67.8,36 Z"/>
+          </g>
+          <g class="v v-bU" fill="#241F1A">
+            <path d="M31.4,29.4 C36,25.2 42,25 46.4,28.2 L45.8,31.8 C41.8,29 36.6,29.2 32.2,32.8 Z"/>
+            <path d="M68.6,29.4 C64,25.2 58,25 53.6,28.2 L54.2,31.8 C58.2,29 63.4,29.2 67.8,32.8 Z"/>
+          </g>
+          <g class="v v-bA" fill="#241F1A">
+            <path d="M31.2,30 C36,30.4 42,32.6 46.6,36.4 L45.6,39.6 C41.4,36 36.4,34 31.8,33.6 Z"/>
+            <path d="M68.8,30 C64,30.4 58,32.6 53.4,36.4 L54.4,39.6 C58.6,36 63.6,34 68.2,33.6 Z"/>
+          </g>
+          <g class="v v-bW" fill="#241F1A">
+            <path d="M31.4,36.4 C36,32.2 42,29.8 46.6,29.4 L46,32.8 C41.8,33.4 36.6,35.6 32.4,39.6 Z"/>
+            <path d="M68.6,36.4 C64,32.2 58,29.8 53.4,29.4 L54,32.8 C58.2,33.4 63.4,35.6 67.6,39.6 Z"/>
+          </g>
+          <g class="v v-eO">
+            <ellipse cx="39.2" cy="45" rx="6.8" ry="4.8" fill="#FBF6EE"/>
+            <ellipse cx="60.8" cy="45" rx="6.8" ry="4.8" fill="#FBF6EE"/>
+            <g class="pupils">
+              <circle cx="39.6" cy="45.2" r="3.1" fill="#241F1A"/>
+              <circle cx="60.4" cy="45.2" r="3.1" fill="#241F1A"/>
+              <circle cx="40.9" cy="43.8" r="1" fill="#fff"/>
+              <circle cx="61.7" cy="43.8" r="1" fill="#fff"/>
+            </g>
+            <path d="M32.4,43.6 C36,40.4 42.4,40.4 46,43.2" fill="none" stroke="#3B3129" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M54,43.2 C57.6,40.4 64,40.4 67.6,43.6" fill="none" stroke="#3B3129" stroke-width="1.5" stroke-linecap="round"/>
+          </g>
+          <g class="v v-eN">
+            <ellipse cx="39.2" cy="45.8" rx="6.8" ry="2.6" fill="#EEE5D8"/>
+            <ellipse cx="60.8" cy="45.8" rx="6.8" ry="2.6" fill="#EEE5D8"/>
+            <circle cx="39.4" cy="45.8" r="2.4" fill="#241F1A"/>
+            <circle cx="60.6" cy="45.8" r="2.4" fill="#241F1A"/>
+            <path d="M32.2,43.8 h14" fill="none" stroke="#3B3129" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M53.8,43.8 h14" fill="none" stroke="#3B3129" stroke-width="2.4" stroke-linecap="round"/>
+          </g>
+          <g class="v v-eH" fill="none" stroke="#241F1A" stroke-width="3" stroke-linecap="round">
+            <path d="M33.4,47.2 C36.6,42 42.2,42 45.2,47.2"/>
+            <path d="M54.8,47.2 C58,42 63.6,42 66.6,47.2"/>
+          </g>
+          <g class="v v-eW">
+            <ellipse cx="39.2" cy="45" rx="7.4" ry="7" fill="#FBF6EE"/>
+            <ellipse cx="60.8" cy="45" rx="7.4" ry="7" fill="#FBF6EE"/>
+            <circle cx="39.4" cy="45.4" r="2.5" fill="#241F1A"/>
+            <circle cx="60.6" cy="45.4" r="2.5" fill="#241F1A"/>
+          </g>
+          <path d="M39.6,55.4 C43,52.4 47,51.6 50,53.6 C53,51.6 57,52.4 60.4,55.4 C56,57.6 52.6,56.2 50,55 C47.4,56.2 44,57.6 39.6,55.4 Z" fill="#2A2420"/>
+          <g class="v v-mN"><path d="M43,63.4 C46.4,65.2 53.6,65.2 57,63.4" fill="none" stroke="#7A4030" stroke-width="2.2" stroke-linecap="round"/></g>
+          <g class="v v-mS"><path d="M42,62 C46,67.4 54,67.4 58,62" fill="none" stroke="#7A4030" stroke-width="2.4" stroke-linecap="round"/></g>
+          <g class="v v-mB"><path d="M41,61 C45.6,70.8 54.4,70.8 59,61 Z" fill="#6E2A27"/><path d="M41.9,61.6 h16.2 l-1.3,2.1 h-13.6 Z" fill="#FBF6EE"/></g>
+          <g class="v v-mO"><ellipse cx="50" cy="64" rx="4.1" ry="4.1" fill="#6E2A27"/></g>
+          <g class="v v-mF"><path d="M42.4,65.2 C46.4,60.4 53.6,60.4 57.6,65.2" fill="none" stroke="#7A4030" stroke-width="2.4" stroke-linecap="round"/></g>
+          <g class="v v-mC"><ellipse cx="50" cy="62.8" rx="5.2" ry="3.4" fill="#8A4A38"/></g>
+          <path class="sweat" d="M77,23 C80.4,28.4 82.2,31.2 82.2,33.2 A5.2,5.2 0 0 1 71.8,33.2 C71.8,31.2 73.6,28.4 77,23 Z" fill="#A9DCF5"/>
+          <g class="anger" fill="none" stroke="#D2483A" stroke-width="2" stroke-linecap="round">
+            <path d="M15,15 l4,4 4,-4"/><path d="M15,25 l4,-4 4,4"/><path d="M11.4,17.4 l4,2.6 -4,2.6"/><path d="M26.6,17.4 l-4,2.6 4,2.6"/>
+          </g>
+          <path class="heart" d="M78,21 C78,17.6 82.6,17 83.8,20 C85,17 89.6,17.6 89.6,21 C89.6,24.6 83.8,29 83.8,29 C83.8,29 78,24.6 78,21 Z" fill="#E4707F"/>
+        </g>
+        <g class="cup">
+          <ellipse cx="18" cy="98" rx="9.4" ry="2.8" fill="#123047"/>
+          <path d="M8.6,98 h18.8 l-2.6,12.4 h-13.6 Z" fill="#EFE7D6"/>
+          <path d="M9.4,102 h17.2" fill="none" stroke="#2E4A63" stroke-width="1.4"/>
+        </g>
+      </g>
+    </svg>
+
+    <!-- 客B｜若い女性。結い上げた髪にかんざし。細眉・大きめの目 -->
+    <svg class="gfig gb" viewBox="0 0 100 112" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="skB" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#FBE0C6"/><stop offset=".62" stop-color="#F0C6A2"/><stop offset="1" stop-color="#D7A17B"/>
+        </linearGradient>
+        <linearGradient id="clB" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#75415C"/><stop offset="1" stop-color="#3D2133"/>
+        </linearGradient>
+        <linearGradient id="haB" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2E2A31"/><stop offset="1" stop-color="#141216"/>
+        </linearGradient>
+      </defs>
+      <g class="fig">
+        <path d="M22,44 C20,20 33,6.4 50,6.4 C67,6.4 80,20 78,44 C77.4,56 79.6,66 82,74 L66,69 C70,57 70,44 70,38 L30,38 C30,44 30,57 34,69 L18,74 C20.4,66 22.6,56 22,44 Z" fill="url(#haB)"/>
+        <path d="M10,112 C11,93 20,82 33,77 C39,75 42,72 43.6,69 L56.4,69 C58,72 61,75 67,77 C80,82 89,93 90,112 Z" fill="url(#clB)"/>
+        <path d="M10,112 C11,97 17,88 26,83 C22,92 19,101 18.4,112 Z" fill="#000" opacity=".18"/>
+        <path d="M43.6,69 L50,88 L56.4,69 L52.2,67.2 L50,78 L47.8,67.2 Z" fill="#F4E6EB"/>
+        <path d="M43.6,69 L50,88 L56.4,69" fill="none" stroke="#2C1624" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M43.6,54 h12.8 v15 c0,3.6 -12.8,3.6 -12.8,0 Z" fill="#E3B48E"/>
+        <ellipse cx="50" cy="57.6" rx="11" ry="4.6" fill="#000" opacity=".22"/>
+        <g class="head">
+          <ellipse cx="50" cy="40" rx="23.2" ry="25.6" fill="url(#skB)"/>
+          <ellipse cx="27" cy="42.4" rx="4" ry="6" fill="#EBBC95"/>
+          <ellipse cx="73" cy="42.4" rx="4" ry="6" fill="#EBBC95"/>
+          <g class="blush">
+            <ellipse cx="32" cy="50" rx="6.4" ry="3.6" fill="#E4707F"/>
+            <ellipse cx="68" cy="50" rx="6.4" ry="3.6" fill="#E4707F"/>
+          </g>
+          <path d="M26.8,34.6 C27.4,15.8 37.4,7 50,7 C62.6,7 72.6,15.8 73.2,34.6 C69.6,26 63.4,29.4 55.6,24 C49.6,30.4 39.6,29.4 32,26.4 C29.8,28.6 27.9,31.4 26.8,34.6 Z" fill="url(#haB)"/>
+          <ellipse cx="50" cy="9.4" rx="11.4" ry="7.6" fill="url(#haB)"/>
+          <path d="M37.6,6.6 L64.4,12.6" fill="none" stroke="#C9A227" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="65.8" cy="12.9" r="2.7" fill="#E8C447"/>
+          <path d="M50,45 C49,50 48,52.2 47.2,53 C49,54.2 51.2,54 52.6,52.8" fill="none" stroke="#D09A72" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <g class="v v-bN" fill="none" stroke="#3A2A24" stroke-width="2.2" stroke-linecap="round">
+            <path d="M32.8,33.6 C36.6,31 42,31 45.8,33"/><path d="M67.2,33.6 C63.4,31 58,31 54.2,33"/>
+          </g>
+          <g class="v v-bU" fill="none" stroke="#3A2A24" stroke-width="2.2" stroke-linecap="round">
+            <path d="M32.8,30.4 C36.6,26.6 42,26.6 45.8,29.4"/><path d="M67.2,30.4 C63.4,26.6 58,26.6 54.2,29.4"/>
+          </g>
+          <g class="v v-bA" fill="none" stroke="#3A2A24" stroke-width="2.2" stroke-linecap="round">
+            <path d="M32.6,30.8 C37.4,31.8 42.4,34.4 46,37.6"/><path d="M67.4,30.8 C62.6,31.8 57.6,34.4 54,37.6"/>
+          </g>
+          <g class="v v-bW" fill="none" stroke="#3A2A24" stroke-width="2.2" stroke-linecap="round">
+            <path d="M32.6,37.4 C37.4,32.4 42.4,30.2 46,30"/><path d="M67.4,37.4 C62.6,32.4 57.6,30.2 54,30"/>
+          </g>
+          <g class="v v-eO">
+            <ellipse cx="39.4" cy="45" rx="7" ry="5.4" fill="#FCF8F1"/>
+            <ellipse cx="60.6" cy="45" rx="7" ry="5.4" fill="#FCF8F1"/>
+            <g class="pupils">
+              <circle cx="39.8" cy="45.2" r="3.5" fill="#2A1F2A"/>
+              <circle cx="60.2" cy="45.2" r="3.5" fill="#2A1F2A"/>
+              <circle cx="41.2" cy="43.6" r="1.2" fill="#fff"/>
+              <circle cx="61.6" cy="43.6" r="1.2" fill="#fff"/>
+            </g>
+            <path d="M32.4,43.4 C36,39.8 43,39.8 46.4,43" fill="none" stroke="#2A1F2A" stroke-width="2" stroke-linecap="round"/>
+            <path d="M53.6,43 C57,39.8 64,39.8 67.6,43.4" fill="none" stroke="#2A1F2A" stroke-width="2" stroke-linecap="round"/>
+            <path d="M32.2,41.6 l-2.6,-2" fill="none" stroke="#2A1F2A" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M67.8,41.6 l2.6,-2" fill="none" stroke="#2A1F2A" stroke-width="1.6" stroke-linecap="round"/>
+          </g>
+          <g class="v v-eN">
+            <ellipse cx="39.4" cy="45.8" rx="7" ry="2.8" fill="#F0E8E0"/>
+            <ellipse cx="60.6" cy="45.8" rx="7" ry="2.8" fill="#F0E8E0"/>
+            <circle cx="39.6" cy="45.8" r="2.6" fill="#2A1F2A"/>
+            <circle cx="60.4" cy="45.8" r="2.6" fill="#2A1F2A"/>
+            <path d="M32.4,43.6 h14" fill="none" stroke="#2A1F2A" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M53.6,43.6 h14" fill="none" stroke="#2A1F2A" stroke-width="2.4" stroke-linecap="round"/>
+          </g>
+          <g class="v v-eH" fill="none" stroke="#2A1F2A" stroke-width="2.8" stroke-linecap="round">
+            <path d="M33.6,47 C36.8,41.8 42.4,41.8 45.4,47"/>
+            <path d="M54.6,47 C57.8,41.8 63.4,41.8 66.4,47"/>
+          </g>
+          <g class="v v-eW">
+            <ellipse cx="39.4" cy="45" rx="7.6" ry="7.4" fill="#FCF8F1"/>
+            <ellipse cx="60.6" cy="45" rx="7.6" ry="7.4" fill="#FCF8F1"/>
+            <circle cx="39.6" cy="45.4" r="2.8" fill="#2A1F2A"/>
+            <circle cx="60.4" cy="45.4" r="2.8" fill="#2A1F2A"/>
+          </g>
+          <g class="v v-mN"><path d="M45,62.4 C47.2,63.8 52.8,63.8 55,62.4" fill="none" stroke="#B05A58" stroke-width="2" stroke-linecap="round"/></g>
+          <g class="v v-mS"><path d="M44.4,61.2 C47.4,65.4 52.6,65.4 55.6,61.2" fill="none" stroke="#B05A58" stroke-width="2.2" stroke-linecap="round"/></g>
+          <g class="v v-mB"><path d="M43.6,60.4 C47,68.4 53,68.4 56.4,60.4 Z" fill="#A03A48"/><path d="M44.3,61 h11.4 l-1,1.8 h-9.4 Z" fill="#FCF8F1"/></g>
+          <g class="v v-mO"><ellipse cx="50" cy="62.4" rx="3.2" ry="4" fill="#A03A48"/></g>
+          <g class="v v-mF"><path d="M44.6,64.2 C47.4,60.2 52.6,60.2 55.4,64.2" fill="none" stroke="#B05A58" stroke-width="2.2" stroke-linecap="round"/></g>
+          <g class="v v-mC"><ellipse cx="50" cy="62" rx="4.4" ry="3" fill="#B86068"/></g>
+          <path class="sweat" d="M76,23 C79.4,28.4 81.2,31.2 81.2,33.2 A5.2,5.2 0 0 1 70.8,33.2 C70.8,31.2 72.6,28.4 76,23 Z" fill="#A9DCF5"/>
+          <g class="anger" fill="none" stroke="#D2483A" stroke-width="2" stroke-linecap="round">
+            <path d="M15,15 l4,4 4,-4"/><path d="M15,25 l4,-4 4,4"/><path d="M11.4,17.4 l4,2.6 -4,2.6"/><path d="M26.6,17.4 l-4,2.6 4,2.6"/>
+          </g>
+          <path class="heart" d="M78,21 C78,17.6 82.6,17 83.8,20 C85,17 89.6,17.6 89.6,21 C89.6,24.6 83.8,29 83.8,29 C83.8,29 78,24.6 78,21 Z" fill="#E4707F"/>
+        </g>
+      </g>
+    </svg>
+    <div id="next"><span class="lb">次</span><span class="yo" id="nextYomi">—</span><span class="tg t0" id="nextTag">並</span></div>
     <div id="bubble">
-      <span id="order">ためし</span>
-      <span id="orderTail">操作盤の確認中</span>
+      <span id="order">—</span>
+      <span id="orderTail">お待ちください</span>
     </div>
+    <div id="patience"><i id="patienceBar"></i></div>
   </section>
 
   <div id="counter">
     <div class="chef me">
       <span class="who"><b>あなた</b><span id="pWho">手が空いている</span></span>
-      <div class="gauge"><i id="pGauge"></i></div>
+      <div class="gauge" id="pGaugeBox"><i id="pGauge"></i></div>
       <span class="state" id="pState">—</span>
     </div>
     <div id="vline"></div>
     <div class="chef cpu">
       <span class="who"><b>CPU</b><span id="cWho">手が空いている</span></span>
-      <div class="gauge"><i id="cGauge"></i></div>
+      <div class="gauge" id="cGaugeBox"><i id="cGauge"></i></div>
       <span class="state" id="cState">—</span>
     </div>
   </div>
@@ -226,6 +567,8 @@ html,body{
   </footer>
 
   <canvas id="fx" aria-hidden="true"></canvas>
+  <div id="count" aria-hidden="true">3</div>
+
 
   <div class="veil" id="veilPause">
     <h2>中 断</h2>
@@ -233,16 +576,22 @@ html,body{
     <button class="bigbtn" id="btnResume">再 開</button>
   </div>
 
+  <div class="veil" id="veilResult">
+    <h2 id="resultTitle">—</h2>
+    <span id="resultScore">—</span>
+    <span id="promo"></span>
+    <p id="resultNote"></p>
+    <button class="bigbtn" id="btnAgain">も う 一 席</button>
+  </div>
+
 </div>
 
 <script>
 'use strict';
-/* ============================================================
-   コントロールパネル（実装1手目）
-   ここにはゲームロジックを書かない。操作系と設定の骨組みだけ。
-   ============================================================ */
 
-/* ---- iOS: ダブルタップ拡大の多重防止 -------------------- */
+/* ============================================================
+   0. iOS: ダブルタップ拡大の多重防止
+   ============================================================ */
 document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
 document.addEventListener('gesturechange', function(e){ e.preventDefault(); }, {passive:false});
 var lastTouchEnd = 0;
@@ -254,36 +603,115 @@ document.addEventListener('touchend', function(e){
 document.addEventListener('dblclick', function(e){ e.preventDefault(); }, {passive:false});
 document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 
-/* ---- 保存（tg.251.* 接頭辞は必須。他ゲームと衝突する） --- */
+/* ============================================================
+   1. 保存（tg.251.* 接頭辞は必須。他ゲームと衝突する）
+   ============================================================ */
 var KEY = { mute:'tg.251.mute', best:'tg.251.best', rank:'tg.251.rank' };
 function load(k, d){
   try{ var v = localStorage.getItem(k); return v === null ? d : v; }
-  catch(e){ return d; }                       // プライベートブラウズでも落とさない
+  catch(e){ return d; }                       /* プライベートブラウズでも落とさない */
 }
-function save(k, v){
-  try{ localStorage.setItem(k, v); }catch(e){}
-}
+function save(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
 
+/* ============================================================
+   2. ネタ（1カタカナ = 1札。表記揺れと出世魚は載せない）
+      鰤（ブリ）… 魬（ハマチ）と同じ出世魚のため除外
+      鮃（ヒラメ）… 鰈（カレイ）と紛らわしいため除外
+   ============================================================ */
+var TIER = [
+  { name:'並',   time:0.8, pt:1, err:0.05 },
+  { name:'上',   time:1.4, pt:2, err:0.15 },
+  { name:'特上', time:2.2, pt:4, err:0.35 }
+];
+var POOL = [
+  /* 並 */  [['鮭','サケ'],['鯖','サバ'],['鯛','タイ'],['蛸','タコ'],['海老','エビ'],['玉子','タマゴ']],
+  /* 上 */  [['鮪','マグロ'],['鰹','カツオ'],['鯵','アジ'],['鮑','アワビ'],['烏賊','イカ'],['雲丹','ウニ']],
+  /* 特上 */[['魬','ハマチ'],['鮗','コハダ'],['鱚','キス'],['鰈','カレイ'],['鰆','サワラ'],['鰊','ニシン'],['鱸','スズキ'],['鮴','メバル']]
+];
+/* 段位で構成が変わる。総数は常に16で、格子の形（4×4）は変えない */
+var RANKS = {
+  /* errMul / reactAdd = CPUの強さ。段位で変える。
+     一人前でCPUが強すぎると、特上を読めない人が一度も勝てず離脱する（実測 0/3勝）*/
+  ichininmae:{ label:'一 人 前', take:[6,6,4], next:'itamae',  errMul:1.5, reactAdd:0.20, skip:false },
+  itamae:    { label:'板 前',     take:[4,6,6], next:'hanaita', errMul:1.1, reactAdd:0.08, skip:true  },
+  hanaita:   { label:'花 板',     take:[2,6,8], next:null,      errMul:0.7, reactAdd:0.00, skip:true  }
+};
+var RANK_ORDER = ['ichininmae','itamae','hanaita'];
+
+/* 4×4 に対応するキーボード */
+var KEYMAP = ['1','2','3','4','q','w','e','r','a','s','d','f','z','x','c','v'];
+
+var PATIENCE = 4.5;      /* 客の待ち時間（秒） */
+var STUN     = 2.0;      /* お手つきの硬直（秒）*/
+var SEKI     = 90;       /* 一席の長さ（秒） */
+var GAP      = 0.30;     /* 注文が入れ替わるまでの間 */
+
+/* ============================================================
+   3. 状態
+   ============================================================ */
 var state = {
   muted : load(KEY.mute,'0') === '1',
   best  : parseInt(load(KEY.best,'0'), 10) || 0,
-  rank  : load(KEY.rank,'ichininmae'),
+  rank  : (RANKS[load(KEY.rank,'ichininmae')] ? load(KEY.rank,'ichininmae') : 'ichininmae'),
   paused: false
 };
 
-/* ---- 音（WebAudio 合成のみ。ファイルは持たない） -------- */
+var board = [];          /* [{kanji, yomi, tier}] × 16 */
+var G = null;
+
+function newChef(){
+  return { score:0, item:-1, busy:0, total:0, stun:0, res:[], think:-1 };
+}
+function newGame(){
+  return {
+    phase:'count',       /* count → play → over */
+    count:3, t:SEKI,
+    cur:null,            /* {i, wait} */
+    next:-1,
+    gap:0,
+    p:newChef(), c:newChef()
+  };
+}
+
+/* 段位に応じて品書きを組み直す（並→上→特上の読み順で並べる） */
+function buildBoard(){
+  var take = RANKS[state.rank].take;
+  board = [];
+  for(var t = 0; t < 3; t++){
+    for(var i = 0; i < take[t]; i++){
+      board.push({ kanji:POOL[t][i][0], yomi:POOL[t][i][1], tier:t });
+    }
+  }
+  var grid = document.getElementById('grid');
+  grid.textContent = '';
+  tiles = [];
+  board.forEach(function(n, i){
+    var b = document.createElement('button');
+    b.className = 'fuda' + (n.kanji.length > 1 ? ' w2' : '');
+    b.textContent = n.kanji;
+    b.setAttribute('aria-label', n.yomi + '、' + n.kanji + 'の札');
+    bindPress(b, function(){ pickFuda(i); });
+    grid.appendChild(b);
+    tiles.push(b);
+  });
+}
+var tiles = [];
+
+/* ============================================================
+   4. 音（WebAudio 合成のみ。ファイルは持たない）
+   ============================================================ */
 var AC = null;
 function audioInit(){
   if(AC) return;
   try{
     var Ctx = window.AudioContext || window.webkitAudioContext;
     if(Ctx) AC = new Ctx();
-  }catch(e){ AC = null; }                     // 音が無くてもゲームは止めない
+  }catch(e){ AC = null; }                     /* 音が無くてもゲームは止めない */
 }
 function unlock(){
   audioInit();
   if(AC && AC.state === 'suspended'){ AC.resume(); }
-  if(AC){                                     // 無音バッファでiOSを解錠
+  if(AC){
     try{
       var b = AC.createBuffer(1,1,22050);
       var s = AC.createBufferSource();
@@ -291,24 +719,41 @@ function unlock(){
     }catch(e){}
   }
 }
-function beep(freq, dur, type, vol){
+function tone(freq, dur, type, vol, delay){
   if(state.muted) return;
   audioInit();
   if(!AC) return;
   try{
+    var t0 = AC.currentTime + (delay || 0);
     var o = AC.createOscillator(), g = AC.createGain();
     o.type = type || 'sine';
-    o.frequency.setValueAtTime(freq, AC.currentTime);
-    g.gain.setValueAtTime(vol === undefined ? 0.16 : vol, AC.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(vol === undefined ? 0.15 : vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     o.connect(g); g.connect(AC.destination);
-    o.start(); o.stop(AC.currentTime + dur);
+    o.start(t0); o.stop(t0 + dur);
   }catch(e){}
 }
+var SE = {
+  hit:      function(){ tone(740,.07,'triangle',.13); tone(1110,.10,'triangle',.11,.05); },
+  miss:     function(){ tone(150,.26,'sawtooth',.13); tone(104,.30,'sawtooth',.10,.04); },
+  done:     function(){ tone(988,.09,'sine',.14); tone(1319,.14,'sine',.12,.07); },
+  cpuHit:   function(){ tone(420,.07,'square',.06); },
+  gift:     function(){ tone(300,.16,'sine',.09); tone(220,.18,'sine',.08,.08); },
+  leave:    function(){ tone(210,.18,'sine',.07); },
+  order:    function(){ tone(560,.06,'sine',.07); },
+  tick:     function(){ tone(660,.08,'square',.10); },
+  go:       function(){ tone(880,.16,'square',.13); },
+  win:      function(){ [523,659,784,1047].forEach(function(f,i){ tone(f,.22,'triangle',.13,i*.11); }); },
+  lose:     function(){ [392,330,262].forEach(function(f,i){ tone(f,.30,'sine',.12,i*.14); }); },
+  draw:     function(){ [440,440].forEach(function(f,i){ tone(f,.22,'sine',.11,i*.16); }); }
+};
 
-/* ---- 押下の共通処理（Pointer Events に統一） -------------
-   touchstart + mousedown の二重バインドはしない。
-   setPointerCapture を必ず入れる（押しっぱなしバグの根因）。 */
+/* ============================================================
+   5. 押下の共通処理（Pointer Events に統一）
+      touchstart + mousedown の二重バインドはしない。
+      setPointerCapture を必ず入れる（押しっぱなしバグの根因）。
+   ============================================================ */
 function bindPress(el, onFire){
   var armed = false;
   el.addEventListener('pointerdown', function(e){
@@ -316,63 +761,318 @@ function bindPress(el, onFire){
     armed = true;
     el.classList.add('press');
     try{ el.setPointerCapture(e.pointerId); }catch(err){}
-    unlock();                                 // 初回タッチで必ず解錠を通す
+    unlock();                                 /* 初回タッチで必ず解錠を通す */
   }, {passive:false});
-
   el.addEventListener('pointerup', function(e){
     e.preventDefault();
     el.classList.remove('press');
     try{ el.releasePointerCapture(e.pointerId); }catch(err){}
-    if(armed){ armed = false; onFire(el); }   // 指が外れていても capture で拾える
+    if(armed){ armed = false; onFire(el); }   /* 指が外れていても capture で拾える */
   }, {passive:false});
-
   el.addEventListener('pointercancel', function(){
     armed = false; el.classList.remove('press');
   });
 }
 
-/* ---- 四 品書き 16枚（4×4・配置は一席の間ずっと動かさない） */
-var BOARD = [
-  '鮭','鯖','鯛','蛸',
-  '海老','玉子','鮪','鰹',
-  '鯵','鮑','烏賊','雲丹',
-  '魬','鮗','鱚','鰈'
-];
-/* 4×4 に対応するキーボード */
-var KEYMAP = ['1','2','3','4','q','w','e','r','a','s','d','f','z','x','c','v'];
-
-var grid = document.getElementById('grid');
-var tiles = [];
-BOARD.forEach(function(kanji, i){
-  var b = document.createElement('button');
-  b.className = 'fuda' + (kanji.length > 1 ? ' w2' : '');
-  b.textContent = kanji;
-  b.setAttribute('aria-label', kanji + 'の札');
-  b.dataset.index = String(i);
-  bindPress(b, function(){ pickFuda(i); });
-  grid.appendChild(b);
-  tiles.push(b);
-});
-
-/* 1手目では「押したら光って鳴って粒が飛ぶ」ところまで。判定はまだ無い。 */
-function pickFuda(i){
-  if(state.paused) return;
-  var t = tiles[i];
-  t.classList.add('hit');
-  beep(880, 0.08, 'triangle', 0.12);
-  burst(t, '#E8C447');
-  setTimeout(function(){ t.classList.remove('hit'); }, 160);
+/* ============================================================
+   6. 注文
+   ============================================================ */
+function rollNeta(){
+  /* 並4 : 上4 : 特上2 の重み。段位で枚数が変わっても比率は保つ */
+  var r = Math.random(), t = r < 0.40 ? 0 : (r < 0.80 ? 1 : 2);
+  var pick = [];
+  for(var i = 0; i < board.length; i++){ if(board[i].tier === t) pick.push(i); }
+  if(!pick.length){                            /* 段位で0枚になった段の保険 */
+    for(var j = 0; j < board.length; j++) pick.push(j);
+  }
+  return pick[(Math.random() * pick.length) | 0];
+}
+function spawnOrder(){
+  var i = (G.next >= 0) ? G.next : rollNeta();
+  var guard = 0;
+  var nx = rollNeta();
+  while(nx === i && guard++ < 8) nx = rollNeta();   /* 同じネタの連続を避ける */
+  G.cur  = { i:i, wait:PATIENCE };
+  G.next = nx;
+  G.c.think = -1;                                   /* CPUの思考を組み直す */
+  SE.order();
+  bubbleIn();
+  setMood('order', 0.55);          /* 客が顔を上げて注文する */
+}
+function clearOrder(){
+  G.cur = null;
+  G.gap = GAP;
+  G.c.think = -1;
+  bubbleOut();
 }
 
-/* ---- 演出レイヤー（canvas・RAF） -----------------------
-   握りゲージと残り時間も最終的にこのループで進める。 */
-var fx  = document.getElementById('fx');
-var ctx = fx.getContext('2d');
-var dpr = 1, fxW = 0, fxH = 0;
-var particles = [];
+/* ============================================================
+   7. 握りと得点
+   ============================================================ */
+function startNigiri(chef, idx){
+  chef.item  = idx;
+  chef.busy  = 0;
+  chef.total = TIER[board[idx].tier].time;
+}
+function finishNigiri(chef, isPlayer){
+  var n = board[chef.item];
+  chef.score += TIER[n.tier].pt;
+  chef.item = -1; chef.busy = 0; chef.total = 0;
+  if(isPlayer){ SE.done(); burstAt(elCenter(document.querySelector('.chef.me')), '#E8C447', 14); setMood('served', 1.15); }
+  if(chef.res.length){ startNigiri(chef, chef.res.shift()); }   /* 予約札を続けて握る */
+}
+/* お手つき → その注文は相手のものになる */
+function giftTo(chef, idx){
+  if(chef.stun <= 0 && chef.item < 0){ startNigiri(chef, idx); }
+  else if(chef.res.length < 2){ chef.res.push(idx); }
+  SE.gift();
+}
+
+/* ============================================================
+   8. プレイヤー入力
+   ============================================================ */
+function pickFuda(i){
+  if(!G || G.phase !== 'play' || state.paused) return;
+  var t = tiles[i];
+  if(G.p.stun > 0 || G.p.item >= 0) return;      /* 手が塞がっている */
+  if(!G.cur) return;                             /* 取る注文が無い */
+
+  if(i === G.cur.i){
+    t.classList.add('hit');
+    setTimeout(function(){ t.classList.remove('hit'); }, 200);
+    SE.hit();
+    burstAt(elCenter(t), '#E8C447', 12);
+    startNigiri(G.p, G.cur.i);
+    clearOrder();
+    setMood('joy', 0.85);            /* 通じた */
+  }else{
+    t.classList.add('miss');
+    setTimeout(function(){ t.classList.remove('miss'); }, 380);
+    SE.miss();
+    burstAt(elCenter(t), '#D9604E', 14);
+    G.p.stun = STUN;
+    giftTo(G.c, G.cur.i);                        /* 相手に進呈 */
+    clearOrder();
+    setMood('oops', 1.15);           /* 客が面食らう */
+  }
+}
+
+/* ============================================================
+   9. CPU職人
+   ============================================================ */
+function cpuThink(dt){
+  var c = G.c;
+  if(c.stun > 0 || c.item >= 0 || !G.cur){ return; }
+
+  if(c.think < 0){
+    var tier = board[G.cur.i].tier, R = RANKS[state.rank];
+    /* 難しい札ほど考える時間が長い。一定だと機械的に感じる */
+    c.think = 0.55 + tier * 0.18 + Math.random() * 0.45 + R.reactAdd;
+
+    /* 段位が上がると、見送り（次の特上を待つ）を覚える */
+    if(R.skip && tier === 0 && G.next >= 0 && board[G.next].tier === 2){
+      if(Math.random() < 0.5){ c.think = 99; }    /* この注文は見送る */
+    }
+    return;
+  }
+
+  c.think -= dt;
+  if(c.think > 0) return;
+  c.think = -1;
+
+  var idx  = G.cur.i;
+  var tier = board[idx].tier;
+  if(Math.random() < Math.min(0.85, TIER[tier].err * RANKS[state.rank].errMul)){  /* CPUも間違える */
+    c.stun = STUN;
+    giftTo(G.p, idx);                            /* プレイヤーに進呈 */
+    SE.miss();
+    clearOrder();
+    setMood('oops', 0.9);
+  }else{
+    var tl = tiles[idx];
+    tl.classList.add('cpu');
+    setTimeout(function(){ tl.classList.remove('cpu'); }, 220);
+    SE.cpuHit();
+    startNigiri(c, idx);
+    clearOrder();
+    setMood('cpu', 0.9);             /* 客はCPU側を向く */
+  }
+}
+
+/* ============================================================
+   10. 一席の進行
+   ============================================================ */
+function stepChef(chef, dt, isPlayer){
+  if(chef.stun > 0){
+    chef.stun -= dt;
+    if(chef.stun <= 0){
+      chef.stun = 0;
+      if(chef.item < 0 && chef.res.length){ startNigiri(chef, chef.res.shift()); }
+    }
+    return;
+  }
+  if(chef.item >= 0){
+    chef.busy += dt;
+    if(chef.busy >= chef.total){ finishNigiri(chef, isPlayer); }
+  }
+}
+
+function step(dt){
+  if(G.phase === 'count'){
+    G.count -= dt;
+    var n = Math.ceil(G.count);
+    var el = document.getElementById('count');
+    if(G.count > 0){
+      el.classList.add('on');
+      if(el.textContent !== String(n)){ el.textContent = String(n); SE.tick(); }
+    }else{
+      el.classList.remove('on');
+      G.phase = 'play';
+      SE.go();
+      spawnOrder();
+    }
+    return;
+  }
+  if(G.phase !== 'play') return;
+
+  G.t -= dt;
+  if(G.t <= 0){ G.t = 0; endSeki(); return; }
+
+  stepChef(G.p, dt, true);
+  stepChef(G.c, dt, false);
+
+  if(G.cur){
+    G.cur.wait -= dt;
+    if(G.cur.wait <= 0){ SE.leave(); clearOrder(); setMood('leave', 0.9); }   /* 客が帰る。誰の得点にもならない */
+    else cpuThink(dt);
+  }else{
+    G.gap -= dt;
+    if(G.gap <= 0) spawnOrder();
+  }
+}
+
+function endSeki(){
+  G.phase = 'over';
+  document.getElementById('menu').classList.add('locked');
+  var p = G.p.score, c = G.c.score;
+  var win = p > c, draw = p === c;
+
+  document.getElementById('resultTitle').textContent = draw ? '引 き 分 け' : (win ? '勝 ち' : '負 け');
+  document.getElementById('resultScore').innerHTML   = 'あなた <em>' + p + '</em> 貫 　 職人 ' + c + ' 貫';
+
+  var note = '', promo = '';
+  if(p > state.best){
+    state.best = p; save(KEY.best, String(p));
+    note = '自己最高を更新しました。';
+  }
+  if(win){
+    var nx = RANKS[state.rank].next;
+    if(nx){
+      state.rank = nx; save(KEY.rank, nx);
+      promo = '昇格 — ' + RANKS[nx].label;
+      note += (note ? ' ' : '') + '品書きの特上が増えます。';
+    }else{
+      promo = RANKS[state.rank].label + ' を維持';
+    }
+  }
+  document.getElementById('promo').textContent = promo;
+  document.getElementById('resultNote').textContent = note;
+  renderBest();
+  document.getElementById('veilResult').classList.add('on');
+  if(draw) SE.draw(); else if(win) SE.win(); else SE.lose();
+  setMood(draw ? 'idle' : (win ? 'joy' : 'cpu'), 3.2);   /* 負けたら客は職人の側を見ている */
+}
+
+/* ============================================================
+   11. 表示
+   ============================================================ */
+var $ = function(id){ return document.getElementById(id); };
+var bubble = $('bubble');
+function bubbleIn(){
+  bubble.classList.remove('gone');
+  $('order').textContent = board[G.cur.i].yomi;
+  $('orderTail').textContent = TIER[board[G.cur.i].tier].name + '　' + TIER[board[G.cur.i].tier].pt + '貫';
+}
+function bubbleOut(){ bubble.classList.add('gone'); }
+
+/* ── 客の表情 ──────────────────────────────
+   新しい状態は作らない。注文・待ち時間・お手つき・CPUの取得・提供・退店
+   という、すでに動いている値をそのまま顔へ流す。
+   mood.hold > 0 の間は『出来事の顔』、切れたら待ち時間から導いた顔へ戻る。*/
+var guestEl = $('guest');
+var mood = { name:'idle', hold:0 };
+
+function setMood(name, sec){ mood.name = name; mood.hold = sec || 0; }
+
+function moodNow(){
+  if(mood.hold > 0) return mood.name;                 /* 出来事の顔が優先 */
+  if(!G || G.phase !== 'play' || !G.cur) return 'idle';
+  var w = G.cur.wait / PATIENCE;                      /* 客の待ち時間＝そのまま機嫌 */
+  if(w > 0.62) return 'wait';
+  if(w > 0.34) return 'hurry';
+  return 'impatient';
+}
+function applyMood(){
+  var m = moodNow();
+  if(guestEl.getAttribute('data-mood') !== m) guestEl.setAttribute('data-mood', m);
+}
+
+function chefText(chef){
+  if(chef.stun > 0) return ['お手つき', '<b>' + chef.stun.toFixed(1) + '</b> 秒'];
+  if(chef.item >= 0){
+    var r = Math.max(0, chef.total - chef.busy).toFixed(1);
+    var res = chef.res.length ? ' <span class="res">＋予約' + chef.res.length + '</span>' : '';
+    return ['握り中', '<b>' + board[chef.item].kanji + '</b> あと ' + r + '秒' + res];
+  }
+  return ['手が空いている', '—'];
+}
+function render(){
+  if(!G) return;
+  $('pScore').textContent = G.p.score;
+  $('cScore').textContent = G.c.score;
+
+  var m = Math.floor(G.t / 60), s = Math.floor(G.t % 60);
+  $('clock').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  $('clock').classList.toggle('hurry', G.t <= 15);
+
+  ['p','c'].forEach(function(k){
+    var chef = G[k], tx = chefText(chef);
+    $(k + 'Who').textContent = tx[0];
+    $(k + 'State').innerHTML = tx[1];
+    var g = $(k + 'Gauge'), box = $(k + 'GaugeBox');
+    if(chef.stun > 0){
+      box.classList.add('stun');
+      g.style.width = (chef.stun / STUN * 100) + '%';
+    }else{
+      box.classList.remove('stun');
+      g.style.width = (chef.item >= 0 ? (chef.busy / chef.total * 100) : 0) + '%';
+    }
+  });
+
+  if(G.cur){
+    var w = Math.max(0, G.cur.wait / PATIENCE);
+    $('patienceBar').style.width = (w * 100) + '%';
+    $('patienceBar').classList.toggle('low', w < 0.34);
+  }else{
+    $('patienceBar').style.width = '0%';
+  }
+
+  if(G.next >= 0){
+    $('nextYomi').textContent = board[G.next].yomi;
+    var tg = $('nextTag'), t = board[G.next].tier;
+    tg.textContent = TIER[t].name;
+    tg.className = 'tg t' + t;
+  }
+}
+
+/* ============================================================
+   12. 演出レイヤー（canvas・RAF）
+   ============================================================ */
+var fx = $('fx'), ctx = fx.getContext('2d');
+var dpr = 1, fxW = 0, fxH = 0, particles = [];
 
 function resizeFx(){
-  dpr  = Math.min(window.devicePixelRatio || 1, 2.5);
+  dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   var r = fx.getBoundingClientRect();
   fxW = r.width; fxH = r.height;
   fx.width  = Math.max(1, Math.round(fxW * dpr));
@@ -383,19 +1083,19 @@ window.addEventListener('resize', resizeFx);
 window.addEventListener('orientationchange', function(){ setTimeout(resizeFx, 120); });
 resizeFx();
 
-/* 要素の位置から粒を撒く。座標は #app 基準に直す。 */
-function burst(el, color){
-  var host = document.getElementById('app').getBoundingClientRect();
-  var r = el.getBoundingClientRect();
-  var cx = r.left - host.left + r.width / 2;
-  var cy = r.top  - host.top  + r.height / 2;
-  for(var i = 0; i < 12; i++){
-    var a = Math.random() * Math.PI * 2;
-    var s = 40 + Math.random() * 90;
+function elCenter(el){
+  if(!el) return null;
+  var host = $('app').getBoundingClientRect(), r = el.getBoundingClientRect();
+  return { x:r.left - host.left + r.width / 2, y:r.top - host.top + r.height / 2 };
+}
+function burstAt(pos, color, n){
+  if(!pos) return;
+  for(var i = 0; i < (n || 12); i++){
+    var a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 100;
     particles.push({
-      x:cx, y:cy,
+      x:pos.x, y:pos.y,
       vx:Math.cos(a) * s, vy:Math.sin(a) * s - 40,
-      life:0.5 + Math.random() * 0.3, age:0,
+      life:.5 + Math.random() * .3, age:0,
       col:color, r:1.5 + Math.random() * 2
     });
   }
@@ -408,43 +1108,45 @@ function frame(now){
   lastT = now;
   if(state.paused) dt = 0;              /* 中断中は一切進めない */
 
+  if(mood.hold > 0) mood.hold -= dt;
+  if(G && !state.paused) step(dt);
+  render();
+  applyMood();
+
   ctx.clearRect(0, 0, fxW, fxH);
   for(var i = particles.length - 1; i >= 0; i--){
     var p = particles[i];
     p.age += dt;
     if(p.age >= p.life){ particles.splice(i, 1); continue; }
     p.vy += 420 * dt;
-    p.x  += p.vx * dt;
-    p.y  += p.vy * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt;
     ctx.globalAlpha = 1 - p.age / p.life;
     ctx.fillStyle = p.col;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
 }
 requestAnimationFrame(frame);
 
-/* ---- 五 中断 ------------------------------------------- */
-var veilPause = document.getElementById('veilPause');
-var btnPause  = document.getElementById('btnPause');
-
+/* ============================================================
+   13. 中断 / ミュート / 最高記録
+   ============================================================ */
+var veilPause = $('veilPause'), btnPause = $('btnPause');
 function setPaused(on){
+  if(!G || G.phase === 'over') on = false;
   state.paused = on;
   veilPause.classList.toggle('on', on);
   btnPause.textContent = on ? '▶ 再開' : '⏸ 中断';
 }
 bindPress(btnPause, function(){ setPaused(!state.paused); });
-bindPress(document.getElementById('btnResume'), function(){ setPaused(false); });
+bindPress($('btnResume'), function(){ setPaused(false); });
 
-/* 自動停止（visibilitychange）は明示ポーズとは別物。両方入れる。 */
+/* 自動停止（visibilitychange）は明示ポーズとは別物。両方入れる */
 document.addEventListener('visibilitychange', function(){
-  if(document.hidden && !state.paused) setPaused(true);
+  if(document.hidden && G && G.phase !== 'over' && !state.paused) setPaused(true);
 });
 
-/* ---- 五 ミュート --------------------------------------- */
-var btnMute = document.getElementById('btnMute');
+var btnMute = $('btnMute');
 function renderMute(){
   btnMute.textContent = state.muted ? '🔇 音' : '🔊 音';
   btnMute.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
@@ -454,30 +1156,58 @@ function toggleMute(){
   state.muted = !state.muted;
   save(KEY.mute, state.muted ? '1' : '0');
   renderMute();
-  if(!state.muted) beep(660, 0.09, 'sine', 0.14);
+  if(!state.muted) tone(660, .09, 'sine', .14);
 }
 bindPress(btnMute, toggleMute);
 renderMute();
 
-/* ---- 自己最高の表示 ------------------------------------ */
-var bestEl = document.getElementById('best');
-function renderBest(){ bestEl.textContent = '最高 ' + state.best + ' 貫'; }
+function renderBest(){ $('best').textContent = '最高 ' + state.best + ' 貫'; }
 renderBest();
 
-/* ---- キーボード ---------------------------------------- */
+/* ============================================================
+   14. 開始 / 再戦
+   ============================================================ */
+function beginSeki(){
+  buildBoard();
+  G = newGame();
+  G.next = rollNeta();
+  state.paused = false;
+  veilPause.classList.remove('on');
+  $('veilStart').classList.remove('on');
+  $('veilResult').classList.remove('on');
+  $('menu').classList.remove('locked');
+  $('order').textContent = '—';
+  $('orderTail').textContent = 'まもなく';
+  bubble.classList.add('gone');
+  particles.length = 0;
+  setMood('idle', 0);
+  render();
+}
+$('startRank').textContent = RANKS[state.rank].label;
+bindPress($('btnStart'), beginSeki);
+bindPress($('btnAgain'), function(){
+  $('startRank').textContent = RANKS[state.rank].label;
+  beginSeki();
+});
+
+/* ============================================================
+   15. キーボード
+   ============================================================ */
 window.addEventListener('keydown', function(e){
   var k = e.key.toLowerCase();
   if(k === 'escape' || k === 'p'){ e.preventDefault(); setPaused(!state.paused); return; }
   if(k === 'm'){ e.preventDefault(); unlock(); toggleMute(); return; }
+  if(k === 'enter' || k === ' '){
+    if($('veilStart').classList.contains('on')){ e.preventDefault(); unlock(); beginSeki(); return; }
+    if($('veilResult').classList.contains('on')){ e.preventDefault(); beginSeki(); return; }
+  }
   var i = KEYMAP.indexOf(k);
-  if(i >= 0){ e.preventDefault(); unlock(); pickFuda(i); }
+  if(i >= 0 && i < tiles.length){ e.preventDefault(); unlock(); pickFuda(i); }
 });
 
-/* ---- 起動時の表示（ゲームはまだ無い） ------------------ */
-document.getElementById('order').textContent = '操作盤';
-document.getElementById('orderTail').textContent = '札・中断・音が動くか確認してください';
-document.getElementById('clock').textContent = '--:--';
-console.log('[251] control panel ready / rank=' + state.rank + ' best=' + state.best + ' muted=' + state.muted);
+/* 起動時は品書きだけ組んでおく（一席はまだ始まらない） */
+buildBoard();
+console.log('[251] ready / rank=' + state.rank + ' best=' + state.best + ' muted=' + state.muted);
 </script>
 </body>
 </html>
