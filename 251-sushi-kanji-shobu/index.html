@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0C1C2C">
+<title>寿司漢字勝負</title>
+<style>
+/* ============================================================
+   251-sushi-kanji-shobu ── コントロールパネル（実装1手目）
+   鉄則4: ゲームロジックより先に操作/設定UIを動く状態にする
+   ============================================================ */
+
+:root{
+  --ai:#12283F; --ai-2:#1B3A5C; --ai-3:#0C1C2C;
+  --hinoki:#E3D3B0; --fuda:#F0E6D2; --sumi:#221C16;
+  --akami:#B03A2E; --kin:#C9A227; --usu:#9FB3C8;
+  --f-min:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"MS Mincho",serif;
+  --f-go:"Hiragino Sans","Yu Gothic",YuGothic,"Noto Sans JP",system-ui,sans-serif;
+}
+
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html,body{
+  margin:0; padding:0; height:100%;
+  overflow:hidden;
+  overscroll-behavior:none;
+  background:var(--ai-3);
+  color:#E8EEF4;
+  font-family:var(--f-go);
+  -webkit-text-size-adjust:100%;
+  -webkit-font-smoothing:antialiased;
+  touch-action:manipulation;          /* body は manipulation */
+  -webkit-user-select:none; user-select:none;
+}
+
+/* 演出用オーバーレイ（ネタが飛ぶ・金粉・お手つきの火花）
+   操作は DOM 側が受けるので、canvas は入力を一切拾わない */
+#fx{
+  position:absolute; inset:0; z-index:10;
+  pointer-events:none;
+  width:100%; height:100%;
+}
+
+#app{
+  position:fixed; inset:0;
+  display:flex; flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background:linear-gradient(#16334F,#0E2136);
+  max-width:560px; margin:0 auto;
+}
+
+/* ── 一 スコア帯 ─────────────────────────── */
+#score{
+  flex:0 0 auto; padding:10px 12px 9px;
+  background:linear-gradient(#1B3A5C,#16314E);
+  border-bottom:1px solid rgba(201,162,39,.35);
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:11px; letter-spacing:.04em;
+}
+.side{ display:flex; align-items:baseline; gap:5px; color:var(--hinoki); }
+.side .n{ font-family:var(--f-min); font-size:19px; color:var(--fuda); font-variant-numeric:tabular-nums; }
+.side.me .n{ color:var(--kin); }
+#clock{ font-family:var(--f-min); font-size:17px; color:var(--fuda); font-variant-numeric:tabular-nums; letter-spacing:.06em; }
+
+/* ── 二 客席 ──────────────────────────────── */
+#guest{
+  flex:0 0 26%; position:relative;
+  display:flex; align-items:center; justify-content:center; padding:8px 14px;
+  background:linear-gradient(#0E2136 0%,rgba(14,33,54,0) 60%),
+             repeating-linear-gradient(90deg,#132C46 0 16px,#16324F 16px 32px);
+}
+#bubble{
+  background:var(--fuda); color:var(--sumi);
+  border-radius:12px; padding:10px 16px; text-align:center;
+  box-shadow:0 5px 16px rgba(0,0,0,.4);
+  position:relative;
+}
+#bubble::after{
+  content:""; position:absolute; bottom:-8px; left:50%; transform:translateX(-50%);
+  border:8px solid transparent; border-top-color:var(--fuda); border-bottom:0;
+}
+#order{ display:block; font-weight:700; font-size:22px; letter-spacing:.14em; line-height:1.25; }
+#orderTail{ font-size:10px; color:#6B5E4E; letter-spacing:.06em; }
+.head{ position:absolute; bottom:0; width:30px; height:22px; border-radius:15px 15px 0 0; background:#0A1826; }
+.head.a{ left:20%; } .head.b{ right:20%; height:17px; }
+
+/* ── 三 カウンター（対決ライン） ─────────── */
+#counter{
+  flex:0 0 auto;
+  background:linear-gradient(#EAD9B4,#C6AE82);
+  border-top:2px solid #F3E6C8;
+  display:grid; grid-template-columns:1fr 1px 1fr;
+  padding:8px 10px 9px;
+}
+.chef{ display:flex; flex-direction:column; gap:5px; padding:0 8px; min-width:0; }
+.chef .who{
+  font-size:9px; letter-spacing:.14em; color:#6E5B3C; font-weight:700;
+  display:flex; justify-content:space-between; align-items:baseline; gap:6px;
+}
+.chef .who b{ font-family:var(--f-min); font-size:13px; color:#3E3220; }
+.gauge{ height:8px; background:#A8906A; border-radius:1px; overflow:hidden; }
+.gauge i{ display:block; height:100%; width:0; }
+.chef.me .gauge i{ background:linear-gradient(90deg,#C9A227,#E8C447); }
+.chef.cpu .gauge i{ background:linear-gradient(90deg,#7C8FA3,#A9BBCC); }
+.state{ font-size:9px; color:#5C4B30; letter-spacing:.04em; min-height:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#vline{ background:rgba(90,72,44,.4); }
+
+/* ── 四 品書き（親指圏・主戦場） ───────────── */
+#menu{
+  flex:1 1 auto; min-height:0;
+  padding:12px 10px;
+  background:linear-gradient(#0D1F32,#0A1828);
+  display:flex; flex-direction:column; gap:8px;
+  touch-action:none;                  /* 格子は none（2段構え） */
+}
+#menuLabel{ font-size:9px; letter-spacing:.26em; color:var(--usu); text-align:center; }
+#grid{
+  flex:1; display:grid; gap:6px;
+  grid-template-columns:repeat(4,1fr);
+  grid-auto-rows:1fr;
+}
+.fuda{
+  min-height:56px;                    /* 鉄則: 最小高56px */
+  border:0; padding:0; margin:0;
+  background:linear-gradient(#F4EBD8,#E2D3B4);
+  border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--f-min); color:var(--sumi);
+  font-size:26px; line-height:1; letter-spacing:.02em;
+  box-shadow:0 3px 0 rgba(0,0,0,.4), inset 0 0 0 1px rgba(120,96,56,.3);
+  transition:transform .04s linear;
+  cursor:pointer;
+}
+.fuda.w2{ font-size:17px; }
+.fuda.press{ transform:translateY(3px); box-shadow:0 0 0 rgba(0,0,0,.4), inset 0 0 0 1px rgba(120,96,56,.3); }
+.fuda.hit{ background:linear-gradient(#F6E6A8,#E3C75E); box-shadow:0 0 0 2px var(--kin),0 3px 0 rgba(0,0,0,.4); }
+.fuda.miss{ background:linear-gradient(#D8A79F,#C08379); color:#4A1F19; box-shadow:0 0 0 2px var(--akami),0 3px 0 rgba(0,0,0,.4); }
+.fuda:focus-visible{ outline:3px solid var(--kin); outline-offset:2px; }
+
+/* ── 五 中断・ミュート帯 ───────────────────── */
+#bar{
+  flex:0 0 auto; padding:9px 12px 12px;
+  background:#0A1828; border-top:1px solid rgba(159,179,200,.18);
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.sysbtn{
+  font-family:var(--f-go); font-size:12px; letter-spacing:.08em;
+  color:var(--usu); background:transparent;
+  border:1px solid rgba(159,179,200,.35); border-radius:3px;
+  padding:9px 16px; min-height:40px; cursor:pointer;
+  transition:transform .04s linear;
+}
+.sysbtn.press{ transform:translateY(2px); }
+.sysbtn[aria-pressed="true"]{ color:var(--kin); border-color:rgba(201,162,39,.6); }
+.sysbtn:focus-visible{ outline:3px solid var(--kin); outline-offset:2px; }
+#best{ font-size:11px; color:#6E8399; letter-spacing:.06em; font-variant-numeric:tabular-nums; }
+
+/* ── 覆い（中断・開始・決着） ───────────────── */
+.veil{
+  position:absolute; inset:0; z-index:20;
+  display:none; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  background:rgba(8,20,34,.9); padding:28px; text-align:center;
+}
+.veil.on{ display:flex; }
+.veil h2{ font-family:var(--f-min); font-size:26px; margin:0; color:var(--fuda); letter-spacing:.1em; }
+.veil p{ margin:0; font-size:13px; color:var(--usu); line-height:1.9; max-width:30ch; }
+.bigbtn{
+  font-family:var(--f-min); font-size:17px; letter-spacing:.14em;
+  color:var(--sumi); background:linear-gradient(#F4EBD8,#E2D3B4);
+  border:0; border-radius:3px; padding:14px 34px; min-height:52px; cursor:pointer;
+  box-shadow:0 3px 0 rgba(0,0,0,.45);
+}
+.bigbtn.press{ transform:translateY(3px); box-shadow:0 0 0 rgba(0,0,0,.45); }
+.bigbtn:focus-visible{ outline:3px solid var(--kin); outline-offset:3px; }
+
+@media (prefers-reduced-motion:reduce){
+  *{ transition:none !important; animation:none !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <header id="score">
+    <div class="side me"><span>あなた</span><span class="n" id="pScore">0</span><span>貫</span></div>
+    <div id="clock">--:--</div>
+    <div class="side cpu"><span class="n" id="cScore">0</span><span>貫</span><span>職人</span></div>
+  </header>
+
+  <section id="guest">
+    <div class="head a"></div>
+    <div class="head b"></div>
+    <div id="bubble">
+      <span id="order">ためし</span>
+      <span id="orderTail">操作盤の確認中</span>
+    </div>
+  </section>
+
+  <div id="counter">
+    <div class="chef me">
+      <span class="who"><b>あなた</b><span id="pWho">手が空いている</span></span>
+      <div class="gauge"><i id="pGauge"></i></div>
+      <span class="state" id="pState">—</span>
+    </div>
+    <div id="vline"></div>
+    <div class="chef cpu">
+      <span class="who"><b>CPU</b><span id="cWho">手が空いている</span></span>
+      <div class="gauge"><i id="cGauge"></i></div>
+      <span class="state" id="cState">—</span>
+    </div>
+  </div>
+
+  <main id="menu">
+    <span id="menuLabel">お 品 書 き</span>
+    <div id="grid" role="group" aria-label="品書き"></div>
+  </main>
+
+  <footer id="bar">
+    <button class="sysbtn" id="btnPause" aria-label="中断">⏸ 中断</button>
+    <span id="best">最高 0 貫</span>
+    <button class="sysbtn" id="btnMute" aria-label="音を消す" aria-pressed="false">🔊 音</button>
+  </footer>
+
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <div class="veil" id="veilPause">
+    <h2>中 断</h2>
+    <p>時間・握り・CPU のすべてが止まっています。</p>
+    <button class="bigbtn" id="btnResume">再 開</button>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   コントロールパネル（実装1手目）
+   ここにはゲームロジックを書かない。操作系と設定の骨組みだけ。
+   ============================================================ */
+
+/* ---- iOS: ダブルタップ拡大の多重防止 -------------------- */
+document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
+document.addEventListener('gesturechange', function(e){ e.preventDefault(); }, {passive:false});
+var lastTouchEnd = 0;
+document.addEventListener('touchend', function(e){
+  var now = Date.now();
+  if(now - lastTouchEnd < 350){ e.preventDefault(); }
+  lastTouchEnd = now;
+}, {passive:false});
+document.addEventListener('dblclick', function(e){ e.preventDefault(); }, {passive:false});
+document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+/* ---- 保存（tg.251.* 接頭辞は必須。他ゲームと衝突する） --- */
+var KEY = { mute:'tg.251.mute', best:'tg.251.best', rank:'tg.251.rank' };
+function load(k, d){
+  try{ var v = localStorage.getItem(k); return v === null ? d : v; }
+  catch(e){ return d; }                       // プライベートブラウズでも落とさない
+}
+function save(k, v){
+  try{ localStorage.setItem(k, v); }catch(e){}
+}
+
+var state = {
+  muted : load(KEY.mute,'0') === '1',
+  best  : parseInt(load(KEY.best,'0'), 10) || 0,
+  rank  : load(KEY.rank,'ichininmae'),
+  paused: false
+};
+
+/* ---- 音（WebAudio 合成のみ。ファイルは持たない） -------- */
+var AC = null;
+function audioInit(){
+  if(AC) return;
+  try{
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if(Ctx) AC = new Ctx();
+  }catch(e){ AC = null; }                     // 音が無くてもゲームは止めない
+}
+function unlock(){
+  audioInit();
+  if(AC && AC.state === 'suspended'){ AC.resume(); }
+  if(AC){                                     // 無音バッファでiOSを解錠
+    try{
+      var b = AC.createBuffer(1,1,22050);
+      var s = AC.createBufferSource();
+      s.buffer = b; s.connect(AC.destination); s.start(0);
+    }catch(e){}
+  }
+}
+function beep(freq, dur, type, vol){
+  if(state.muted) return;
+  audioInit();
+  if(!AC) return;
+  try{
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, AC.currentTime);
+    g.gain.setValueAtTime(vol === undefined ? 0.16 : vol, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + dur);
+  }catch(e){}
+}
+
+/* ---- 押下の共通処理（Pointer Events に統一） -------------
+   touchstart + mousedown の二重バインドはしない。
+   setPointerCapture を必ず入れる（押しっぱなしバグの根因）。 */
+function bindPress(el, onFire){
+  var armed = false;
+  el.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    armed = true;
+    el.classList.add('press');
+    try{ el.setPointerCapture(e.pointerId); }catch(err){}
+    unlock();                                 // 初回タッチで必ず解錠を通す
+  }, {passive:false});
+
+  el.addEventListener('pointerup', function(e){
+    e.preventDefault();
+    el.classList.remove('press');
+    try{ el.releasePointerCapture(e.pointerId); }catch(err){}
+    if(armed){ armed = false; onFire(el); }   // 指が外れていても capture で拾える
+  }, {passive:false});
+
+  el.addEventListener('pointercancel', function(){
+    armed = false; el.classList.remove('press');
+  });
+}
+
+/* ---- 四 品書き 16枚（4×4・配置は一席の間ずっと動かさない） */
+var BOARD = [
+  '鮭','鯖','鯛','蛸',
+  '海老','玉子','鮪','鰹',
+  '鯵','鮑','烏賊','雲丹',
+  '魬','鮗','鱚','鰈'
+];
+/* 4×4 に対応するキーボード */
+var KEYMAP = ['1','2','3','4','q','w','e','r','a','s','d','f','z','x','c','v'];
+
+var grid = document.getElementById('grid');
+var tiles = [];
+BOARD.forEach(function(kanji, i){
+  var b = document.createElement('button');
+  b.className = 'fuda' + (kanji.length > 1 ? ' w2' : '');
+  b.textContent = kanji;
+  b.setAttribute('aria-label', kanji + 'の札');
+  b.dataset.index = String(i);
+  bindPress(b, function(){ pickFuda(i); });
+  grid.appendChild(b);
+  tiles.push(b);
+});
+
+/* 1手目では「押したら光って鳴って粒が飛ぶ」ところまで。判定はまだ無い。 */
+function pickFuda(i){
+  if(state.paused) return;
+  var t = tiles[i];
+  t.classList.add('hit');
+  beep(880, 0.08, 'triangle', 0.12);
+  burst(t, '#E8C447');
+  setTimeout(function(){ t.classList.remove('hit'); }, 160);
+}
+
+/* ---- 演出レイヤー（canvas・RAF） -----------------------
+   握りゲージと残り時間も最終的にこのループで進める。 */
+var fx  = document.getElementById('fx');
+var ctx = fx.getContext('2d');
+var dpr = 1, fxW = 0, fxH = 0;
+var particles = [];
+
+function resizeFx(){
+  dpr  = Math.min(window.devicePixelRatio || 1, 2.5);
+  var r = fx.getBoundingClientRect();
+  fxW = r.width; fxH = r.height;
+  fx.width  = Math.max(1, Math.round(fxW * dpr));
+  fx.height = Math.max(1, Math.round(fxH * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeFx);
+window.addEventListener('orientationchange', function(){ setTimeout(resizeFx, 120); });
+resizeFx();
+
+/* 要素の位置から粒を撒く。座標は #app 基準に直す。 */
+function burst(el, color){
+  var host = document.getElementById('app').getBoundingClientRect();
+  var r = el.getBoundingClientRect();
+  var cx = r.left - host.left + r.width / 2;
+  var cy = r.top  - host.top  + r.height / 2;
+  for(var i = 0; i < 12; i++){
+    var a = Math.random() * Math.PI * 2;
+    var s = 40 + Math.random() * 90;
+    particles.push({
+      x:cx, y:cy,
+      vx:Math.cos(a) * s, vy:Math.sin(a) * s - 40,
+      life:0.5 + Math.random() * 0.3, age:0,
+      col:color, r:1.5 + Math.random() * 2
+    });
+  }
+}
+
+var lastT = 0;
+function frame(now){
+  requestAnimationFrame(frame);
+  var dt = lastT ? Math.min((now - lastT) / 1000, 0.05) : 0;
+  lastT = now;
+  if(state.paused) dt = 0;              /* 中断中は一切進めない */
+
+  ctx.clearRect(0, 0, fxW, fxH);
+  for(var i = particles.length - 1; i >= 0; i--){
+    var p = particles[i];
+    p.age += dt;
+    if(p.age >= p.life){ particles.splice(i, 1); continue; }
+    p.vy += 420 * dt;
+    p.x  += p.vx * dt;
+    p.y  += p.vy * dt;
+    ctx.globalAlpha = 1 - p.age / p.life;
+    ctx.fillStyle = p.col;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+requestAnimationFrame(frame);
+
+/* ---- 五 中断 ------------------------------------------- */
+var veilPause = document.getElementById('veilPause');
+var btnPause  = document.getElementById('btnPause');
+
+function setPaused(on){
+  state.paused = on;
+  veilPause.classList.toggle('on', on);
+  btnPause.textContent = on ? '▶ 再開' : '⏸ 中断';
+}
+bindPress(btnPause, function(){ setPaused(!state.paused); });
+bindPress(document.getElementById('btnResume'), function(){ setPaused(false); });
+
+/* 自動停止（visibilitychange）は明示ポーズとは別物。両方入れる。 */
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden && !state.paused) setPaused(true);
+});
+
+/* ---- 五 ミュート --------------------------------------- */
+var btnMute = document.getElementById('btnMute');
+function renderMute(){
+  btnMute.textContent = state.muted ? '🔇 音' : '🔊 音';
+  btnMute.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
+  btnMute.setAttribute('aria-label', state.muted ? '音を出す' : '音を消す');
+}
+function toggleMute(){
+  state.muted = !state.muted;
+  save(KEY.mute, state.muted ? '1' : '0');
+  renderMute();
+  if(!state.muted) beep(660, 0.09, 'sine', 0.14);
+}
+bindPress(btnMute, toggleMute);
+renderMute();
+
+/* ---- 自己最高の表示 ------------------------------------ */
+var bestEl = document.getElementById('best');
+function renderBest(){ bestEl.textContent = '最高 ' + state.best + ' 貫'; }
+renderBest();
+
+/* ---- キーボード ---------------------------------------- */
+window.addEventListener('keydown', function(e){
+  var k = e.key.toLowerCase();
+  if(k === 'escape' || k === 'p'){ e.preventDefault(); setPaused(!state.paused); return; }
+  if(k === 'm'){ e.preventDefault(); unlock(); toggleMute(); return; }
+  var i = KEYMAP.indexOf(k);
+  if(i >= 0){ e.preventDefault(); unlock(); pickFuda(i); }
+});
+
+/* ---- 起動時の表示（ゲームはまだ無い） ------------------ */
+document.getElementById('order').textContent = '操作盤';
+document.getElementById('orderTail').textContent = '札・中断・音が動くか確認してください';
+document.getElementById('clock').textContent = '--:--';
+console.log('[251] control panel ready / rank=' + state.rank + ' best=' + state.best + ' muted=' + state.muted);
+</script>
+</body>
+</html>
