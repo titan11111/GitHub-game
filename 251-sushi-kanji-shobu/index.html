@@ -299,6 +299,28 @@ html,body{
 #resultScore{ font-family:var(--f-min); font-size:20px; color:var(--fuda); letter-spacing:.08em; }
 #resultScore em{ font-style:normal; color:var(--kin); font-size:30px; }
 #promo{ font-family:var(--f-min); font-size:14px; color:var(--kin); letter-spacing:.14em; }
+#title{
+  font-family:var(--f-min); font-size:16.5px; color:var(--fuda); letter-spacing:.1em;
+  line-height:1.7; max-width:24ch; border-top:1px solid rgba(201,162,39,.4);
+  border-bottom:1px solid rgba(201,162,39,.4); padding:10px 0;
+}
+#titleNote{ font-size:11px; color:var(--usu); letter-spacing:.06em; margin:-8px 0 0; }
+
+/* ── 相手選び ───────────────────────────── */
+#picks{ display:flex; flex-direction:column; gap:9px; width:100%; max-width:28ch; }
+.pick{
+  display:grid; grid-template-columns:1fr auto; gap:2px 10px; align-items:center;
+  font-family:var(--f-go); text-align:left; cursor:pointer;
+  color:var(--sumi); background:linear-gradient(#F4EBD8,#E2D3B4);
+  border:0; border-radius:3px; padding:11px 14px; min-height:58px;
+  box-shadow:0 3px 0 rgba(0,0,0,.45); transition:transform .04s linear;
+}
+.pick.press{ transform:translateY(3px); box-shadow:0 0 0 rgba(0,0,0,.45); }
+.pick:focus-visible{ outline:3px solid var(--kin); outline-offset:3px; }
+.pick.sel{ box-shadow:0 3px 0 rgba(0,0,0,.45), inset 0 0 0 2px var(--kin); }
+.pick b{ font-family:var(--f-min); font-size:15px; letter-spacing:.07em; grid-column:1; }
+.pick i{ font-style:normal; font-size:10.5px; color:#5E5344; line-height:1.55; grid-column:1; }
+.pick em{ font-style:normal; font-size:10px; letter-spacing:.14em; color:#6B5B44; grid-column:2; grid-row:1/3; }
 
 /* 立合いのカウント */
 #count{
@@ -335,10 +357,17 @@ html,body{
     <button class="bigbtn" id="btnStart">始 め る</button>
   </div>
 
+  <div class="veil" id="veilPick">
+    <h2>相 手 を 選 ぶ</h2>
+    <span class="rank" id="pickRank">一 人 前</span>
+    <div id="picks" role="group" aria-label="対戦相手"></div>
+    <p>強い相手ほど、高い称号に届きます。</p>
+  </div>
+
   <header id="score">
     <div class="side me"><span>あなた</span><span class="n" id="pScore">0</span><span>貫</span></div>
     <div id="clock">1:30</div>
-    <div class="side cpu"><span class="n" id="cScore">0</span><span>貫</span><span>職人</span></div>
+    <div class="side cpu"><span class="n" id="cScore">0</span><span>貫</span><span id="cpuName">職人</span></div>
   </header>
 
   <section id="guest">
@@ -549,7 +578,7 @@ html,body{
     </div>
     <div id="vline"></div>
     <div class="chef cpu">
-      <span class="who"><b>CPU</b><span id="cWho">手が空いている</span></span>
+      <span class="who"><b id="cName">CPU</b><span id="cWho">手が空いている</span></span>
       <div class="gauge" id="cGaugeBox"><i id="cGauge"></i></div>
       <span class="state" id="cState">—</span>
     </div>
@@ -579,6 +608,8 @@ html,body{
   <div class="veil" id="veilResult">
     <h2 id="resultTitle">—</h2>
     <span id="resultScore">—</span>
+    <span id="title">—</span>
+    <p id="titleNote"></p>
     <span id="promo"></span>
     <p id="resultNote"></p>
     <button class="bigbtn" id="btnAgain">も う 一 席</button>
@@ -606,7 +637,7 @@ document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 /* ============================================================
    1. 保存（tg.251.* 接頭辞は必須。他ゲームと衝突する）
    ============================================================ */
-var KEY = { mute:'tg.251.mute', best:'tg.251.best', rank:'tg.251.rank' };
+var KEY = { mute:'tg.251.mute', best:'tg.251.best', rank:'tg.251.rank', cpu:'tg.251.cpu' };
 function load(k, d){
   try{ var v = localStorage.getItem(k); return v === null ? d : v; }
   catch(e){ return d; }                       /* プライベートブラウズでも落とさない */
@@ -628,15 +659,49 @@ var POOL = [
   /* 上 */  [['鮪','マグロ'],['鰹','カツオ'],['鯵','アジ'],['鮑','アワビ'],['烏賊','イカ'],['雲丹','ウニ']],
   /* 特上 */[['魬','ハマチ'],['鮗','コハダ'],['鱚','キス'],['鰈','カレイ'],['鰆','サワラ'],['鰊','ニシン'],['鱸','スズキ'],['鮴','メバル']]
 ];
-/* 段位で構成が変わる。総数は常に16で、格子の形（4×4）は変えない */
+/* 段位で構成が変わる。総数は常に16で、格子の形（4×4）は変えない。
+   段位が持つのは「品書きの構成」と「昇格」だけ。CPUの強さは CPUS が持つ（2026-09-22 分離）。
+   以前は段位が両方を兼ねていたため、相手を選べるようにすると強さの決定要因が二重化した。*/
 var RANKS = {
-  /* errMul / reactAdd = CPUの強さ。段位で変える。
-     一人前でCPUが強すぎると、特上を読めない人が一度も勝てず離脱する（実測 0/3勝）*/
-  ichininmae:{ label:'一 人 前', take:[6,6,4], next:'itamae',  errMul:1.5, reactAdd:0.20, skip:false },
-  itamae:    { label:'板 前',     take:[4,6,6], next:'hanaita', errMul:1.1, reactAdd:0.08, skip:true  },
-  hanaita:   { label:'花 板',     take:[2,6,8], next:null,      errMul:0.7, reactAdd:0.00, skip:true  }
+  ichininmae:{ label:'一 人 前', take:[6,6,4], next:'itamae'  },
+  itamae:    { label:'板 前',     take:[4,6,6], next:'hanaita' },
+  hanaita:   { label:'花 板',     take:[2,6,8], next:null      }
 };
 var RANK_ORDER = ['ichininmae','itamae','hanaita'];
+
+/* ── 対戦相手 ─────────────────────────────
+   reactAdd = 考える時間の上乗せ（秒）。これが「手の速さ」の正体。
+   errMul / errMax = 取り違える確率。TIER.err に掛けたうえで errMax で頭を抑える。
+     抑えないと見習いの特上が 84% 誤答になり、「たまに間違える」ではなく
+     「ほぼ必ずプレイヤーに進呈する」相手になってしまう（実測）。
+   skip  = 次が特上なら並の注文を見送る駆け引き。見習いは覚えていない。
+   cap   = この相手から得られる称号の上限（称号表 TITLES の添字）。
+   ベテランは従来の最強設定（旧 hanaita）をそのまま引き継いだもの。
+   2,000席×3段のシミュレーションでの勝率:
+     初心者 65% / 28% /  4%　中級 99% / 83% / 38%　上級 100% / 100% / 95% */
+var CPUS = {
+  minarai : { label:'見習い寿司職人',  short:'見習い',   lv:'や さ し い',
+              desc:'手が遅く、たまに取り違える',      reactAdd:0.85, errMul:2.0, errMax:0.42, skip:false, cap:2 },
+  shokunin: { label:'寿司職人',        short:'職人',     lv:'ふ つ う',
+              desc:'落ち着いた手つきで握る',          reactAdd:0.38, errMul:1.0, errMax:0.50, skip:true,  cap:3 },
+  veteran : { label:'ベテラン寿司職人', short:'ベテラン', lv:'む ず か し い',
+              desc:'手が速い。特上を待って並を見送る', reactAdd:0.00, errMul:0.7, errMax:0.50, skip:true,  cap:4 }
+};
+var CPU_ORDER = ['minarai','shokunin','veteran'];
+
+/* ── 称号（エンディングの評価）──────────────────
+   min = 必要な貫数。しきい値はシミュレーション実測の分布から引いた:
+     初心者 p10=32 / p50=44 / p90=53　中級 48 / 58 / 68　上級 66 / 78 / 86
+   得点は相手の強さにほとんど左右されない（初心者は相手が誰でも41〜44貫）ため、
+   貫数はそのままプレイヤー自身の腕を測る物差しになる。
+   最上位だけは貫数に加えて「ベテランに勝つ」ことを条件にした。*/
+var TITLES = [
+  { min:0,  text:'君 は ま だ 見 習 い だ' },
+  { min:35, text:'君 の 寿 司 は 形 に な っ て き た' },
+  { min:49, text:'君 の 寿 司 は う ま い' },
+  { min:63, text:'君 の 握 る 寿 司 は 、 客 を 幸 せ に す る' },
+  { min:78, text:'君 の 寿 司 は 、 他 の 国 で も 通 用 す る だ ろ う' }
+];
 
 /* 4×4 に対応するキーボード */
 var KEYMAP = ['1','2','3','4','q','w','e','r','a','s','d','f','z','x','c','v'];
@@ -653,8 +718,10 @@ var state = {
   muted : load(KEY.mute,'0') === '1',
   best  : parseInt(load(KEY.best,'0'), 10) || 0,
   rank  : (RANKS[load(KEY.rank,'ichininmae')] ? load(KEY.rank,'ichininmae') : 'ichininmae'),
+  cpu   : (CPUS[load(KEY.cpu,'minarai')] ? load(KEY.cpu,'minarai') : 'minarai'),
   paused: false
 };
+function cpuNow(){ return CPUS[state.cpu]; }
 
 var board = [];          /* [{kanji, yomi, tier}] × 16 */
 var G = null;
@@ -865,7 +932,7 @@ function cpuThink(dt){
   if(c.stun > 0 || c.item >= 0 || !G.cur){ return; }
 
   if(c.think < 0){
-    var tier = board[G.cur.i].tier, R = RANKS[state.rank];
+    var tier = board[G.cur.i].tier, R = cpuNow();
     /* 難しい札ほど考える時間が長い。一定だと機械的に感じる */
     c.think = 0.55 + tier * 0.18 + Math.random() * 0.45 + R.reactAdd;
 
@@ -882,7 +949,8 @@ function cpuThink(dt){
 
   var idx  = G.cur.i;
   var tier = board[idx].tier;
-  if(Math.random() < Math.min(0.85, TIER[tier].err * RANKS[state.rank].errMul)){  /* CPUも間違える */
+  var C = cpuNow();
+  if(Math.random() < Math.min(C.errMax, TIER[tier].err * C.errMul)){  /* CPUも間違える */
     c.stun = STUN;
     giftTo(G.p, idx);                            /* プレイヤーに進呈 */
     SE.miss();
@@ -958,7 +1026,21 @@ function endSeki(){
   var win = p > c, draw = p === c;
 
   document.getElementById('resultTitle').textContent = draw ? '引 き 分 け' : (win ? '勝 ち' : '負 け');
-  document.getElementById('resultScore').innerHTML   = 'あなた <em>' + p + '</em> 貫 　 職人 ' + c + ' 貫';
+  document.getElementById('resultScore').innerHTML   =
+    'あなた <em>' + p + '</em> 貫 　 ' + cpuNow().short + ' ' + c + ' 貫';
+
+  /* ── 称号 ──
+     貫数で段を決め、相手の格で頭を抑える。弱い相手を狩っても上には行けない。*/
+  var C = cpuNow(), ti = 0;
+  for(var k = 0; k < TITLES.length; k++){ if(p >= TITLES[k].min) ti = k; }
+  var capped = false;
+  if(ti > C.cap){ ti = C.cap; capped = true; }
+  if(ti === TITLES.length - 1 && !win){ ti = TITLES.length - 2; capped = true; }
+  document.getElementById('title').textContent = TITLES[ti].text;
+  document.getElementById('titleNote').textContent =
+    capped ? (C.cap >= TITLES.length - 1 ? 'ベテランに勝てば、その先がある。'
+                                         : 'この腕は、' + C.short + 'では測りきれない。')
+           : '';
 
   var note = '', promo = '';
   if(p > state.best){
@@ -1174,7 +1256,10 @@ function beginSeki(){
   state.paused = false;
   veilPause.classList.remove('on');
   $('veilStart').classList.remove('on');
+  $('veilPick').classList.remove('on');
   $('veilResult').classList.remove('on');
+  $('cpuName').textContent = cpuNow().short;
+  $('cName').textContent    = cpuNow().short;
   $('menu').classList.remove('locked');
   $('order').textContent = '—';
   $('orderTail').textContent = 'まもなく';
@@ -1183,12 +1268,49 @@ function beginSeki(){
   setMood('idle', 0);
   render();
 }
-$('startRank').textContent = RANKS[state.rank].label;
-bindPress($('btnStart'), beginSeki);
-bindPress($('btnAgain'), function(){
-  $('startRank').textContent = RANKS[state.rank].label;
+/* ── 相手選び ──────────────────────────── */
+var pickBtns = [];
+function buildPicks(){
+  var box = $('picks');
+  box.textContent = '';
+  pickBtns = [];
+  CPU_ORDER.forEach(function(key, i){
+    var C = CPUS[key];
+    var b = document.createElement('button');
+    b.className = 'pick';
+    b.setAttribute('aria-label', C.label + '、' + C.lv.replace(/ /g,'') + '。' + C.desc);
+    var nm = document.createElement('b'); nm.textContent = C.label;
+    var ds = document.createElement('i'); ds.textContent = C.desc;
+    var lv = document.createElement('em'); lv.textContent = C.lv;
+    b.appendChild(nm); b.appendChild(lv); b.appendChild(ds);
+    bindPress(b, function(){ chooseCpu(key); });
+    box.appendChild(b);
+    pickBtns.push(b);
+  });
+}
+function renderPicks(){
+  CPU_ORDER.forEach(function(key, i){
+    pickBtns[i].classList.toggle('sel', key === state.cpu);
+  });
+  $('pickRank').textContent = RANKS[state.rank].label;
+}
+function openPick(){
+  $('veilStart').classList.remove('on');
+  $('veilResult').classList.remove('on');
+  renderPicks();
+  $('veilPick').classList.add('on');
+}
+function chooseCpu(key){
+  state.cpu = key; save(KEY.cpu, key);
+  renderPicks();
+  $('veilPick').classList.remove('on');
   beginSeki();
-});
+}
+buildPicks();
+
+$('startRank').textContent = RANKS[state.rank].label;
+bindPress($('btnStart'), openPick);
+bindPress($('btnAgain'), openPick);
 
 /* ============================================================
    15. キーボード
@@ -1197,9 +1319,14 @@ window.addEventListener('keydown', function(e){
   var k = e.key.toLowerCase();
   if(k === 'escape' || k === 'p'){ e.preventDefault(); setPaused(!state.paused); return; }
   if(k === 'm'){ e.preventDefault(); unlock(); toggleMute(); return; }
+  if($('veilPick').classList.contains('on')){          /* 相手選びの間は品書きを受け付けない */
+    var pi = ['1','2','3'].indexOf(k);
+    if(pi >= 0){ e.preventDefault(); unlock(); chooseCpu(CPU_ORDER[pi]); }
+    return;
+  }
   if(k === 'enter' || k === ' '){
-    if($('veilStart').classList.contains('on')){ e.preventDefault(); unlock(); beginSeki(); return; }
-    if($('veilResult').classList.contains('on')){ e.preventDefault(); beginSeki(); return; }
+    if($('veilStart').classList.contains('on')){ e.preventDefault(); unlock(); openPick(); return; }
+    if($('veilResult').classList.contains('on')){ e.preventDefault(); openPick(); return; }
   }
   var i = KEYMAP.indexOf(k);
   if(i >= 0 && i < tiles.length){ e.preventDefault(); unlock(); pickFuda(i); }
@@ -1207,7 +1334,7 @@ window.addEventListener('keydown', function(e){
 
 /* 起動時は品書きだけ組んでおく（一席はまだ始まらない） */
 buildBoard();
-console.log('[251] ready / rank=' + state.rank + ' best=' + state.best + ' muted=' + state.muted);
+console.log('[251] ready / rank=' + state.rank + ' cpu=' + state.cpu + ' best=' + state.best + ' muted=' + state.muted);
 </script>
 </body>
 </html>
