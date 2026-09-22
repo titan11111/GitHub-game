@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#140e0b">
+  <title>窓辺の猫</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-shell">
+    <div id="tools">
+      <button type="button" id="btn-mute" class="game-btn icon-btn" aria-label="ミュート">音</button>
+      <button type="button" id="btn-pause" class="game-btn icon-btn" aria-label="ポーズ">停</button>
+    </div>
+    <div id="game-stage">
+      <div id="screen-wrap">
+        <canvas id="view"></canvas>
+        <div id="hud">
+          <p id="score-line">0</p>
+          <p id="meta-line"></p>
+        </div>
+        <div id="timer" aria-hidden="true"><span id="timer-fill"></span></div>
+        <p id="callout"></p>
+      </div>
+      <div id="overlay">
+        <div class="card">
+          <p class="day">DAY 077</p>
+          <h1 id="ov-title">窓辺の猫</h1>
+          <p id="ov-body"></p>
+          <p id="ov-list"></p>
+          <p id="ov-best"></p>
+          <button type="button" id="btn-action" class="game-btn">はじめる</button>
+        </div>
+      </div>
+    </div>
+    <div id="control-deck" aria-label="種類を選ぶ"></div>
+  </div>
+  <script src="three.min.js"></script>
+  <script src="world.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

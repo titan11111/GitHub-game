@@ -1,0 +1,250 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+}
+
+html, body {
+  position: fixed;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #140e0b;
+  color: #f6efe4;
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
+  touch-action: manipulation;
+}
+
+#game-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+}
+
+#game-stage {
+  flex: 0 0 75%;
+  height: 75%;
+  min-height: 0;
+  position: relative;
+}
+
+#screen-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+#view {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+#hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 72px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: max(10px, env(safe-area-inset-top)) 12px 0;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+#score-line {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+#meta-line {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  opacity: 0.95;
+}
+
+#timer {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: calc(max(10px, env(safe-area-inset-top)) + 62px);
+  height: 7px;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+
+#timer-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: #f3d48a;
+}
+
+#timer-fill.low {
+  background: #e07058;
+}
+
+#callout {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 73%;
+  margin: 0;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 2;
+  min-height: 1.2em;
+}
+
+#tools {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+}
+
+#control-deck {
+  flex: 0 0 25%;
+  height: 25%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+  background: #5c3a24;
+  touch-action: manipulation;
+}
+
+.deck-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.game-btn {
+  min-height: 48px;
+  min-width: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: #f3e6d0;
+  color: #2a2118;
+  font: inherit;
+  font-size: clamp(15px, 4vw, 18px);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.08s ease, opacity 0.08s ease, background 0.08s ease;
+}
+
+.deck-row .game-btn {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+.icon-btn {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  background: rgba(243, 230, 208, 0.92);
+}
+
+.game-btn:active,
+.game-btn.is-pressed {
+  transform: scale(0.92);
+  opacity: 0.88;
+}
+
+.game-btn.ok {
+  background: #b7d7a8;
+}
+
+.game-btn.ng {
+  background: #e7a090;
+}
+
+#overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(18, 12, 9, 0.78);
+}
+
+#overlay.show {
+  display: flex;
+}
+
+.card {
+  width: min(100%, 360px);
+  padding: 22px 20px 18px;
+  border-radius: 18px;
+  background: #f6efe4;
+  color: #2a2118;
+  text-align: center;
+}
+
+.day {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: #8a6244;
+}
+
+.card h1 {
+  margin: 0 0 10px;
+  font-size: 32px;
+  font-weight: 700;
+  font-family: "Iowan Old Style", "Hiragino Mincho ProN", serif;
+}
+
+.card p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+#ov-list {
+  font-size: 13px;
+  color: #6b5544;
+}
+
+#ov-best {
+  font-size: 13px;
+  color: #8a6244;
+}
+
+#btn-action {
+  width: 100%;
+  height: 56px;
+  margin-top: 12px;
+  background: #6b4328;
+  color: #f6efe4;
+}
