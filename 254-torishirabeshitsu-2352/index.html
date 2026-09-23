@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>取調室 ―23時52分の男―</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+:root{
+  --room:#1d2327; --floor:#14191c; --steel:#7d8a93; --lamp:#ffcf5c;
+  --paper:#d9d3c0; --ink:#1c1c1a; --stamp:#c8322a; --text:#e9e4d4; --dim:#8c969c;
+  --page:#0f1315;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --page:#0f1315; } }
+:root[data-theme="dark"]{ --page:#0f1315; }
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --page:#262d31; } }
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;height:100%;background:var(--page);color:var(--text);
+  font-family:"DotGothic16","Hiragino Kaku Gothic ProN","Noto Sans JP",monospace;
+  -webkit-tap-highlight-color:transparent;overflow:hidden}
+#app{max-width:560px;height:100%;margin:0 auto;display:flex;flex-direction:column;background:var(--floor)}
+header{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#101517;border-bottom:2px solid #2a3338}
+header h1{font-size:15px;margin:0;font-weight:400;color:var(--lamp);letter-spacing:.1em;white-space:nowrap}
+.gauge{flex:1;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--dim)}
+.bar{flex:1;height:10px;background:#252d31;border:1px solid #3a454b;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;width:40%;background:var(--lamp);transition:width .4s,background .4s}
+.bar.hot i{background:var(--stamp)}
+#suspNum{width:2.2em;text-align:right;color:var(--text)}
+header button{font:inherit;font-size:13px;background:#1f272b;color:var(--text);border:1px solid #3a454b;padding:5px 9px;cursor:pointer}
+#stage{position:relative;background:#000}
+#room{display:block;width:100%;aspect-ratio:16/9;image-rendering:pixelated;image-rendering:crisp-edges}
+#box{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;background:#11171a;border-top:3px solid #2e383d;cursor:pointer;position:relative}
+#name{display:inline-block;font-size:14px;color:var(--floor);background:var(--lamp);padding:1px 10px;margin-bottom:8px}
+#name.yana{background:#8fb3c7}
+#name.you{background:var(--paper)}
+#name:empty{display:none}
+#text{font-size:17px;line-height:1.75;min-height:3.5em;white-space:pre-wrap}
+#next{position:absolute;right:16px;top:12px;font-size:12px;color:var(--lamp);animation:bl 1s steps(2) infinite}
+@keyframes bl{50%{opacity:0}}
+#choices{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+#choices button{font:inherit;font-size:16px;text-align:left;background:#1b2327;color:var(--text);border:2px solid #3a454b;padding:11px 12px;cursor:pointer;line-height:1.4}
+#choices button:hover,#choices button:focus-visible{border-color:var(--lamp);outline:none;background:#232d31}
+#choices button b{color:var(--lamp);font-weight:400;margin-right:8px}
+#timer{height:4px;background:var(--lamp);margin-top:10px;width:100%;transform-origin:left}
+#timer[hidden],#next[hidden]{display:none}
+.ov{position:fixed;inset:0;background:rgba(6,9,10,.92);display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}
+.ov[hidden]{display:none}
+.card{max-width:460px;width:100%;max-height:100%;overflow:auto}
+.title h2{font-size:clamp(40px,12vw,64px);margin:0;font-weight:400;color:var(--lamp);letter-spacing:.15em;text-shadow:3px 3px 0 #5a3d00}
+.title p{color:var(--dim);line-height:1.8}
+.title .sub{color:var(--text);font-size:18px;margin:.2em 0 1.4em}
+.big{font:inherit;font-size:18px;background:var(--lamp);color:var(--floor);border:0;padding:12px 26px;cursor:pointer;margin-top:14px}
+.big:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.paper{background:var(--paper);color:var(--ink);padding:20px 20px 16px;box-shadow:6px 6px 0 #000;position:relative}
+.paper h3{margin:0 0 12px;font-weight:400;font-size:20px;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.paper ol,.paper ul{margin:0;padding-left:1.3em;line-height:1.9;font-size:15px}
+.paper .t{color:#5b5446}
+.paper .close{font:inherit;background:var(--ink);color:var(--paper);border:0;padding:8px 18px;margin-top:14px;cursor:pointer}
+.contra{position:relative;color:var(--stamp)}
+.contra::after{content:"";position:absolute;left:-6px;right:-6px;top:-2px;bottom:-2px;border:2px solid var(--stamp);border-radius:50%;transform:rotate(-3deg)}
+.stamp{position:absolute;right:16px;top:14px;color:var(--stamp);border:3px solid var(--stamp);padding:2px 8px;transform:rotate(8deg);font-size:18px}
+#ev .paper{animation:drop .35s cubic-bezier(.2,1.6,.4,1)}
+@keyframes drop{from{transform:translateY(-30px) rotate(-4deg);opacity:0}}
+#ev .body{font-size:17px;line-height:1.8;white-space:pre-wrap}
+#end h2{font-size:34px;margin:0 0 6px;font-weight:400;color:var(--lamp)}
+#end .desc{line-height:1.8;white-space:pre-wrap}
+#end .stats{color:var(--dim);font-size:14px;margin:14px 0}
+#end .hint{border-left:3px solid var(--lamp);padding-left:10px;color:var(--text);font-size:14px;line-height:1.7}
+@media (prefers-reduced-motion: reduce){ #next,#ev .paper{animation:none} }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>取調室</h1>
+    <div class="gauge">疑惑<div class="bar" id="bar"><i id="barI"></i></div><span id="suspNum">40</span></div>
+    <button id="btnMem" type="button">記憶</button>
+    <button id="btnLog" type="button">調書</button>
+  </header>
+  <div id="stage"><canvas id="room" width="320" height="180"></canvas></div>
+  <section id="box" aria-live="polite">
+    <div id="name"></div>
+    <div id="text"></div>
+    <div id="next" hidden>▼ タップ</div>
+    <div id="choices"></div>
+    <div id="timer" hidden></div>
+  </section>
+</div>
+
+<div class="ov title" id="titleOv">
+  <div class="card">
+    <h2>取調室</h2>
+    <div class="sub">―23時52分の男―</div>
+    <p>深夜の宝石店からネックレスが消えた。防犯カメラに映っていたのは、グレーのパーカーの男。<br>あなたは今、その容疑者として刑事の前に座っている。</p>
+    <p>答えは選ぶだけ。ただし、言ったことは全部「調書」に残る。黙っていても時間は進む。</p>
+    <button class="big" id="btnStart" type="button">取り調べを受ける</button>
+  </div>
+</div>
+
+<div class="ov" id="memOv" hidden>
+  <div class="card paper">
+    <h3>あなたの記憶（9月22日の夜）</h3>
+    <ul>
+      <li><span class="t">22:00</span> コンビニのバイトを上がった</li>
+      <li><span class="t">23:10</span> 麺屋たいまつへ。替え玉を2回した</li>
+      <li><span class="t">23:48</span> 会計して店を出た</li>
+      <li><span class="t">23:52</span> 近道で商店街を歩いた。宝石店の前も通った</li>
+      <li><span class="t">23:58</span> マンションのエレベーターで管理人の田所さんに会釈した</li>
+      <li><span class="t">0:05</span> 部屋から母に「ただいま」とLINE</li>
+      <li>服装はグレーのパーカー。右利き</li>
+      <li>宝石店の中は、見ていない</li>
+    </ul>
+    <p style="font-size:14px;line-height:1.7;margin:12px 0 0">本当のことを話すか、嘘で逃げ切るか。決めるのはあなた。</p>
+    <button class="close" id="memClose" type="button">閉じる</button>
+  </div>
+</div>
+
+<div class="ov" id="logOv" hidden>
+  <div class="card paper">
+    <div class="stamp">供述</div>
+    <h3>供述調書</h3>
+    <ol id="logList"></ol>
+    <button class="close" id="logClose" type="button">閉じる</button>
+  </div>
+</div>
+
+<div class="ov" id="ev" hidden>
+  <div class="card paper">
+    <div class="stamp">証拠</div>
+    <h3 id="evT"></h3>
+    <div class="body" id="evB"></div>
+    <button class="close" id="evClose" type="button">確認した</button>
+  </div>
+</div>
+
+<div class="ov" id="end" hidden>
+  <div class="card">
+    <h2 id="endT"></h2>
+    <div class="desc" id="endD"></div>
+    <div class="stats" id="endS"></div>
+    <div class="hint" id="endH"></div>
+    <button class="big" id="btnRetry" type="button">もう一度、座る</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- audio ---------- */
+let ac=null;
+function au(){ if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(ac&&ac.state==='suspended') ac.resume(); }
+function beep(f,d=.03,v=.025,type='square'){ if(!ac) return; const o=ac.createOscillator(),g=ac.createGain(); o.type=type;o.frequency.value=f; g.gain.setValueAtTime(v,ac.currentTime); g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d); o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime+d+.02); }
+function thud(){ beep(80,.3,.3,'triangle'); beep(46,.4,.25,'sine'); }
+function door(){ beep(140,.12,.08,'sawtooth'); setTimeout(()=>beep(90,.25,.1,'triangle'),120); }
+
+/* ---------- state ---------- */
+let S;
+function reset(){ S={susp:40,facts:{},lies:new Set(),flags:{},log:[],contra:0,lieEntry:null}; renderSusp(); }
+class End{ constructor(k){ this.k=k; } }
+
+/* ---------- canvas room ---------- */
+const cv=$('#room'), g=cv.getContext('2d');
+let t=0, who=null, talking=false, slam=0, shake=0, blinkT=0, alarm=0;
+const px=(x,y,w,h,c)=>{ g.fillStyle=c; g.fillRect(x|0,y|0,w|0,h|0); };
+function dither(x,y,w,h,c){ g.fillStyle=c; for(let j=0;j<h;j++) for(let i=(j&1);i<w;i+=2) g.fillRect(x+i,y+j,1,1); }
+function outline(x,y,w,h,c){ px(x,y,w,1,c);px(x,y+h-1,w,1,c);px(x,y,1,h,c);px(x+w-1,y,1,h,c); }
+
+function drawOni(dy,arm){
+  const skin='#c89a76';
+  px(112,92+dy,96,44,'#4a3b2e'); px(112,92+dy,96,3,'#5a4838');
+  px(146,92+dy,28,44,'#cfcac0'); px(157,97+dy,6,30,'#8f2a24'); px(155,94+dy,10,5,'#a8322b');
+  px(152,84+dy,16,10,skin);
+  px(140,50+dy,40,38,skin); px(140,80+dy,40,8,'#b88a68');
+  px(138,44+dy,44,9,'#15181a'); px(138,50+dy,4,14,'#15181a'); px(178,50+dy,4,14,'#15181a');
+  px(146,61+dy,11,3,'#15181a'); px(163,61+dy,11,3,'#15181a'); px(155,63+dy,2,1,'#15181a'); px(163,63+dy,2,1,'#15181a');
+  const bl=blinkT>0;
+  px(149,67+dy,5,bl?1:3,'#111'); px(166,67+dy,5,bl?1:3,'#111');
+  px(158,70+dy,4,6,'#b38564');
+  dither(144,78+dy,32,9,'#8a6a52');
+  px(153,81+dy,14,(talking&&(t%10<5))?3:1,'#4a2020');
+  const ay=arm? -14:0;
+  px(100,118+dy+ay,34,14,'#4a3b2e'); px(186,118+dy+ay,34,14,'#4a3b2e');
+  px(128,121+dy+ay,16,10,skin); px(176,121+dy+ay,16,10,skin);
+}
+function drawYana(dy){
+  const skin='#d8b090';
+  px(122,94+dy,76,42,'#243247'); px(122,94+dy,76,3,'#2f4058');
+  px(150,94+dy,20,42,'#dfe4e6'); px(158,98+dy,5,28,'#3f6f8a');
+  px(153,86+dy,14,9,skin);
+  px(142,52+dy,36,36,skin);
+  px(140,46+dy,40,9,'#2b2724'); px(140,52+dy,4,10,'#2b2724'); px(176,52+dy,4,8,'#2b2724'); px(162,46+dy,2,5,skin);
+  outline(145,64+dy,12,8,'#cfd8dc'); outline(163,64+dy,12,8,'#cfd8dc'); px(157,67+dy,6,1,'#cfd8dc');
+  const bl=blinkT>0;
+  px(149,67+dy,4,bl?1:2,'#111'); px(167,67+dy,4,bl?1:2,'#111');
+  px(158,73+dy,4,5,'#c29a7c');
+  if(talking&&(t%10<5)) px(154,81+dy,12,3,'#5a2a2a'); else { px(154,81+dy,12,1,'#5a2a2a'); px(153,80+dy,1,1,'#5a2a2a'); px(166,80+dy,1,1,'#5a2a2a'); }
+  px(118,120+dy,30,12,'#243247'); px(172,120+dy,30,12,'#243247');
+  px(140,122+dy,14,9,skin); px(166,122+dy,14,9,skin);
+  px(142,116+dy,36,7,'#e8e2d2'); px(146,112+dy,6,6,'#f0ece2'); px(147,111+dy,4,2,'#6b4a2e');
+}
+function draw(){
+  t++;
+  if(blinkT>0) blinkT--; else if(Math.random()<.008) blinkT=6;
+  g.save();
+  if(shake>0 && !RM){ g.translate(((Math.random()*2-1)*shake)|0,((Math.random()*2-1)*shake)|0); shake*=.86; if(shake<.4) shake=0; } else shake=0;
+  px(-6,-6,332,192,'#1d2327');
+  for(let y=6;y<124;y+=13) px(0,y,320,1,'#232b30');
+  for(let x=10;x<320;x+=37) px(x,0,1,124,'#20272b');
+  px(16,22,46,100,'#20282c'); px(19,25,40,97,'#2b343a'); px(27,34,24,15,'#0e1417'); px(52,74,3,7,'#7d8a93');
+  px(234,28,74,62,'#0b1013'); px(237,31,68,56,'#121a1e'); px(248,33,2,52,'#1c262b'); px(254,33,1,52,'#182226');
+  if(t%240<120) px(300,34,3,3,'#3b1111'); else px(300,34,3,3,'#8a2020');
+  px(0,122,320,58,'#161b1e'); dither(0,122,320,6,'#101416');
+  let dy=0, arm=false;
+  if(slam>0){ slam--; if(slam>8){ arm=true; dy=-4; } else dy=2; }
+  if(who==='oni') drawOni(dy,arm); else if(who==='yana') drawYana(dy);
+  g.fillStyle='#454f56'; g.beginPath(); g.moveTo(34,132); g.lineTo(286,132); g.lineTo(326,186); g.lineTo(-6,186); g.fill();
+  px(34,130,252,3,'#7d8a93'); dither(0,160,320,26,'#353e44');
+  px(206,138,34,20,'#d9d3c0'); for(let i=0;i<5;i++) px(210,142+i*3,24-(i%2)*6,1,'#8c867a');
+  px(92,142,16,5,'#2c3337'); px(94,140,12,2,'#5c666c');
+  const amp=RM?.03:.13, a=Math.sin(t/55)*amp, L=44;
+  const lx=160+Math.sin(a)*L, ly=Math.cos(a)*L;
+  for(let i=0;i<L;i+=2) px(160+Math.sin(a)*i,i,1,2,'#0c0f11');
+  const fl=(Math.random()<.02)?.03:.13;
+  g.fillStyle=`rgba(255,207,92,${fl})`; g.beginPath(); g.moveTo(lx-8,ly+6); g.lineTo(lx+8,ly+6); g.lineTo(lx+70,150); g.lineTo(lx-70,150); g.fill();
+  px(lx-10,ly,20,7,'#3a4348'); px(lx-6,ly-3,12,3,'#2c3337'); px(lx-7,ly+6,14,2,'#ffe7a0');
+  const gr=g.createRadialGradient(lx,110,20,lx,110,210);
+  gr.addColorStop(0,'rgba(0,0,0,0)'); gr.addColorStop(1,'rgba(0,0,0,.72)');
+  g.fillStyle=gr; g.fillRect(-6,-6,332,192);
+  if(alarm>0){ alarm--; g.fillStyle=`rgba(200,50,42,${alarm/60})`; g.fillRect(-6,-6,332,192); }
+  g.restore();
+  if(S && S.susp>=70 && t%70===0){ beep(58,.12,.18,'sine'); setTimeout(()=>beep(52,.12,.14,'sine'),160); }
+  requestAnimationFrame(draw);
+}
+
+/* ---------- dialogue engine ---------- */
+const nameEl=$('#name'), textEl=$('#text'), nextEl=$('#next'), choicesEl=$('#choices'), timerEl=$('#timer'), box=$('#box');
+let typing=null, waiter=null, paused=false;
+const VO={'鬼塚':150,'柳':300,'あなた':440,'':520};
+function setName(n){ nameEl.textContent=n; nameEl.className=n==='柳'?'yana':n==='あなた'?'you':''; }
+function type(txt,n){
+  return new Promise(res=>{
+    textEl.textContent=''; talking=(n==='鬼塚'||n==='柳'); let k=0;
+    typing={id:0,finish:()=>{ clearTimeout(typing.id); textEl.textContent=txt; talking=false; typing=null; res(); }};
+    const tick=()=>{
+      if(!typing) return;
+      if(k>=txt.length){ talking=false; typing=null; res(); return; }
+      textEl.textContent+=txt[k]; if(k%2===0) beep(VO[n]||400,.025,.02); k++;
+      typing.id=setTimeout(tick,RM?8:30);
+    };
+    tick();
+  });
+}
+async function say(n,txt){ setName(n); await type(txt,n); nextEl.hidden=false; return new Promise(r=>{ waiter=r; }); }
+function advance(){ au(); if(typing) typing.finish(); else if(waiter){ const w=waiter; waiter=null; nextEl.hidden=true; w(); } }
+box.addEventListener('click',advance);
+async function ask(n,q,opts,sec=18){
+  setName(n); await type(q,n);
+  return new Promise(res=>{
+    let done=false, left=sec*1000, last=performance.now();
+    const fin=i=>{ if(done) return; done=true; choicesEl.innerHTML=''; timerEl.hidden=true; document.onkeydown=keyBase; res(i); };
+    opts.forEach((o,i)=>{
+      const b=document.createElement('button'); b.type='button';
+      b.innerHTML=`<b>${i+1}</b>`; b.appendChild(document.createTextNode(o));
+      b.onclick=e=>{ e.stopPropagation(); au(); beep(660,.05,.03); fin(i); };
+      choicesEl.appendChild(b);
+    });
+    document.onkeydown=e=>{ const d=+e.key; if(d>=1&&d<=opts.length) fin(d-1); };
+    timerEl.hidden=false;
+    const loop=now=>{ if(done) return; if(!paused) left-=now-last; last=now; timerEl.style.transform=`scaleX(${Math.max(0,left/(sec*1000))})`; if(left<=0) fin(-1); else requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
+function keyBase(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); advance(); } }
+document.onkeydown=keyBase;
+
+function evidence(title,body){
+  thud(); shake=5;
+  return new Promise(r=>{ $('#evT').textContent=title; $('#evB').textContent=body; $('#ev').hidden=false; paused=true;
+    $('#evClose').onclick=()=>{ $('#ev').hidden=true; paused=false; r(); }; $('#evClose').focus(); });
+}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---------- game helpers ---------- */
+function renderSusp(){ const v=S?S.susp:40; $('#barI').style.width=v+'%'; $('#suspNum').textContent=v; $('#bar').classList.toggle('hot',v>=70); }
+async function susp(n){
+  S.susp=Math.max(0,Math.min(100,S.susp+n)); renderSusp();
+  if(n>=15){ alarm=30; }
+  if(S.susp>=100){ who='oni'; slam=14; thud(); shake=8; await say('鬼塚','……もういい。お前の話は、もう誰も信じない。逮捕状を請求する。'); throw new End('arrest'); }
+}
+function log(q,a){ const e={q,a,contra:false}; S.log.push(e); return e; }
+async function contradict(entry,msg){ if(entry) entry.contra=true; S.contra++; slam=14; thud(); shake=7; await say('鬼塚',msg); await susp(30); }
+async function silence(q){ log(q,'（沈黙）'); await say(who==='yana'?'柳':'鬼塚', who==='yana'?'……黙っちゃうと、印象悪くなるよ。':'黙ってても終わらねえぞ。'); await susp(10); }
+
+/* ---------- script ---------- */
+async function script(){
+  who='oni';
+  await say('鬼塚','座れ。');
+  await say('鬼塚','佐倉ユウ、24歳、コンビニ店員。……9月22日の深夜、駅前の宝石店「ルミエール」からネックレスが消えた。');
+  await say('鬼塚','聞きたいことは山ほどある。正直に答えろ。');
+  await say('あなた','（落ち着け。上の「記憶」を見れば、あの夜のことは思い出せる）');
+
+  let q='22日の夜、どこで何をしていた？';
+  let i=await ask('鬼塚',q,['バイトのあと、ラーメン屋に行ってました','ずっと家にいました','友達と飲んでました','……（黙る）']);
+  if(i===0){ log(q,'ラーメン屋にいた'); S.facts.where='ramen'; await say('鬼塚','ラーメン屋ね。……メモしておく。'); }
+  else if(i===1){ S.lieEntry=log(q,'一晩中、家にいた'); S.facts.where='home'; S.lies.add('camera'); await say('鬼塚','一晩中、家か。ふうん。'); }
+  else if(i===2){ log(q,'友達と飲んでいた'); S.facts.where='friend'; S.lies.add('friend'); await say('鬼塚','友達ね。あとで名前を聞く。'); }
+  else await silence(q);
+
+  q='帰り道、駅前の商店街は通ったか？';
+  i=await ask('鬼塚',q,['通りました。近道なので','通ってません','覚えてないです']);
+  if(i===0){ const e=log(q,'商店街を通った'); S.facts.route='shotengai';
+    if(S.facts.where==='home') await contradict(e,'……家にいたんじゃなかったのか？ さっきと話が違うな。');
+    else await say('鬼塚','近道、か。'); }
+  else if(i===1){ const e=log(q,'商店街は通っていない'); S.facts.route='other'; S.lies.add('camera'); if(!S.lieEntry) S.lieEntry=e; await say('鬼塚','……そうか。'); }
+  else if(i===2){ log(q,'覚えていない'); await say('鬼塚','自分の帰り道を覚えてない？ 便利な頭だな。'); await susp(5); }
+  else await silence(q);
+
+  await evidence('防犯カメラ映像','9月22日 23:52\n宝石店ルミエールの前を、グレーのパーカーの人物が通過。\n顔は半分フードで隠れている。');
+  if(S.lies.has('camera')){ await contradict(S.lieEntry,'これを見てもまだ同じことが言えるか？ 嘘をついたな！'); }
+  else if(S.facts.route==='shotengai'){ await say('鬼塚','……言ったとおり、通ってはいるな。'); await susp(-5); }
+  else await say('鬼塚','見覚え、あるだろ。');
+
+  q='で、これはお前か？';
+  i=await ask('鬼塚',q,['はい、自分です','似てますけど、違います','……（黙る）']);
+  if(i===0){ log(q,'映像の人物は自分'); S.facts.me='yes';
+    if(S.lies.has('camera')){ await say('鬼塚','今さら認めるのか。最初からそう言え。'); await susp(5); } else await say('鬼塚','よし。そこまでは正直だ。'); }
+  else if(i===1){ log(q,'映像の人物は自分ではない'); S.facts.me='no'; await say('鬼塚','背格好もパーカーも、そっくりだがな。'); await susp(15); }
+  else await silence(q);
+
+  q='侵入は23時55分から0時10分。その間、どこにいた？';
+  i=await ask('鬼塚',q,['家に向かって歩いてました','もう家で寝てました','店の近くで少し休んでました']);
+  if(i===0){ log(q,'家に向かって歩いていた'); S.facts.t='walk'; await say('鬼塚','歩いてた、ね。証明できるかは……あとで聞く。'); }
+  else if(i===1){ const e=log(q,'家で寝ていた'); S.facts.t='sleep';
+    if(S.facts.me==='yes') await contradict(e,'23時52分に店の前にいた奴が、3分後に家で寝てる？ 瞬間移動でもしたか？');
+    else { await say('鬼塚','寝てた、ねえ。'); await susp(10); } }
+  else if(i===2){ log(q,'店の近くで休んでいた'); S.facts.t='near'; slam=14; thud(); shake=6; await say('鬼塚','なんで現場の目の前で休む必要がある！'); await susp(30); }
+  else await silence(q);
+
+  await say('鬼塚','……少し頭を冷やせ。');
+  who=null; door(); await wait(900);
+  who='yana'; door();
+  await say('柳','どうも、柳です。鬼塚さん、怖かったでしょう。コーヒー、どうぞ。');
+  await say('柳','ここからは雑談だと思ってください。肩の力、抜いて。');
+
+  q='そういえば、利き手はどっち？';
+  i=await ask('柳',q,['右です','左です','両方使えます']);
+  if(i===0){ log(q,'右利き'); S.facts.hand='right'; await say('柳','右ね。僕と一緒だ。'); }
+  else if(i===1){ log(q,'左利き'); S.facts.hand='left'; await say('柳','へえ、左か。……なるほど。'); }
+  else if(i===2){ log(q,'両利き'); S.facts.hand='both'; await say('柳','器用なんだね。'); }
+  else await silence(q);
+
+  q='あの宝石店、ショーケースの中の布って何色だったっけ？ 僕、思い出せなくて。';
+  i=await ask('柳',q,['中は見てないので、わかりません','赤……だった気がします','青ですかね？']);
+  if(i===0){ log(q,'店内は見ていない'); await say('柳','……だよね。通りがかっただけなら、そうだ。'); }
+  else if(i===1){ log(q,'赤だったと答えた'); S.flags.knew=true; await say('柳','へえ。正解。……真夜中に、通りがかりで、よく見えたね。'); await susp(25); }
+  else if(i===2){ log(q,'青だと答えた'); await say('柳','適当に答えるのは、よくないなあ。'); await susp(10); }
+  else await silence(q);
+
+  if(S.facts.where==='friend'){
+    q='一緒に飲んでた友達の名前、教えてもらえる？ 裏を取るだけだから。';
+    i=await ask('柳',q,['……すみません、嘘です。本当はラーメン屋に一人でいました','それは言えません']);
+    if(i===0){ const e=log(q,'友達の話は嘘。ラーメン屋にいた（訂正）'); e.contra=true; S.contra++; S.facts.where='ramen'; await say('柳','訂正してくれてありがとう。……でも、嘘はつかないほうがいい。'); await susp(10); }
+    else if(i===1){ log(q,'友達の名前は言えない'); await say('柳','言えない友達、か。'); await susp(20); }
+    else await silence(q);
+  }
+
+  q='佐倉さん。今ここで認めれば、初犯だし情状酌量もある。お母さんにもすぐ会える。……どうする？';
+  i=await ask('柳',q,['……認めます','やってません','弁護士を呼んでください'],20);
+  if(i===0){ log(q,'犯行を認めた'); await say('柳','……そうですか。調書、作りますね。'); throw new End('false'); }
+  else if(i===1){ log(q,'やっていない'); await say('柳','……そう。わかった。'); }
+  else if(i===2){ log(q,'弁護士を要求'); await say('柳','正当な権利だね。手配しておきます。'); await susp(-5); }
+  else await silence(q);
+
+  who=null; door(); await wait(700);
+  who='oni'; door();
+  await say('鬼塚','戻ったぞ。新しいのが出てきた。');
+  await evidence('現場の遺留品','ショーケースの裏に落ちていた、左手用の革手袋。\n片方だけ。こじ開けに使ったとみられる。\n→ 犯人は左利きの可能性が高い。');
+  if(S.facts.hand==='left'){ slam=14; thud(); await say('鬼塚','お前、さっき「左利き」って言ったらしいな。'); await susp(25); }
+  else if(S.facts.hand==='both'){ await say('鬼塚','両手が使える、ね。都合がいい話だ。'); await susp(10); }
+  else if(S.facts.hand==='right'){ await say('鬼塚','右利き……か。'); await susp(-5); }
+
+  if(S.facts.where==='ramen'){
+    await evidence('聞き込み','麺屋たいまつ 店主の証言\n「替え玉2回の兄ちゃんなら覚えてるよ。会計は23時48分」');
+    await say('鬼塚','……話の筋は通ってるな。'); await susp(-15);
+  } else {
+    await say('鬼塚','お前の言った夜の過ごし方、どこからも裏が取れねえんだよ。'); await susp(10);
+  }
+
+  q='最後だ。23時55分以降、お前が現場にいなかった証拠を出せ。';
+  i=await ask('鬼塚',q,['母が起きてました','マンションのエレベーターで、管理人の田所さんに会いました','スマホでゲームしてました','……ありません'],22);
+  if(i===0){ log(q,'母が起きていた'); await say('鬼塚','家族の証言じゃ弱い。'); }
+  else if(i===1){ log(q,'23:58頃エレベーターで管理人と会った'); S.flags.elev=true;
+    await say('鬼塚','……田所？ 確認してくる。そこを動くな。');
+    who=null; door(); await wait(1200); who='oni'; door();
+    await evidence('マンション防犯カメラ','エレベーター内カメラ 23:58\nグレーのパーカーの男性が乗り込み、管理人と会釈。\n3階で降りている。');
+    if(S.facts.t==='near'){ await say('鬼塚','……23時58分に家。「店の近くで休んでた」ってのは何だったんだ。'); await susp(-20); }
+    else { await say('鬼塚','……23時55分に店をこじ開け始めた奴が、3分後に家のエレベーターにいるのは無理だ。'); await susp(-40); }
+  }
+  else if(i===2){ log(q,'スマホでゲームをしていた'); await say('鬼塚','そんなもん証拠にならん。'); await susp(5); }
+  else if(i===3){ log(q,'証拠はない'); await say('鬼塚','……そうか。'); await susp(10); }
+  else await silence(q);
+
+  const f=S.facts;
+  if(S.flags.elev && f.hand==='right' && !S.flags.knew && S.susp<=40) throw new End('true');
+  if(S.susp<70) throw new End('release');
+  throw new End('detain');
+}
+
+/* ---------- endings ---------- */
+const ENDS={
+  true:{t:'真相END',d:'鬼塚「それと……左手の手袋。似た手口で前科のある左利きの男が、別の現場でも挙がった」\n鬼塚「お前は帰っていい。……悪かったな」\n鬼塚「替え玉2回。うまかったか？」\n\n23時52分の男は、ただのラーメン帰りだった。'},
+  release:{t:'釈放END',d:'証拠不十分で、あなたは釈放された。\nでも商店街を歩くたび、誰かに見られている気がする。\n疑いは、晴れたわけじゃない。'},
+  detain:{t:'勾留延長END',d:'鬼塚「あと10日、ここで考えろ」\n\n蛍光灯の音だけが、やけに大きく聞こえる。'},
+  arrest:{t:'逮捕END',d:'疑惑が限界を超えた。\nあなたの言葉は、もう誰にも届かない。'},
+  false:{t:'冤罪END',d:'「認めます」――その一言で、取り調べはあっけなく終わった。\n本当の犯人は、今も街のどこかにいる。'}
+};
+function hint(k){
+  if(k==='true') return 'おめでとう。圧にも甘い言葉にも負けなかった。';
+  if(k==='false') return 'ヒント：優しい言葉ほど、罠かもしれない。';
+  if(S.lies.has('camera')) return 'ヒント：防犯カメラは嘘をつかない。';
+  if(S.facts.hand==='left'||S.facts.hand==='both') return 'ヒント：利き手のひと言が、命取りになることもある。';
+  if(S.flags.knew) return 'ヒント：知らないはずのことを知っていると、疑われる。';
+  if(!S.flags.elev) return 'ヒント：0時前のあなたを見ていた「第三者」がいたはず。';
+  return 'ヒント：沈黙と迷いも、疑惑を育てる。';
+}
+function showEnd(k){
+  const e=ENDS[k]; $('#endT').textContent=e.t; $('#endD').textContent=e.d;
+  $('#endS').textContent=`最終疑惑 ${S.susp}　矛盾 ${S.contra}回　供述 ${S.log.length}件`;
+  $('#endH').textContent=hint(k);
+  if(k==='true') beep(880,.3,.05,'triangle'); else thud();
+  $('#end').hidden=false; $('#btnRetry').focus();
+}
+async function main(){
+  reset(); textEl.textContent=''; choicesEl.innerHTML='';
+  try{ await script(); }catch(e){ if(e instanceof End) showEnd(e.k); else console.error(e); }
+}
+
+/* ---------- panels ---------- */
+function renderLog(){
+  const ol=$('#logList'); ol.innerHTML='';
+  if(!S||!S.log.length){ const li=document.createElement('li'); li.textContent='まだ何も話していない。'; ol.appendChild(li); return; }
+  S.log.forEach(e=>{ const li=document.createElement('li'); const s=document.createElement('span'); s.textContent=e.a; if(e.contra) s.className='contra'; li.appendChild(s); ol.appendChild(li); });
+}
+$('#btnMem').onclick=()=>{ $('#memOv').hidden=false; paused=true; $('#memClose').focus(); };
+$('#memClose').onclick=()=>{ $('#memOv').hidden=true; paused=false; };
+$('#btnLog').onclick=()=>{ renderLog(); $('#logOv').hidden=false; paused=true; $('#logClose').focus(); };
+$('#logClose').onclick=()=>{ $('#logOv').hidden=true; paused=false; };
+$('#btnStart').onclick=()=>{ au(); door(); $('#titleOv').hidden=true; $('#memOv').hidden=false; paused=true;
+  $('#memClose').onclick=()=>{ $('#memOv').hidden=true; paused=false; $('#memClose').onclick=()=>{ $('#memOv').hidden=true; paused=false; }; main(); }; };
+$('#btnRetry').onclick=()=>{ $('#end').hidden=true; who=null; main(); };
+
+reset();
+requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

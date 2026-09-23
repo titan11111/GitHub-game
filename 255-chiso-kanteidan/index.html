@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>地層鑑定団 ― 15種の化石発掘</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#1b2140; --night2:#262e57; --bone:#efe6d2; --ochre:#d9a441;
+  --sienna:#8b4a2b; --amber:#ffb52e; --moss:#7fa05f; --ink:#12152a;
+  --panel:rgba(22,27,54,.94); --line:#4a5388; --text:var(--bone);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --panel:rgba(22,27,54,.94); --line:#4a5388; }
+}
+:root[data-theme="dark"]{ --panel:rgba(22,27,54,.94); --line:#4a5388; }
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){ --panel:rgba(34,41,78,.95); --line:#5a64a0; }
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--night);color:var(--text);
+  font-family:'DotGothic16','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+  overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
+button{font-family:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* HUD */
+#hud{position:fixed;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 0;
+  display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none;z-index:5}
+.hud-box{background:var(--panel);border:2px solid var(--line);padding:8px 10px;pointer-events:auto;
+  box-shadow:3px 3px 0 var(--ink)}
+.hud-l{display:flex;flex-direction:column;gap:6px;min-width:150px}
+.stam{display:flex;align-items:center;gap:6px;font-size:13px}
+.bar{flex:1;height:10px;background:var(--ink);border:1px solid var(--line);min-width:70px}
+.bar i{display:block;height:100%;background:var(--moss);transition:width .2s}
+.bar i.low{background:#d0553a}
+.site{font-size:13px;color:#b9bfe0}
+.site b{color:var(--bone);font-size:16px}
+.left{font-size:12px;color:#b9bfe0}
+.left b{color:var(--amber)}
+.hud-r{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.money{font-size:12px;color:#b9bfe0;text-align:right}
+.money b{display:block;font-size:20px;color:var(--amber);letter-spacing:.02em}
+#zukanBtn{background:var(--night2);border:2px solid var(--ochre);padding:6px 10px;font-size:14px}
+#zukanBtn b{color:var(--amber)}
+
+/* tools */
+#tools{position:fixed;left:50%;transform:translateX(-50%);bottom:0;
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:8px;z-index:5}
+#tools button{background:var(--panel);border:2px solid var(--line);width:104px;padding:8px 4px 7px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;font-size:15px;box-shadow:3px 3px 0 var(--ink)}
+#tools button .ic{font-size:22px;line-height:1}
+#tools button small{font-size:10px;color:#9aa1cc;line-height:1.3;text-align:center}
+#tools button.on{border-color:var(--amber);background:#3a2f22;transform:translateY(-4px)}
+#tools button.on small{color:#f3d9a3}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 112px);
+  background:var(--ink);border:2px solid var(--ochre);padding:6px 14px;font-size:14px;z-index:6;
+  opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* overlays */
+.ov{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:20;
+  background:rgba(10,12,28,.72);padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.ov.show{display:flex}
+.btn{background:var(--ochre);color:var(--ink);border:none;padding:12px 20px;font-size:17px;
+  box-shadow:4px 4px 0 var(--ink);min-width:190px}
+.btn.sub{background:transparent;color:var(--bone);border:2px solid var(--line);box-shadow:none}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
+
+/* title */
+#title{background:linear-gradient(180deg,rgba(27,33,64,.35),rgba(27,33,64,.9) 70%)}
+.t-wrap{text-align:center;max-width:420px}
+.strata{display:inline-block;padding:18px 26px 14px;
+  background:repeating-linear-gradient(180deg,#c9955a 0 14px,#a8683f 14px 28px,#7d4a33 28px 42px,#5a3a33 42px 56px);
+  box-shadow:6px 6px 0 var(--ink)}
+.strata h1{margin:0;font-size:clamp(40px,11vw,62px);font-weight:400;color:var(--bone);
+  text-shadow:3px 3px 0 var(--ink),-1px -1px 0 var(--ink);letter-spacing:.06em;line-height:1.1}
+.t-sub{margin:18px 0 6px;font-size:16px}
+.t-how{font-size:13px;color:#b9bfe0;line-height:1.8;margin:0 0 22px}
+.t-btns{display:flex;flex-direction:column;gap:12px;align-items:center}
+
+/* appraisal card */
+.card{width:min(360px,100%);background:#efe6d2;color:#2b2320;border:3px solid #2b2320;
+  box-shadow:8px 8px 0 var(--ink);position:relative;padding:18px 18px 16px;max-height:100%;overflow:auto}
+.card .kicker{font-size:12px;color:#7a6453;display:flex;justify-content:space-between}
+.card h2{margin:6px 0 2px;font-size:28px;font-weight:400;line-height:1.2}
+.card .meta{font-size:12px;display:flex;gap:10px;margin-bottom:10px}
+.rar{padding:1px 6px;color:#fff}
+.card .desc{font-size:13px;line-height:1.7;border-top:2px dashed #b8a78e;border-bottom:2px dashed #b8a78e;padding:8px 0;margin:0 0 10px}
+.row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:3px 0}
+.row .src{font-size:10px;color:#7a6453;display:block;text-align:right}
+.price{font-size:30px;color:#8b2e14;letter-spacing:.02em}
+.stamp{position:absolute;right:14px;top:44px;width:76px;height:76px;border:4px solid #b3261e;color:#b3261e;
+  border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transform:rotate(-14deg) scale(1);opacity:0;background:rgba(239,230,210,.6)}
+.stamp b{font-size:38px;line-height:1;font-weight:400}
+.stamp small{font-size:10px}
+.stamp.hit{animation:slam .35s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes slam{0%{opacity:0;transform:rotate(-14deg) scale(2.4)}100%{opacity:1;transform:rotate(-14deg) scale(1)}}
+.new{position:absolute;left:-10px;top:-12px;background:var(--amber);color:var(--ink);padding:3px 8px;font-size:14px;
+  border:2px solid #2b2320;transform:rotate(-6deg)}
+.dmg{font-size:12px;color:#b3261e;margin:4px 0 0}
+.judging{font-size:18px;text-align:center;padding:26px 0}
+.loupe{display:inline-block;animation:wob .5s ease-in-out infinite alternate}
+@keyframes wob{from{transform:translateX(-10px) rotate(-10deg)}to{transform:translateX(10px) rotate(10deg)}}
+.card .btn{width:100%;margin-top:12px}
+
+/* panel (zukan / site end) */
+.panel{width:min(560px,100%);max-height:100%;overflow:auto;background:var(--panel);border:2px solid var(--line);
+  box-shadow:6px 6px 0 var(--ink);padding:16px}
+.panel h2{margin:0 0 4px;font-weight:400;font-size:22px}
+.panel .lead{font-size:13px;color:#b9bfe0;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.cell{border:2px solid var(--line);padding:8px;background:rgba(18,21,42,.6);font-size:12px;line-height:1.5}
+.cell.got{border-color:var(--ochre);background:rgba(58,47,34,.6)}
+.cell .nm{font-size:15px;color:var(--bone)}
+.cell .nm.unk{color:#6b719c}
+.cell .gr{color:var(--amber)}
+.cell .sm{color:#9aa1cc;font-size:11px}
+.note{font-size:11px;color:#9aa1cc;line-height:1.6;margin:12px 0 0}
+.list{margin:0 0 12px;padding:0;list-style:none}
+.list li{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.list li b{color:var(--amber);font-weight:400}
+.p-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+
+/* ending */
+#ending{background:transparent;align-items:flex-end;pointer-events:none}
+#ending .panel{pointer-events:auto;text-align:center;opacity:0;transition:opacity 1.2s;margin-bottom:10px}
+#ending.lit .panel{opacity:1}
+.big{font-size:clamp(30px,8vw,44px);color:var(--amber);margin:0 0 6px;font-weight:400;letter-spacing:.08em}
+.stats{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin:10px 0;font-size:13px;color:#b9bfe0}
+.stats b{display:block;color:var(--bone);font-size:20px;font-weight:400}
+.epi{font-size:14px;line-height:1.9;margin:8px 0 0}
+
+@media (max-width:420px){
+  #tools button{width:96px}
+  .hud-l{min-width:136px}
+  .money b{font-size:17px}
+}
+@media (prefers-reduced-motion: reduce){
+  .stamp.hit{animation:none;opacity:1}
+  .loupe{animation:none}
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" hidden>
+  <div class="hud-box hud-l">
+    <div class="site">発掘地 <b id="siteNo">1</b></div>
+    <div class="stam"><span>体力</span><div class="bar"><i id="stamBar" style="width:100%"></i></div><b id="stamTxt">40</b></div>
+    <div class="left">この発掘地の化石 のこり <b id="leftCnt">5</b></div>
+  </div>
+  <div class="hud-r">
+    <div class="hud-box money">総鑑定額<b id="money">¥0</b></div>
+    <button id="zukanBtn">図鑑 <b id="zukanCnt">0/15</b></button>
+  </div>
+</div>
+
+<div id="tools" hidden>
+  <button data-tool="pick" class="on" aria-label="ツルハシ"><span class="ic">⛏</span>ツルハシ<small>体力1<br>1マス掘る</small></button>
+  <button data-tool="hammer" aria-label="ハンマー"><span class="ic">🔨</span>ハンマー<small>体力4 3×3<br>化石が傷つく</small></button>
+  <button data-tool="scan" aria-label="探知"><span class="ic">📡</span>探知<small>体力2<br>5×5を調べる</small></button>
+</div>
+<div id="toast"></div>
+
+<div class="ov show" id="title">
+  <div class="t-wrap">
+    <div class="strata"><h1>地層鑑定団</h1></div>
+    <p class="t-sub">15種の化石を掘り当てて、ぜんぶ鑑定しよう</p>
+    <p class="t-how">タップで掘る。ドラッグで回転、ピンチで拡大。<br>掘り当てた化石は、実際の売買相場をもとにその場で鑑定。<br>15種そろえたらエンディング。</p>
+    <div class="t-btns" id="titleBtns"></div>
+  </div>
+</div>
+
+<div class="ov" id="appraise"><div class="card" id="card"></div></div>
+<div class="ov" id="zukan"><div class="panel" id="zukanPanel"></div></div>
+<div class="ov" id="siteEnd"><div class="panel" id="sitePanel"></div></div>
+<div class="ov" id="ending"><div class="panel" id="endPanel"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+/* ================= データ ================= */
+// avg: 相場の平均（円）。src が「推定」のものはゲーム用の想定値
+const FOSSILS=[
+ {id:'ammonite',name:'アンモナイト',era:'中生代',avg:5000,src:'相場解説記事の平均目安',rar:0,desc:'殻の中が小部屋に仕切られた頭足類。地層の年代を知る手がかりになる示準化石。'},
+ {id:'sharktooth',name:'サメの歯',era:'新生代',avg:800,src:'推定',rar:0,desc:'サメの歯は一生のうちに何度も生え替わる。だから化石の数がとても多い。'},
+ {id:'belemnite',name:'ベレムナイト',era:'中生代',avg:1500,src:'推定',rar:0,desc:'イカに近い仲間の体の中にあった硬い殻。弾丸のような形をしている。'},
+ {id:'fern',name:'シダ植物',era:'古生代',avg:2500,src:'推定',rar:0,desc:'石炭のもとになった大森林の主役。葉脈の筋まで石に残ることがある。'},
+ {id:'crinoid',name:'ウミユリ',era:'古生代',avg:3000,src:'推定',rar:0,desc:'名前はユリでも植物ではない。ウニやヒトデの仲間の動物。'},
+ {id:'amber',name:'虫入り琥珀',era:'白亜紀',avg:8304,src:'ヤフオク落札平均（琥珀・化石）',rar:1,desc:'樹液に閉じこめられた虫が、そのままの姿で固まった太古のカプセル。'},
+ {id:'fish',name:'魚の化石',era:'新生代',avg:6000,src:'推定',rar:1,desc:'泥にすばやく埋もれると、背骨の並びまできれいに残る。'},
+ {id:'mosasaur',name:'モササウルスの歯',era:'白亜紀',avg:12000,src:'推定',rar:1,desc:'白亜紀の海の王者。恐竜ではなく、海にすむ大型のは虫類。'},
+ {id:'megalodon',name:'メガロドンの歯',era:'新生代',avg:29022,src:'ヤフオク落札平均',rar:1,desc:'史上最大級のサメ。歯ひとつで大人の手のひらほどの大きさになる。'},
+ {id:'trilobite',name:'三葉虫',era:'古生代',avg:41872,src:'オークファン落札平均',rar:1,desc:'古生代の海で約3億年も栄えた節足動物。体が縦に三つに分かれている。'},
+ {id:'spino',name:'スピノサウルスの化石',era:'白亜紀',avg:31771,src:'ヤフオク落札平均',rar:2,desc:'背中に大きな帆をもつ大型肉食恐竜。水辺で魚をとっていたと考えられる。'},
+ {id:'egg',name:'恐竜の卵',era:'白亜紀',avg:30000,src:'推定',rar:2,desc:'殻の模様や厚み、大きさから、どの仲間の卵かを推定する。'},
+ {id:'raptor',name:'ラプトルの爪',era:'白亜紀',avg:45000,src:'推定',rar:2,desc:'後ろ足の大きなカギ爪がトレードマークの、すばしこい小型肉食恐竜。'},
+ {id:'mammoth',name:'マンモスの牙',era:'氷河期',avg:80000,src:'推定',rar:3,desc:'寒い時代を生きたゾウの仲間。牙は大きく弧を描いて伸びる。'},
+ {id:'trex',name:'ティラノサウルスの歯',era:'白亜紀',avg:179039,src:'オークファン落札平均',rar:3,desc:'バナナほどの大きさになる肉食恐竜の歯。縁には細かいギザギザがある。'},
+];
+const RAR=[{n:'コモン',c:'#6f7a8c',w:10},{n:'アンコモン',c:'#4f8a5b',w:6},{n:'レア',c:'#3f63b5',w:3},{n:'レジェンド',c:'#b3551e',w:1.6}];
+const GRADES=[{g:'S',m:1.8,p:.10,t:'極上'},{g:'A',m:1.25,p:.28,t:'良品'},{g:'B',m:1.0,p:.42,t:'並品'},{g:'C',m:.55,p:.20,t:'難あり'}];
+const COST={pick:1,hammer:4,scan:2};
+const MAX_STAMINA=40, FOSSILS_PER_SITE=5;
+const byId=Object.fromEntries(FOSSILS.map(f=>[f.id,f]));
+const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
+
+/* ================= セーブ ================= */
+const KEY='chisou-kanteidan-v1';
+function fresh(){return {col:{},total:0,site:1,cleared:false};}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));return s&&s.col?s:null;}catch(e){return null;}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+let state=load()||fresh();
+
+/* ================= サウンド ================= */
+let ac=null;
+function audio(){ if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}} if(ac&&ac.state==='suspended')ac.resume(); return ac;}
+function tone(f,d,type='square',v=.06,slide=0,delay=0){const a=audio();if(!a)return;const t=a.currentTime+delay;
+  const o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);
+  if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(a.destination);o.start(t);o.stop(t+d+.02);}
+function noise(d=.12,v=.12,hp=600){const a=audio();if(!a)return;const b=a.createBuffer(1,a.sampleRate*d,a.sampleRate);const ch=b.getChannelData(0);
+  for(let i=0;i<ch.length;i++)ch[i]=(Math.random()*2-1)*(1-i/ch.length);const s=a.createBufferSource();s.buffer=b;
+  const f=a.createBiquadFilter();f.type='highpass';f.frequency.value=hp;const g=a.createGain();g.gain.value=v;s.connect(f).connect(g).connect(a.destination);s.start();}
+const sfx={
+  dig(){noise(.1,.14,500);tone(140,.08,'square',.05,-60);},
+  hammer(){noise(.22,.2,200);tone(90,.18,'square',.07,-40);},
+  scan(){[0,1,2].forEach(i=>tone(660+i*220,.12,'sine',.05,0,i*.09));},
+  reveal(){[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.06,0,i*.08));},
+  stamp(){noise(.08,.25,100);tone(110,.12,'square',.08,-50);},
+  fan(){[523,659,784,659,784,1047].forEach((f,i)=>tone(f,.2,'square',.045,0,i*.11));},
+  ng(){tone(200,.15,'square',.05,-80);}
+};
+
+/* ================= three.js ================= */
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2)*0.55);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.BasicShadowMap;
+const scene=new THREE.Scene();
+const SKY=new THREE.Color('#1b2140');
+scene.background=SKY;scene.fog=new THREE.Fog(SKY,26,48);
+const camera=new THREE.PerspectiveCamera(45,1,.1,120);
+scene.add(new THREE.HemisphereLight('#aab4ff','#5a3a33',.75));
+const sun=new THREE.DirectionalLight('#ffe2b0',.9);sun.position.set(8,16,6);sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-10,right:10,top:10,bottom:-10,near:1,far:40});
+scene.add(sun);
+
+const N=9,D=4,OFF=(N-1)/2;
+const orbit={theta:.7,phi:.92,r:17};
+const target=new THREE.Vector3(0,D*.5,0);
+function updateCam(){camera.position.set(target.x+orbit.r*Math.sin(orbit.phi)*Math.sin(orbit.theta),
+  target.y+orbit.r*Math.cos(orbit.phi),target.z+orbit.r*Math.sin(orbit.phi)*Math.cos(orbit.theta));camera.lookAt(target);}
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;
+  camera.fov=w<h?58:45;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+orbit.r=innerWidth<innerHeight?19:16;updateCam();
+
+const mat=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,flatShading:true,roughness:.9,metalness:0},o));
+// 地層（上から砂・赤土・粘土・岩盤）
+const LAYER_COL=[['#5a3a33','#553631','#61403a'],['#7d4a33','#77462f','#845038'],['#a8683f','#a0623a','#b07044'],['#c9955a','#c28e54','#d19d62']];
+const layerMats=LAYER_COL.map(a=>a.map(c=>mat(c)));
+const boxGeo=new THREE.BoxGeometry(.97,.97,.97);
+
+// 周りの地面
+const world=new THREE.Group();scene.add(world);
+(function buildWorld(){
+  const W=44,side=(W-N)/2,gm=mat('#b98650'),wall=mat('#8a5a3a');
+  const mk=(w,d,x,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,D,d),[wall,wall,gm,wall,wall,wall]);m.position.set(x,D/2,z);m.receiveShadow=true;world.add(m);};
+  mk(W,side,0,-(N/2+side/2));mk(W,side,0,N/2+side/2);mk(side,N,-(N/2+side/2),0);mk(side,N,N/2+side/2,0);
+  const rockM=mat('#7a6a5c');
+  [[-7,-6,.9],[8,-5,.6],[-8,6,.7],[6.5,7.5,1.1],[11,1,.5],[-11,-1,.8]].forEach(([x,z,s])=>{
+    const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),rockM);r.position.set(x,D+s*.5,z);r.rotation.set(x,z,s);r.castShadow=true;world.add(r);});
+  // 杭とロープ
+  const pm=mat('#e8d9b5');[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>{const p=new THREE.Mesh(new THREE.BoxGeometry(.18,1.1,.18),pm);
+    p.position.set(a*(N/2+.4),D+.55,b*(N/2+.4));p.castShadow=true;world.add(p);});
+  const ropeM=new THREE.LineBasicMaterial({color:'#d9a441'});const q=N/2+.4,y=D+.95;
+  world.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-q,y,-q),new THREE.Vector3(q,y,-q),new THREE.Vector3(q,y,q),new THREE.Vector3(-q,y,q),new THREE.Vector3(-q,y,-q)]),ropeM));
+  // 星
+  const sg=new THREE.BufferGeometry(),pos=[];for(let i=0;i<400;i++){const a=Math.random()*Math.PI*2,e=Math.random()*.5+.08,R=60;
+    pos.push(R*Math.cos(e)*Math.cos(a),R*Math.sin(e),R*Math.cos(e)*Math.sin(a));}
+  sg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:'#efe6d2',size:.25,fog:false})));
+})();
+
+const site=new THREE.Group();scene.add(site);
+const bedrock=new THREE.Mesh(new THREE.BoxGeometry(N,.3,N),mat('#3a2a2c'));bedrock.position.y=-.15;bedrock.receiveShadow=true;
+
+// カーソル
+const cursor=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02,1.02,1.02)),new THREE.LineBasicMaterial({color:'#ffb52e'}));
+cursor.visible=false;scene.add(cursor);
+
+/* ================= 化石モデル ================= */
+function makeFossil(id){
+  const g=new THREE.Group();const add=(geo,m,x=0,y=0,z=0,rx=0,ry=0,rz=0,s)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);if(s)o.scale.set(...s);g.add(o);return o;};
+  switch(id){
+    case 'ammonite':{const m=mat('#c8a36a'),m2=mat('#a67c45');for(let i=0;i<38;i++){const a=i*.42,R=.035*Math.exp(.072*i);
+      add(new THREE.SphereGeometry(R*.62+.02,6,5),i%2?m:m2,R*Math.cos(a),R*Math.sin(a),0);}break;}
+    case 'sharktooth':{add(new THREE.ConeGeometry(.2,.42,3),mat('#3a3f48'),0,.1,0,0,0,0,[1,1,.35]);add(new THREE.BoxGeometry(.34,.1,.1),mat('#7b6650'),0,-.14,0);break;}
+    case 'belemnite':{add(new THREE.ConeGeometry(.1,.85,8),mat('#c2733a',{transparent:true,opacity:.92}),0,-.1,0,Math.PI,0,0);
+      add(new THREE.CylinderGeometry(.1,.1,.18,8),mat('#9a5a2c'),0,.41,0);break;}
+    case 'fern':{add(new THREE.BoxGeometry(.8,.95,.1),mat('#cfc3a8'));const lm=mat('#4f5b3a');add(new THREE.BoxGeometry(.03,.8,.03),lm,0,0,.06);
+      for(let i=0;i<8;i++){const y=.32-i*.09,l=.26-i*.015;add(new THREE.BoxGeometry(l,.035,.03),lm,-l/2,y,.06,0,0,.45);add(new THREE.BoxGeometry(l,.035,.03),lm,l/2,y,.06,0,0,-.45);}break;}
+    case 'crinoid':{const m=mat('#b7a17c');for(let i=0;i<9;i++)add(new THREE.CylinderGeometry(.05,.05,.065,8),m,0,-.5+i*.07,0);
+      add(new THREE.ConeGeometry(.13,.2,8),m,0,.2,0,Math.PI,0,0);for(let i=0;i<8;i++){const a=i/8*Math.PI*2;
+      add(new THREE.ConeGeometry(.035,.45,4),mat('#a38c66'),Math.cos(a)*.12,.46,Math.sin(a)*.12,Math.sin(a)*.35,0,-Math.cos(a)*.35);}break;}
+    case 'amber':{add(new THREE.IcosahedronGeometry(.4,0),mat('#ff9d1c',{transparent:true,opacity:.62,emissive:'#6b3a00',roughness:.3}));
+      const b=mat('#1b140f');add(new THREE.SphereGeometry(.06,6,5),b,-.04,0,0);add(new THREE.SphereGeometry(.08,6,5),b,.08,0,0,0,0,0,[1.4,.8,.8]);
+      for(let i=0;i<3;i++){add(new THREE.BoxGeometry(.01,.14,.01),b,.02+i*.05,-.07,0,0,0,.5);add(new THREE.BoxGeometry(.01,.14,.01),b,.02+i*.05,.07,0,0,0,-.5);}break;}
+    case 'fish':{add(new THREE.BoxGeometry(1,.6,.08),mat('#bfb49a'));const fm=mat('#5c554a');
+      add(new THREE.SphereGeometry(.32,8,6),fm,-.05,0,.05,0,0,0,[1,.36,.1]);add(new THREE.ConeGeometry(.14,.22,3),fm,.35,0,.05,0,0,Math.PI/2,[1,1,.3]);
+      for(let i=0;i<7;i++)add(new THREE.BoxGeometry(.015,.16,.02),mat('#3e3932'),-.24+i*.07,0,.08);break;}
+    case 'mosasaur':{add(new THREE.ConeGeometry(.12,.58,6),mat('#e6dcc3'),0,.12,0,0,0,.18);add(new THREE.CylinderGeometry(.12,.1,.3,6),mat('#9b8a6e'),-.02,-.3,0);break;}
+    case 'megalodon':{add(new THREE.ConeGeometry(.4,.62,3),mat('#5b6470'),0,.1,0,0,0,0,[1,1,.3]);add(new THREE.BoxGeometry(.66,.2,.14),mat('#8a7358'),0,-.3,0);break;}
+    case 'trilobite':{const m=mat('#6d5e4c'),m2=mat('#4e4236');add(new THREE.SphereGeometry(.3,8,6),m,0,-.05,0,0,0,0,[1,1.35,.3]);
+      add(new THREE.SphereGeometry(.34,8,6),m,0,.34,0,0,0,0,[1,.45,.3]);add(new THREE.SphereGeometry(.1,6,5),m2,0,0,.06,0,0,0,[1,4.4,1]);
+      for(let i=0;i<8;i++)add(new THREE.BoxGeometry(.5-i*.03,.03,.1),m2,0,.2-i*.075,.05);break;}
+    case 'spino':{const m=mat('#b58b5c');add(new THREE.CylinderGeometry(.15,.15,.26,8),m,0,-.3,0,Math.PI/2,0,0);
+      add(new THREE.BoxGeometry(.09,.8,.16),m,0,.2,0);add(new THREE.BoxGeometry(.56,.06,.09),m,0,-.18,0);break;}
+    case 'egg':{add(new THREE.SphereGeometry(.3,10,8),mat('#9c8f7a'),0,0,0,0,0,0,[1,1.3,1]);const d=mat('#6f6454');
+      for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,e=(Math.random()-.5)*2;add(new THREE.SphereGeometry(.04,5,4),d,Math.cos(a)*.28*Math.cos(e*.8),e*.3,Math.sin(a)*.28*Math.cos(e*.8));}break;}
+    case 'raptor':{add(new THREE.TorusGeometry(.32,.075,6,14,Math.PI*.8),mat('#3d3029'),0,0,0,0,0,-.2);add(new THREE.ConeGeometry(.07,.2,6),mat('#2a211c'),-.3,.14,0,0,0,.6);break;}
+    case 'mammoth':{add(new THREE.TorusGeometry(.5,.085,7,18,Math.PI*.9),mat('#efe2c2'),0,-.15,0);add(new THREE.CylinderGeometry(.1,.09,.12,8),mat('#b9a47a'),.5,-.2,0);break;}
+    case 'trex':{add(new THREE.ConeGeometry(.15,.85,7),mat('#7a5236'),0,.12,0,0,0,.15);add(new THREE.CylinderGeometry(.15,.12,.28,7),mat('#5a3c28'),.03,-.42,0);break;}
+  }
+  g.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+  return g;
+}
+
+/* ================= 発掘地 ================= */
+let blocks,heights,fossils,scanned,markers,pickables,stamina,tool='pick',busy=false,mode='title';
+const markerGeo=new THREE.OctahedronGeometry(.18,0),markerMat=mat('#ffb52e',{emissive:'#ff8a00',emissiveIntensity:.8});
+const key=(x,z)=>x+','+z;
+
+function weightedPick(list,wfn){const tot=list.reduce((s,f)=>s+wfn(f),0);let r=Math.random()*tot;for(const f of list){r-=wfn(f);if(r<=0)return f;}return list[list.length-1];}
+
+function newSite(){
+  site.clear();site.add(bedrock);pickables=[bedrock];blocks=[];heights=[];fossils={};scanned=new Set();markers={};
+  for(let x=0;x<N;x++){blocks[x]=[];heights[x]=[];for(let z=0;z<N;z++){blocks[x][z]=[];heights[x][z]=D;
+    for(let y=0;y<D;y++){const m=new THREE.Mesh(boxGeo,layerMats[y][(x*7+z*3+y)%3]);m.position.set(x-OFF,y+.5,z-OFF);
+      m.castShadow=true;m.receiveShadow=true;m.userData.cell={x,z};site.add(m);pickables.push(m);blocks[x][z][y]=m;}}}
+  // 化石配置：未収集を1つ保証＋未収集ほど出やすい
+  const pool=[];const missing=FOSSILS.filter(f=>!state.col[f.id]);
+  if(missing.length)pool.push(weightedPick(missing,f=>RAR[f.rar].w));
+  const boost=2.5+state.site*.35;
+  while(pool.length<FOSSILS_PER_SITE)pool.push(weightedPick(FOSSILS,f=>RAR[f.rar].w*(state.col[f.id]?1:boost)));
+  const used=new Set();
+  pool.forEach(f=>{let x,z;do{x=Math.floor(Math.random()*N);z=Math.floor(Math.random()*N);}while(used.has(key(x,z)));used.add(key(x,z));
+    const y=f.rar===3?0:f.rar===2?Math.floor(Math.random()*2):Math.floor(Math.random()*(D-1));
+    fossils[key(x,z)]={f,x,z,y,found:false,damaged:false};});
+  stamina=MAX_STAMINA;busy=false;refreshHud();
+}
+
+function leftCount(){return Object.values(fossils).filter(o=>!o.found).length;}
+
+function refreshHud(){
+  document.getElementById('siteNo').textContent=state.site;
+  document.getElementById('stamTxt').textContent=stamina;
+  const b=document.getElementById('stamBar');b.style.width=(stamina/MAX_STAMINA*100)+'%';b.classList.toggle('low',stamina<=8);
+  document.getElementById('leftCnt').textContent=leftCount();
+  document.getElementById('money').textContent=yen(state.total);
+  document.getElementById('zukanCnt').textContent=Object.keys(state.col).length+'/15';
+}
+
+/* ================= 演出 ================= */
+const tweens=[];function tween(dur,fn,done){tweens.push({t:0,dur,fn,done});}
+const dust=[];const dustGeo=new THREE.BoxGeometry(.12,.12,.12);
+function puff(pos,m,n=10){for(let i=0;i<n;i++){const d=new THREE.Mesh(dustGeo,m);d.position.copy(pos);
+  d.userData={v:new THREE.Vector3((Math.random()-.5)*4,Math.random()*4+2,(Math.random()-.5)*4),life:.6};scene.add(d);dust.push(d);}}
+let toastT;function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1400);}
+
+function setMarker(x,z){const k=key(x,z);if(markers[k])return;const m=new THREE.Mesh(markerGeo,markerMat);site.add(m);markers[k]=m;placeMarker(x,z);}
+function placeMarker(x,z){const m=markers[key(x,z)];if(m)m.userData.base=heights[x][z]+.7,m.position.set(x-OFF,m.userData.base,z-OFF);}
+function dropMarker(x,z){const k=key(x,z);if(markers[k]){site.remove(markers[k]);delete markers[k];}}
+
+/* ================= 掘る ================= */
+const revealQ=[];
+function digColumn(x,z,byHammer){
+  if(x<0||z<0||x>=N||z>=N)return false;const h=heights[x][z];if(h<=0)return false;
+  const y=h-1,m=blocks[x][z][y];site.remove(m);pickables.splice(pickables.indexOf(m),1);blocks[x][z][y]=null;heights[x][z]=h-1;
+  puff(m.position,m.material,byHammer?4:9);
+  const fo=fossils[key(x,z)];
+  if(fo&&!fo.found&&fo.y===y){fo.found=true;fo.damaged=byHammer;revealQ.push(fo);dropMarker(x,z);}
+  placeMarker(x,z);return true;
+}
+
+function act(cell){
+  if(busy||mode!=='play')return;
+  const c=COST[tool];
+  if(stamina<c){sfx.ng();toast('体力が足りない');return;}
+  const {x,z}=cell;
+  if(tool==='pick'){if(!digColumn(x,z,false)){sfx.ng();toast('ここはもう岩盤');return;}sfx.dig();}
+  else if(tool==='hammer'){let any=false;for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)any=digColumn(x+dx,z+dz,true)||any;
+    if(!any){sfx.ng();toast('ここはもう岩盤');return;}sfx.hammer();}
+  else{let hit=0;for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++){const fo=fossils[key(x+dx,z+dz)];if(fo&&!fo.found){hit++;setMarker(x+dx,z+dz);}}
+    sfx.scan();toast(hit?`反応あり：${hit}か所`:'反応なし');scanRing(x,z);}
+  stamina-=c;refreshHud();
+  if(revealQ.length)nextReveal();else checkSiteEnd();
+}
+
+function scanRing(x,z){const r=new THREE.Mesh(new THREE.RingGeometry(.3,.45,24),new THREE.MeshBasicMaterial({color:'#ffb52e',transparent:true,side:THREE.DoubleSide}));
+  r.rotation.x=-Math.PI/2;r.position.set(x-OFF,Math.max(heights[x][z],0)+.05,z-OFF);scene.add(r);
+  tween(.6,p=>{r.scale.setScalar(1+p*9);r.material.opacity=1-p;},()=>scene.remove(r));}
+
+function nextReveal(){
+  const fo=revealQ.shift();if(!fo){checkSiteEnd();return;}
+  busy=true;sfx.reveal();
+  const g=makeFossil(fo.f.id);const base=new THREE.Vector3(fo.x-OFF,fo.y+.5,fo.z-OFF);g.position.copy(base);g.scale.setScalar(.01);scene.add(g);
+  const glow=new THREE.PointLight('#ffcc66',2,4);glow.position.copy(base);scene.add(glow);
+  tween(1.1,p=>{const e=1-Math.pow(1-p,3);g.position.y=base.y+e*(D-fo.y+.6);g.rotation.y=p*Math.PI*3;g.scale.setScalar(.01+e*1.3);glow.position.copy(g.position);},
+    ()=>{setTimeout(()=>showAppraisal(fo,()=>{scene.remove(g);scene.remove(glow);refreshHud();
+      if(Object.keys(state.col).length===FOSSILS.length&&!state.cleared){revealQ.length=0;setTimeout(startEnding,500);return;}
+      nextReveal();}),250);});
+}
+
+function checkSiteEnd(){
+  if(mode!=='play')return;busy=false;
+  if(leftCount()===0||stamina<=0)setTimeout(showSiteEnd,500);
+}
+
+/* ================= 鑑定 ================= */
+let siteLog=[];
+function rollGrade(dmg){let r=Math.random(),i=0;for(;i<GRADES.length;i++){r-=GRADES[i].p;if(r<=0)break;}i=Math.min(i,3);return dmg?Math.min(3,i+1):i;}
+function showAppraisal(fo,done){
+  const f=fo.f,gi=rollGrade(fo.damaged),G=GRADES[gi];
+  const price=Math.max(100,Math.round(f.avg*G.m*(.9+Math.random()*.2)/100)*100);
+  const isNew=!state.col[f.id];
+  const c=state.col[f.id]||{n:0,best:3,bestPrice:0};c.n++;c.best=Math.min(c.best,gi);c.bestPrice=Math.max(c.bestPrice,price);state.col[f.id]=c;
+  state.total+=price;save();siteLog.push({f,G,price,isNew});
+  const card=document.getElementById('card'),R=RAR[f.rar];
+  card.innerHTML=`<div class="judging"><span class="loupe">🔍</span><br>鑑定中…</div>`;
+  const ov=document.getElementById('appraise');ov.classList.add('show');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  setTimeout(()=>{
+    card.innerHTML=`${isNew?'<div class="new">NEW!</div>':''}
+      <div class="kicker"><span>鑑定書</span><span>No.${String(FOSSILS.indexOf(f)+1).padStart(2,'0')}</span></div>
+      <h2>${f.name}</h2>
+      <div class="meta"><span class="rar" style="background:${R.c}">${R.n}</span><span>${f.era}</span></div>
+      <div class="stamp" id="stamp"><b>${G.g}</b><small>${G.t}</small></div>
+      <p class="desc">${f.desc}</p>
+      <div class="row"><span>市場の平均価格</span><span>${yen(f.avg)}<span class="src">${f.src}</span></span></div>
+      <div class="row"><span>状態の評価</span><span>${G.g}（×${G.m}）</span></div>
+      <div class="row"><span>鑑定額</span><span class="price" id="pr">¥0</span></div>
+      ${fo.damaged?'<p class="dmg">ハンマーの衝撃で少し欠けている</p>':''}
+      <button class="btn" id="okBtn">標本箱にしまう</button>`;
+    const st=document.getElementById('stamp');setTimeout(()=>{st.classList.add('hit');sfx.stamp();},reduce?0:250);
+    const pr=document.getElementById('pr');const t0=performance.now(),dur=reduce?1:900;
+    (function up(){const p=Math.min(1,(performance.now()-t0)/dur);pr.textContent=yen(price*p);if(p<1)requestAnimationFrame(up);else if(gi===0||f.rar>=2)sfx.fan();})();
+    const ok=document.getElementById('okBtn');ok.focus({preventScroll:true});
+    ok.onclick=()=>{ov.classList.remove('show');done();};
+  },reduce?200:900);
+}
+
+function showSiteEnd(){
+  if(mode!=='play'||document.getElementById('appraise').classList.contains('show'))return;
+  busy=true;const sum=siteLog.reduce((s,l)=>s+l.price,0),miss=leftCount();
+  document.getElementById('sitePanel').innerHTML=`<h2>発掘地 ${state.site} 終了</h2>
+    <p class="lead">${miss?`掘り残し ${miss}個。体力切れ。`:'この発掘地の化石はぜんぶ掘り当てた。'}</p>
+    <ul class="list">${siteLog.length?siteLog.map(l=>`<li><span>${l.f.name}（${l.G.g}）${l.isNew?' NEW':''}</span><b>${yen(l.price)}</b></li>`).join(''):'<li><span>今回は収穫なし</span><b>¥0</b></li>'}</ul>
+    <div class="row"><span>この発掘地の合計</span><span class="price" style="color:var(--amber);font-size:24px">${yen(sum)}</span></div>
+    <div class="row"><span>図鑑</span><span>${Object.keys(state.col).length} / 15種</span></div>
+    <div class="p-btns"><button class="btn" id="nextBtn">次の発掘地へ</button></div>`;
+  document.getElementById('siteEnd').classList.add('show');
+  document.getElementById('nextBtn').onclick=()=>{document.getElementById('siteEnd').classList.remove('show');state.site++;save();siteLog=[];newSite();};
+}
+
+/* ================= 図鑑 ================= */
+function showZukan(){
+  const got=Object.keys(state.col).length;
+  document.getElementById('zukanPanel').innerHTML=`<h2>化石図鑑 ${got} / 15</h2><p class="lead">総鑑定額 ${yen(state.total)}</p>
+    <div class="grid">${FOSSILS.map((f,i)=>{const c=state.col[f.id],R=RAR[f.rar];
+      return `<div class="cell ${c?'got':''}" style="border-left:6px solid ${R.c}">
+        <div class="sm">No.${String(i+1).padStart(2,'0')} ${R.n}</div>
+        <div class="nm ${c?'':'unk'}">${c?f.name:'？？？'}</div>
+        ${c?`<div>最高評価 <span class="gr">${GRADES[c.best].g}</span> 発掘${c.n}回</div><div>最高鑑定 <span class="gr">${yen(c.bestPrice)}</span></div>
+        <div class="sm">相場平均 ${yen(f.avg)}（${f.src}）</div>`:`<div class="sm">まだ見つかっていない</div>`}</div>`;}).join('')}</div>
+    <p class="note">相場は2026年9月時点のヤフオク・オークファンの落札平均などを参考にしたゲーム用の目安です。「推定」はゲーム用の想定値。実物の価格は産地・大きさ・状態で大きく変わります。</p>
+    <div class="p-btns"><button class="btn" id="zClose">とじる</button></div>`;
+  document.getElementById('zukan').classList.add('show');
+  document.getElementById('zClose').onclick=()=>document.getElementById('zukan').classList.remove('show');
+}
+document.getElementById('zukanBtn').onclick=showZukan;
+
+/* ================= エンディング ================= */
+const museum=new THREE.Group();let museumPieces=[];
+function startEnding(){
+  mode='ending';busy=true;state.cleared=true;save();
+  document.getElementById('hud').hidden=true;document.getElementById('tools').hidden=true;cursor.visible=false;
+  document.querySelectorAll('.ov').forEach(o=>o.classList.remove('show'));
+  sfx.fan();setTimeout(()=>sfx.fan(),700);
+  site.clear();world.visible=false;museum.clear();museumPieces=[];scene.add(museum);
+  scene.fog.near=30;scene.fog.far=60;
+  const floor=new THREE.Mesh(new THREE.CylinderGeometry(11,11,.3,40),mat('#2b3263'));floor.position.y=-.15;floor.receiveShadow=true;museum.add(floor);
+  const ped=mat('#efe6d2');
+  FOSSILS.forEach((f,i)=>{const a=i/FOSSILS.length*Math.PI*2,R=6.5;
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(.55,.65,1.1,8),ped);p.position.set(Math.cos(a)*R,.55,Math.sin(a)*R);p.castShadow=p.receiveShadow=true;museum.add(p);
+    const g=makeFossil(f.id);g.position.set(Math.cos(a)*R,1.75,Math.sin(a)*R);g.scale.setScalar(1.25);museum.add(g);museumPieces.push(g);
+    const l=new THREE.PointLight(i%2?'#ffcc66':'#9fb0ff',.5,3.5);l.position.set(Math.cos(a)*R,3,Math.sin(a)*R);museum.add(l);});
+  const center=makeFossil('trex');center.scale.setScalar(3);center.position.set(0,2.4,0);museum.add(center);museumPieces.push(center);
+  target.set(0,1.2,0);orbit.phi=1.08;orbit.r=innerWidth<innerHeight?20:15;updateCam();
+  const sCount=Object.values(state.col).filter(c=>c.best===0).length;
+  document.getElementById('endPanel').innerHTML=`<p class="big">コンプリート！</p>
+    <p class="epi">15種すべての化石を掘り当てた。</p>
+    <div class="stats"><div>発掘地<b>${state.site}か所</b></div><div>総鑑定額<b>${yen(state.total)}</b></div><div>S評価<b>${sCount}種</b></div></div>
+    <p class="epi">標本はぜんぶ、町の小さな博物館に並ぶことになった。<br>今日も誰かが、ガラス越しに太古をのぞいている。</p>
+    <div class="p-btns"><button class="btn sub" id="eZ">図鑑を見る</button><button class="btn" id="eR">はじめから遊ぶ</button></div>`;
+  const ov=document.getElementById('ending');ov.classList.add('show');setTimeout(()=>ov.classList.add('lit'),1600);
+  document.getElementById('eZ').onclick=showZukan;
+  document.getElementById('eR').onclick=()=>{state=fresh();save();location.reload();};
+}
+
+/* ================= 入力 ================= */
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+function pickCell(e){const r=canvas.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
+  ray.setFromCamera(mouse,camera);const hits=ray.intersectObjects(pickables||[],false);if(!hits.length)return null;
+  const h=hits[0];if(h.object.userData.cell)return h.object.userData.cell;const x=Math.round(h.point.x+OFF),z=Math.round(h.point.z+OFF);
+  return(x<0||z<0||x>=N||z>=N)?null:{x,z};}
+function showCursor(cell){if(!cell||mode!=='play'){cursor.visible=false;return;}const s=tool==='pick'?1:tool==='hammer'?3:5;
+  cursor.visible=true;cursor.scale.set(s,tool==='scan'?.05:1,s);const h=heights[cell.x][cell.z];cursor.position.set(cell.x-OFF,tool==='scan'?h+.02:Math.max(h-.5,.5),cell.z-OFF);}
+const pts=new Map();let down=null,pinch0=0,r0=0;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+canvas.addEventListener('pointerdown',e=>{audio();canvas.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pts.size===1)down={x:e.clientX,y:e.clientY,t:performance.now(),moved:false};
+  else if(pts.size===2){const[a,b]=[...pts.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);r0=orbit.r;if(down)down.moved=true;}});
+canvas.addEventListener('pointermove',e=>{
+  if(e.pointerType==='mouse'&&!pts.size){showCursor(pickCell(e));return;}
+  const p=pts.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
+  if(pts.size===1&&down){if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8)down.moved=true;
+    if(down.moved){orbit.theta-=dx*.008;orbit.phi=clamp(orbit.phi-dy*.006,.3,1.3);updateCam();cursor.visible=false;}}
+  else if(pts.size===2){const[a,b]=[...pts.values()];orbit.r=clamp(r0*pinch0/Math.max(20,Math.hypot(a.x-b.x,a.y-b.y)),8,28);updateCam();}});
+function up(e){const wasTap=down&&!down.moved&&pts.size===1&&performance.now()-down.t<500;pts.delete(e.pointerId);
+  if(wasTap){const c=pickCell(e);if(c){showCursor(c);act(c);if(e.pointerType!=='mouse')setTimeout(()=>cursor.visible=false,350);}}
+  if(!pts.size)down=null;}
+canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',e=>{pts.delete(e.pointerId);if(!pts.size)down=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();orbit.r=clamp(orbit.r*(1+e.deltaY*.001),8,28);updateCam();},{passive:false});
+
+const toolBtns=[...document.querySelectorAll('#tools button')];
+function setTool(t){tool=t;toolBtns.forEach(b=>b.classList.toggle('on',b.dataset.tool===t));cursor.visible=false;}
+toolBtns.forEach(b=>b.onclick=()=>{audio();setTool(b.dataset.tool);tone(880,.05,'square',.04);});
+addEventListener('keydown',e=>{if(mode!=='play')return;if(e.key==='1')setTool('pick');if(e.key==='2')setTool('hammer');if(e.key==='3')setTool('scan');});
+
+/* ================= タイトル ================= */
+function startPlay(){document.getElementById('title').classList.remove('show');document.getElementById('hud').hidden=false;document.getElementById('tools').hidden=false;
+  mode='play';siteLog=[];newSite();}
+(function title(){
+  const box=document.getElementById('titleBtns');const got=Object.keys(state.col).length;
+  const mk=(txt,cls,fn)=>{const b=document.createElement('button');b.className='btn'+(cls?' '+cls:'');b.textContent=txt;b.onclick=()=>{audio();fn();};box.appendChild(b);};
+  if(state.cleared){mk('博物館へ行く','',()=>{document.getElementById('title').classList.remove('show');startEnding();});
+    mk('はじめから遊ぶ','sub',()=>{state=fresh();save();startPlay();});}
+  else if(got||state.site>1){mk(`続きから（図鑑 ${got}/15）`,'',startPlay);mk('はじめから遊ぶ','sub',()=>{state=fresh();save();startPlay();});}
+  else mk('発掘をはじめる','',startPlay);
+})();
+newSite();
+
+/* ================= ループ ================= */
+let last=performance.now();
+(function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;
+  for(let i=tweens.length-1;i>=0;i--){const t=tweens[i];t.t+=dt;const p=Math.min(1,t.t/t.dur);t.fn(p);if(p>=1){tweens.splice(i,1);t.done&&t.done();}}
+  for(let i=dust.length-1;i>=0;i--){const d=dust[i],u=d.userData;u.life-=dt;u.v.y-=12*dt;d.position.addScaledVector(u.v,dt);d.scale.setScalar(Math.max(.01,u.life/.6));
+    if(u.life<=0){scene.remove(d);dust.splice(i,1);}}
+  const tt=now/1000;
+  for(const k in markers){const m=markers[k];m.rotation.y=tt*2;m.position.y=m.userData.base+Math.sin(tt*3)*.12;}
+  if(mode==='title'){orbit.theta+=dt*.08;updateCam();}
+  if(mode==='ending'){if(!pts.size)orbit.theta+=dt*.12;updateCam();museumPieces.forEach((g,i)=>{g.rotation.y=tt*.8+i;g.position.y+=Math.sin(tt*2+i)*.002;});}
+  renderer.render(scene,camera);
+})(last);
+})();
+</script>
+</body>
+</html>
