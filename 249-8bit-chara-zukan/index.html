@@ -1,0 +1,2797 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8-Bit Character Collection 60</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'DotGothic16', sans-serif;
+            background-color: #0f0f1b;
+            color: #e0e6ed;
+            image-rendering: pixelated;
+        }
+        .font-pixel {
+            font-family: 'Press Start 2P', monospace;
+        }
+        .pixel-border {
+            box-shadow: 
+                -4px 0 0 0 #3b82f6,
+                4px 0 0 0 #3b82f6,
+                0 -4px 0 0 #3b82f6,
+                0 4px 0 0 #3b82f6;
+        }
+        .pixel-card {
+            background-color: #181829;
+            border: 4px solid #282846;
+            transition: all 0.2s ease;
+        }
+        .pixel-card:hover {
+            border-color: #6366f1;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+        }
+        .pixel-canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        /* Custom scrollbar for pixel aesthetic */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f0f1b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 0px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #60a5fa;
+        }
+    
+/* ===== ファミコン風コントローラー（iOS前提・DOMオーバーレイ型） ===== */
+:root{ --fc-pad-h: 190px; }
+html,body{ -webkit-text-size-adjust:100%; }
+body{ touch-action:manipulation; }
+#fcpad{
+  position:fixed; left:0; right:0; bottom:0; z-index:9999;
+  display:flex; justify-content:center;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.45) 28%,rgba(0,0,0,.72) 100%);
+  touch-action:none; -webkit-user-select:none; user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#fcpad *{ touch-action:none; -webkit-user-select:none; user-select:none; }
+.fc-shell{
+  width:100%; max-width:560px;
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px;
+  background:#c9c5bd; border:3px solid #2b2b2b; border-radius:10px;
+  padding:12px 14px; box-shadow:0 6px 0 #1a1a1a, 0 10px 22px rgba(0,0,0,.5);
+}
+/* --- 十字キー --- */
+.fc-dpad{ position:relative; width:min(40vw,136px); height:min(40vw,136px); flex:none; }
+.fc-cross{ position:absolute; inset:0; pointer-events:none;
+  background:
+    linear-gradient(#2e2e2e,#2e2e2e) center/34% 100% no-repeat,
+    linear-gradient(#2e2e2e,#2e2e2e) center/100% 34% no-repeat;
+  filter:drop-shadow(0 2px 0 #111);
+}
+.fc-cross::after{ content:""; position:absolute; left:50%; top:50%; width:22%; height:22%;
+  transform:translate(-50%,-50%); border-radius:50%; background:#444; box-shadow:inset 0 0 0 2px #1d1d1d; }
+.fc-d{ position:absolute; margin:0; padding:0; border:0; background:transparent; cursor:pointer; }
+.fc-d.u{ left:33%; top:0; width:34%; height:36%; }
+.fc-d.d{ left:33%; bottom:0; width:34%; height:36%; }
+.fc-d.l{ left:0; top:33%; width:36%; height:34%; }
+.fc-d.r{ right:0; top:33%; width:36%; height:34%; }
+.fc-d::before{ content:""; position:absolute; inset:14%; border-radius:3px; background:#f0f0f0; opacity:0; }
+.fc-dpad.press-up .fc-d.u::before,
+.fc-dpad.press-down .fc-d.d::before,
+.fc-dpad.press-left .fc-d.l::before,
+.fc-dpad.press-right .fc-d.r::before{ opacity:.22; }
+.fc-d:focus-visible{ outline:3px solid #ffd23f; outline-offset:-4px; }
+/* --- SELECT / START --- */
+.fc-mid{ display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; }
+.fc-sys{ font:700 11px/1 "DotGothic16",system-ui,sans-serif; letter-spacing:.06em; color:#e8e8e8;
+  background:#3a3a3a; border:2px solid #1d1d1d; border-radius:999px;
+  padding:7px 14px; min-width:74px; cursor:pointer; box-shadow:0 3px 0 #141414; }
+.fc-sys.on{ background:#6a6a6a; }
+.fc-sys:active,.fc-sys.press{ transform:translateY(3px); box-shadow:none; }
+.fc-sys:focus-visible{ outline:3px solid #ffd23f; outline-offset:2px; }
+/* --- A / B --- */
+.fc-ab{ display:flex; align-items:center; gap:12px; transform:rotate(-14deg); }
+.fc-ab-btn{ width:min(16vw,60px); height:min(16vw,60px); border-radius:50%;
+  background:#c0202e; border:3px solid #6d1018; color:#ffe9e9;
+  font:700 17px/1 "Press Start 2P","DotGothic16",system-ui,sans-serif;
+  cursor:pointer; box-shadow:0 5px 0 #5a0d14; display:flex; align-items:center; justify-content:center; }
+.fc-ab-btn.press{ transform:translateY(5px); box-shadow:none; background:#e03a48; }
+.fc-ab-btn:focus-visible{ outline:3px solid #ffd23f; outline-offset:3px; }
+.fc-hint{ position:absolute; left:0; right:0; top:-24px; text-align:center; pointer-events:none; }
+.fc-hint span{ display:inline-block; max-width:94%; padding:3px 10px; border-radius:4px;
+  background:rgba(12,10,28,.88); color:#ffe9a8;
+  font:12px/1.5 "DotGothic16",system-ui,sans-serif; }
+@media (max-height:620px){
+  .fc-dpad{ width:104px; height:104px; }
+  .fc-ab-btn{ width:48px; height:48px; font-size:14px; }
+  .fc-shell{ padding:8px 10px; }
+  :root{ --fc-pad-h:150px; }
+}
+@media (min-width:900px){ #fcpad{ background:none; } }
+
+        /* ---- FCパッド用のページ側調整 ---- */
+        body { padding-bottom: calc(var(--fc-pad-h) + 16px); }
+        #character-grid .pixel-card { scroll-margin-bottom: calc(var(--fc-pad-h) + 28px); scroll-margin-top: 96px; }
+        .pixel-card.fc-cur { border-color:#fde047 !important; box-shadow:0 0 0 4px rgba(253,224,71,.35); }
+        #editor-modal .fc-cell-cur { outline:none; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="bg-slate-900 border-b-4 border-indigo-600 p-4 sticky top-0 z-40 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 flex items-center justify-center text-yellow-300 font-pixel text-xl shadow-inner border-2 border-white">
+                    8
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-indigo-400">
+                        8-BIT CHARACTER LAB
+                    </h1>
+                    <p class="text-xs text-indigo-300">ドット絵キャラクター 60選コレクション & エディター</p>
+                </div>
+            </div>
+
+            <!-- Header Controls -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button id="btn-sound" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border-2 border-indigo-500 rounded text-xs font-bold flex items-center gap-2 transition">
+                    <i class="fas fa-volume-up text-yellow-400" id="sound-icon"></i>
+                    <span>BGM / SE</span>
+                </button>
+                <button id="btn-arena" class="px-3 py-1.5 bg-pink-700 hover:bg-pink-600 border-2 border-pink-400 rounded text-xs font-bold flex items-center gap-2 transition">
+                    <i class="fas fa-gamepad"></i>
+                    <span>8bit アリーナ</span>
+                </button>
+                <button id="btn-export-all" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 border-2 border-emerald-400 rounded text-xs font-bold flex items-center gap-2 transition">
+                    <i class="fas fa-download"></i>
+                    <span>一括シート保存</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 gap-6">
+
+        <!-- Controls Toolbar -->
+        <section class="bg-slate-900/80 p-4 rounded-xl border-2 border-slate-700 flex flex-col md:flex-row justify-between gap-4 items-center">
+            <!-- Category Filter Buttons -->
+            <div class="flex flex-wrap gap-2 justify-center md:justify-start" id="filter-buttons">
+                <button data-category="all" class="filter-btn active px-3 py-1.5 bg-indigo-600 text-white rounded border border-indigo-400 text-sm font-bold">すべて (60)</button>
+                <button data-category="hero" class="filter-btn px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-600 text-sm">ヒーロー/味方</button>
+                <button data-category="monster" class="filter-btn px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-600 text-sm">モンスター</button>
+                <button data-category="scifi" class="filter-btn px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-600 text-sm">SF / ロボット</button>
+                <button data-category="animal" class="filter-btn px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-600 text-sm">アニマル</button>
+            </div>
+
+            <!-- Palette Selector -->
+            <div class="flex items-center gap-2">
+                <label for="palette-select" class="text-xs font-bold text-slate-400 whitespace-nowrap">
+                    <i class="fas fa-palette text-indigo-400 mr-1"></i>パレット:
+                </label>
+                <select id="palette-select" class="bg-slate-800 border-2 border-indigo-500 text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-indigo-400">
+                    <option value="default">フルカラー (Default)</option>
+                    <option value="gameboy">GameBoy (初代緑)</option>
+                    <option value="nes">NES / ファミコン風</option>
+                    <option value="cyberpunk">ネオンサイバー</option>
+                    <option value="monochrome">モノクロ / 白黒</option>
+                    <option value="pico8">PICO-8 16色</option>
+                </select>
+            </div>
+        </section>
+
+        <section id="character-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4">
+            <!-- Dynamic 60 Character Cards Rendered Here -->
+        </section>
+
+    </main>
+
+    <div id="editor-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-4 border-indigo-500 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 flex flex-col gap-6 shadow-2xl relative">
+            <button id="close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full">
+                &times;
+            </button>
+
+            <div class="flex items-center gap-3 border-b-2 border-slate-800 pb-3">
+                <div class="w-8 h-8 rounded bg-indigo-600 flex items-center justify-center text-white font-pixel text-xs" id="editor-id-badge">01</div>
+                <div>
+                    <h2 class="text-xl font-bold text-yellow-400" id="editor-title">ヒーロー</h2>
+                    <p class="text-xs text-slate-400" id="editor-category">カテゴリ: ヒーロー/味方</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <!-- Main Canvas Grid View -->
+                <div class="lg:col-span-7 flex flex-col items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="relative">
+                        <canvas id="editor-canvas" width="320" height="320" class="pixel-canvas border-4 border-slate-700 bg-slate-900 rounded cursor-crosshair"></canvas>
+                        <!-- Grid overlay line guide -->
+                        <div class="absolute inset-0 pointer-events-none border border-indigo-500/20"></div>
+                    </div>
+                    <div class="text-xs text-slate-400 flex gap-4">
+                        <span>サイズ: 16x16px</span>
+                        <span>ズーム: 20x</span>
+                    </div>
+                </div>
+
+                <!-- Editor Controls Panel -->
+                <div class="lg:col-span-5 flex flex-col gap-4">
+                    <!-- Tool Selectors -->
+                    <div>
+                        <label class="text-xs font-bold text-indigo-400 mb-2 block">ツール</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button id="tool-pen" class="tool-btn active p-2 bg-indigo-600 text-white rounded text-xs font-bold flex items-center justify-center gap-1">
+                                <i class="fas fa-pencil-alt"></i> ペン
+                            </button>
+                            <button id="tool-eraser" class="tool-btn p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-bold flex items-center justify-center gap-1">
+                                <i class="fas fa-eraser"></i> 消しゴム
+                            </button>
+                            <button id="tool-bucket" class="tool-btn p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-bold flex items-center justify-center gap-1">
+                                <i class="fas fa-fill-drip"></i> 塗りつぶし
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Color Palette Palette Picker -->
+                    <div>
+                        <label class="text-xs font-bold text-indigo-400 mb-2 block">カラーパレット</label>
+                        <div id="editor-palette" class="grid grid-cols-6 gap-1.5 p-2 bg-slate-950 rounded-lg border border-slate-800">
+                            <!-- Swatches populated dynamically -->
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <input type="color" id="custom-color-picker" value="#ffffff" class="w-8 h-8 rounded bg-transparent cursor-pointer border-none">
+                            <span class="text-xs text-slate-400">カスタム色選択</span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                        <div class="flex gap-2">
+                            <button id="btn-undo" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs font-bold">
+                                <i class="fas fa-undo"></i> 元に戻す
+                            </button>
+                            <button id="btn-reset" class="flex-1 py-1.5 bg-rose-900/60 hover:bg-rose-800 border border-rose-600 rounded text-xs font-bold text-rose-200">
+                                <i class="fas fa-rotate-left"></i> リセット
+                            </button>
+                        </div>
+                        <button id="btn-download-single" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-xs font-bold text-white flex items-center justify-center gap-2 shadow">
+                            <i class="fas fa-file-export"></i> PNG画像保存 (拡大版)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="arena-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-4 border-pink-500 rounded-2xl max-w-4xl w-full p-6 flex flex-col gap-4 relative">
+            <button id="close-arena" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full">
+                &times;
+            </button>
+
+            <div class="flex items-center gap-3">
+                <i class="fas fa-gamepad text-pink-500 text-2xl"></i>
+                <div>
+                    <h2 class="text-xl font-bold text-pink-400">8bit アクションアリーナ</h2>
+                    <p class="text-xs text-slate-400">キャラクターをステージで歩かせて遊ぼう！ (キーボード矢印キーまたはボタン操作)</p>
+                </div>
+            </div>
+
+            <!-- Canvas Stage -->
+            <div class="relative w-full aspect-[2/1] bg-slate-950 rounded-xl border-4 border-slate-800 overflow-hidden">
+                <canvas id="arena-canvas" class="w-full h-full pixel-canvas" style="max-width:100%"></canvas>
+            </div>
+
+            <!-- Controls for Arena -->
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <label class="text-xs font-bold text-slate-400 whitespace-nowrap">操作キャラ:</label>
+                    <select id="arena-char-select" class="bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5 w-full sm:w-48">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <!-- Touch / Screen Navigation Controls -->
+                <div class="flex items-center gap-2">
+                    <button id="btn-move-left" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 rounded border border-slate-600 flex items-center justify-center text-lg active:bg-pink-600">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <button id="btn-action-jump" class="px-4 h-10 bg-pink-600 hover:bg-pink-500 text-white rounded font-bold text-xs active:bg-pink-700 flex items-center gap-1">
+                        <i class="fas fa-arrow-up"></i> ジャンプ
+                    </button>
+                    <button id="btn-move-right" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 rounded border border-slate-600 flex items-center justify-center text-lg active:bg-pink-600">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button id="btn-action-attack" class="px-3 h-10 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold text-xs active:bg-amber-700">
+                        アタック
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-slate-950 border-t border-slate-800 p-4 text-center text-xs text-slate-500">
+        <p>8-Bit Retro Character Collection • 30 Pixel Characters • Powered by HTML5 Canvas & Web Audio</p>
+    </footer>
+
+    <script>
+        // Palette Definitions for Color Theme Swapping
+        const PALETTES = {
+            default: null, // Uses original colors
+            gameboy: {
+                '.': '#9bbc0f',
+                'B': '#0f380f',
+                'W': '#9bbc0f',
+                'S': '#8bac0f',
+                'R': '#306230',
+                'G': '#0f380f',
+                'U': '#306230',
+                'Y': '#8bac0f',
+                'P': '#0f380f',
+                'O': '#306230',
+                'C': '#8bac0f',
+                'D': '#306230',
+                'L': '#8bac0f',
+                'M': '#0f380f',
+                'K': '#306230',
+                'E': '#8bac0f'
+            },
+            nes: {
+                '.': 'transparent',
+                'B': '#000000',
+                'W': '#fc2e00',
+                'S': '#ffce9c',
+                'R': '#f83800',
+                'G': '#00a800',
+                'U': '#0028d8',
+                'Y': '#fcb000',
+                'P': '#940084',
+                'O': '#fc7400',
+                'C': '#0078f8',
+                'D': '#505050',
+                'L': '#bcbcbc',
+                'M': '#f878f8',
+                'K': '#887000',
+                'E': '#00a800'
+            },
+            cyberpunk: {
+                '.': 'transparent',
+                'B': '#0d0221',
+                'W': '#ffffff',
+                'S': '#ff007f',
+                'R': '#ff0055',
+                'G': '#00ffcc',
+                'U': '#00b8ff',
+                'Y': '#ffe600',
+                'P': '#7928ca',
+                'O': '#ff5500',
+                'C': '#00f0ff',
+                'D': '#2a0845',
+                'L': '#7b2cbf',
+                'M': '#ff007f',
+                'K': '#3f0071',
+                'E': '#00ffcc'
+            },
+            monochrome: {
+                '.': 'transparent',
+                'B': '#000000',
+                'W': '#ffffff',
+                'S': '#d0d0d0',
+                'R': '#333333',
+                'G': '#777777',
+                'U': '#555555',
+                'Y': '#e0e0e0',
+                'P': '#444444',
+                'O': '#aaaaaa',
+                'C': '#cccccc',
+                'D': '#222222',
+                'L': '#888888',
+                'M': '#666666',
+                'K': '#444444',
+                'E': '#aaaaaa'
+            },
+            pico8: {
+                '.': 'transparent',
+                'B': '#000000',
+                'W': '#fff1e8',
+                'S': '#ffccaa',
+                'R': '#ff004d',
+                'G': '#00e756',
+                'U': '#29adff',
+                'Y': '#ffec27',
+                'P': '#83769c',
+                'O': '#ffa300',
+                'C': '#29adff',
+                'D': '#5f574f',
+                'L': '#c2c3c7',
+                'M': '#ff77a8',
+                'K': '#7e2553',
+                'E': '#00e756'
+            }
+        };
+
+        // Standard Color Map
+        const COLOR_MAP = {
+            '.': 'transparent',
+            'B': '#1a1c2c', // Black / Dark outline
+            'W': '#f4f4f4', // White
+            'S': '#f7a889', // Skin tone
+            'R': '#e43b44', // Red
+            'G': '#3eb549', // Green
+            'U': '#2ce8f5', // Blue / Cyan
+            'Y': '#fee761', // Yellow
+            'P': '#8b6d9c', // Purple
+            'O': '#feae34', // Orange
+            'C': '#2ce8f5', // Cyan
+            'D': '#3e3546', // Dark Gray
+            'L': '#92a9b9', // Light Gray
+            'M': '#ff0055', // Magenta
+            'K': '#8d5524', // Brown
+            'E': '#a3e635'  // Lime Green
+        };
+
+        // 60 Pixel Art Characters Definition (16x16 Grid)
+        // Legend: .=Transparent, B=Outline, S=Skin, W=White, R=Red, G=Green, U=Blue, Y=Yellow, P=Purple, O=Orange, D=DarkGray, L=LightGray, K=Brown, M=Pink/Magenta
+        const CHARACTERS = [
+            {
+                id: 1,
+                name: "勇者 (Hero)",
+                category: "hero",
+                desc: "伝説の剣と盾を持つ冒険者",
+                data: [
+                    "....BBBBBB......",
+                    "...BYYYYYYB.....",
+                    "...BYYYYYYB.....",
+                    "...BBSSSSBB.....",
+                    "..BSBBSBBSBS....",
+                    "..BSSSSSSSSB....",
+                    "...BSSSSSSB.....",
+                    "..BBUUUUUUBB....",
+                    ".BBUUUUUUUUBB...",
+                    "L.BUUYYYUUB.L...",
+                    "L.BUUUUUUUB.L...",
+                    "L.BUUUUUUUB.L...",
+                    ".B.BUUUUUUB.B...",
+                    "...BDD..DDB.....",
+                    "...BDD..DDB.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 2,
+                name: "魔法使い (Wizard)",
+                category: "hero",
+                desc: "大魔法を操るトンガリ帽子の賢者",
+                data: [
+                    "......P.........",
+                    ".....PPP........",
+                    "....PPPPP.......",
+                    "...PPPPPPP......",
+                    "..PPPPPPPPP.....",
+                    ".PPPPPPPPPPP....",
+                    "BBBBBBBBBBBBBB..",
+                    "...BBSSSSBB.....",
+                    "..BSBBSBBSBS....",
+                    "..BWWWWWWWWB.Y..",
+                    "..BWWWWWWWWBYYY.",
+                    ".BPPPPPPPPPPBY..",
+                    ".BPPPPPPPPPPB...",
+                    ".BPPPPPPPPPPB...",
+                    "..BDD....DDB....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 3,
+                name: "忍者 (Ninja)",
+                category: "hero",
+                desc: "影に潜みクナイを投げる黒装束",
+                data: [
+                    "....BBBBBB......",
+                    "...BBBBBBBB.....",
+                    "..BBBBBBBBBB....",
+                    "..BBSSSSSSBB....",
+                    "..BSBBSBBSBS....",
+                    "..BBSSSSSSBB....",
+                    "...BBBBBBBB.....",
+                    "..BBRRRRRRBB....",
+                    ".BBRRRRRRRRBB...",
+                    ".BB.BBBBBB.BB...",
+                    "....BBBBBB......",
+                    "...BBBBBBBB.....",
+                    "...BBBBBBBB.....",
+                    "...BDD..DDB.....",
+                    "...BDD..DDB.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 4,
+                name: "ロボット (Robot-88)",
+                category: "scifi",
+                desc: "レトロフューチャーな8bitサイボーグ",
+                data: [
+                    "......RR........",
+                    "......RR........",
+                    "....LLLLLL......",
+                    "...LCCCCCCL.....",
+                    "..LCRBCCRBCL....",
+                    "..LCCCCCCCCL....",
+                    "..LCCCCCCCCL....",
+                    "...LLLLLLLL.....",
+                    ".LLDDDDDDDDLL...",
+                    "LL.DYYYYYYD.LL..",
+                    "LL.DYYYYYYD.LL..",
+                    "LL.DDDDDDDD.LL..",
+                    "...DDDDDDDD.....",
+                    "...DLL..LLD.....",
+                    "...DLL..LLD.....",
+                    "..LLLL..LLLL...."
+                ]
+            },
+            {
+                id: 5,
+                name: "スライム (Slime)",
+                category: "monster",
+                desc: "ぷるぷる動く定番のモンスター",
+                data: [
+                    ".......UU.......",
+                    "......UUUU......",
+                    ".....UUUUUU.....",
+                    "....UUUUUUUU....",
+                    "...UUUUUUUUUU...",
+                    "..UUWUUUUUWUUU..",
+                    ".UUWWUUUUWWUUUU.",
+                    ".UUUBUUUUUBUUUU.",
+                    "UUUUUUUUUUUUUUUU",
+                    "UUUUUUUUUUUUUUUU",
+                    "UUUUUUUUUUUUUUUU",
+                    "UUUUUUUUUUUUUUUU",
+                    ".UUUUUUUUUUUUUU.",
+                    ".UUUUUUUUUUUUUU.",
+                    "..UUUUUUUUUUUU..",
+                    "...BBBBBBBBBB..."
+                ]
+            },
+            {
+                id: 6,
+                name: "ドラゴン (Dragon)",
+                category: "monster",
+                desc: "炎を吐く赤き竜の子供",
+                data: [
+                    "....RR....RR....",
+                    "...RRRR..RRRR...",
+                    "...RRRRRRRRRR...",
+                    "..RRRRRRRRRRRR..",
+                    "..RRWWRRRRWWRR..",
+                    "..RRBBRRRRBBRR..",
+                    "..RRRRRRRRRRRR..",
+                    "...RRRYYYYRRR...",
+                    "..RRRRRRYRRRRR..",
+                    ".RRRRRRRRRRRRRR.",
+                    ".RR.RRRRRRRR.RR.",
+                    "RR..RRRRRRRR..RR",
+                    "....YYYYYYYY....",
+                    "....YY....YY....",
+                    "...YYY....YYY...",
+                    "...BBB....BBB..."
+                ]
+            },
+            {
+                id: 7,
+                name: "スケルトン (Skeleton)",
+                category: "monster",
+                desc: "カタカタと骨を鳴らすアンデッド",
+                data: [
+                    "....WWWWWW......",
+                    "...WWWWWWWW.....",
+                    "..WWWWWWWWWW....",
+                    "..WWBWWWBW2W....",
+                    "..WWBBWWWBBW....",
+                    "..WWWWWWWWWW....",
+                    "...WWWBBWWW.....",
+                    "....WWWWWW......",
+                    "..WWW.WW.WWW....",
+                    ".WWWW.WW.WWWW...",
+                    ".WWWW.WW.WWWW...",
+                    "......WW........",
+                    ".....WWWW.......",
+                    "....WW..WW......",
+                    "....WW..WW......",
+                    "...WWW..WWW....."
+                ]
+            },
+            {
+                id: 8,
+                name: "サイバーパンク (Cyber)",
+                category: "scifi",
+                desc: "バイザーを装着した未来都市のハッカー",
+                data: [
+                    "....CCCCCC......",
+                    "...CCCCCCCC.....",
+                    "..CCCCCCCCCC....",
+                    "..CMMMMMMMMC....",
+                    "..CMMMMMMMMC....",
+                    "..CCSSSSSSCC....",
+                    "...CSSSSSS......",
+                    "..PPRRRRRRPP....",
+                    ".PPRRRRRRRRPP...",
+                    ".PP.RRRRRR.PP...",
+                    "....RRRRRR......",
+                    "...RRRRRRRR.....",
+                    "...RRRRRRRR.....",
+                    "...BDD..DDB.....",
+                    "...BDD..DDB.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 9,
+                name: "エイリアン (Alien)",
+                category: "scifi",
+                desc: "大きな目を持つ緑色の宇宙人",
+                data: [
+                    "....GGGGGG......",
+                    "..GGGGGGGGGG....",
+                    ".GGGGGGGGGGGG...",
+                    ".GGWWGGGGWWGG...",
+                    ".GWWWWGGWWWWG...",
+                    ".GWWBBGGWWBBG...",
+                    ".GGWWGGGGWWGG...",
+                    "..GGGGGGGGGG....",
+                    "...GGGGGGGG.....",
+                    "....GGGGGG......",
+                    "..GG.GGGG.GG....",
+                    ".GGG.GGGG.GGG...",
+                    ".GGG.GGGG.GGG...",
+                    ".....GGGG.......",
+                    "....GG..GG......",
+                    "...GGG..GGG....."
+                ]
+            },
+            {
+                id: 10,
+                name: "ゾンビ (Zombie)",
+                category: "monster",
+                desc: "夜な夜なさまよう腐敗した死者",
+                data: [
+                    "....EEEEEE......",
+                    "...EEEEEEEE.....",
+                    "..EEEEEEEEEE....",
+                    "..EEERRREERR....",
+                    "..EEBBEEEBBE....",
+                    "..EEEEEEEEEE....",
+                    "...EEEEEEEE.....",
+                    "..EEDDDDDDEE....",
+                    ".EEDDDDDDDDEE...",
+                    "EE.DDDDDDDD.EE..",
+                    "EE.DDDDDDDD.EE..",
+                    "...DDDDDDDD.....",
+                    "...DDDDDDDD.....",
+                    "...DDD..DDD.....",
+                    "...DDD..DDD.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 11,
+                name: "ネコ (Pixel Cat)",
+                category: "animal",
+                desc: "しっぽを振る気まぐれなドット猫",
+                data: [
+                    "..OO......OO....",
+                    ".OOOO....OOOO...",
+                    ".OOOOOOOOOOOO...",
+                    ".OOOOOOOOOOOO...",
+                    ".OOWWOOOOWWOO...",
+                    ".OWWBWOOWWBWO...",
+                    ".OOOOOOOOOOOO...",
+                    "..OOOOOOOOOO....",
+                    "...MMOOOOOO.....",
+                    "..OOOOOOOOOO....",
+                    ".OOOOOOOOOOOO...",
+                    ".OOOOOOOOOOOO..O",
+                    ".OO.OOOOOO.OO.O.",
+                    ".OO.OOOOOO.OOOO.",
+                    "OOO.OOOOOO.OO...",
+                    "BBB.BB..BB.B...."
+                ]
+            },
+            {
+                id: 12,
+                name: "イヌ (Pixel Dog)",
+                category: "animal",
+                desc: "元気に走り回る忠実な柴犬風ドット犬",
+                data: [
+                    "...KK......KK...",
+                    "..KKKK....KKKK..",
+                    "..KKKKKKKKKKKK..",
+                    "..KKKKKKKKKKKK..",
+                    "..KKWKKKKKWKKK..",
+                    "..KWBKKKKWBKKK..",
+                    "..KKKKWWKKKKKK..",
+                    "...KKWWWWKKK....",
+                    "....KKKKKK......",
+                    "..KKKKKKKKKK....",
+                    ".KKKKKKKKKKKK...",
+                    ".KKKKKKKKKKKK...",
+                    ".KK.KKKKKK.KK...",
+                    ".KK.KKKKKK.KK...",
+                    "KKK.KK..KK.KKK..",
+                    "BBB.BB..BB.BBB.."
+                ]
+            },
+            {
+                id: 13,
+                name: "騎士 (Knight)",
+                category: "hero",
+                desc: "フルフェイス兜を被った重装騎士",
+                data: [
+                    "....LLLLLL......",
+                    "...LLLLLLLL.....",
+                    "..LLLLLLLLLL....",
+                    "..LLRRRRRRLL....",
+                    "..LLRRRRRRLL....",
+                    "..LLLLLLLLLL....",
+                    "...LLLLLLLL.....",
+                    "..LLLLLLLLLL....",
+                    ".LLLLLLLLLLLL...",
+                    "L.LLLLLLLLLL.L..",
+                    "L.LLLLLLLLLL.L..",
+                    "L.LLLLLLLLLL.L..",
+                    "..LLLLLLLLLL....",
+                    "...DDDDDDDD.....",
+                    "...DDDDDDDD.....",
+                    "..LLLL..LLLL...."
+                ]
+            },
+            {
+                id: 14,
+                name: "海賊 (Pirate)",
+                category: "hero",
+                desc: "眼帯と大海原を愛するキャプテン",
+                data: [
+                    "...BBBBBBBB.....",
+                    "..BBBBBBBBBB....",
+                    ".BBBBBBBBBBBB...",
+                    "..BBSSSSSSBB....",
+                    "..BSBBSSBSBS....",
+                    "..BSSSSSSSSS....",
+                    "...BSSSSSSB.....",
+                    "..BBRRRRRRBB....",
+                    ".BBRRRRRRRRBB...",
+                    ".BBWWWWWWWWBB...",
+                    "..BBRRRRRRBB....",
+                    "..BBWWWWWWBB....",
+                    "...BBBBBBBB.....",
+                    "...BDD..DDB.....",
+                    "...BDD..DDB.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 15,
+                name: "悪魔 (Devil)",
+                category: "monster",
+                desc: "小悪魔のツノと翼を持つモンスター",
+                data: [
+                    "RR..........RR..",
+                    "RRR........RRR..",
+                    ".RRRRRRRRRRRR...",
+                    "..RRRRRRRRRR....",
+                    "..RRYWRRYWRR....",
+                    "..RRYBRRYBRR....",
+                    "..RRRRRRRRRR....",
+                    "...RRRRRRRR.....",
+                    "M.RRRRRRRRRR.M..",
+                    "MM.RRRRRRRR.MM..",
+                    "MMM.RRRRRR.MMM..",
+                    ".M..RRRRRR..M...",
+                    "....RRRRRR......",
+                    "...RRR..RRR.....",
+                    "...RRR..RRR.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 16,
+                name: "天使 (Angel)",
+                category: "hero",
+                desc: "光の輪と白き翼を持つ神聖な使者",
+                data: [
+                    ".....YYYY.......",
+                    "....YYYYYY......",
+                    "................",
+                    "...WWSSSSWW.....",
+                    "..WWWSSSSWWW....",
+                    ".WWWBSBBSWWW....",
+                    ".WWWWSSSSWWWW...",
+                    "WWWWWWWWWWWWWW..",
+                    "WWW.YYYYYY.WWW..",
+                    ".W..YYYYYY..W...",
+                    "....YYYYYY......",
+                    "....YYYYYY......",
+                    "....YYYYYY......",
+                    "....YYYYYY......",
+                    "...SSSSSSSS.....",
+                    "...BBBBBBBB....."
+                ]
+            },
+            {
+                id: 17,
+                name: "キノコ (Mushroom)",
+                category: "monster",
+                desc: "森に生息する可憐で毒のあるキノコ",
+                data: [
+                    ".....RRRRRR.....",
+                    "...RRRRRRRRRR...",
+                    "..RRWWRRRRWWRR..",
+                    ".RRWWWWRRWWWWRR.",
+                    ".RRWWWWRRWWWWRR.",
+                    "RRRRWWRRRRWWRRRR",
+                    "RRRRRRRRRRRRRRRR",
+                    "BBBBBBBBBBBBBBBB",
+                    "..WWSSSSSSWW....",
+                    "..WWSSSSSSWW....",
+                    "..WWSBSSBSWW....",
+                    "..WWSSSSSSWW....",
+                    "..WWSSSSSSWW....",
+                    "...SSSSSSSS.....",
+                    "...SSSSSSSS.....",
+                    "..BBBBBBBBBB...."
+                ]
+            },
+            {
+                id: 18,
+                name: "宇宙飛行士 (Astronaut)",
+                category: "scifi",
+                desc: "未知の星を調査するバイザーヘルメット",
+                data: [
+                    "....WWWWWW......",
+                    "...WWWWWWWW.....",
+                    "..WWCCCCCCWW....",
+                    "..WWCCCCCCWW....",
+                    "..WWCCCCCCWW....",
+                    "..WWCCCCCCWW....",
+                    "...WWWWWWWW.....",
+                    "..WWWRRRWWWW....",
+                    ".WWWWWRRWWWWW...",
+                    ".WW.WWWWWW.WW...",
+                    ".WW.WWWWWW.WW...",
+                    "....WWWWWW......",
+                    "....WWWWWW......",
+                    "...WW....WW.....",
+                    "...WW....WW.....",
+                    "..LLLL..LLLL...."
+                ]
+            },
+            {
+                id: 19,
+                name: "ヴァンパイア (Vampire)",
+                category: "monster",
+                desc: "赤いマントを羽織った夜の貴公子",
+                data: [
+                    "....BBBBBB......",
+                    "...BBBBBBBB.....",
+                    "..BBBBBBBBBB....",
+                    "..BBWWWWWWBB....",
+                    "..BWBRWWBRWB....",
+                    "..BBWWWWWWBB....",
+                    "...BBRRRRBB.....",
+                    "R.BBBWWWWBBB.R..",
+                    "RR.BBWWWWBB.RR..",
+                    "RRR.BBRRBB.RRR..",
+                    ".RR.BBBBBB.RR...",
+                    ".RR.BBBBBB.RR...",
+                    "..R.BBBBBB.R....",
+                    "....BDD..DDB....",
+                    "...BDD....DDB...",
+                    "..BBBB....BBBB.."
+                ]
+            },
+            {
+                id: 20,
+                name: "ミイラ (Mummy)",
+                category: "monster",
+                desc: "ピラミッドから目覚めた包帯の怪人",
+                data: [
+                    "....LLLLLL......",
+                    "...LLLLLLLL.....",
+                    "..LLLLLLLLLL....",
+                    "..LLRLLLLRLL....",
+                    "..LLRLLLLRLL....",
+                    "..LLLLLLLLLL....",
+                    "...LLLLLLLL.....",
+                    "..LLLLLLLLLL....",
+                    ".LLLLLLLLLLLL...",
+                    ".LL.LLLLLL.LL...",
+                    ".LL.LLLLLL.LL...",
+                    "....LLLLLL......",
+                    "....LLLLLL......",
+                    "...LL....LL.....",
+                    "...LL....LL.....",
+                    "..DDDD..DDDD...."
+                ]
+            },
+            {
+                id: 21,
+                name: "幽霊 (Ghost)",
+                category: "monster",
+                desc: "ゆらゆら浮かぶ不気味でかわいいおばけ",
+                data: [
+                    ".....WWWW.......",
+                    "...WWWWWWWW.....",
+                    "..WWWWWWWWWW....",
+                    ".WWWWWWWWWWWW...",
+                    ".WWWBBWWBBWWW...",
+                    ".WWWBBWWBBWWW...",
+                    ".WWWWWWWWWWWW...",
+                    ".WWWWWWWWWWWW...",
+                    ".WWWWWWWWWWWW...",
+                    ".WWWWWWWWWWWW...",
+                    ".WWWWWWWWWWWW...",
+                    ".WWWWWWWWWWWW...",
+                    "..WWWWWWWWWW....",
+                    "..W.WW..WW.W....",
+                    ".W...W..W...W...",
+                    "................"
+                ]
+            },
+            {
+                id: 22,
+                name: "ドワーフ (Dwarf)",
+                category: "hero",
+                desc: "頑丈な立派なヒゲを持つ鉱夫",
+                data: [
+                    "....KKKKKK......",
+                    "...KKKKKKKK.....",
+                    "..KKKKKKKKKK....",
+                    "..KKSSSSSSKK....",
+                    "..KSBSKSBSKS....",
+                    "..KKYYYYYYKK....",
+                    "..KYYYYYYYYK....",
+                    ".KYYYYYYYYYYK...",
+                    "..KYYYYYYYYK....",
+                    ".BBKKKKKKKKBB...",
+                    "L.BKKKKKKKKB.L..",
+                    "L.BKKKKKKKKB.L..",
+                    "..BKKKKKKKKB....",
+                    "...BDD..DDB.....",
+                    "...BDD..DDB.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 23,
+                name: "エルフ (Elf)",
+                category: "hero",
+                desc: "尖った耳と弓矢を扱う森の狩人",
+                data: [
+                    "....GGGGGG......",
+                    "...GGGGGGGG.....",
+                    "..GGGGGGGGGG....",
+                    ".SGGSSSSSSGGS...",
+                    ".SGSBSGSBSGGS...",
+                    "..GGSSSSSSGG....",
+                    "...GGSSSSGG.....",
+                    "..GGGGGGGGGG....",
+                    ".GGGGGGGGGGGG...",
+                    "Y.GGGGGGGGGG.Y..",
+                    "Y.GGGGGGGGGG.Y..",
+                    "Y.GGGGGGGGGG.Y..",
+                    "..GGGGGGGGGG....",
+                    "...BKK..KKB.....",
+                    "...BKK..KKB.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 24,
+                name: "ウサギ (Bunny)",
+                category: "animal",
+                desc: "ピョンピョン跳ねる長い耳のウサギ",
+                data: [
+                    "..WW......WW....",
+                    "..WW......WW....",
+                    "..MM......MM....",
+                    "..MM......MM....",
+                    "..WWWWWWWWWW....",
+                    ".WWWWWWWWWWWW...",
+                    ".WWWBBWWBBWWW...",
+                    ".WWWBBWWBBWWW...",
+                    ".WWWWMMMMWWWW...",
+                    "..WWWWWWWWWW....",
+                    "...WWWWWWWW.....",
+                    "..WWWWWWWWWW....",
+                    ".WW.WWWWWW.WW...",
+                    ".WW.WWWWWW.WW...",
+                    "..WWWW..WWWW....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 25,
+                name: "カエル (Frog)",
+                category: "animal",
+                desc: "水辺で歌うコミカルなカエル",
+                data: [
+                    "..GG......GG....",
+                    ".GGGG....GGGG...",
+                    ".GWWG....GWWG...",
+                    ".GWBG....GWBG...",
+                    ".GGGGGGGGGGGG...",
+                    "GGGGGGGGGGGGGG..",
+                    "GGGGGGGGGGGGGG..",
+                    "GGWWWWWWWWWWGG..",
+                    ".GWWWWWWWWWWG...",
+                    "..GGGGGGGGGG....",
+                    ".GG.GGGGGG.GG...",
+                    "GGG.GGGGGG.GGG..",
+                    "GGG.GGGGGG.GGG..",
+                    "....GG....GG....",
+                    "...GGG....GGG...",
+                    "...BBB....BBB..."
+                ]
+            },
+            {
+                id: 26,
+                name: "クマ (Pixel Bear)",
+                category: "animal",
+                desc: "のんびり屋で力持ちなドット熊",
+                data: [
+                    ".KK........KK...",
+                    "KKKK......KKKK..",
+                    "KKKKKKKKKKKKKK..",
+                    "KKKKKKKKKKKKKK..",
+                    "KKWWKKKKKKWWKK..",
+                    "KWBWKKKKKKWBWK..",
+                    "KKKKKWWWWKKKKK..",
+                    "KKKKKWWWWKKKKK..",
+                    ".KKKKKKKKKKKK...",
+                    ".KKKKKKKKKKKK...",
+                    "KKKKKKKKKKKKKK..",
+                    "KK.KKKKKKKK.KK..",
+                    "KK.KKKKKKKK.KK..",
+                    "...KKKKKKKK.....",
+                    "...KK....KK.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 27,
+                name: "サムライ (Samurai)",
+                category: "hero",
+                desc: "刀を構える忠義の武士",
+                data: [
+                    "....YYYYYY......",
+                    "...YYYYYYYY.....",
+                    "..YYYRRRRYYY....",
+                    "..BBSSSSSSBB....",
+                    "..BSBBSBBSBS....",
+                    "..BSSSSSSSSB....",
+                    "...BSSSSSSB.....",
+                    "..BBRRRRRRBB....",
+                    ".BBRRRRRRRRBB...",
+                    "L.BBRRRRRRBB....",
+                    "L.BBWWWWWWBB....",
+                    "L.BBRRRRRRBB....",
+                    ".B.BBBBBBBB.B...",
+                    "...BDD..DDB.....",
+                    "...BDD..DDB.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 28,
+                name: "マッドサイエンティスト (Doc)",
+                category: "scifi",
+                desc: "怪しいフラスコを持つ天才科学者",
+                data: [
+                    "....WWWWWW......",
+                    "...WWWWWWWW.....",
+                    "..WWWWWWWWWW....",
+                    "..WWCCCCCCCW....",
+                    "..WCBSBCBSBW....",
+                    "..WWSSSSSSWW....",
+                    "...WSSSSSSW.....",
+                    "..WWWWWWWWWW....",
+                    ".WWWWWWWWWWWW...",
+                    ".WW.WWWWWW.WUG..",
+                    ".WW.WWWWWW.WUG..",
+                    "....WWWWWW..UU..",
+                    "....DDDDDD......",
+                    "...DD....DD.....",
+                    "...DD....DD.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 29,
+                name: "ゴースト船長 (Ghost Captain)",
+                category: "monster",
+                desc: "呪われた幽霊船のキャプテン",
+                data: [
+                    "...CCCCCC.......",
+                    "..CCCCCCCCC.....",
+                    ".CCCCCCCCCCC....",
+                    "..CCUUUUUUCC....",
+                    "..CUBUUUUBUC....",
+                    "..CUUUUUUUUC....",
+                    "...CUUUUUUC.....",
+                    "..CCGGGGGGCC....",
+                    ".CCGGGGGGGGCC...",
+                    ".CC.GGGGGG.CC...",
+                    "....GGGGGG......",
+                    "...GGGGGGGG.....",
+                    "...GGGGGGGG.....",
+                    "....UU....UU....",
+                    "....UU....UU....",
+                    "...UUU....UUU..."
+                ]
+            },
+            {
+                id: 30,
+                name: "フェニックス (Phoenix)",
+                category: "monster",
+                desc: "炎を纏って甦る伝説の不死鳥",
+                data: [
+                    "....RR....RR....",
+                    "...RRRR..RRRR...",
+                    "..RRRRRRRRRRRR..",
+                    "..RRYYYYYYYYRR..",
+                    "..RRYWYYYYWWRR..",
+                    "..RRYBYYYYBYRR..",
+                    "..RRYYYYYYYYRR..",
+                    "...RRRYYYYRRR...",
+                    "OO.RRRRRRRR.OO..",
+                    "OOO.RRRRRR.OOO..",
+                    "OOOO.RRRR.OOOO..",
+                    ".OOO..RR..OOO...",
+                    "..OO......OO....",
+                    "...YY....YY.....",
+                    "...YY....YY.....",
+                    "..BBBB..BBBB...."
+                ]
+            },
+            {
+                id: 31,
+                name: "弓使い (Archer)",
+                category: "hero",
+                desc: "森の狩人。放った矢は決して外さない",
+                data: [
+                    ".....GGGGGG.....",
+                    "....GGGGGGGG....",
+                    "....GSBSSBSG....",
+                    "....BSSSSSSB....",
+                    ".....BSSSSB.....",
+                    "...BBGGGGGGBB...",
+                    ".KBSBGGGGGGBSB..",
+                    ".KBSBGGGGGGBSB..",
+                    ".KBSBGGGGGGBSB..",
+                    "...BBGGGGGGBB...",
+                    "....BGGEEGGB....",
+                    "....BGGGGGGB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 32,
+                name: "盗賊 (Thief)",
+                category: "hero",
+                desc: "闇に紛れて宝を奪う軽業師",
+                data: [
+                    ".....DDDDDD.....",
+                    "....DDDDDDDD....",
+                    "....DSBSSBSD....",
+                    "....BSSSSSSB....",
+                    ".....BSSSSB.....",
+                    "...BBDDDDDDBB...",
+                    "..BSBDDDDDDBSBL.",
+                    "..BSBDDDDDDBSBL.",
+                    "..BSBDDDDDDBSBL.",
+                    "...BBDDDDDDBB...",
+                    "....BDDPPDDB....",
+                    "....BDDDDDDB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 33,
+                name: "武闘家 (Monk)",
+                category: "hero",
+                desc: "拳ひとつで岩をも砕く格闘家",
+                data: [
+                    ".....SSSSSS.....",
+                    "....SSSSSSSS....",
+                    "....SSBSSBSS....",
+                    "....BSSSSSSB....",
+                    ".....BSSSSB.....",
+                    "...BBOOOOOOBB...",
+                    "..BSBOOOOOOBSB..",
+                    "..BSBOOOOOOBSB..",
+                    "..BSBOOOOOOBSB..",
+                    "...BBOOOOOOBB...",
+                    "....BOOWWOOB....",
+                    "....BOOOOOOB....",
+                    "....BOO..OOB....",
+                    "....BOO..OOB....",
+                    "....BOO..OOB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 34,
+                name: "姫 (Princess)",
+                category: "hero",
+                desc: "王国の希望を背負うプリンセス",
+                data: [
+                    "....Y.Y.Y.Y.....",
+                    "....YYYYYYY.....",
+                    "....YSBSSBSY....",
+                    "....BSSSSSSB....",
+                    ".....BSSSSB.....",
+                    "...BBMMMMMMBB...",
+                    "..BSBMMMMMMBSB..",
+                    "..BSBMMMMMMBSB..",
+                    "..BSBMMMMMMBSB..",
+                    "...BBMMMMMMBB...",
+                    "....BMMWWMMB....",
+                    "....BMMMMMMB....",
+                    "....BMM..MMB....",
+                    "....BMM..MMB....",
+                    "....BMM..MMB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 35,
+                name: "王様 (King)",
+                category: "hero",
+                desc: "威厳ある白髭の老王",
+                data: [
+                    "....Y.Y.Y.Y.....",
+                    "....YYYYYYY.....",
+                    "....YSBSSBSY....",
+                    "....BSSSSSSB....",
+                    ".....BWWWWB.....",
+                    "...BBPPPPPPBB...",
+                    "..BSBPPPPPPBSB..",
+                    "..BSBPPPPPPBSB..",
+                    "..BSBPPPPPPBSB..",
+                    "...BBPPPPPPBB...",
+                    "....BPPYYPPB....",
+                    "....BPPPPPPB....",
+                    "....BPP..PPB....",
+                    "....BPP..PPB....",
+                    "....BPP..PPB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 36,
+                name: "バイキング (Viking)",
+                category: "hero",
+                desc: "角兜をかぶった北海の戦士",
+                data: [
+                    "..W.........W...",
+                    "..WWLLLLLLLLWW..",
+                    "....LSBSSBSL....",
+                    "....BSSSSSSB....",
+                    ".....BSSSSB.....",
+                    "...BBKKKKKKBB...",
+                    ".LBSBKKKKKKBSB..",
+                    ".LBSBKKLLKKBSB..",
+                    ".LBSBKKKKKKBSB..",
+                    "...BBKKKKKKBB...",
+                    "....BKKLLKKB....",
+                    "....BKKKKKKB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 37,
+                name: "バーバリアン (Barbarian)",
+                category: "hero",
+                desc: "斧を振るう半裸の蛮族戦士",
+                data: [
+                    ".....KKKKKK.....",
+                    "....KKKKKKKK....",
+                    "....KSBSSBSK....",
+                    "....BSSSSSSB....",
+                    ".....BSSSSB.....",
+                    "...BBSSSSSSBB...",
+                    "..BSBSSSSSSBSBL.",
+                    "..BSBSSSSSSBSBL.",
+                    "..BSBSSSSSSBSBL.",
+                    "...BBSSSSSSBB...",
+                    "....BSSKKSSB....",
+                    "....BSSSSSSB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 38,
+                name: "吟遊詩人 (Bard)",
+                category: "hero",
+                desc: "リュートで仲間を鼓舞する旅の詩人",
+                data: [
+                    ".....KKKKKK.....",
+                    "....KKKKKKKK....",
+                    "....KSBSSBSK....",
+                    "....BSSSSSSB....",
+                    ".....BSSSSB.....",
+                    "...BBUUUUUUBB...",
+                    ".KBSBUUUUUUBSB..",
+                    ".KBSBUUUUUUBSB..",
+                    ".KBSBUUUUUUBSB..",
+                    "...BBUUUUUUBB...",
+                    "....BUUYYUUB....",
+                    "....BUUUUUUB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 39,
+                name: "僧侶 (Priest)",
+                category: "hero",
+                desc: "傷を癒やす白衣の聖職者",
+                data: [
+                    ".....WWWWWW.....",
+                    "....WWWWWWWW....",
+                    "....WSBSSBSW....",
+                    "....BSSSSSSB....",
+                    ".....BSSSSB.....",
+                    "...BBWWWWWWBB...",
+                    "..BSBWWWWWWBSB..",
+                    "..BSBWWWWWWBSB..",
+                    "..BSBWWWWWWBSB..",
+                    "...BBWWWWWWBB...",
+                    "....BWWYYWWB....",
+                    "....BWWWWWWB....",
+                    "....BWW..WWB....",
+                    "....BWW..WWB....",
+                    "....BWW..WWB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 40,
+                name: "人魚 (Mermaid)",
+                category: "hero",
+                desc: "青い髪をなびかせる海の歌姫",
+                data: [
+                    ".....UUUUUU.....",
+                    "....UUUUUUUU....",
+                    "....USBSSBSU....",
+                    "....USSSSSSU....",
+                    "....UBSSSSBU....",
+                    "...UBBSSSSBBU...",
+                    "..UBSBMMMMBSBU..",
+                    "..UBSBMMMMBSBU..",
+                    "...UBSSSSSSBU...",
+                    "....BEEEEEEB....",
+                    "....BEEEEEEB....",
+                    ".....BEEEEB.....",
+                    "......BEEB......",
+                    ".....BEEEEB.....",
+                    "...BEEE..EEEB...",
+                    "..BBEE....EEBB.."
+                ]
+            },
+            {
+                id: 41,
+                name: "妖精 (Fairy)",
+                category: "hero",
+                desc: "透き通る羽を持つ小さな守り手",
+                data: [
+                    "................",
+                    "......YYYY......",
+                    ".....YYYYYYY....",
+                    ".....YSBSSBY....",
+                    "......SSSS......",
+                    "W.....BSSB.....W",
+                    "WWW...BMMB...WWW",
+                    "WWWWWWBMMBWWWWWW",
+                    "WWWW..BMMB..WWWW",
+                    "WW....BMMB....WW",
+                    "......BMMB......",
+                    ".....BMMMMB.....",
+                    ".....BSSSSB.....",
+                    "......SS.SS.....",
+                    "......BB.BB.....",
+                    "................"
+                ]
+            },
+            {
+                id: 42,
+                name: "ケンタウロス (Centaur)",
+                category: "hero",
+                desc: "上半身は人、下半身は馬の弓兵",
+                data: [
+                    ".....KKKKK......",
+                    "....KKKKKKK.....",
+                    "....KSBSSBK.....",
+                    "....BSSSSSB.....",
+                    ".....BSSSB......",
+                    "...BBRRRRRBB....",
+                    "..BSBRRRRRBSB...",
+                    "..BSBRRRRRBSB...",
+                    "...BBRRRRRBB....",
+                    "....KKKKKK......",
+                    "...KKKKKKKKK....",
+                    "..KKKKKKKKKKK.K.",
+                    "..KKKKKKKKKKKKK.",
+                    "..BK.KK..KK.KB..",
+                    "..BK.KK..KK.KB..",
+                    "..BB.BB..BB.BB.."
+                ]
+            },
+            {
+                id: 43,
+                name: "ゴブリン (Goblin)",
+                category: "monster",
+                desc: "耳の尖った小鬼。群れで襲う",
+                data: [
+                    ".....GGGGGG.....",
+                    "....GGGGGGGG....",
+                    "..G.GGBGGBGG.G..",
+                    "....BGGGGGGB....",
+                    ".....BGGGGB.....",
+                    "...BBKKKKKKBB...",
+                    "..BGBKKKKKKBGB..",
+                    "..BGBKKKKKKBGB..",
+                    "..BGBKKKKKKBGB..",
+                    "...BBKKKKKKBB...",
+                    "....BKKGGKKB....",
+                    "....BKKKKKKB....",
+                    "....BGG..GGB....",
+                    "....BGG..GGB....",
+                    "....BGG..GGB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 44,
+                name: "オーク (Orc)",
+                category: "monster",
+                desc: "牙を剥く大柄な緑の戦士",
+                data: [
+                    ".....EEEEEE.....",
+                    "....EEEEEEEE....",
+                    "....EEBEEBEE....",
+                    "....BEEEEEEB....",
+                    ".....BWEEWB.....",
+                    "...BBKKKKKKBB...",
+                    "..BEBKKKKKKBEB..",
+                    "..BEBKKKKKKBEB..",
+                    "..BEBKKKKKKBEB..",
+                    "...BBKKKKKKBB...",
+                    "....BKKDDKKB....",
+                    "....BKKKKKKB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 45,
+                name: "リザードマン (Lizardman)",
+                category: "monster",
+                desc: "鱗に覆われた沼地の戦士",
+                data: [
+                    ".....GGGGGG.....",
+                    "....GGGGGGGG....",
+                    "....GGYGGYGG....",
+                    "....BGGGGGGB....",
+                    ".....BGGGGB.....",
+                    "...BBEEEEEEBB...",
+                    "..BGBEEEEEEBGB..",
+                    "..BGBEEEEEEBGB..",
+                    "..BGBEEEEEEBGB..",
+                    "...BBEEEEEEBB...",
+                    "....BEEGGEEB....",
+                    "....BEEEEEEB....",
+                    "....BGG..GGB....",
+                    "....BGG..GGB....",
+                    "....BGG..GGB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 46,
+                name: "コウモリ (Bat)",
+                category: "monster",
+                desc: "洞窟に棲みつく吸血コウモリ",
+                data: [
+                    "................",
+                    "................",
+                    "..D..........D..",
+                    ".DDD...BB...DDD.",
+                    "DDDDD.BDDB.DDDDD",
+                    "DDDDDBRDDRBDDDDD",
+                    "DDDDDBDWWDBDDDDD",
+                    "DDDDD.BDDB.DDDDD",
+                    ".DDDD.BDDB.DDDD.",
+                    "..DD..BDDB..DD..",
+                    "......BDDB......",
+                    "......BDDB......",
+                    ".......BB.......",
+                    "................",
+                    "................",
+                    "................"
+                ]
+            },
+            {
+                id: 47,
+                name: "ミミック (Mimic)",
+                category: "monster",
+                desc: "宝箱に化けて牙を剥く擬態モンスター",
+                data: [
+                    "................",
+                    "..BBBBBBBBBBBB..",
+                    "..BKKKKKKKKKKB..",
+                    "..BKYYKKKKYYKB..",
+                    "..BKKKKKKKKKKB..",
+                    "..BBBBBBBBBBBB..",
+                    "..BWBWBWBWBWBB..",
+                    "..BMMMMMMMMMMB..",
+                    "..BMMWWMMWWMMB..",
+                    "..BWBWBWBWBWBB..",
+                    "..BBBBBBBBBBBB..",
+                    "..BKKKKYYKKKKB..",
+                    "..BKKKKYYKKKKB..",
+                    "..BKKKKKKKKKKB..",
+                    "..BBBBBBBBBBBB..",
+                    "................"
+                ]
+            },
+            {
+                id: 48,
+                name: "魔王 (Dark Lord)",
+                category: "monster",
+                desc: "角を生やした闇の支配者",
+                data: [
+                    "...R......R.....",
+                    "...RDDDDDDDDR...",
+                    "....DPRPPRPD....",
+                    "....BPPPPPPB....",
+                    ".....BPPPPB.....",
+                    "...BBDDDDDDBB...",
+                    "..BPBDDDDDDBPB..",
+                    "..BPBDDDDDDBPB..",
+                    "..BPBDDDDDDBPB..",
+                    "...BBDDDDDDBB...",
+                    "....BDDRRDDB....",
+                    "....BDDDDDDB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 49,
+                name: "死神 (Reaper)",
+                category: "monster",
+                desc: "大鎌で魂を刈り取る者",
+                data: [
+                    ".....DDDDDD.....",
+                    "....DDDDDDDD....",
+                    "....DBRBBRBD....",
+                    "....BBBBBBBB....",
+                    ".....BBBBBB.....",
+                    "...BBDDDDDDBB...",
+                    "..BDBDDDDDDBDBL.",
+                    "..BDBDDDDDDBDBL.",
+                    "..BDBDDDDDDBDBL.",
+                    "...BBDDDDDDBB...",
+                    "....BDDMMDDB....",
+                    "....BDDDDDDB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 50,
+                name: "ゴーレム (Golem)",
+                category: "monster",
+                desc: "古代魔法で動く岩の巨人",
+                data: [
+                    "................",
+                    "...LLLLLLLLLL...",
+                    "..LLLLLLLLLLLL..",
+                    "..LLBLLLLLLBLL..",
+                    "..LLLLLLLLLLLL..",
+                    "...LLLLLLLLLL...",
+                    "LLL.LLLLLLLL.LLL",
+                    "LLL.LLLLLLLL.LLL",
+                    "LLL.LLLLLLLL.LLL",
+                    "LLL.LLLLLLLL.LLL",
+                    "LLL.LLLLLLLL.LLL",
+                    "....LLLLLLLL....",
+                    "...LLLL..LLLL...",
+                    "...LLLL..LLLL...",
+                    "...LLLL..LLLL...",
+                    "..LLLLL..LLLLL.."
+                ]
+            },
+            {
+                id: 51,
+                name: "メデューサ (Medusa)",
+                category: "monster",
+                desc: "蛇の髪を持つ石化の魔女",
+                data: [
+                    "..E.EEEEEE.E....",
+                    "....EEEEEEEE....",
+                    "....EEYEEYEE....",
+                    "....BEEEEEEB....",
+                    ".....BEEEEB.....",
+                    "...BBGGGGGGBB...",
+                    "..BEBGGGGGGBEB..",
+                    "..BEBGGGGGGBEB..",
+                    "..BEBGGGGGGBEB..",
+                    "...BBGGGGGGBB...",
+                    "....BGGYYGGB....",
+                    "....BGGGGGGB....",
+                    "....BGG..GGB....",
+                    "....BGG..GGB....",
+                    "....BGG..GGB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 52,
+                name: "ワーウルフ (Werewolf)",
+                category: "monster",
+                desc: "満月の夜に姿を変える人狼",
+                data: [
+                    "...KK......KK...",
+                    "...KKKKKKKKKK...",
+                    "....KKYKKYKK....",
+                    "....BKKKKKKB....",
+                    ".....BKKKKB.....",
+                    "...BBKKKKKKBB...",
+                    "..BKBKKKKKKBKB..",
+                    "..BKBKKKKKKBKB..",
+                    "..BKBKKKKKKBKB..",
+                    "...BBKKKKKKBB...",
+                    "....BKKWWKKB....",
+                    "....BKKKKKKB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "....BKK..KKB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 53,
+                name: "メカナイト (Mech Knight)",
+                category: "scifi",
+                desc: "重装甲を纏った機械の騎士",
+                data: [
+                    ".....LLLLLL.....",
+                    "....LLLLLLLL....",
+                    "....LDCDDCDL....",
+                    "....BDDDDDDB....",
+                    ".....BDDDDB.....",
+                    "...BBLLLLLLBB...",
+                    "..BLBLLLLLLBLB..",
+                    "..BLBLLLLLLBLB..",
+                    "..BLBLLLLLLBLB..",
+                    "...BBLLLLLLBB...",
+                    "....BLLCCLLB....",
+                    "....BLLLLLLB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 54,
+                name: "UFO (Saucer)",
+                category: "scifi",
+                desc: "夜空に浮かぶ未確認飛行物体",
+                data: [
+                    "................",
+                    "................",
+                    "......CCCC......",
+                    ".....CWWWWC.....",
+                    "....CWWWWWWC....",
+                    "...LLLLLLLLLL...",
+                    "..LLLLLLLLLLLL..",
+                    ".LLYLLYLLYLLYLL.",
+                    "..LLLLLLLLLLLL..",
+                    "...LLLLLLLLLL...",
+                    ".....CCCCCC.....",
+                    "......CCCC......",
+                    ".......CC.......",
+                    "......C..C......",
+                    "................",
+                    "................"
+                ]
+            },
+            {
+                id: 55,
+                name: "ドローン (Drone)",
+                category: "scifi",
+                desc: "監視の目を持つ小型飛行機械",
+                data: [
+                    "................",
+                    ".LLLL......LLLL.",
+                    "..BB........BB..",
+                    "...B........B...",
+                    "...BBB....BBB...",
+                    "....BBBBBBBB....",
+                    "...BLLLLLLLLB...",
+                    "...BLRRWWRRLB...",
+                    "...BLLLLLLLLB...",
+                    "....BBBBBBBB....",
+                    ".....BCCCCB.....",
+                    "......BCCB......",
+                    ".......CC.......",
+                    "......C..C......",
+                    "................",
+                    "................"
+                ]
+            },
+            {
+                id: 56,
+                name: "サイボーグ (Cyborg)",
+                category: "scifi",
+                desc: "右目を機械に置き換えた強化兵",
+                data: [
+                    ".....DDDDDD.....",
+                    "....DDDDDDDD....",
+                    "....DSRSSBSD....",
+                    "....BSSSSSSB....",
+                    ".....BSSSSB.....",
+                    "...BBLLLLLLBB...",
+                    "..BLBLLLLLLBLB..",
+                    "..BLBLLLLLLBLB..",
+                    "..BLBLLLLLLBLB..",
+                    "...BBLLLLLLBB...",
+                    "....BLLRRLLB....",
+                    "....BLLLLLLB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "....BDD..DDB....",
+                    "...BBBB..BBBB..."
+                ]
+            },
+            {
+                id: 57,
+                name: "ペンギン (Penguin)",
+                category: "animal",
+                desc: "氷の上をよちよち歩く紳士",
+                data: [
+                    "................",
+                    ".....BBBBBB.....",
+                    "....BDDDDDDB....",
+                    "....BDWDDWDB....",
+                    "....BDDOODDB....",
+                    "...BDDDDDDDDB...",
+                    "..BDDWWWWWWDDB..",
+                    "..BDDWWWWWWDDB..",
+                    "..BDDWWWWWWDDB..",
+                    "..BDDWWWWWWDDB..",
+                    "...BDWWWWWWDB...",
+                    "...BDWWWWWWDB...",
+                    "....BWWWWWWB....",
+                    "....BBWWWWBB....",
+                    "...BOOB..BOOB...",
+                    "...BOOB..BOOB..."
+                ]
+            },
+            {
+                id: 58,
+                name: "フクロウ (Owl)",
+                category: "animal",
+                desc: "夜の森を見渡す賢者の鳥",
+                data: [
+                    "................",
+                    "...KK......KK...",
+                    "...KKKKKKKKKK...",
+                    "..KKKKKKKKKKKK..",
+                    "..KKYYYKKYYYKK..",
+                    "..KKYBYKKYBYKK..",
+                    "..KKYYYOOYYYKK..",
+                    "...KKKKOOKKKK...",
+                    "..KKKKKKKKKKKK..",
+                    "..KKWKWKKWKWKK..",
+                    "..KKKWKWWKWKKK..",
+                    "...KKKKKKKKKK...",
+                    "....KKKKKKKK....",
+                    ".....KKKKKK.....",
+                    "....OOO..OOO....",
+                    "................"
+                ]
+            },
+            {
+                id: 59,
+                name: "キツネ (Fox)",
+                category: "animal",
+                desc: "ふさふさ尻尾のいたずら好き",
+                data: [
+                    "................",
+                    "..OO........OO..",
+                    "..OOOO....OOOO..",
+                    "...OOOOOOOOOO...",
+                    "...OOBOOOOBOO...",
+                    "...OOOOOOOOOO...",
+                    "....OWWWWWWO....",
+                    "....OWWBBWWO....",
+                    ".....WWWWWW.....",
+                    "...OOOOOOOOOO.W.",
+                    "..OOOOOOOOOOOOW.",
+                    "..OOOWWWWWWOOOO.",
+                    "..OOWWWWWWWWOOO.",
+                    "...OOWWWWWWOO...",
+                    "...BOO....OOB...",
+                    "...BBB....BBB..."
+                ]
+            },
+            {
+                id: 60,
+                name: "ユニコーン (Unicorn)",
+                category: "animal",
+                desc: "額に黄金の角を持つ聖なる白馬",
+                data: [
+                    ".........Y......",
+                    "........YY......",
+                    ".......WWWW.....",
+                    "......WWWWWW....",
+                    "......WBWWBW....",
+                    "......WWWWWW....",
+                    ".....PWWWWW.....",
+                    "....PPWWWWWWW...",
+                    "...PPWWWWWWWWW..",
+                    "..PPWWWWWWWWWW..",
+                    "..PWWWWWWWWWWW..",
+                    "..WWWWWWWWWWWW..",
+                    "..BW.WW..WW.WB..",
+                    "..BW.WW..WW.WB..",
+                    "..BW.WW..WW.WB..",
+                    "..BB.BB..BB.BB.."
+                ]
+            }
+        ];
+
+        let appState = {
+            currentFilter: 'all',
+            currentPalette: 'default',
+            soundEnabled: true,
+            editingCharIndex: null,
+            editingGrid: null,
+            selectedTool: 'pen', // 'pen', 'eraser', 'bucket'
+            selectedColor: '#f4f4f4',
+            history: [],
+            // Arena State
+            arenaCharIndex: 0,
+            arenaX: 100,
+            arenaY: 150,
+            arenaVx: 0,
+            arenaVy: 0,
+            isJumping: false,
+            arenaFacing: 'right',
+            animFrame: 0
+        };
+
+        // Web Audio API Synthesizer for 8-bit sound effects
+        class RetroAudio {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playBeep(freq = 440, type = 'square', duration = 0.1) {
+                if (!appState.soundEnabled) return;
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+
+            playSelect() {
+                this.playBeep(587.33, 'square', 0.08); // D5
+                setTimeout(() => this.playBeep(880, 'square', 0.1), 80); // A5
+            }
+
+            playJump() {
+                if (!appState.soundEnabled) return;
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.15);
+
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.15);
+                } catch(e) {}
+            }
+
+            playAttack() {
+                if (!appState.soundEnabled) return;
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.1);
+                } catch(e) {}
+            }
+        }
+
+        const audio = new RetroAudio();
+
+        function getPixelColor(charSymbol, paletteName) {
+            if (paletteName !== 'default' && PALETTES[paletteName] && PALETTES[paletteName][charSymbol]) {
+                return PALETTES[paletteName][charSymbol];
+            }
+            // Hex color or palette color
+            if (charSymbol.startsWith('#')) return charSymbol;
+            return COLOR_MAP[charSymbol] || 'transparent';
+        }
+
+        // Draw 16x16 Pixel Character to Canvas
+        function drawCharacterToCanvas(canvas, gridData, paletteName = 'default', scale = 8, bounceOffset = 0) {
+            const ctx = canvas.getContext('2d');
+            const size = 16;
+            canvas.width = size * scale;
+            canvas.height = size * scale;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let r = 0; r < size; r++) {
+                const row = gridData[r];
+                for (let c = 0; c < size; c++) {
+                    const charSymbol = row[c] || '.';
+                    const color = getPixelColor(charSymbol, paletteName);
+
+                    if (color !== 'transparent') {
+                        ctx.fillStyle = color;
+                        // Add slight bounce effect if specified
+                        const yPos = (r + bounceOffset) * scale;
+                        ctx.fillRect(c * scale, yPos, scale, scale);
+                    }
+                }
+            }
+        }
+
+        function renderCharacterGrid() {
+            const container = document.getElementById('character-grid');
+            container.innerHTML = '';
+
+            CHARACTERS.forEach((char, index) => {
+                // Category Filter
+                if (appState.currentFilter !== 'all' && char.category !== appState.currentFilter) {
+                    return;
+                }
+
+                const card = document.createElement('div');
+                card.className = 'pixel-card rounded-xl p-3 flex flex-col items-center text-center cursor-pointer relative group';
+                card.onclick = () => openEditor(index);
+
+                // Badge Number
+                const numBadge = document.createElement('span');
+                numBadge.className = 'absolute top-2 left-2 text-[10px] font-pixel text-slate-500 group-hover:text-yellow-400';
+                numBadge.textContent = `#${String(char.id).padStart(2, '0')}`;
+                card.appendChild(numBadge);
+
+                // Canvas Container
+                const canvasBox = document.createElement('div');
+                canvasBox.className = 'my-2 bg-slate-950/60 p-2 rounded-lg border border-slate-800 flex items-center justify-center';
+                
+                const canvas = document.createElement('canvas');
+                canvas.className = 'pixel-canvas';
+                drawCharacterToCanvas(canvas, char.data, appState.currentPalette, 6);
+                canvasBox.appendChild(canvas);
+                card.appendChild(canvasBox);
+
+                // Character Name & Desc
+                const nameEl = document.createElement('h3');
+                nameEl.className = 'text-sm font-bold text-slate-200 group-hover:text-indigo-300 mt-1 truncate w-full';
+                nameEl.textContent = char.name;
+                card.appendChild(nameEl);
+
+                const descEl = document.createElement('p');
+                descEl.className = 'text-[11px] text-slate-400 line-clamp-1 mt-0.5';
+                descEl.textContent = char.desc;
+                card.appendChild(descEl);
+
+                // Hover edit action label
+                const editLabel = document.createElement('div');
+                editLabel.className = 'mt-2 text-[10px] text-indigo-400 opacity-0 group-hover:opacity-100 font-bold transition flex items-center gap-1';
+                editLabel.innerHTML = '<i class="fas fa-edit"></i> 編集・拡大';
+                card.appendChild(editLabel);
+
+                container.appendChild(card);
+            });
+        }
+
+        function openEditor(index) {
+            audio.playSelect();
+            appState.editingCharIndex = index;
+            const char = CHARACTERS[index];
+
+            // Deep copy 16x16 data
+            appState.editingGrid = char.data.map(row => row.split(''));
+            appState.history = [JSON.parse(JSON.stringify(appState.editingGrid))];
+
+            document.getElementById('editor-id-badge').textContent = String(char.id).padStart(2, '0');
+            document.getElementById('editor-title').textContent = char.name;
+            document.getElementById('editor-category').textContent = `カテゴリ: ${getCategoryName(char.category)}`;
+
+            setupEditorPalette();
+            renderEditorCanvas();
+
+            document.getElementById('editor-modal').classList.remove('hidden');
+        }
+
+        function getCategoryName(cat) {
+            switch(cat) {
+                case 'hero': return 'ヒーロー/味方';
+                case 'monster': return 'モンスター';
+                case 'scifi': return 'SF / ロボット';
+                case 'animal': return 'アニマル';
+                default: return 'その他';
+            }
+        }
+
+        function setupEditorPalette() {
+            const container = document.getElementById('editor-palette');
+            container.innerHTML = '';
+
+            const colors = Object.values(COLOR_MAP).filter(c => c !== 'transparent');
+
+            colors.forEach(color => {
+                const swatch = document.createElement('button');
+                swatch.className = `w-7 h-7 rounded border-2 border-slate-700 transition transform hover:scale-110 ${appState.selectedColor === color ? 'ring-2 ring-yellow-400 border-white' : ''}`;
+                swatch.style.backgroundColor = color;
+                swatch.onclick = () => {
+                    audio.playBeep(600, 'sine', 0.05);
+                    appState.selectedColor = color;
+                    setupEditorPalette();
+                };
+                container.appendChild(swatch);
+            });
+        }
+
+        function renderEditorCanvas() {
+            const canvas = document.getElementById('editor-canvas');
+            const ctx = canvas.getContext('2d');
+            const size = 16;
+            const scale = 20; // 320x320
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Checkered Background for Transparency
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if ((r + c) % 2 === 0) {
+                        ctx.fillStyle = '#1e1e30';
+                    } else {
+                        ctx.fillStyle = '#141424';
+                    }
+                    ctx.fillRect(c * scale, r * scale, scale, scale);
+                }
+            }
+
+            // Draw Pixels
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const symbol = appState.editingGrid[r][c];
+                    const color = symbol.startsWith('#') ? symbol : (COLOR_MAP[symbol] || 'transparent');
+
+                    if (color !== 'transparent') {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(c * scale, r * scale, scale, scale);
+                    }
+
+                    // Grid line
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                    ctx.strokeRect(c * scale, r * scale, scale, scale);
+                }
+            }
+        }
+
+        // Editor Canvas Mouse Interactivity
+        let isDrawing = false;
+
+        function handleCanvasPointer(e) {
+            const canvas = document.getElementById('editor-canvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const col = Math.floor(x / (rect.width / 16));
+            const row = Math.floor(y / (rect.height / 16));
+
+            if (row >= 0 && row < 16 && col >= 0 && col < 16) {
+                applyTool(row, col);
+            }
+        }
+
+        function applyTool(row, col) {
+            const grid = appState.editingGrid;
+            const targetColor = appState.selectedTool === 'eraser' ? '.' : appState.selectedColor;
+
+            if (appState.selectedTool === 'pen' || appState.selectedTool === 'eraser') {
+                if (grid[row][col] !== targetColor) {
+                    grid[row][col] = targetColor;
+                    audio.playBeep(400 + row * 20, 'square', 0.02);
+                    renderEditorCanvas();
+                }
+            } else if (appState.selectedTool === 'bucket') {
+                const startSymbol = grid[row][col];
+                if (startSymbol !== targetColor) {
+                    floodFill(row, col, startSymbol, targetColor);
+                    audio.playBeep(500, 'square', 0.08);
+                    saveHistory();
+                    renderEditorCanvas();
+                }
+            }
+        }
+
+        function floodFill(r, c, target, replacement) {
+            if (r < 0 || r >= 16 || c < 0 || c >= 16) return;
+            if (appState.editingGrid[r][c] !== target) return;
+
+            appState.editingGrid[r][c] = replacement;
+
+            floodFill(r + 1, c, target, replacement);
+            floodFill(r - 1, c, target, replacement);
+            floodFill(r, c + 1, target, replacement);
+            floodFill(r, c - 1, target, replacement);
+        }
+
+        function saveHistory() {
+            appState.history.push(JSON.parse(JSON.stringify(appState.editingGrid)));
+            if (appState.history.length > 20) appState.history.shift();
+        }
+
+        function openArena() {
+            audio.playSelect();
+            const modal = document.getElementById('arena-modal');
+            modal.classList.remove('hidden');
+
+            const select = document.getElementById('arena-char-select');
+            select.innerHTML = '';
+            CHARACTERS.forEach((c, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = `${c.id}. ${c.name}`;
+                select.appendChild(opt);
+            });
+            select.value = appState.arenaCharIndex;
+
+            // Reset Physics
+            appState.arenaX = 200;
+            appState.arenaY = 180;
+            appState.arenaVx = 0;
+            appState.arenaVy = 0;
+
+            requestAnimationFrame(updateArenaLoop);
+        }
+
+        function updateArenaLoop() {
+            const modal = document.getElementById('arena-modal');
+            if (modal.classList.contains('hidden')) return;
+
+            const canvas = document.getElementById('arena-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 600;
+            canvas.height = 300;
+
+            // Physics Update
+            appState.arenaX += appState.arenaVx;
+            appState.arenaY += appState.arenaVy;
+
+            // Gravity
+            if (appState.arenaY < 180) {
+                appState.arenaVy += 0.8;
+                appState.isJumping = true;
+            } else {
+                appState.arenaY = 180;
+                appState.arenaVy = 0;
+                appState.isJumping = false;
+            }
+
+            // Friction
+            appState.arenaVx *= 0.8;
+
+            // Boundaries
+            if (appState.arenaX < 20) appState.arenaX = 20;
+            if (appState.arenaX > canvas.width - 50) appState.arenaX = canvas.width - 50;
+
+            // Clear Background
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Ground & Retro Grid Pattern
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 240, canvas.width, 60);
+            ctx.fillStyle = '#ec4899';
+            ctx.fillRect(0, 236, canvas.width, 4);
+
+            // Draw Pixel Stars in Background
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < 30; i++) {
+                const sx = (i * 37) % canvas.width;
+                const sy = (i * 19) % 180;
+                ctx.fillRect(sx, sy, 2, 2);
+            }
+
+            // Draw Character
+            const char = CHARACTERS[appState.arenaCharIndex];
+            const charCanvas = document.createElement('canvas');
+            const bounce = (Math.abs(appState.arenaVx) > 0.5 && !appState.isJumping) ? (Math.sin(Date.now() / 80) > 0 ? -2 : 0) : 0;
+            drawCharacterToCanvas(charCanvas, char.data, appState.currentPalette, 3, 0);
+
+            ctx.save();
+            if (appState.arenaFacing === 'left') {
+                ctx.translate(appState.arenaX + 48, appState.arenaY + bounce);
+                ctx.scale(-1, 1);
+                ctx.drawImage(charCanvas, 0, 0);
+            } else {
+                ctx.drawImage(charCanvas, appState.arenaX, appState.arenaY + bounce);
+            }
+            ctx.restore();
+
+            // Character Name Tag
+            ctx.font = '12px "DotGothic16"';
+            ctx.fillStyle = '#fef08a';
+            ctx.textAlign = 'center';
+            ctx.fillText(char.name, appState.arenaX + 24, appState.arenaY - 10);
+
+            requestAnimationFrame(updateArenaLoop);
+        }
+
+        function exportSingleImage() {
+            audio.playSelect();
+            const size = 16;
+            const scale = 32; // High res 512x512
+            const canvas = document.createElement('canvas');
+            canvas.width = size * scale;
+            canvas.height = size * scale;
+            const ctx = canvas.getContext('2d');
+
+            const grid = appState.editingGrid;
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const symbol = grid[r][c];
+                    const color = symbol.startsWith('#') ? symbol : (COLOR_MAP[symbol] || 'transparent');
+                    if (color !== 'transparent') {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(c * scale, r * scale, scale, scale);
+                    }
+                }
+            }
+
+            const char = CHARACTERS[appState.editingCharIndex];
+            const link = document.createElement('a');
+            link.download = `8bit_char_${char.id}_${char.name}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function exportSpriteSheetAll() {
+            audio.playSelect();
+            const cols = 6;
+            const rows = Math.ceil(CHARACTERS.length / cols);
+            const pixelSize = 16;
+            const scale = 4; // 64x64 per character
+            const charWidth = pixelSize * scale;
+            const charHeight = pixelSize * scale;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = cols * charWidth;
+            canvas.height = rows * charHeight;
+            const ctx = canvas.getContext('2d');
+
+            CHARACTERS.forEach((char, idx) => {
+                const cX = (idx % cols) * charWidth;
+                const cY = Math.floor(idx / cols) * charHeight;
+
+                const charCanvas = document.createElement('canvas');
+                drawCharacterToCanvas(charCanvas, char.data, appState.currentPalette, scale);
+                ctx.drawImage(charCanvas, cX, cY);
+            });
+
+            const link = document.createElement('a');
+            link.download = `8bit_characters_30_spritesheet.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderCharacterGrid();
+
+            // Category Filter Buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    audio.playSelect();
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-400');
+                        b.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-600');
+                    });
+                    e.target.classList.remove('bg-slate-800', 'text-slate-300', 'border-slate-600');
+                    e.target.classList.add('bg-indigo-600', 'text-white', 'border-indigo-400');
+
+                    appState.currentFilter = e.target.getAttribute('data-category');
+                    renderCharacterGrid();
+                });
+            });
+
+            // Palette Select
+            document.getElementById('palette-select').addEventListener('change', (e) => {
+                audio.playSelect();
+                appState.currentPalette = e.target.value;
+                renderCharacterGrid();
+            });
+
+            // Sound Toggle
+            document.getElementById('btn-sound').addEventListener('click', () => {
+                appState.soundEnabled = !appState.soundEnabled;
+                const icon = document.getElementById('sound-icon');
+                if (appState.soundEnabled) {
+                    icon.className = 'fas fa-volume-up text-yellow-400';
+                    audio.playSelect();
+                } else {
+                    icon.className = 'fas fa-volume-mute text-slate-500';
+                }
+            });
+
+            // Export All Button
+            document.getElementById('btn-export-all').addEventListener('click', exportSpriteSheetAll);
+
+            // Arena Modal Trigger
+            document.getElementById('btn-arena').addEventListener('click', openArena);
+            document.getElementById('close-arena').addEventListener('click', () => {
+                document.getElementById('arena-modal').classList.add('hidden');
+            });
+
+            // Editor Close
+            document.getElementById('close-modal').addEventListener('click', () => {
+                // Apply edit back to character data if edited
+                if (appState.editingCharIndex !== null && appState.editingGrid) {
+                    CHARACTERS[appState.editingCharIndex].data = appState.editingGrid.map(row => row.join(''));
+                    renderCharacterGrid();
+                }
+                document.getElementById('editor-modal').classList.add('hidden');
+            });
+
+            // Tools Selection
+            document.getElementById('tool-pen').addEventListener('click', () => {
+                appState.selectedTool = 'pen';
+                updateToolButtons('tool-pen');
+            });
+            document.getElementById('tool-eraser').addEventListener('click', () => {
+                appState.selectedTool = 'eraser';
+                updateToolButtons('tool-eraser');
+            });
+            document.getElementById('tool-bucket').addEventListener('click', () => {
+                appState.selectedTool = 'bucket';
+                updateToolButtons('tool-bucket');
+            });
+
+            function updateToolButtons(activeId) {
+                audio.playBeep(500, 'sine', 0.05);
+                ['tool-pen', 'tool-eraser', 'tool-bucket'].forEach(id => {
+                    const btn = document.getElementById(id);
+                    if (id === activeId) {
+                        btn.className = 'tool-btn active p-2 bg-indigo-600 text-white rounded text-xs font-bold flex items-center justify-center gap-1';
+                    } else {
+                        btn.className = 'tool-btn p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-bold flex items-center justify-center gap-1';
+                    }
+                });
+            }
+
+            // Custom Color Picker
+            document.getElementById('custom-color-picker').addEventListener('input', (e) => {
+                appState.selectedColor = e.target.value;
+                setupEditorPalette();
+            });
+
+            // Undo & Reset Buttons
+            document.getElementById('btn-undo').addEventListener('click', () => {
+                if (appState.history.length > 1) {
+                    appState.history.pop();
+                    appState.editingGrid = JSON.parse(JSON.stringify(appState.history[appState.history.length - 1]));
+                    renderEditorCanvas();
+                    audio.playBeep(300, 'sine', 0.05);
+                }
+            });
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                const original = CHARACTERS[appState.editingCharIndex].data;
+                appState.editingGrid = original.map(row => row.split(''));
+                saveHistory();
+                renderEditorCanvas();
+                audio.playBeep(200, 'sawtooth', 0.1);
+            });
+
+            document.getElementById('btn-download-single').addEventListener('click', exportSingleImage);
+
+            // Canvas Interaction Listeners
+            const canvas = document.getElementById('editor-canvas');
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                saveHistory();
+                handleCanvasPointer(e);
+            });
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDrawing && appState.selectedTool !== 'bucket') {
+                    handleCanvasPointer(e);
+                }
+            });
+            window.addEventListener('mouseup', () => {
+                isDrawing = false;
+            });
+
+            // Touch events for mobile editor
+            canvas.addEventListener('touchstart', (e) => {
+                isDrawing = true;
+                saveHistory();
+                handleCanvasPointer(e.touches[0]);
+                e.preventDefault();
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                if (isDrawing && appState.selectedTool !== 'bucket') {
+                    handleCanvasPointer(e.touches[0]);
+                }
+                e.preventDefault();
+            });
+            canvas.addEventListener('touchend', () => {
+                isDrawing = false;
+            });
+
+            // Arena Character Switch
+            document.getElementById('arena-char-select').addEventListener('change', (e) => {
+                appState.arenaCharIndex = parseInt(e.target.value);
+                audio.playSelect();
+            });
+
+            // Arena Buttons Controls
+            document.getElementById('btn-move-left').addEventListener('click', () => {
+                appState.arenaVx = -6;
+                appState.arenaFacing = 'left';
+            });
+            document.getElementById('btn-move-right').addEventListener('click', () => {
+                appState.arenaVx = 6;
+                appState.arenaFacing = 'right';
+            });
+            document.getElementById('btn-action-jump').addEventListener('click', () => {
+                if (!appState.isJumping) {
+                    appState.arenaVy = -12;
+                    audio.playJump();
+                }
+            });
+            document.getElementById('btn-action-attack').addEventListener('click', () => {
+                audio.playAttack();
+                appState.arenaVx = appState.arenaFacing === 'right' ? 8 : -8;
+            });
+
+            // Keyboard Control for Arena
+            window.addEventListener('keydown', (e) => {
+                const modal = document.getElementById('arena-modal');
+                if (modal.classList.contains('hidden')) return;
+
+                if (e.key === 'ArrowLeft') {
+                    appState.arenaVx = -6;
+                    appState.arenaFacing = 'left';
+                } else if (e.key === 'ArrowRight') {
+                    appState.arenaVx = 6;
+                    appState.arenaFacing = 'right';
+                } else if (e.key === 'ArrowUp' || e.key === ' ') {
+                    if (!appState.isJumping) {
+                        appState.arenaVy = -12;
+                        audio.playJump();
+                    }
+                } else if (e.key === 'z' || e.key === 'Z') {
+                    audio.playAttack();
+                    appState.arenaVx = appState.arenaFacing === 'right' ? 8 : -8;
+                }
+            });
+        });
+    </script>
+<div id="fcpad" role="group" aria-label="ファミコン風コントローラー">
+  <div class="fc-shell">
+    <div class="fc-dpad" id="fc-dpad" role="group" aria-label="十字キー">
+      <div class="fc-cross"></div>
+      <button class="fc-d u" data-fc="up"    aria-label="上"></button>
+      <button class="fc-d d" data-fc="down"  aria-label="下"></button>
+      <button class="fc-d l" data-fc="left"  aria-label="左"></button>
+      <button class="fc-d r" data-fc="right" aria-label="右"></button>
+    </div>
+    <div class="fc-mid">
+      <button class="fc-sys" data-fc="select" aria-label="セレクトボタン">SELECT</button>
+      <button class="fc-sys" data-fc="start"  aria-label="スタートボタン">START</button>
+    </div>
+    <div class="fc-ab">
+      <button class="fc-ab-btn" data-fc="b" aria-label="Bボタン">B</button>
+      <button class="fc-ab-btn" data-fc="a" aria-label="Aボタン">A</button>
+    </div>
+  </div>
+</div>
+
+    <script>
+/* ===== FCPad: ファミコン風コントローラー入力層 =====
+   ・Pointer Events に一本化し setPointerCapture で押しっぱなしの取りこぼしを防ぐ
+   ・down / repeat / up の3フェーズを配信。held(btn) で押下状態も取れる
+   ・キーボード: ←→↑↓ / X・Space=A / Z=B / Enter=START / Shift=SELECT           */
+const FCPad = (function(){
+  const DIRS = ['up','down','left','right'];
+  const held = Object.create(null);
+  const timers = Object.create(null);
+  const subs = [];
+  const root = document.getElementById('fcpad');
+  const dpad = document.getElementById('fc-dpad');
+  const REPEAT_DELAY = 300, REPEAT_EVERY = 95;
+
+  function emit(btn, phase){ for(const f of subs){ try{ f(btn, phase); }catch(e){ console.error(e); } } }
+  function visual(btn, on){
+    if (DIRS.includes(btn)) { dpad.classList.toggle('press-'+btn, on); return; }
+    const el = root.querySelector('[data-fc="'+btn+'"]');
+    if (el) el.classList.toggle('press', on);
+  }
+  function down(btn){
+    if (held[btn]) return;
+    held[btn] = true; visual(btn, true); emit(btn,'down');
+    if (DIRS.includes(btn)) {
+      timers[btn] = setTimeout(function tick(){
+        if(!held[btn]) return;
+        emit(btn,'repeat');
+        timers[btn] = setTimeout(tick, REPEAT_EVERY);
+      }, REPEAT_DELAY);
+    }
+  }
+  function up(btn){
+    if (!held[btn]) return;
+    held[btn] = false; visual(btn, false); clearTimeout(timers[btn]); emit(btn,'up');
+  }
+
+  root.querySelectorAll('[data-fc]').forEach(el=>{
+    const btn = el.dataset.fc;
+    el.addEventListener('pointerdown', e=>{
+      e.preventDefault();
+      try{ el.setPointerCapture(e.pointerId); }catch(_){}
+      down(btn);
+    });
+    const release = e=>{ e.preventDefault(); up(btn); };
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('lostpointercapture', ()=>up(btn));
+    el.addEventListener('contextmenu', e=>e.preventDefault());
+  });
+  window.addEventListener('blur', ()=>Object.keys(held).forEach(up));
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) Object.keys(held).forEach(up); });
+
+  const KEYMAP = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
+                  x:'a',X:'a',' ':'a',z:'b',Z:'b',Enter:'start',Shift:'select'};
+  window.addEventListener('keydown', e=>{ const b=KEYMAP[e.key]; if(b && !e.repeat){ e.preventDefault(); down(b); } });
+  window.addEventListener('keyup',   e=>{ const b=KEYMAP[e.key]; if(b){ e.preventDefault(); up(b); } });
+
+  return {
+    on(fn){ subs.push(fn); },
+    held(btn){ return !!held[btn]; },
+    hint(text){
+      let h = root.querySelector('.fc-hint');
+      if(!h){ h = document.createElement('div'); h.className='fc-hint'; root.appendChild(h); }
+      h.textContent = ''; if(text){ const sp=document.createElement('span'); sp.textContent=text; h.appendChild(sp); }
+    },
+    toggleLamp(btn, on){ const el = root.querySelector('[data-fc="'+btn+'"]'); if(el) el.classList.toggle('on', !!on); }
+  };
+})();
+
+    </script>
+    <script>
+    /* ===== FCパッドと 8bitキャラ図鑑 のつなぎ =====
+       画面ごとに割り当てを切り替える:
+         図鑑   … 十字=カード移動 / A=ひらく / B=カテゴリ切替 / START=アリーナ / SELECT=音
+         エディタ… 十字=ドットカーソル / A=描く / B=消す / START=閉じる / SELECT=音
+         アリーナ… 十字=移動(押しっぱなし) / A=ジャンプ / B=攻撃 / START=閉じる / SELECT=音     */
+    window.addEventListener('DOMContentLoaded', () => {
+      const $ = id => document.getElementById(id);
+      const editorModal = () => $('editor-modal');
+      const arenaModal  = () => $('arena-modal');
+      const isOpen = el => el && !el.classList.contains('hidden');
+
+      let gridCur = 0;                 // 図鑑カードのカーソル
+      let ec = {r:8, c:8};             // エディタのドットカーソル
+      const CATS = ['all','hero','monster','scifi','animal'];
+
+      function mode(){
+        if (isOpen(arenaModal()))  return 'arena';
+        if (isOpen(editorModal())) return 'editor';
+        return 'grid';
+      }
+      function cards(){ return Array.from(document.querySelectorAll('#character-grid .pixel-card')); }
+      function cols(){
+        const list = cards(); if (list.length < 2) return 1;
+        const top = list[0].getBoundingClientRect().top;
+        let n = 0; for (const el of list){ if (Math.abs(el.getBoundingClientRect().top - top) < 4) n++; else break; }
+        return Math.max(1, n);
+      }
+      function paintGrid(){
+        const list = cards();
+        if (!list.length) return;
+        gridCur = Math.max(0, Math.min(gridCur, list.length - 1));
+        list.forEach((el,i)=>el.classList.toggle('fc-cur', i===gridCur));
+        list[gridCur].scrollIntoView({block:'nearest'});
+      }
+      function moveGrid(dr, dc){
+        const list = cards(); if (!list.length) return;
+        const w = cols();
+        let i = gridCur + dc + dr * w;
+        if (i < 0 || i >= list.length) return;
+        gridCur = i; audio.playBeep(700,'square',0.03); paintGrid();
+      }
+      function cycleCategory(){
+        const cur = appState.currentFilter;
+        const next = CATS[(CATS.indexOf(cur) + 1) % CATS.length];
+        const btn = document.querySelector('.filter-btn[data-category="'+next+'"]');
+        if (btn) btn.click();
+        gridCur = 0; setTimeout(paintGrid, 0);
+      }
+
+      /* --- エディタのドットカーソル --- */
+      function paintEditorCursor(){
+        const canvas = $('editor-canvas'); if (!canvas) return;
+        const ctx = canvas.getContext('2d'); const scale = 20;
+        ctx.strokeStyle = '#fde047'; ctx.lineWidth = 3;
+        ctx.strokeRect(ec.c*scale+1.5, ec.r*scale+1.5, scale-3, scale-3);
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+        ctx.strokeRect(ec.c*scale+0.5, ec.r*scale+0.5, scale-1, scale-1);
+      }
+      const _renderEditorCanvas = renderEditorCanvas;
+      window.renderEditorCanvas = function(){ _renderEditorCanvas(); if (isOpen(editorModal())) paintEditorCursor(); };
+      renderEditorCanvas = window.renderEditorCanvas;
+      function moveEditor(dr, dc){
+        ec.r = Math.max(0, Math.min(15, ec.r + dr));
+        ec.c = Math.max(0, Math.min(15, ec.c + dc));
+        audio.playBeep(620,'square',0.02);
+        renderEditorCanvas();
+      }
+
+      /* --- アリーナ: 押しっぱなしで走る --- */
+      const ARENA_SPEED = 5.2;
+      (function arenaHold(){
+        if (isOpen(arenaModal())) {
+          if (FCPad.held('left'))  { appState.arenaVx = -ARENA_SPEED; appState.arenaFacing = 'left';  }
+          if (FCPad.held('right')) { appState.arenaVx =  ARENA_SPEED; appState.arenaFacing = 'right'; }
+        }
+        requestAnimationFrame(arenaHold);
+      })();
+
+      function hint(){
+        FCPad.hint({
+          grid  : '十字=選ぶ / A=ひらく / B=カテゴリ / START=アリーナ',
+          editor: '十字=カーソル / A=描く / B=消す / START=閉じる',
+          arena : '十字=移動 / A=ジャンプ / B=攻撃 / START=閉じる'
+        }[mode()]);
+      }
+
+      FCPad.on((btn, phase) => {
+        audio.init && audio.init();
+        if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
+        const m = mode();
+        if (phase === 'up') return;
+
+        if (m === 'arena') {
+          if (btn === 'left'  && phase === 'down') { appState.arenaVx = -ARENA_SPEED; appState.arenaFacing = 'left';  }
+          if (btn === 'right' && phase === 'down') { appState.arenaVx =  ARENA_SPEED; appState.arenaFacing = 'right'; }
+          if (btn === 'up' || btn === 'a') { if (phase === 'down' && !appState.isJumping) { appState.arenaVy = -12; audio.playJump(); } }
+          if (btn === 'b' && phase === 'down') { audio.playAttack(); appState.arenaVx = appState.arenaFacing === 'right' ? 8 : -8; }
+          if (btn === 'start' && phase === 'down') { $('close-arena').click(); setTimeout(hint,0); }
+          if (btn === 'select' && phase === 'down') { $('btn-sound').click(); FCPad.toggleLamp('select', appState.soundEnabled); }
+          return;
+        }
+
+        if (m === 'editor') {
+          if (btn === 'up')    moveEditor(-1, 0);
+          if (btn === 'down')  moveEditor( 1, 0);
+          if (btn === 'left')  moveEditor( 0,-1);
+          if (btn === 'right') moveEditor( 0, 1);
+          if (btn === 'a' && phase === 'down') { saveHistory(); applyTool(ec.r, ec.c); renderEditorCanvas(); }
+          if (btn === 'b' && phase === 'down') {
+            const keep = appState.selectedTool; appState.selectedTool = 'eraser';
+            saveHistory(); applyTool(ec.r, ec.c); appState.selectedTool = keep; renderEditorCanvas();
+          }
+          if (btn === 'start' && phase === 'down') { $('close-modal').click(); setTimeout(()=>{paintGrid();hint();},0); }
+          if (btn === 'select' && phase === 'down') { $('btn-sound').click(); FCPad.toggleLamp('select', appState.soundEnabled); }
+          return;
+        }
+
+        // grid
+        if (btn === 'up')    moveGrid(-1, 0);
+        if (btn === 'down')  moveGrid( 1, 0);
+        if (btn === 'left')  moveGrid( 0,-1);
+        if (btn === 'right') moveGrid( 0, 1);
+        if (phase !== 'down') return;
+        if (btn === 'a')      { const el = cards()[gridCur]; if (el) { el.click(); ec = {r:8,c:8}; setTimeout(()=>{renderEditorCanvas();hint();},0); } }
+        if (btn === 'b')      cycleCategory();
+        if (btn === 'start')  { $('btn-arena').click(); setTimeout(hint,0); }
+        if (btn === 'select') { $('btn-sound').click(); FCPad.toggleLamp('select', appState.soundEnabled); }
+      });
+
+      // 図鑑の再描画でカーソルが消えるので貼り直す
+      const _renderCharacterGrid = renderCharacterGrid;
+      window.renderCharacterGrid = function(){ _renderCharacterGrid(); paintGrid(); };
+      renderCharacterGrid = window.renderCharacterGrid;
+
+      paintGrid();
+      FCPad.toggleLamp('select', appState.soundEnabled);
+      hint();
+    });
+    </script>
+</body>
+</html>

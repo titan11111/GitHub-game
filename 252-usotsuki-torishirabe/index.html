@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ウソつきを探せ！取調室</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1440; --panel:#261d5c; --line:#4a3d99; --ink:#f2ecff; --dim:#a99fd6;
+  --lamp:#ffd23f; --lie:#e83f6f; --true:#3fd8a6;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){ --bg:#e9e4ff; --panel:#ffffff; --line:#b9aee8; --ink:#1f1747; --dim:#5d5391; --lamp:#c98a00; }
+}
+:root[data-theme="dark"]{ --bg:#1a1440; --panel:#261d5c; --line:#4a3d99; --ink:#f2ecff; --dim:#a99fd6; --lamp:#ffd23f; }
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font-family:"DotGothic16","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  -webkit-tap-highlight-color:transparent;}
+.wrap{max-width:560px;margin:0 auto;padding:14px 14px 28px}
+header{display:flex;justify-content:space-between;align-items:center;font-size:15px;color:var(--dim);margin-bottom:10px}
+header b{color:var(--ink);font-weight:normal}
+.hearts{color:var(--lie);letter-spacing:2px}
+.case{background:var(--panel);border:2px solid var(--line);padding:14px 16px;margin-bottom:12px}
+.case .no{color:var(--lamp);font-size:14px}
+.case h2{margin:6px 0 4px;font-size:21px;font-weight:normal;line-height:1.4}
+.ask{font-size:17px;margin:4px 0 12px;min-height:1.5em}
+.sus{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;
+  background:transparent;border:2px solid transparent;color:inherit;font:inherit;
+  padding:8px;margin:0 0 8px;cursor:pointer;position:relative}
+.sus:focus-visible{outline:3px solid var(--lamp);outline-offset:2px}
+.sus:hover:not(:disabled){border-color:var(--line)}
+.sus.lit{border-color:var(--lamp);box-shadow:0 0 0 4px color-mix(in srgb,var(--lamp) 25%,transparent)}
+.sus:disabled{cursor:default}
+.ava{width:56px;height:56px;flex:none;image-rendering:pixelated;background:var(--panel);border:2px solid var(--line)}
+.who{font-size:14px;color:var(--dim);margin-bottom:3px}
+.bubble{background:var(--panel);border:2px solid var(--line);padding:8px 10px;font-size:17px;line-height:1.45}
+.mark{display:inline-block;margin-left:6px;font-size:14px;padding:0 6px;border:2px solid}
+.mark.t{color:var(--true);border-color:var(--true)} .mark.f{color:var(--lie);border-color:var(--lie)}
+.stamp{position:absolute;right:6px;top:4px;color:var(--lie);border:3px solid var(--lie);padding:2px 8px;font-size:18px;
+  transform:rotate(-12deg);background:var(--bg)}
+@media (prefers-reduced-motion:no-preference){ .stamp{animation:thud .35s ease-out} }
+@keyframes thud{from{transform:rotate(-12deg) scale(2.4);opacity:0}to{transform:rotate(-12deg) scale(1);opacity:1}}
+.result{background:var(--panel);border:2px solid var(--lamp);padding:12px 14px;margin-top:6px;line-height:1.6;font-size:16px}
+.btn{display:block;width:100%;margin-top:12px;padding:14px;font:inherit;font-size:19px;
+  background:var(--lamp);color:#1a1440;border:0;cursor:pointer}
+.btn:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.title{text-align:center;padding:30px 0 10px}
+.title h1{font-size:40px;font-weight:normal;margin:0 0 6px;color:var(--lamp);text-shadow:4px 4px 0 var(--lie)}
+.title p{color:var(--dim);line-height:1.7;margin:8px 0}
+.rules{background:var(--panel);border:2px solid var(--line);padding:12px 16px;line-height:1.8;font-size:15px;text-align:left}
+/* ===== ファミコン風コントローラー（iOS前提・DOMオーバーレイ型） ===== */
+:root{ --fc-pad-h: 190px; }
+html,body{ -webkit-text-size-adjust:100%; }
+body{ touch-action:manipulation; }
+#fcpad{
+  position:fixed; left:0; right:0; bottom:0; z-index:9999;
+  display:flex; justify-content:center;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.45) 28%,rgba(0,0,0,.72) 100%);
+  touch-action:none; -webkit-user-select:none; user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#fcpad *{ touch-action:none; -webkit-user-select:none; user-select:none; }
+.fc-shell{
+  width:100%; max-width:560px;
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px;
+  background:#c9c5bd; border:3px solid #2b2b2b; border-radius:10px;
+  padding:12px 14px; box-shadow:0 6px 0 #1a1a1a, 0 10px 22px rgba(0,0,0,.5);
+}
+/* --- 十字キー --- */
+.fc-dpad{ position:relative; width:min(40vw,136px); height:min(40vw,136px); flex:none; }
+.fc-cross{ position:absolute; inset:0; pointer-events:none;
+  background:
+    linear-gradient(#2e2e2e,#2e2e2e) center/34% 100% no-repeat,
+    linear-gradient(#2e2e2e,#2e2e2e) center/100% 34% no-repeat;
+  filter:drop-shadow(0 2px 0 #111);
+}
+.fc-cross::after{ content:""; position:absolute; left:50%; top:50%; width:22%; height:22%;
+  transform:translate(-50%,-50%); border-radius:50%; background:#444; box-shadow:inset 0 0 0 2px #1d1d1d; }
+.fc-d{ position:absolute; margin:0; padding:0; border:0; background:transparent; cursor:pointer; }
+.fc-d.u{ left:33%; top:0; width:34%; height:36%; }
+.fc-d.d{ left:33%; bottom:0; width:34%; height:36%; }
+.fc-d.l{ left:0; top:33%; width:36%; height:34%; }
+.fc-d.r{ right:0; top:33%; width:36%; height:34%; }
+.fc-d::before{ content:""; position:absolute; inset:14%; border-radius:3px; background:#f0f0f0; opacity:0; }
+.fc-dpad.press-up .fc-d.u::before,
+.fc-dpad.press-down .fc-d.d::before,
+.fc-dpad.press-left .fc-d.l::before,
+.fc-dpad.press-right .fc-d.r::before{ opacity:.22; }
+.fc-d:focus-visible{ outline:3px solid #ffd23f; outline-offset:-4px; }
+/* --- SELECT / START --- */
+.fc-mid{ display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; }
+.fc-sys{ font:700 11px/1 "DotGothic16",system-ui,sans-serif; letter-spacing:.06em; color:#e8e8e8;
+  background:#3a3a3a; border:2px solid #1d1d1d; border-radius:999px;
+  padding:7px 14px; min-width:74px; cursor:pointer; box-shadow:0 3px 0 #141414; }
+.fc-sys.on{ background:#6a6a6a; }
+.fc-sys:active,.fc-sys.press{ transform:translateY(3px); box-shadow:none; }
+.fc-sys:focus-visible{ outline:3px solid #ffd23f; outline-offset:2px; }
+/* --- A / B --- */
+.fc-ab{ display:flex; align-items:center; gap:12px; transform:rotate(-14deg); }
+.fc-ab-btn{ width:min(16vw,60px); height:min(16vw,60px); border-radius:50%;
+  background:#c0202e; border:3px solid #6d1018; color:#ffe9e9;
+  font:700 17px/1 "Press Start 2P","DotGothic16",system-ui,sans-serif;
+  cursor:pointer; box-shadow:0 5px 0 #5a0d14; display:flex; align-items:center; justify-content:center; }
+.fc-ab-btn.press{ transform:translateY(5px); box-shadow:none; background:#e03a48; }
+.fc-ab-btn:focus-visible{ outline:3px solid #ffd23f; outline-offset:3px; }
+.fc-hint{ position:absolute; left:0; right:0; top:-24px; text-align:center; pointer-events:none; }
+.fc-hint span{ display:inline-block; max-width:94%; padding:3px 10px; border-radius:4px;
+  background:rgba(12,10,28,.88); color:#ffe9a8;
+  font:12px/1.5 "DotGothic16",system-ui,sans-serif; }
+@media (max-height:620px){
+  .fc-dpad{ width:104px; height:104px; }
+  .fc-ab-btn{ width:48px; height:48px; font-size:14px; }
+  .fc-shell{ padding:8px 10px; }
+  :root{ --fc-pad-h:150px; }
+}
+@media (min-width:900px){ #fcpad{ background:none; } }
+
+/* ---- FCパッド用のゲーム側調整 ---- */
+.wrap{padding-bottom:calc(var(--fc-pad-h) + 24px)}
+.sus.cur{border-color:var(--ink);background:color-mix(in srgb,var(--lamp) 12%,transparent)}
+.sus.cur::before{content:"\25B6";position:absolute;left:-14px;top:50%;transform:translateY(-50%);color:var(--lamp);font-size:14px}
+/* ポーズ中もコントローラーを触れるように、パッドの上には重ねない（z-index も下） */
+#pause{position:fixed;left:0;right:0;top:0;bottom:var(--fc-pad-h);z-index:9998;
+  display:none;align-items:center;justify-content:center;overflow:auto;
+  background:rgba(10,7,32,.9);padding:18px}
+#pause.show{display:flex}
+#pause .box{background:var(--panel);border:3px solid var(--lamp);padding:18px 20px;max-width:420px;width:100%;
+  font-size:15px;line-height:1.9}
+#pause h3{margin:0 0 10px;color:var(--lamp);font-size:20px;font-weight:normal}
+#pause dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 14px}
+#pause dt{color:var(--lamp)} #pause dd{margin:0}
+
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="pause" role="dialog" aria-modal="true" aria-label="ポーズ">
+  <div class="box">
+    <h3>ポーズ</h3>
+    <dl>
+      <dt>十字キー</dt><dd>容疑者を選ぶ</dd>
+      <dt>A</dt><dd>決定（開始・選択・次へ）</dd>
+      <dt>B</dt><dd>もどる／この画面を閉じる</dd>
+      <dt>START</dt><dd>ポーズ</dd>
+      <dt>SELECT</dt><dd>音 ON / OFF</dd>
+    </dl>
+    <button class="btn" id="pv-resume">ゲームにもどる</button>
+    <button class="btn" id="pv-title" style="background:var(--line);color:var(--ink)">タイトルへもどる</button>
+  </div>
+</div>
+<div id="fcpad" role="group" aria-label="ファミコン風コントローラー">
+  <div class="fc-shell">
+    <div class="fc-dpad" id="fc-dpad" role="group" aria-label="十字キー">
+      <div class="fc-cross"></div>
+      <button class="fc-d u" data-fc="up"    aria-label="上"></button>
+      <button class="fc-d d" data-fc="down"  aria-label="下"></button>
+      <button class="fc-d l" data-fc="left"  aria-label="左"></button>
+      <button class="fc-d r" data-fc="right" aria-label="右"></button>
+    </div>
+    <div class="fc-mid">
+      <button class="fc-sys" data-fc="select" aria-label="セレクトボタン">SELECT</button>
+      <button class="fc-sys" data-fc="start"  aria-label="スタートボタン">START</button>
+    </div>
+    <div class="fc-ab">
+      <button class="fc-ab-btn" data-fc="b" aria-label="Bボタン">B</button>
+      <button class="fc-ab-btn" data-fc="a" aria-label="Aボタン">A</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== FCPad: ファミコン風コントローラー入力層 =====
+   ・Pointer Events に一本化し setPointerCapture で押しっぱなしの取りこぼしを防ぐ
+   ・down / repeat / up の3フェーズを配信。held(btn) で押下状態も取れる
+   ・キーボード: ←→↑↓ / X・Space=A / Z=B / Enter=START / Shift=SELECT           */
+const FCPad = (function(){
+  const DIRS = ['up','down','left','right'];
+  const held = Object.create(null);
+  const timers = Object.create(null);
+  const subs = [];
+  const root = document.getElementById('fcpad');
+  const dpad = document.getElementById('fc-dpad');
+  const REPEAT_DELAY = 300, REPEAT_EVERY = 95;
+
+  function emit(btn, phase){ for(const f of subs){ try{ f(btn, phase); }catch(e){ console.error(e); } } }
+  function visual(btn, on){
+    if (DIRS.includes(btn)) { dpad.classList.toggle('press-'+btn, on); return; }
+    const el = root.querySelector('[data-fc="'+btn+'"]');
+    if (el) el.classList.toggle('press', on);
+  }
+  function down(btn){
+    if (held[btn]) return;
+    held[btn] = true; visual(btn, true); emit(btn,'down');
+    if (DIRS.includes(btn)) {
+      timers[btn] = setTimeout(function tick(){
+        if(!held[btn]) return;
+        emit(btn,'repeat');
+        timers[btn] = setTimeout(tick, REPEAT_EVERY);
+      }, REPEAT_DELAY);
+    }
+  }
+  function up(btn){
+    if (!held[btn]) return;
+    held[btn] = false; visual(btn, false); clearTimeout(timers[btn]); emit(btn,'up');
+  }
+
+  root.querySelectorAll('[data-fc]').forEach(el=>{
+    const btn = el.dataset.fc;
+    el.addEventListener('pointerdown', e=>{
+      e.preventDefault();
+      try{ el.setPointerCapture(e.pointerId); }catch(_){}
+      down(btn);
+    });
+    const release = e=>{ e.preventDefault(); up(btn); };
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('lostpointercapture', ()=>up(btn));
+    el.addEventListener('contextmenu', e=>e.preventDefault());
+  });
+  window.addEventListener('blur', ()=>Object.keys(held).forEach(up));
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) Object.keys(held).forEach(up); });
+
+  const KEYMAP = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
+                  x:'a',X:'a',' ':'a',z:'b',Z:'b',Enter:'start',Shift:'select'};
+  window.addEventListener('keydown', e=>{ const b=KEYMAP[e.key]; if(b && !e.repeat){ e.preventDefault(); down(b); } });
+  window.addEventListener('keyup',   e=>{ const b=KEYMAP[e.key]; if(b){ e.preventDefault(); up(b); } });
+
+  return {
+    on(fn){ subs.push(fn); },
+    held(btn){ return !!held[btn]; },
+    hint(text){
+      let h = root.querySelector('.fc-hint');
+      if(!h){ h = document.createElement('div'); h.className='fc-hint'; root.appendChild(h); }
+      h.textContent = ''; if(text){ const sp=document.createElement('span'); sp.textContent=text; h.appendChild(sp); }
+    },
+    toggleLamp(btn, on){ const el = root.querySelector('[data-fc="'+btn+'"]'); if(el) el.classList.toggle('on', !!on); }
+  };
+})();
+
+
+/* ===== 8bit効果音（ミュートは tg.252.mute に保存） ===== */
+let AC=null, MUTE=false;
+try{ MUTE = localStorage.getItem('tg.252.mute')==='1'; }catch(e){}
+function audioInit(){ try{ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ AC=null; } }
+function beep(f,dur,type){
+  if(MUTE) return; audioInit(); if(!AC) return;
+  if(AC.state==='suspended') AC.resume();
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type||'square'; o.frequency.value=f;
+  g.gain.setValueAtTime(.06,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+(dur||.06));
+  o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime+(dur||.06)+.02);
+}
+function setMute(v){
+  MUTE=v; try{ localStorage.setItem('tg.252.mute', v?'1':'0'); }catch(e){}
+  FCPad.toggleLamp('select', !v);
+  if(!v) beep(880,.06);
+}
+
+/* ===== FCパッドとゲームのつなぎ ===== */
+let SCREEN='title', CUR=0, PAUSED=false;
+const pauseEl=document.getElementById('pause');
+function paintCur(){
+  app.querySelectorAll('.sus').forEach(b=>b.classList.toggle('cur', +b.dataset.i===CUR));
+}
+function moveCur(d){
+  if(PAUSED||SCREEN!=='pick'||!G.n) return;
+  CUR=(CUR+d+G.n)%G.n; beep(720,.03); paintCur();
+}
+function showPause(v){
+  PAUSED=v; pauseEl.classList.toggle('show', v);
+  FCPad.hint(v?'ポーズ中 ─ B でもどる':'');
+  beep(v?420:640,.07);
+}
+function pressA(){
+  if(PAUSED){ showPause(false); return; }
+  if(SCREEN==='title'){ const b=document.getElementById('go'); if(b){beep(880,.08); b.click();} return; }
+  if(SCREEN==='pick'){ beep(990,.05); pick(CUR); return; }
+  if(SCREEN==='done'){ const b=document.getElementById('nx'); if(b){beep(880,.08); b.click();} return; }
+  if(SCREEN==='end'){ const b=document.getElementById('again'); if(b){beep(880,.08); b.click();} return; }
+}
+function pressB(){
+  if(PAUSED){ showPause(false); return; }
+  beep(300,.05);
+}
+FCPad.on((btn,phase)=>{
+  audioInit(); if(AC&&AC.state==='suspended') AC.resume();
+  if(phase==='up') return;
+  switch(btn){
+    case 'up': case 'left':  moveCur(-1); break;
+    case 'down': case 'right': moveCur(1); break;
+    case 'a': if(phase==='down') pressA(); break;
+    case 'b': if(phase==='down') pressB(); break;
+    case 'start': if(phase==='down' && SCREEN!=='title') showPause(!PAUSED); break;
+    case 'select': if(phase==='down') setMute(!MUTE); break;
+  }
+});
+document.getElementById('pv-resume').onclick=()=>showPause(false);
+document.getElementById('pv-title').onclick=()=>{ showPause(false); titleScreen(); };
+FCPad.toggleLamp('select', !MUTE);
+
+const NAMES=['ミカ','ケンタ','ユウ','サラ','ゴロー'];
+const HAIR=['#e83f6f','#3b2a1a','#3fa9f5','#f5c542','#7a7a7a'];
+const CLOTH=['#ffd23f','#3fd8a6','#b36bff','#ff8a3d','#4a78ff'];
+const CASES=['冷蔵庫のプリンを食べた','社長の机にラクダのぬいぐるみを置いた','ホワイトボードを勝手に消した',
+ '寝ている猫にヒゲを描き足した','最後のコピー用紙を使い切った','オアシスの水を飲み干した',
+ '全員の目覚まし時計を止めた','給湯室のお菓子を隠した','ゲーム機の電源を抜いた','玄関の花瓶を割った',
+ '会議の資料をこっそり折り紙にした','エレベーターのボタンを全部押した'];
+const TOTAL=10;
+const N=i=>NAMES[i];
+const TPL=[
+ {w:3,need:0,txt:()=> 'わたしはやってないよ',ev:(s,c)=>c!==s},
+ {w:3,need:1,txt:(s,t)=>`${N(t)}は犯人じゃない`,ev:(s,c,L,t)=>c!==t},
+ {w:2,need:1,txt:(s,t)=>`犯人は${N(t)}だよ`,ev:(s,c,L,t)=>c===t},
+ {w:2,need:2,txt:(s,t,u)=>`犯人は${N(t)}か${N(u)}のどっちか`,ev:(s,c,L,t,u)=>c===t||c===u},
+ {w:2,need:1,txt:(s,t)=>`${N(t)}はウソついてる`,ev:(s,c,L,t)=>L===t},
+ {w:1,need:1,txt:(s,t)=>`${N(t)}は本当のこと言ってる`,ev:(s,c,L,t)=>L!==t},
+];
+const rnd=n=>Math.floor(Math.random()*n);
+function pickTpl(){const tot=TPL.reduce((a,b)=>a+b.w,0);let r=Math.random()*tot;for(const t of TPL){if((r-=t.w)<0)return t}return TPL[0]}
+function others(n,s){const a=[];for(let i=0;i<n;i++)if(i!==s)a.push(i);return a.sort(()=>Math.random()-.5)}
+
+function makePuzzle(n){
+  for(let tries=0;tries<2000;tries++){
+    const c=rnd(n),L=rnd(n),st=[];let ok=true;
+    for(let s=0;s<n&&ok;s++){
+      let got=null;
+      for(let k=0;k<60&&!got;k++){
+        const t=pickTpl(),o=others(n,s),args=o.slice(0,t.need);
+        if(t.need===2&&args[0]>args[1])args.reverse();
+        if(t.ev(s,c,L,...args)===(s!==L))got={t,args};
+      }
+      if(!got)ok=false;else st.push(got);
+    }
+    if(!ok)continue;
+    let sols=[];
+    for(let cc=0;cc<n;cc++)for(let ll=0;ll<n;ll++){
+      if(st.every((x,s)=>x.t.ev(s,cc,ll,...x.args)===(s!==ll)))sols.push([cc,ll]);
+    }
+    if(sols.length===1)return{c,L,st};
+  }
+  return null;
+}
+
+function avatar(i){
+  const rows=["..HHHH..",".HHHHHH.","HHSSSSHH","HSESSESH",".SSSSSS.",".SSMMSS.","..SSSS..",".CCCCCC."];
+  const col={H:HAIR[i],S:'#f1c27d',E:'#1a1440',M:'#c0392b',C:CLOTH[i]};
+  let r='';rows.forEach((row,y)=>[...row].forEach((ch,x)=>{if(col[ch])r+=`<rect x="${x}" y="${y}" width="1" height="1" fill="${col[ch]}"/>`}));
+  return `<svg class="ava" viewBox="-1 -1 10 10" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+}
+
+let G={};
+const app=document.getElementById('app');
+function best(){try{return +localStorage.getItem('tg.252.best')||+localStorage.getItem('usotsuki-best')||0}catch(e){return 0}}
+function saveBest(v){try{if(v>best())localStorage.setItem('tg.252.best',v)}catch(e){}}
+
+function titleScreen(){
+  app.innerHTML=`<div class="title"><h1>ウソつきを探せ！</h1>
+  <p>取調室に集められた容疑者たち。<br>この中に<b>ウソつきが1人だけ</b>いる。</p></div>
+  <div class="rules">・全員の証言を読んで、ウソをついている人をタップ<br>
+  ・当たったら、次は犯人をタップでボーナス<br>
+  ・ウソつきを外すとハートが1つ減る（3つで終了）<br>
+  ・全${TOTAL}事件。後半ほど容疑者が増えるよ<br>
+  ・ハイスコア：${best()}点</div>
+  <button class="btn" id="go">取り調べを始める</button>`;
+  SCREEN='title'; FCPad.hint('A でスタート');
+  document.getElementById('go').onclick=()=>{G={no:0,score:0,life:3};nextCase()};
+}
+
+function nextCase(){
+  if(G.no>=TOTAL||G.life<=0)return endScreen();
+  G.no++;
+  const n=G.no<=3?3:G.no<=7?4:5;
+  G.n=n;G.p=makePuzzle(n);G.phase='liar';G.pickL=null;G.pickC=null;
+  G.caseText=CASES[rnd(CASES.length)];G.t0=Date.now();
+  CUR=0; render();
+}
+
+function render(){
+  const {p,n}=G;const reveal=G.phase==='done';
+  let ask={liar:'ウソつきは1人だけ。だれ？',culprit:'正解！じゃあ<b>犯人</b>はだれ？',done:''}[G.phase];
+  let h=`<header><span>事件 <b>${G.no}</b>/${TOTAL}</span><span class="hearts" aria-label="残りハート${G.life}">${'♥'.repeat(G.life)}${'♡'.repeat(3-G.life)}</span><span>スコア <b>${G.score}</b></span></header>
+  <div class="case"><div class="no">事件ファイル No.${String(G.no).padStart(3,'0')}</div><h2>だれかが${G.caseText}。</h2></div>
+  <div class="ask" aria-live="polite">${ask}</div>`;
+  for(let s=0;s<n;s++){
+    const x=p.st[s],said=x.t.txt(s,...x.args);
+    const lit=(G.phase==='culprit'&&s===G.pickL)||(reveal&&s===p.L);
+    let mark='';if(reveal)mark=s===p.L?'<span class="mark f">ウソ</span>':'<span class="mark t">本当</span>';
+    const stamp=reveal&&s===p.c?'<span class="stamp">犯人</span>':'';
+    const cur=(!reveal&&s===CUR)?' cur':'';
+    h+=`<button class="sus${lit?' lit':''}${cur}" data-i="${s}" ${reveal?'disabled':''}>${avatar(s)}
+      <div style="flex:1"><div class="who">${N(s)}</div><div class="bubble">「${said}」${mark}</div></div>${stamp}</button>`;
+  }
+  if(reveal)h+=`<div class="result">${G.msg}</div><button class="btn" id="nx">${G.no>=TOTAL||G.life<=0?'結果を見る':'次の事件へ'}</button>`;
+  app.innerHTML=h;
+  app.querySelectorAll('.sus').forEach(b=>b.onclick=()=>pick(+b.dataset.i));
+  const nx=document.getElementById('nx');if(nx){nx.onclick=nextCase;nx.focus()}
+  SCREEN = reveal ? 'done' : 'pick';
+  FCPad.hint(reveal ? 'A で次へ' : '十字キーで選ぶ / A で決定');
+}
+
+function pick(i){
+  const {p}=G;
+  if(G.phase==='liar'){
+    G.pickL=i;
+    if(i===p.L){
+      const sec=(Date.now()-G.t0)/1000,bonus=Math.max(0,Math.round(60-sec));
+      beep(1320,.12);G.score+=100+bonus;G.gain=`ウソつき的中 +100／スピード +${bonus}`;G.phase='culprit';render();
+    }else{
+      beep(160,.25,'sawtooth');G.life--;G.phase='done';
+      G.msg=`ざんねん、${N(i)}は本当のことを言ってた。<br>ウソつきは<b>${N(p.L)}</b>。${N(p.L)}の証言だけを「ウソ」とすると全員のつじつまが合って、犯人は<b>${N(p.c)}</b>になるよ。`;
+      render();
+    }
+  }else if(G.phase==='culprit'){
+    G.pickC=i;G.phase='done';
+    let m=G.gain;
+    if(i===p.c){beep(1560,.16);G.score+=50;m+='／犯人も的中 +50';}else {beep(220,.18,'triangle');m+=`／犯人は${N(p.c)}だった`;}
+    G.msg=`${m}<br>${N(p.L)}の証言だけがウソ。残りの証言をぜんぶ本当として読むと、犯人は<b>${N(p.c)}</b>に絞れる。`;
+    render();
+  }
+}
+
+function endScreen(){
+  saveBest(G.score);
+  const s=G.score,rank=s>=1400?'名探偵':s>=1000?'敏腕刑事':s>=600?'見習い刑事':'新人巡査';
+  SCREEN='end'; FCPad.hint('A でもう一度');
+  app.innerHTML=`<div class="title"><h1>取り調べ終了</h1><p>スコア <b style="font-size:30px;color:var(--lamp)">${s}</b> 点</p>
+  <p>称号：${rank}</p><p>ハイスコア：${best()}点</p></div>
+  <button class="btn" id="again">もう一度</button>`;
+  document.getElementById('again').onclick=titleScreen;
+}
+titleScreen();
+</script>
+</body>
+</html>
