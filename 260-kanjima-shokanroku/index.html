@@ -1,0 +1,1057 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>漢字魔召喚録</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<style>
+:root{--ink:#15110e;--ink2:#231b16;--ink3:#3a2e26;--washi:#efe6d2;--washi2:#e0d3b6;--shu:#c8372a;--shu2:#e4533f;--kin:#c9a24a;--ai:#2f4d6e;--txt:#efe6d2;--mute:#a89a82;color-scheme:dark;
+--brush:"Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif;--ui:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif}
+html,body{height:100%;margin:0;background:var(--ink);color:var(--txt);font-family:var(--ui);overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+[hidden]{display:none!important}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--kin);outline-offset:2px}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block}
+#layer{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.bubble{position:absolute;left:0;top:0;width:max-content;max-width:210px;padding:6px 11px;background:var(--washi);color:var(--ink);border:2px solid var(--ink);border-radius:14px;font-size:13px;font-weight:700;line-height:1.4;opacity:0;transition:opacity .15s;pointer-events:none;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.bubble.show{opacity:1}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-9px;margin-left:-7px;border:7px solid transparent;border-top-color:var(--ink);border-bottom:0}
+.bubble.foe{background:#2c1c18;color:#f6d9ca;border-color:var(--shu)}
+.bubble.foe::after{border-top-color:var(--shu)}
+.tag{position:absolute;left:0;top:0;padding:2px 6px 4px;background:rgba(21,17,14,.82);border:1px solid var(--ink3);border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;text-align:center}
+.tag .bar{height:4px;width:64px;background:#3b2f28;border-radius:2px;margin-top:2px;overflow:hidden}
+.tag .bar i{display:block;height:100%;background:#7fbf6a;transition:width .3s}
+.tag .bar i.mid{background:var(--kin)}.tag .bar i.low{background:var(--shu2)}
+.tag.foe{border-color:var(--shu)}
+.pop{position:absolute;left:0;top:0;font:900 26px var(--ui);color:#fff;-webkit-text-stroke:1px var(--ink);text-shadow:0 2px 0 var(--ink);animation:rise .9s ease-out forwards;pointer-events:none}
+.pop.eff{color:#ffd166}.pop.weak{color:#9ab}
+@keyframes rise{from{opacity:1;margin-top:0}to{opacity:0;margin-top:-46px}}
+
+#hud{position:fixed;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;pointer-events:none}
+#hud > *{pointer-events:auto}
+.logo{font:32px/1 var(--brush);color:var(--washi);letter-spacing:.04em;text-shadow:0 2px 0 #000}
+.logo small{display:block;font:700 10px var(--ui);letter-spacing:.3em;color:var(--shu2);margin-top:4px}
+#partyMini{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.mini{display:flex;align-items:center;gap:6px;background:rgba(21,17,14,.78);border:1px solid var(--ink3);border-radius:8px;padding:4px 8px 4px 4px;font-size:11px}
+.mini b{font:24px/1 var(--brush);background:var(--washi);color:var(--ink);border-radius:4px;padding:3px 4px;min-width:24px;text-align:center}
+.mini .bar{width:48px;height:4px;background:#3b2f28;border-radius:2px;overflow:hidden;margin-top:3px}
+.mini .bar i{display:block;height:100%;background:#7fbf6a}
+.mini.ko{opacity:.45}
+.hudBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.seal{background:var(--shu);color:#fff6ea;border:2px solid #7d1d14;border-radius:6px;padding:8px 12px;font-weight:900;font-size:14px;letter-spacing:.08em;box-shadow:0 3px 0 #5a130c}
+.seal:active{transform:translateY(2px);box-shadow:0 1px 0 #5a130c}
+.seal.ghost{background:rgba(21,17,14,.8);color:var(--washi);border-color:var(--ink3);box-shadow:0 3px 0 #000}
+.seal.pulse{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(200,55,42,.35),0 3px 0 #5a130c}}
+#hint{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);transform:translateX(-50%);font-size:12px;color:var(--mute);background:rgba(21,17,14,.7);padding:6px 12px;border-radius:20px;white-space:nowrap;pointer-events:none;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+#toast{position:fixed;left:50%;top:36%;transform:translateX(-50%);background:var(--washi);color:var(--ink);border:2px solid var(--ink);padding:10px 18px;border-radius:10px;font-weight:900;font-size:15px;box-shadow:0 5px 0 rgba(0,0,0,.5);pointer-events:none;text-align:center;max-width:calc(100% - 40px)}
+#joy{position:fixed;left:calc(18px + env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 48px);width:120px;height:120px;border-radius:50%;border:2px solid rgba(239,230,210,.25);background:rgba(21,17,14,.35);touch-action:none}
+#joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(200,55,42,.8);border:2px solid #7d1d14}
+@media (pointer:fine){#joy{display:none}}
+
+/* 原稿用紙パネル */
+.sheet{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,8,6,.62);padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 12px);z-index:20}
+.paper{position:relative;background:var(--washi);color:var(--ink);width:min(760px,100%);max-height:100%;overflow:auto;border-radius:6px;box-shadow:0 12px 0 rgba(0,0,0,.4);
+ background-image:linear-gradient(rgba(200,55,42,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(200,55,42,.12) 1px,transparent 1px);background-size:28px 28px;padding:18px 18px 22px;touch-action:pan-y;user-select:text}
+.paper h2{font:30px/1.1 var(--brush);margin:0 0 4px;text-wrap:balance}
+.paper .sub{font-size:12px;color:#6d5d48;margin:0 0 14px}
+.close{position:absolute;right:12px;top:12px;background:var(--ink);color:var(--washi);border:0;border-radius:6px;width:36px;height:36px;font-size:18px;font-weight:900}
+.altar{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:8px;margin-bottom:12px}
+.slot{aspect-ratio:1;max-width:120px;width:100%;justify-self:center;border:3px dashed var(--shu);border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.4);font:clamp(40px,11vw,68px)/1 var(--brush);color:var(--ink);position:relative;padding:0}
+.slot.fill{border-style:solid;background:#fff9ec}
+.slot small{position:absolute;bottom:4px;left:0;right:0;font:700 10px var(--ui);color:#6d5d48}
+.slot.res{border-color:var(--kin);background:var(--ink);color:var(--washi)}
+.slot.res.hot{box-shadow:0 0 0 4px rgba(201,162,74,.5)}
+.op{font:900 26px var(--ui);color:var(--shu)}
+#fuseInfo{text-align:center;font-weight:700;font-size:13px;min-height:1.4em;margin-bottom:8px}
+#fuseBtn{display:block;margin:0 auto 14px;font-size:18px;padding:10px 34px}
+#fuseBtn:disabled{opacity:.4;cursor:not-allowed}
+.chat{background:var(--ink);color:var(--washi);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.6;min-height:48px;max-height:150px;overflow:auto;margin-bottom:14px}
+.chat p{margin:0 0 2px}.chat b{color:var(--kin);font-family:var(--brush);font-size:16px;font-weight:400}
+.tabs{display:flex;gap:6px;margin-bottom:8px}
+.tabs button{border:2px solid var(--ink);background:transparent;border-radius:6px;padding:5px 12px;font-weight:900}
+.tabs button.on{background:var(--ink);color:var(--washi)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-bottom:14px}
+.tile{position:relative;aspect-ratio:1;border:2px solid var(--ink);border-radius:6px;background:#fffaf0;font:34px/1 var(--brush);display:grid;place-items:center;padding:0;color:var(--ink)}
+.tile.wide{font-size:26px}
+.tile em{position:absolute;right:3px;bottom:2px;font:900 11px var(--ui);font-style:normal;color:var(--shu)}
+.tile span{position:absolute;left:3px;top:2px;font:700 9px var(--ui);color:#6d5d48}
+.tile:disabled{opacity:.3}
+.tile.used{outline:3px solid var(--shu);outline-offset:-5px}
+.dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 12px;font-size:13px;font-variant-numeric:tabular-nums}
+.dex div{padding:3px 0;border-bottom:1px dotted #b9a987}
+.dex .k{font-family:var(--brush);font-size:17px}
+.dex .no{color:#9c8c70}
+h3{font:900 13px var(--ui);letter-spacing:.2em;color:var(--shu);margin:14px 0 6px}
+.plist{display:flex;flex-direction:column;gap:6px}
+.prow{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:#fffaf0;border:2px solid var(--ink);border-radius:8px;padding:6px 8px}
+.prow .big{font:40px/1 var(--brush);min-width:48px;text-align:center}
+.prow .meta{font-size:12px;line-height:1.5}
+.prow .meta strong{font-size:14px}
+.prow .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.prow .acts button{border:2px solid var(--ink);background:transparent;border-radius:5px;padding:4px 8px;font-weight:900;font-size:12px}
+.el{display:inline-block;font-weight:900;color:#fff;border-radius:3px;padding:0 4px;font-size:11px}
+
+/* battle */
+#battle{position:fixed;left:0;right:0;bottom:0;padding:0 12px calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;pointer-events:none}
+#battle > *{pointer-events:auto}
+#log{flex:1 1 260px;background:rgba(21,17,14,.88);border:2px solid var(--ink3);border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.55;height:112px;overflow:auto}
+#log p{margin:0}
+#log .s{color:var(--kin)}
+#log .e{color:#ffd166}
+#cmd{flex:0 1 330px;background:var(--washi);color:var(--ink);border-radius:8px;padding:8px 10px;border:2px solid var(--ink)}
+#cmdWho{font-weight:900;font-size:13px;margin-bottom:6px}
+#cmdWho b{font:22px/1 var(--brush);font-weight:400;margin-right:4px}
+.cmds{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.cmds button{border:2px solid var(--ink);background:#fffaf0;border-radius:6px;padding:8px 4px;font-weight:900;font-size:14px}
+.cmds button.main{background:var(--shu);color:#fff;border-color:#7d1d14}
+.cmds button small{display:block;font-size:10px;font-weight:700;opacity:.75}
+.cmds button:disabled{opacity:.35}
+#targets{display:flex;gap:5px;margin-top:6px;align-items:center;font-size:11px;font-weight:700;flex-wrap:wrap}
+.tgt{font:22px/1 var(--brush);border:2px solid var(--ink);background:transparent;border-radius:5px;padding:3px 7px}
+.tgt.on{background:var(--shu);color:#fff;border-color:#7d1d14}
+#speed{position:fixed;right:12px;top:calc(env(safe-area-inset-top,0px) + 12px)}
+#result .paper{text-align:center}
+#result .big{font:84px/1 var(--brush);margin:6px 0}
+#result ul{list-style:none;padding:0;margin:8px 0 16px;font-size:14px;line-height:1.8}
+/* 目的 */
+#quest{margin-top:8px;max-width:300px;background:rgba(21,17,14,.84);border:1px solid var(--ink3);border-left:4px solid var(--shu);border-radius:6px;padding:6px 10px;font-size:12px;line-height:1.45}
+#quest .qlab{font:900 10px var(--ui);letter-spacing:.25em;color:var(--shu2);margin-right:6px}
+#quest #qText{font-weight:900;font-size:13px}
+#quest #qProg{margin-left:6px;color:var(--kin);font-weight:900;font-variant-numeric:tabular-nums}
+#quest #qDesc{display:block;color:var(--mute);font-size:11px}
+#quest.done{animation:qdone 1.4s}
+@keyframes qdone{20%{background:var(--shu);border-color:var(--kin)}}
+/* 進化演出 */
+#flash{position:fixed;inset:0;background:#fff8e8;opacity:0;pointer-events:none;z-index:30}
+#flash.go{animation:flash .9s ease-out}
+@keyframes flash{8%{opacity:1}100%{opacity:0}}
+#evoTitle{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 7vh);text-align:center;font:clamp(40px,9vw,84px)/1 var(--brush);color:var(--washi);text-shadow:0 4px 0 #000,0 0 30px rgba(228,83,63,.6);pointer-events:none;animation:inkIn .6s ease-out}
+#evoTitle.gold{color:#ffd166;text-shadow:0 4px 0 #000,0 0 36px rgba(255,209,102,.8)}
+@keyframes inkIn{from{opacity:0;transform:scale(1.6);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+#evoCard{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);transform:translateX(-50%);width:min(440px,calc(100% - 32px));background:var(--washi);color:var(--ink);border:2px solid var(--ink);border-radius:8px;padding:12px 14px;box-shadow:0 8px 0 rgba(0,0,0,.45);animation:inkIn .45s ease-out;z-index:25}
+#evoCard .row{display:flex;gap:12px;align-items:center}
+#evoCard .big{font:64px/1 var(--brush);min-width:72px;text-align:center}
+#evoCard .big.w{font-size:44px}
+#evoCard .meta{font-size:12px;line-height:1.6}
+#evoCard .meta strong{font-size:16px}
+#evoCard .new{display:inline-block;background:var(--shu);color:#fff;font-weight:900;font-size:10px;padding:1px 6px;border-radius:3px;letter-spacing:.1em}
+#evoCard .from{font-size:12px;color:#6d5d48;margin:6px 0 10px}
+#evoCard .seal{width:100%}
+#evoSkip{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:26}
+.story p{font-size:15px;line-height:1.9;margin:0 0 10px;max-width:62ch}
+.story ol{margin:6px 0 16px;padding-left:1.4em;font-size:14px;line-height:1.8}
+.story ol b{color:var(--shu)}
+@media (prefers-reduced-motion:reduce){.seal.pulse{animation:none}.pop{animation-duration:.01s}#flash.go,#evoTitle,#evoCard{animation-duration:.01s}}
+@media (max-width:520px){.logo{font-size:24px}.cmds button{font-size:13px;padding:7px 2px}#log{height:84px;font-size:12px}}
+</style>
+
+</head>
+<body>
+<section class="sheet" id="story" hidden>
+  <div class="paper story" role="dialog" aria-labelledby="storyTitle">
+    <h2 id="storyTitle">序　字喰いの夜</h2>
+    <p class="sub">漢字魔召喚録 ── はじまり</p>
+    <p>墨の国では、石碑に刻まれた漢字が夜ごとに消えていた。犯人は字を喰らう魔物<b>「字喰（じぐい）」</b>。喰われた字は意味を失い、世界は白紙に戻りかけている。</p>
+    <p>字喰は五行（木・火・土・金・水）の力を<b>封字碑</b>に閉じこめ、守護魔に見張らせた。残された希望は、字と字を合わせて命を吹きこむ<b>「筆の子」</b>──きみだ。</p>
+    <ol>
+      <li>素字を合わせて<b>漢字魔を召喚</b>する</li>
+      <li>漢字魔を育て、<b>合体で進化</b>させる</li>
+      <li>東西南北と北東、<b>五つの封字碑</b>の守護魔をたおす</li>
+      <li>熟語になる二体を合わせ<b>熟語魔</b>を生みだす</li>
+      <li>召喚陣にあらわれる<b>字喰</b>を討ち、字を取りもどす</li>
+    </ol>
+    <button class="seal" id="storyOk">筆をとる</button>
+  </div>
+</section>
+
+<div id="stage"></div>
+<div id="layer"></div>
+
+<header id="hud">
+  <div>
+    <div class="logo">漢字魔召喚録<small>KANJI-MA SUMMONER</small></div>
+    <div id="partyMini"></div>
+    <div id="quest"><span class="qlab">目的</span><span id="qText"></span><span id="qProg"></span><span id="qDesc"></span></div>
+  </div>
+  <div class="hudBtns">
+    <button class="seal" id="altarBtn">合体の祭壇</button>
+    <button class="seal ghost" id="partyBtn">手持ち</button>
+  </div>
+</header>
+<div id="hint">WASD／矢印で移動 ・ うろつく漢字魔に触れるとバトル ・ 中央の召喚陣で全回復</div>
+<div id="joy"><i></i></div>
+<div id="toast" hidden></div>
+
+<section class="sheet" id="altar" hidden>
+  <div class="paper" role="dialog" aria-labelledby="altarTitle">
+    <button class="close" data-close aria-label="閉じる">×</button>
+    <h2 id="altarTitle">合体の祭壇</h2>
+    <p class="sub">素字＋素字で漢字魔を召喚。漢字魔どうし、漢字魔＋素字でも合体できる。熟語になる二体は「熟語魔」に進化。</p>
+    <div class="altar">
+      <button class="slot" id="slotA" aria-label="一つ目"></button>
+      <div class="op">＋</div>
+      <button class="slot" id="slotB" aria-label="二つ目"></button>
+      <div class="op">＝</div>
+      <div class="slot res" id="slotR">？</div>
+    </div>
+    <div id="fuseInfo">下から字を二つえらんでね</div>
+    <button class="seal" id="fuseBtn" disabled>召　喚</button>
+    <div class="chat" id="altarChat"><p>祭壇がしずかに光っている……</p></div>
+    <div class="tabs"><button id="tabParts" class="on">素字</button><button id="tabMons">漢字魔</button></div>
+    <div class="grid" id="pickGrid"></div>
+    <h3>合体図鑑</h3>
+    <div class="dex" id="dex"></div>
+  </div>
+</section>
+
+<section class="sheet" id="partyPanel" hidden>
+  <div class="paper" role="dialog" aria-labelledby="partyTitle">
+    <button class="close" data-close aria-label="閉じる">×</button>
+    <h2 id="partyTitle">手持ちの漢字魔</h2>
+    <p class="sub">上から三体がバトルに出る。「先頭へ」で並べ替え、「話す」で本人に語らせよう。</p>
+    <div class="plist" id="plist"></div>
+  </div>
+</section>
+
+<div id="battle" hidden>
+  <div id="log"></div>
+  <div id="cmd" hidden>
+    <div id="cmdWho"></div>
+    <div class="cmds">
+      <button class="main" data-cmd="atk">攻撃</button>
+      <button data-cmd="skill">技<small>気10</small></button>
+      <button data-cmd="talk">口撃<small>相手の攻↓</small></button>
+      <button data-cmd="def">防御</button>
+      <button data-cmd="run">逃げる</button>
+      <button data-cmd="cheer">鼓舞<small>味方の気+8</small></button>
+    </div>
+    <div id="targets"></div>
+  </div>
+</div>
+<button class="seal ghost" id="speed" hidden>×1</button>
+
+<div id="flash"></div>
+<div id="evoTitle" hidden></div>
+<div id="evoCard" hidden></div>
+<button class="seal ghost" id="evoSkip" hidden>はやおくり</button>
+
+
+<section class="sheet" id="result" hidden>
+  <div class="paper"><h2 id="resTitle"></h2><div class="big" id="resBig"></div><ul id="resList"></ul><button class="seal" id="resOk">つづける</button></div>
+</section>
+
+<script>
+/* ダブルタップズーム防止。ボタン類は除外する（同じ字を2回続けてタップする合体操作を殺さないため） */
+(()=>{let lastEnd=0;const live="button,[role=\"button\"],a,input,textarea,select";
+ document.addEventListener("touchend",e=>{const t=Date.now();
+  if(t-lastEnd<=300&&!(e.target.closest&&e.target.closest(live)))e.preventDefault();
+  lastEnd=t;},{passive:false});})();
+</script>
+<script src="three.min.js"></script>
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const rand=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+let speedMul=1;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms*speedMul));
+
+/* ===== データ ===== */
+const EL={木:'#4f8a45',火:'#c8372a',土:'#a07a3c',金:'#8f8a78',水:'#2f5f93',無:'#6a4f86'};
+const BEATS={木:'土',土:'水',水:'火',火:'金',金:'木'}; // 五行相剋
+const PARTS=['木','日','月','火','人','女','子','田','力','口','鳥','山','石','門','耳','心','生','目','立','大','羊','雨','言'];
+const RECIPES=[['木','木','林'],['林','木','森'],['日','月','明'],['火','火','炎'],['日','日','昌'],['昌','日','晶'],['人','木','休'],['女','子','好'],['田','力','男'],['口','鳥','鳴'],['山','石','岩'],['門','耳','聞'],['門','日','間'],['木','目','相'],['相','心','想'],['日','生','星'],['心','生','性'],['大','羊','美'],['立','日','音'],['音','心','意'],['田','心','思'],['火','田','畑'],['雨','田','雷'],['雨','相','霜'],['人','言','信']];
+const JUKUGO=[['森','林','しんりん','木が五本！森と林の大合唱じゃ〜！'],['明','星','みょうじょう','夜明けに光る星…それが俺たち明星だ'],['意','思','いし','意と思、ふたつの心が一つに。決めたら曲げん'],['思','想','しそう','思って想う。考えすぎて最強になったわい'],['相','性','あいしょう','相性バッチリ！だってウチら相性そのものだし〜'],['男','性','だんせい','男と性！漢（おとこ）の中の漢！'],['好','意','こうい','好きって気持ちに意味がついた…ドキドキ'],['星','間','せいかん','星と星の間…宇宙そのものが俺だ'],['雷','鳴','らいめい','ゴロゴロピッシャーン！うるさい？知ってる！！'],['美','音','びおん','美しい音…我の声を聴け〜ら〜ら〜'],['音','信','いんしん','音信不通？いやいや、ずっと喋ってるし']];
+const K={
+ 林:{y:'はやし',el:'木',p:'のんびり',sk:'木漏れ日ビンタ',sig:'木が2本で林。3本目は…まだ来ないで〜'},
+ 森:{y:'もり',el:'木',p:'賢者',sk:'深緑の迷い路',sig:'木が三つ揃えば、もはや世界じゃ'},
+ 休:{y:'やすみ',el:'木',p:'のんびり',sk:'木陰で二度寝',sig:'人が木にもたれて休む。それがわたしの全て〜'},
+ 相:{y:'あい',el:'木',p:'のんびり',sk:'見つめ合い光線',sig:'木を目で見る…相手をよ〜く見るってこと'},
+ 想:{y:'おもい',el:'木',p:'賢者',sk:'想いの重圧',sig:'心の上に相。想いとは相手を心に乗せることよ'},
+ 炎:{y:'ほのお',el:'火',p:'熱血',sk:'二重火炎弾',sig:'火が二つ！つまり二倍熱い！！'},
+ 畑:{y:'はたけ',el:'火',p:'のんびり',sk:'焼畑アタック',sig:'わたし日本生まれの国字なんよ〜。火で田を焼くけぇ'},
+ 美:{y:'うつくしい',el:'火',p:'ギャル',sk:'大きな羊ビーム',sig:'大きい羊ってマジ美しくない？昔の人わかってる〜'},
+ 男:{y:'おとこ',el:'火',p:'熱血',sk:'田んぼ耕し拳',sig:'田に力！田んぼで力を出すのが男だッ！'},
+ 昌:{y:'さかん',el:'火',p:'ギャル',sk:'ダブル日差し',sig:'日が二コでアゲアゲ〜☀☀'},
+ 明:{y:'あかるい',el:'金',p:'クール',sk:'日月閃',sig:'日と月、両方持ってる。当然明るい'},
+ 晶:{y:'きらめき',el:'金',p:'クール',sk:'三日結晶',sig:'日が三つ。…眩しすぎたら悪いね'},
+ 星:{y:'ほし',el:'金',p:'クール',sk:'生まれたて流星',sig:'日から生まれた光…それが俺だ'},
+ 間:{y:'あいだ',el:'金',p:'クール',sk:'門の隙間光',sig:'門の隙間から差す日。…間合いは見切った'},
+ 聞:{y:'きく',el:'金',p:'賢者',sk:'門前の地獄耳',sig:'門に耳。ぜーんぶ聞こえておるぞ'},
+ 雷:{y:'かみなり',el:'水',p:'熱血',sk:'雨田落雷',sig:'雨雲の下の田んぼに落ちるッ！ドーン！'},
+ 霜:{y:'しも',el:'水',p:'クール',sk:'凍てつく相雨',sig:'雨の下に相。静かに降りる…冷えるぞ'},
+ 鳴:{y:'なく',el:'水',p:'ギャル',sk:'鳥の口げんか',sig:'口と鳥でピーチク！しゃべるの大好き〜'},
+ 音:{y:'おと',el:'水',p:'厨二',sk:'立日の旋律',sig:'立つ日の響き…我が音色に震えよ'},
+ 意:{y:'こころ',el:'水',p:'賢者',sk:'心音の圧',sig:'音の下に心。心の声、それが意じゃ'},
+ 岩:{y:'いわ',el:'土',p:'熱血',sk:'山石落とし',sig:'山の石！硬い！以上ッ！'},
+ 好:{y:'すき',el:'土',p:'ギャル',sk:'だいすきハグ',sig:'女と子でスキ♡ってエモくない？'},
+ 性:{y:'さが',el:'土',p:'厨二',sk:'生まれ持ちし業',sig:'心に生まれし宿命…それが我が性（さが）'},
+ 思:{y:'おもう',el:'土',p:'賢者',sk:'田の上の思索',sig:'田の上で心が考える。農は哲学じゃ'},
+ 信:{y:'しんじる',el:'土',p:'厨二',sk:'言霊の契約',sig:'人の言葉…それは契約。我は裏切らぬ'},
+};
+const TIER2=new Set(['森','晶','想','意','霜']);
+const JUKU={};JUKUGO.forEach(([a,b,y,sig])=>{JUKU[a+b]={y,sig,a,b}});
+const L={
+ 熱血:{summon:['うおおお！{me}、見参ッ！','呼んだな！？燃えてきたぜ！'],atk:['くらえぇぇ！','{foe}！歯を食いしばれ！','全力でいくぞォ！'],skill:['必殺！{sk}！！','これが俺の{sk}だァーッ！'],hit:['ぐっ…効かねぇ！','まだまだァ！','いってぇ！でも燃える！'],low:['ここからが本番だ…！','倒れるもんかよォ…！'],ko:['く…無念…','あとは…頼んだぜ…'],win:['勝ったァーー！！','押忍！ありがとうございましたッ！'],idle:['なあ、走ろうぜ！','筆の子！もっと戦おうぜ！','腹減った！画数が減りそうだ！'],taunt:['お前が相手か！燃えるぜ！','手加減はナシだッ！'],cheer:['ナイスだ{ally}！','いいぞ{ally}、熱いな！'],talk:['お前の画数、少なすぎねぇか！？','部首からやり直してこい！'],def:['来いッ！受け止めてやる！'],lvl:['レベルアップ！画数が増えた気がする！']},
+ クール:{summon:['…{me}だ。よろしく','呼んだ？まあ、いいけど'],atk:['…遅い','そこだ','見えてる'],skill:['{sk}','…{sk}。終わりだ'],hit:['…っ','やるね','その程度？'],low:['少し、まずいかもな','…計算外だ'],ko:['…ここまで、か','悪くない勝負だった'],win:['当然の結果','…ふう'],idle:['静かな夜だ','…俺の画数、数えた？','筆の子、前見て歩け'],taunt:['相手になるよ','…君、読み方ある？'],cheer:['{ally}、悪くない','…やるじゃん、{ally}'],talk:['君、送り仮名ズレてるよ','その書き順、間違ってる'],def:['…受け流す'],lvl:['少し強くなった。…少しだけ']},
+ のんびり:{summon:['ふぁ〜…{me}だよぉ','呼んだ〜？お昼寝中だったのに〜'],atk:['えいっ…','ぽかっと〜','よいしょ〜'],skill:['{sk}〜','いくよぉ…{sk}〜'],hit:['いたた〜','やめてよぉ〜','え〜ん'],low:['ちょっと休憩したい…','もう眠い…'],ko:['おやすみ…なさい…','ぐぅ…'],win:['やった〜お昼寝しよ','勝ったの〜？よかった〜'],idle:['いい天気だね〜','あっちに日向あるよ〜','のんびり行こ〜'],taunt:['ケンカやだなぁ〜','おてやわらかに〜'],cheer:['{ally}すご〜い','{ally}がんばれ〜'],talk:['ねえ、とめはねはらい雑じゃない〜？','キミ、ちょっとカクカクしすぎ〜'],def:['まるまって寝る〜'],lvl:['なんか強くなった〜']},
+ ギャル:{summon:['やっほ〜！{me}参上☆','召喚ありがと〜！テンアゲ〜'],atk:['えいっ☆','ぶっとばす〜！','ちょ、覚悟して？'],skill:['{sk}！映えるっしょ？','いくよ〜！{sk}☆'],hit:['は？痛いんだけど！','ちょっと〜！メイク崩れる〜','ムリムリムリ！'],low:['マジやばたにえん…','ぴえん…でもまだイケる'],ko:['え…ウチ負け…？','あとヨロ〜…'],win:['勝ち〜！写真撮ろ！','はい優勝〜☆'],idle:['ねえ筆の子、自撮りしよ〜','この原稿用紙マジエモい','次なに召喚すんの〜？'],taunt:['え、誰？ウケる','ウチに勝てると思ってる？'],cheer:['{ally}神〜！','{ally}ナイス〜！バズるわ'],talk:['その部首、センスなくない？','画数盛りすぎ〜ウケる'],def:['ガード固め〜☆'],lvl:['レベル上がった！爪も盛ろ〜']},
+ 賢者:{summon:['ほっほ…{me}じゃ。呼んだかの','よう来たのう…いや、呼ばれたのはワシか'],atk:['ほれ','喝ッ','若いのう'],skill:['秘儀…{sk}','見よ、{sk}じゃ'],hit:['腰に響く…','ほう、なかなか','老体をいたわらんか'],low:['ワシも焼きが回ったかの…','まだ辞書は閉じんぞ'],ko:['ここで…索引終了じゃ…','後は若い者に…'],win:['ほっほっほ、経験の差じゃ','まだまだ現役よ'],idle:['漢字とは、合わさって意味を成すものよ','昔はのう、甲骨に刻まれておったんじゃ','部首を大切にするんじゃぞ'],taunt:['若造、書き順から出直せい','ワシの画数、数えられるかの？'],cheer:['{ally}、見事じゃ','ほっほ、{ally}も成長したのう'],talk:['その字、常用漢字外じゃろ？','成り立ちを言うてみい'],def:['柳に風じゃ'],lvl:['この歳でまた強くなるとはのう']},
+ 厨二:{summon:['我が名は{me}…封印は解かれた','クク…召喚に応じてやろう'],atk:['闇に還れ','我が一画を受けよ','クク…'],skill:['禁呪…{sk}！','真名解放…{sk}！'],hit:['ぐ…右手の部首が疼く…','この程度…っ','まだ第二形態ではない…'],low:['くっ…封印が…','今宵は…少し分が悪い…'],ko:['我は…滅びぬ…辞書ある限り…','ここで幕か…'],win:['運命通りだ','クク…我が勝利は必然'],idle:['この原稿用紙…古の力を感じる','筆の子よ…我と契約せよ','闇の熟語になりたい'],taunt:['貴様の読み…すでに見切った','跪け、音読みごと'],cheer:['{ally}…やるではないか','フ…悪くない、{ally}'],talk:['貴様の訓読み、ダサいな','その画数で我に挑むか'],def:['結界展開…！'],lvl:['力が…溢れる…！']},
+};
+L.ボス={summon:['我は字喰…'],atk:['喰らう','その字、いただく','バリッ'],skill:['{sk}！ ぜんぶ白紙にしてやる！','意味ごと喰らえ…{sk}！'],hit:['…まずい字だ','ほう、噛みごたえがある','ぐ…字が逆流する…'],low:['ばかな…熟語の力か…','喰いきれぬ…だと…'],ko:['字が…もどって…ゆく……','ワシも…元は一文字…だった…'],win:['ごちそうさま','白紙に還れ'],idle:['腹が減った…'],taunt:['よく来た、筆の子。おまえの字も喰ってやる','画数の多い字ほど、うまい'],cheer:['…'],talk:['おまえらの熟語、味が薄いな','辞書ごと喰ってやろうか'],def:['口を閉じる'],lvl:['']};
+const SPECIAL={字喰:{y:'じぐい',el:'無',p:'ボス',sk:'全字喰らい',sig:'すべての字は、ワシの腹の中で眠るがいい',tier:3}};
+// 五行の封字碑と守護魔
+const GUARD={
+ 木:{pos:[52,0],name:'東の木碑',k:'森',lv:6,mins:['林','休'],intro:'木碑は渡さん…森の迷い路で朽ちるがよい'},
+ 火:{pos:[0,52],name:'南の火碑',k:'炎',lv:7,mins:['男'],intro:'火碑の番人、炎だァ！字喰サマの命令だ、燃え尽きろ！'},
+ 土:{pos:[37,-37],name:'北東の土碑',k:'岩',lv:8,mins:['好','思'],intro:'土碑は動かん！岩も動かん！以上ッ！'},
+ 金:{pos:[-52,0],name:'西の金碑',k:'晶',lv:9,mins:['星'],intro:'…金碑に触れるな。三つの日で焼き尽くす'},
+ 水:{pos:[0,-52],name:'北の水碑',k:'霜',lv:10,mins:['雷','鳴'],intro:'水碑は凍てついたまま…お前も凍れ'},
+};
+const FAIL=['え、ムリ！この組み合わせ意味わかんない','合体…？いや、辞書に載ってないって','ケンカになるだけだよこれ〜','その二つ、部首の相性ゼロ'];
+
+function info(k){
+ if(K[k]) return {...K[k],tier:TIER2.has(k)?2:1};
+ if(SPECIAL[k]) return SPECIAL[k];
+ const j=JUKU[k]; if(j){const a=K[j.a];return {y:j.y,el:a.el,p:a.p,sk:'熟語奥義「'+k+'」',sig:j.sig,tier:3};}
+ return {y:'',el:'土',p:'熱血',sk:'？',sig:'…',tier:1};
+}
+const key2=(a,b)=>[a,b].sort().join('+');
+const RMAP={};RECIPES.forEach(([a,b,r])=>RMAP[key2(a,b)]=r);
+const JMAP={};JUKUGO.forEach(([a,b])=>JMAP[key2(a,b)]=a+b);
+function stats(m){const t=info(m.k).tier;const base=[1,1.45,2.3][t-1];const mul=base*(1+0.11*(m.lv-1))*(m.boss||1);
+ return {hp:Math.round(38*mul),atk:Math.round(11*mul),def:Math.round(7*mul),spd:6+(m.k.charCodeAt(0)%7)+m.lv};}
+function fmt(s,o){return s.replace(/\{(\w+)\}/g,(_,k)=>o[k]??'')}
+function line(m,kind,o={}){const i=info(m.k);return fmt(pick(L[i.p][kind]),{me:m.k,sk:i.sk,...o});}
+function flat(k){ // 漢字を素字に分解
+ if(PARTS.includes(k))return [k];
+ if(JUKU[k])return [...flat(JUKU[k].a),...flat(JUKU[k].b)];
+ const r=RECIPES.find(x=>x[2]===k);return r?[...flat(r[0]),...flat(r[1])]:[];
+}
+
+/* ===== セーブ ===== */
+const SAVE='tg.260.save';const SAVE_OLD='kanjima-save-v1';
+let S;
+function fresh(){
+ const s={uid:1,parts:{木:3,日:3,月:1,田:2,力:1,女:1,子:1,心:1,生:1,人:1,雨:1,火:1},party:[],dex:{}};
+ S=s; S.party.push(newMon('炎',2),newMon('明',2)); S.dex.炎=S.dex.明=true; return s;
+}
+function newMon(k,lv=1){const m={id:S.uid++,k,lv,xp:0,hp:0,mp:20};m.hp=stats(m).hp;return m;}
+function save(){try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}}
+function load(){try{const t=localStorage.getItem(SAVE)||localStorage.getItem(SAVE_OLD);if(t){const s=JSON.parse(t);if(s&&s.party&&s.parts)return s;}}catch(e){}return null;}
+S=(window.claude&&window.claude.hot&&window.claude.hot.data&&window.claude.hot.data.S)||load()||fresh();
+S.q=Object.assign({step:0,wins:0,summons:0,tier2:false,jukugo:false,seals:{},cleared:false,intro:false},S.q||{});
+if(S.party.length>2||Object.keys(S.dex).length>2)S.q.summons=Math.max(S.q.summons,1);
+try{window.claude&&window.claude.hot&&window.claude.hot.snapshot&&window.claude.hot.snapshot(()=>({S}))}catch(e){}
+
+/* ===== Three ===== */
+const COARSE=matchMedia("(pointer:coarse)").matches;
+const renderer=new THREE.WebGLRenderer({antialias:!COARSE,powerPreference:"high-performance"});
+renderer.setPixelRatio(Math.min(devicePixelRatio,COARSE?1.5:2));
+$('#stage').append(renderer.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x15110e);
+scene.fog=new THREE.Fog(0x15110e,20,62);
+const camera=new THREE.PerspectiveCamera(50,1,0.1,300);
+scene.add(new THREE.HemisphereLight(0xf2e6cc,0x2a1c14,0.85));
+const sun=new THREE.DirectionalLight(0xffe2b8,0.75);sun.position.set(8,14,6);scene.add(sun);
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+
+const texCache={};
+function washiTex(text,el,dark){
+ const id=text+el+(dark?'d':'');if(texCache[id])return texCache[id];
+ const n=[...text].length,W=220*n,H=260,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+ if(dark){g.fillStyle='#2b241f';g.fillRect(0,0,W,H);for(let i=0;i<300;i++){g.fillStyle=`rgba(255,255,255,${Math.random()*.04})`;g.fillRect(Math.random()*W,Math.random()*H,rand(2,9),rand(2,9));}
+  g.fillStyle='rgba(214,196,160,.55)';}
+ else{g.fillStyle='#efe4cc';g.fillRect(0,0,W,H);for(let i=0;i<500;i++){g.fillStyle=`rgba(120,90,50,${Math.random()*.06})`;g.fillRect(Math.random()*W,Math.random()*H,rand(1,5),rand(1,5));}
+  g.strokeStyle=EL[el];g.lineWidth=12;g.strokeRect(6,6,W-12,H-12);g.fillStyle='#17110d';}
+ g.textAlign='center';g.textBaseline='middle';g.font=`${n>1?170:190}px "Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif`;
+ [...text].forEach((ch,i)=>g.fillText(ch,110+220*i,138));
+ if(!dark){g.fillStyle='#c8372a';g.fillRect(W-58,H-58,40,40);g.fillStyle='#fff3e6';g.font='bold 28px sans-serif';g.fillText(el,W-38,H-37);}
+ const t=new THREE.CanvasTexture(c);t.anisotropy=4;texCache[id]=t;return t;
+}
+const white=new THREE.MeshLambertMaterial({color:0xfaf4e8,roughness:.4});
+const black=new THREE.MeshBasicMaterial({color:0x0d0a08});
+const shadowMat=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.35,depthWrite:false});
+function monMesh(k,o={}){
+ const i=info(k),n=[...k].length,g=new THREE.Group();
+ const w=1.05*n,h=1.3,d=.32;
+ const face=new THREE.MeshLambertMaterial({map:o.faceTex||washiTex(k,i.el),roughness:.9});
+ const side=new THREE.MeshLambertMaterial({color:0x2a211c,emissive:new THREE.Color(o.gold?'#c9a24a':EL[i.el]),emissiveIntensity:.45,roughness:.7});
+ const body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),[side,side,side,side,face,face]);
+ const inner=new THREE.Group();inner.add(body);body.position.y=h/2;
+ const eyes=new THREE.Group();eyes.position.set(0,h+.05,0);inner.add(eyes);
+ for(const sx of [-.2,.2]){const e=new THREE.Mesh(new THREE.SphereGeometry(.13,12,10),white);e.position.set(sx,0,.02);eyes.add(e);
+  const p=new THREE.Mesh(new THREE.SphereGeometry(.06,8,8),black);p.position.set(sx,.02,.13);eyes.add(p);}
+ if(o.eyes===false)eyes.visible=false;
+ inner.position.y=.35;g.add(inner);
+ const sh=new THREE.Mesh(new THREE.CircleGeometry(.55*Math.max(1,n*.8),20),shadowMat);sh.rotation.x=-Math.PI/2;sh.position.y=.02;g.add(sh);
+ const sc=[1,1.15,1.25][i.tier-1]*(o.scale||1);g.scale.setScalar(sc);
+ g.userData={inner,side,eyes,headY:(h+.75)*sc,phase:Math.random()*6};
+ return g;
+}
+// 筆で書き上げるテクスチャ（進化演出用）
+function mkCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
+function paintTex(text,el,gold){
+ const chars=[...text],n=chars.length,W=220*n,H=260;
+ const bg=mkCanvas(W,H),bg2=bg.getContext('2d');
+ bg2.fillStyle=gold?'#f3e6c4':'#efe4cc';bg2.fillRect(0,0,W,H);
+ for(let i=0;i<500;i++){bg2.fillStyle=`rgba(120,90,50,${Math.random()*.06})`;bg2.fillRect(Math.random()*W,Math.random()*H,rand(1,5),rand(1,5));}
+ bg2.strokeStyle=gold?'#c9a24a':EL[el];bg2.lineWidth=12;bg2.strokeRect(6,6,W-12,H-12);
+ if(gold){bg2.lineWidth=3;bg2.strokeRect(20,20,W-40,H-40);}
+ const glyph=mkCanvas(W,H),gg=glyph.getContext('2d');
+ gg.fillStyle='#17110d';gg.textAlign='center';gg.textBaseline='middle';gg.font=`${n>1?170:190}px "Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif`;
+ chars.forEach((ch,i)=>gg.fillText(ch,110+220*i,138));
+ const mask=mkCanvas(W,H),mg=mask.getContext('2d');mg.fillStyle='#000';
+ const work=mkCanvas(W,H),wg=work.getContext('2d');
+ const out=mkCanvas(W,H),og=out.getContext('2d');
+ // 一字ずつ、上から下へ筆を往復させる
+ const pts=[];chars.forEach((_,ci)=>{let row=0;for(let y=40;y<=236;y+=18,row++){const xs=[];for(let x=30;x<=190;x+=14)xs.push(x);if(row%2)xs.reverse();xs.forEach(x=>pts.push([ci*220+x+rand(-4,4),y+rand(-4,4)]));}});
+ const tex=new THREE.CanvasTexture(out);tex.anisotropy=4;
+ let drawn=0;
+ function draw(p){
+  const target=Math.floor(Math.min(1,p)*pts.length);
+  while(drawn<target){const [x,y]=pts[drawn++];mg.beginPath();mg.arc(x,y,rand(15,21),0,7);mg.fill();}
+  og.drawImage(bg,0,0);
+  wg.globalCompositeOperation='source-over';wg.clearRect(0,0,W,H);wg.drawImage(mask,0,0);
+  wg.globalCompositeOperation='source-in';wg.drawImage(glyph,0,0);wg.globalCompositeOperation='source-over';
+  og.drawImage(work,0,0);
+  if(drawn<pts.length&&drawn>0){const [x,y]=pts[drawn-1];og.fillStyle='rgba(23,17,13,.85)';og.beginPath();og.ellipse(x,y,9,14,.5,0,7);og.fill();}
+  if(p>=1){og.fillStyle='#c8372a';og.fillRect(W-58,H-58,40,40);og.fillStyle='#fff3e6';og.font='bold 28px sans-serif';og.textAlign='center';og.textBaseline='middle';og.fillText(el,W-38,H-37);}
+  tex.needsUpdate=true;
+ }
+ draw(0);return {tex,draw};
+}
+function stoneTex(ch,lit){
+ const id='st'+ch+(lit?1:0);if(texCache[id])return texCache[id];
+ if(lit){const t=washiTex(ch,'土',true);texCache[id]=t;return t;}
+ const c=mkCanvas(220,260),g=c.getContext('2d');g.fillStyle='#231d19';g.fillRect(0,0,220,260);
+ for(let i=0;i<260;i++){g.fillStyle=`rgba(255,255,255,${Math.random()*.03})`;g.fillRect(Math.random()*220,Math.random()*260,rand(2,9),rand(2,9));}
+ g.fillStyle='rgba(214,196,160,.07)';g.textAlign='center';g.textBaseline='middle';g.font='190px "Yuji Syuku",serif';g.fillText(ch,110,138);
+ // 喰われた跡
+ g.strokeStyle='rgba(200,55,42,.55)';g.lineWidth=4;g.beginPath();let x=60,y=30;g.moveTo(x,y);for(let i=0;i<9;i++){x+=rand(-18,26);y+=24;g.lineTo(x,y);}g.stroke();
+ const t=new THREE.CanvasTexture(c);texCache[id]=t;return t;
+}
+
+const stones=[],pillars={};
+const STONE_CH='永山川風月花雪道天地海空夢龍光影書筆墨紙'.split('');
+const stoneSide=new THREE.MeshLambertMaterial({color:0x2b241f,roughness:.9});
+/* 原稿用紙の大地 */
+(function world(){
+ const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
+ g.fillStyle='#1e1814';g.fillRect(0,0,256,256);
+ for(let i=0;i<400;i++){g.fillStyle=`rgba(255,240,210,${Math.random()*.03})`;g.fillRect(Math.random()*256,Math.random()*256,3,3);}
+ g.strokeStyle='rgba(200,55,42,.38)';g.lineWidth=2;
+ for(let i=0;i<=256;i+=32){g.beginPath();g.moveTo(i,0);g.lineTo(i,256);g.stroke();g.beginPath();g.moveTo(0,i);g.lineTo(256,i);g.stroke();}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(50,50);t.anisotropy=8;
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(220,220),new THREE.MeshLambertMaterial({map:t,roughness:1}));
+ ground.rotation.x=-Math.PI/2;scene.add(ground);
+ // 石碑
+ for(let i=0;i<46;i++){const a=Math.random()*Math.PI*2,r=rand(9,92),x=Math.cos(a)*r,z=Math.sin(a)*r;
+  const h=rand(1.8,4.2),w=h*.45;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,.5),stoneSide);m.position.set(x,h/2,z);m.rotation.y=rand(0,Math.PI);m.rotation.z=rand(-.08,.08);scene.add(m);
+  stones.push({m,ch:pick(STONE_CH),el:pick(Object.keys(GUARD))});}
+ // 五行の封字碑
+ Object.entries(GUARD).forEach(([el,G])=>{const grp=new THREE.Group();grp.position.set(G.pos[0],0,G.pos[1]);
+  const side=new THREE.MeshLambertMaterial({color:0x221b17,emissive:new THREE.Color(EL[el]),emissiveIntensity:.15,roughness:.8});
+  const col=new THREE.Mesh(new THREE.BoxGeometry(1.8,7,1.8),side);col.position.y=3.5;grp.add(col);
+  const plate=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.8),new THREE.MeshBasicMaterial({color:0xffffff}));plate.position.set(0,4.6,.91);grp.add(plate);
+  const plate2=plate.clone();plate2.position.z=-.91;plate2.rotation.y=Math.PI;grp.add(plate2);
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.3,60,24,1,true),new THREE.MeshBasicMaterial({color:new THREE.Color(EL[el]),transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  beam.position.y=30;grp.add(beam);
+  const sealTab=new THREE.Mesh(new THREE.PlaneGeometry(1.4,1.4),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,side:THREE.DoubleSide}));sealTab.position.y=8.2;grp.add(sealTab);
+  scene.add(grp);pillars[el]={grp,side,plate,plate2,beam,sealTab};});
+ // 墨の木
+ const trunk=new THREE.MeshLambertMaterial({color:0x1a1411});const leaf=new THREE.MeshLambertMaterial({color:0x22301f,roughness:1});
+ // 70本の木は InstancedMesh 4つにまとめる（描画280回→4回）
+ const N=70,trunkG=new THREE.CylinderGeometry(.12,.2,1.4,6),coneG=[0,1,2].map(j=>new THREE.ConeGeometry(1.1-j*.28,1.4,7));
+ const iTrunk=new THREE.InstancedMesh(trunkG,trunk,N),iCone=coneG.map(g=>new THREE.InstancedMesh(g,leaf,N));
+ const mtx=new THREE.Matrix4(),rot=new THREE.Quaternion(),pos=new THREE.Vector3(),scl=new THREE.Vector3();
+ for(let i=0;i<N;i++){const a=Math.random()*Math.PI*2,r=rand(10,95),s=rand(.8,1.6);
+  const px=Math.cos(a)*r,pz=Math.sin(a)*r;scl.set(s,s,s);
+  mtx.compose(pos.set(px,.7*s,pz),rot,scl);iTrunk.setMatrixAt(i,mtx);
+  iCone.forEach((im,j)=>{mtx.compose(pos.set(px,(1.5+j*.75)*s,pz),rot,scl);im.setMatrixAt(i,mtx);});}
+ scene.add(iTrunk);iCone.forEach(im=>scene.add(im));
+ // 鳥居
+ const red=new THREE.MeshLambertMaterial({color:0xc8372a,roughness:.6});
+ const tor=new THREE.Group();
+ for(const sx of[-1.8,1.8]){const p=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,3.6,10),red);p.position.set(sx,1.8,0);tor.add(p);}
+ const kasagi=new THREE.Mesh(new THREE.BoxGeometry(5,.3,.4),new THREE.MeshLambertMaterial({color:0x1a1411}));kasagi.position.y=3.7;tor.add(kasagi);
+ const nuki=new THREE.Mesh(new THREE.BoxGeometry(4.2,.2,.25),red);nuki.position.y=3.05;tor.add(nuki);
+ tor.position.set(0,0,-4.2);scene.add(tor);
+})();
+// 召喚陣
+const circleTex=()=>{const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');g.translate(256,256);
+ g.strokeStyle='#e4533f';g.fillStyle='#e4533f';g.lineWidth=6;g.beginPath();g.arc(0,0,240,0,7);g.stroke();g.lineWidth=3;g.beginPath();g.arc(0,0,190,0,7);g.stroke();g.beginPath();g.arc(0,0,90,0,7);g.stroke();
+ for(let i=0;i<6;i++){const a=i*Math.PI/3;g.beginPath();g.moveTo(Math.cos(a)*190,Math.sin(a)*190);g.lineTo(Math.cos(a+2*Math.PI/3)*190,Math.sin(a+2*Math.PI/3)*190);g.stroke();}
+ const ring='木火土金水召喚合体木火土金水召喚合体';g.font='34px "Yuji Syuku",serif';g.textAlign='center';g.textBaseline='middle';
+ [...ring].forEach((ch,i)=>{g.save();g.rotate(i/ring.length*Math.PI*2);g.fillText(ch,0,-215);g.restore();});
+ g.font='90px "Yuji Syuku",serif';g.fillText('合',0,4);
+ return new THREE.CanvasTexture(c);};
+let circle;
+const sealCount=()=>Object.keys(GUARD).filter(e=>S.q.seals[e]).length;
+function refreshStones(){stones.forEach(s=>{const f=new THREE.MeshLambertMaterial({map:stoneTex(s.ch,!!S.q.seals[s.el]),roughness:.9});s.m.material=[stoneSide,stoneSide,stoneSide,stoneSide,f,f];});}
+function updatePillars(){
+ Object.entries(pillars).forEach(([el,p])=>{const freed=!!S.q.seals[el],open=S.q.step>=3;
+  p.plate.material.map=washiTex(el,el);p.plate.material.needsUpdate=true;p.plate2.material=p.plate.material;
+  p.sealTab.material.map=washiTex(freed?el:'封',freed?el:'火');p.sealTab.material.needsUpdate=true;
+  p.beam.visible=freed;p.sealTab.visible=!freed;p.side.emissiveIntensity=freed?.9:open?.35:.12;});
+}
+
+/* ===== 目的（クエスト） ===== */
+const QUESTS=[
+ {t:'祭壇で漢字魔を召喚しよう',d:'「合体の祭壇」で素字を2つえらぶ（例：木＋木）',ok:()=>S.q.summons>0},
+ {t:'野良漢字魔を3体たおそう',d:'うろつく漢字魔にふれるとバトル',prog:()=>`${Math.min(3,S.q.wins)}/3`,ok:()=>S.q.wins>=3},
+ {t:'合体で進化させよう',d:'漢字魔＋素字で二段合体（例：林魔＋木＝森）',ok:()=>S.q.tier2},
+ {t:'五行の封字碑を解放しよう',d:'',prog:()=>`${sealCount()}/5`,ok:()=>sealCount()>=5},
+ {t:'熟語魔を誕生させよう',d:'熟語になる漢字魔2体を合体（例：森＋林）',ok:()=>S.q.jukugo},
+ {t:'召喚陣の「字喰」をたおせ！',d:'鳥居の前で待ちかまえている',ok:()=>S.q.cleared},
+ {t:'クリア！ 図鑑コンプをめざそう',d:'字は取りもどされた。まだ見ぬ漢字魔がいる',prog:()=>`${Object.keys(S.dex).length}/${RECIPES.length+JUKUGO.length}`,ok:()=>false},
+];
+function nextGuard(){return Object.entries(GUARD).filter(([e])=>!S.q.seals[e]).sort((a,b)=>a[1].lv-b[1].lv)[0];}
+function questTarget(){
+ if(S.q.step===3){const g=nextGuard();return g?new THREE.Vector3(g[1].pos[0],0,g[1].pos[1]):null;}
+ if(S.q.step===5)return new THREE.Vector3(0,0,-2);
+ return null;
+}
+function renderQuest(){const q=QUESTS[S.q.step];$('#qText').textContent=q.t;$('#qProg').textContent=q.prog?q.prog():'';
+ let d=q.d;if(S.q.step===3){const g=nextGuard();if(g)d=`つぎは ${g[1].name}（守護魔「${g[1].k}」Lv${g[1].lv}）へ。矢印をたどれ`;}
+ $('#qDesc').textContent=d;}
+function checkQuest(){
+ let adv=false;while(S.q.step<QUESTS.length-1&&QUESTS[S.q.step].ok()){S.q.step++;adv=true;}
+ if(adv){toast('目的達成！ つぎは「'+QUESTS[S.q.step].t+'」',2800);const q=$('#quest');q.classList.remove('done');void q.offsetWidth;q.classList.add('done');
+  if(S.q.step>=3)spawnGuards();if(S.q.step===5)spawnFinal();}
+ renderQuest();updatePillars();save();
+}
+
+/* 主人公：筆の子 */
+const player=new THREE.Group();
+(function(){const robe=new THREE.Mesh(new THREE.ConeGeometry(.45,1,10),new THREE.MeshLambertMaterial({color:0x1b1512}));robe.position.y=.5;player.add(robe);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.3,14,12),new THREE.MeshLambertMaterial({color:0xecdcc0}));head.position.y=1.2;player.add(head);
+ const brush=new THREE.Mesh(new THREE.ConeGeometry(.22,.6,10),new THREE.MeshLambertMaterial({color:0x0d0a08}));brush.position.y=1.7;player.add(brush);
+ const tie=new THREE.Mesh(new THREE.TorusGeometry(.2,.05,6,14),new THREE.MeshLambertMaterial({color:0xc8372a}));tie.rotation.x=Math.PI/2;tie.position.y=1.45;player.add(tie);
+ for(const sx of[-.1,.1]){const e=new THREE.Mesh(new THREE.SphereGeometry(.045,8,8),black);e.position.set(sx,1.24,.27);player.add(e);}
+ const sh=new THREE.Mesh(new THREE.CircleGeometry(.45,16),shadowMat);sh.rotation.x=-Math.PI/2;sh.position.y=.02;player.add(sh);
+ player.userData.headY=2.1;scene.add(player);})();
+
+/* ===== HTML アンカー（吹き出し・名札） ===== */
+const layer=$('#layer');const anchored=new Set();
+const v3=new THREE.Vector3();
+function toScreen(obj,yOff){obj.getWorldPosition(v3);v3.y+=yOff;v3.project(camera);
+ return {x:(v3.x*.5+.5)*innerWidth,y:(-v3.y*.5+.5)*innerHeight,vis:v3.z<1&&Math.abs(v3.x)<1.2&&Math.abs(v3.y)<1.2};}
+function say(obj,text,ms=2600,foe=false){
+ if(!obj)return;let u=obj.userData;let el=u.bubble;
+ if(!el){el=document.createElement('div');layer.append(el);u.bubble=el;}
+ el.textContent=text;el.className='bubble show'+(foe?' foe':'');u.until=performance.now()+ms*speedMul;anchored.add(obj);
+}
+function hideBubble(obj){if(obj&&obj.userData.bubble){obj.userData.bubble.classList.remove('show');obj.userData.until=0;}}
+function killAnchors(obj){['bubble','tagEl'].forEach(k=>{if(obj.userData[k]){obj.userData[k].remove();obj.userData[k]=null;}});anchored.delete(obj);}
+function popup(obj,text,cls=''){const p=toScreen(obj,obj.userData.headY*.6);const d=document.createElement('div');d.className='pop '+cls;d.textContent=text;
+ d.style.transform=`translate(${p.x}px,${p.y}px) translate(-50%,-50%)`;layer.append(d);setTimeout(()=>d.remove(),950);}
+function updateAnchors(now){
+ for(const o of anchored){const u=o.userData;
+  const p=toScreen(o,u.headY+.15);
+  if(u.bubble){if(now>u.until)u.bubble.classList.remove('show');
+   u.bubble.style.transform=`translate(${p.x}px,${p.y-(u.tagEl?30:0)}px) translate(-50%,-100%)`;u.bubble.style.visibility=p.vis?'visible':'hidden';}
+  if(u.tagEl){u.tagEl.style.transform=`translate(${p.x}px,${p.y}px) translate(-50%,-100%)`;u.tagEl.style.visibility=p.vis?'visible':'hidden';}
+ }
+}
+
+/* ===== アニメ ===== */
+const anims=[];
+function anim(dur,fn){return new Promise(res=>anims.push({t0:performance.now(),dur:dur*speedMul,fn,res}));}
+
+/* ===== UI 基本 ===== */
+let toastT;
+function toast(t,ms=1800){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,ms);}
+function hpClass(r){return r<.3?'low':r<.6?'mid':''}
+function renderMini(){
+ $('#partyMini').innerHTML=S.party.slice(0,3).map(m=>{const s=stats(m);const r=m.hp/s.hp;
+  return `<div class="mini${m.hp<=0?' ko':''}"><b>${m.k}</b><div>Lv${m.lv}<div class="bar"><i style="width:${r*100}%;background:${r<.3?'#e4533f':r<.6?'#c9a24a':'#7fbf6a'}"></i></div></div></div>`}).join('');
+}
+
+/* ===== フィールド ===== */
+let mode='field';
+const keys={};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key==='Escape')closeSheets();});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+const joy={x:0,y:0,active:false};
+(function(){const j=$('#joy'),k=j.querySelector('i');
+ const mv=e=>{const r=j.getBoundingClientRect();let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);const L=Math.hypot(dx,dy),M=46;if(L>M){dx*=M/L;dy*=M/L;}
+  joy.x=dx/M;joy.y=dy/M;k.style.transform=`translate(${dx}px,${dy}px)`;};
+ j.addEventListener('pointerdown',e=>{joy.active=true;j.setPointerCapture(e.pointerId);mv(e);});
+ j.addEventListener('pointermove',e=>{if(joy.active)mv(e)});
+ const end=()=>{joy.active=false;joy.x=joy.y=0;k.style.transform='';};
+ j.addEventListener('pointerup',end);j.addEventListener('pointercancel',end);})();
+
+const followers=[];const trail=[];
+function syncFollowers(){
+ followers.forEach(f=>{killAnchors(f.mesh);scene.remove(f.mesh);});followers.length=0;
+ S.party.slice(0,3).forEach((m,i)=>{const mesh=monMesh(m.k);mesh.scale.multiplyScalar(.7);mesh.userData.headY*=.7;
+  mesh.position.copy(player.position).add(new THREE.Vector3(-1-i,0,1+i));scene.add(mesh);followers.push({m,mesh});});
+ renderMini();
+}
+const wild=[];let graceUntil=0;
+function wildPool(){const avg=S.party.reduce((a,m)=>a+m.lv,0)/Math.max(1,S.party.length);
+ let pool=Object.keys(K).filter(k=>!TIER2.has(k));if(avg>=4)pool=pool.concat([...TIER2]);if(avg>=7&&Math.random()<.15)pool=Object.keys(JUKU);
+ return {pool,avg};}
+function spawnWild(){
+ const {pool,avg}=wildPool();const k=pick(pool);
+ const m={id:-1,k,lv:Math.max(1,Math.round(avg+rand(-1.2,.6))),xp:0,mp:20};m.hp=stats(m).hp;
+ const mesh=monMesh(k);const a=Math.random()*Math.PI*2,r=rand(14,70);mesh.position.set(Math.cos(a)*r,0,Math.sin(a)*r);scene.add(mesh);
+ const w={m,mesh,tx:mesh.position.x,tz:mesh.position.z,chat:rand(3,10)};wild.push(w);
+}
+for(let i=0;i<9;i++)spawnWild();
+
+// 守護魔・字喰
+const bosses=[];
+function spawnGuards(){
+ Object.entries(GUARD).forEach(([el,G])=>{
+  if(S.q.seals[el]||bosses.some(b=>b.el===el))return;
+  const m={id:-1,k:G.k,lv:G.lv,xp:0,mp:30,boss:1.35};m.hp=stats(m).hp;
+  const mesh=monMesh(G.k,{scale:1.35});const dir=new THREE.Vector3(-G.pos[0],0,-G.pos[1]).normalize();
+  mesh.position.set(G.pos[0]+dir.x*3.2,0,G.pos[1]+dir.z*3.2);scene.add(mesh);
+  bosses.push({kind:'guard',el,m,mesh,minions:G.mins,intro:G.intro,chat:rand(2,5)});});
+}
+function spawnFinal(){
+ if(S.q.cleared||bosses.some(b=>b.kind==='final'))return;
+ const m={id:-1,k:'字喰',lv:13,xp:0,mp:30,boss:2.1,aoe:true};m.hp=stats(m).hp;
+ const mesh=monMesh('字喰',{scale:1.45});mesh.position.set(0,0,-2.4);scene.add(mesh);
+ bosses.push({kind:'final',m,mesh,minions:[],intro:'よく来た筆の子…五行の封印を解いたのはおまえか。ならば、おまえの字ごと喰らってやろう！',chat:2});
+ toast('召喚陣に「字喰」があらわれた！',2800);
+}
+// 目的への矢印
+const arrow=new THREE.Group();
+(function(){const a=new THREE.Mesh(new THREE.ConeGeometry(.32,.9,3),new THREE.MeshBasicMaterial({color:0xe4533f,transparent:true,opacity:.9,depthWrite:false}));
+ a.rotation.x=Math.PI/2;a.position.z=1.6;arrow.add(a);arrow.visible=false;scene.add(arrow);})();
+
+let chatT=4;
+function fieldUpdate(dt,now){
+ let ix=0,iz=0;
+ if(keys['w']||keys['arrowup'])iz-=1;if(keys['s']||keys['arrowdown'])iz+=1;if(keys['a']||keys['arrowleft'])ix-=1;if(keys['d']||keys['arrowright'])ix+=1;
+ ix+=joy.x;iz+=joy.y;const L=Math.hypot(ix,iz);
+ if(L>.05&&!sheetOpen()){ix/=Math.max(1,L);iz/=Math.max(1,L);const sp=7;player.position.x+=ix*sp*dt;player.position.z+=iz*sp*dt;
+  const r=Math.hypot(player.position.x,player.position.z);if(r>96){player.position.x*=96/r;player.position.z*=96/r;}
+  player.rotation.y=Math.atan2(ix,iz);player.position.y=Math.abs(Math.sin(now*.012))*.12;}
+ else player.position.y*=.8;
+ trail.unshift(player.position.clone());if(trail.length>120)trail.pop();
+ followers.forEach((f,i)=>{const t=trail[Math.min(trail.length-1,14+i*14)];if(t){f.mesh.position.lerp(new THREE.Vector3(t.x,0,t.z),.18);}
+  f.mesh.lookAt(player.position.x,0,player.position.z);
+  const inn=f.mesh.userData.inner;inn.position.y=.35+Math.sin(now*.004+i)*.12;
+  f.mesh.visible=true;inn.children[0].material[0].emissiveIntensity=f.m.hp<=0?.05:.45;});
+ // 召喚陣で回復
+ const onCircle=Math.hypot(player.position.x,player.position.z)<3;
+ $('#altarBtn').classList.toggle('pulse',onCircle);
+ if(onCircle&&S.party.some(m=>m.hp<stats(m).hp||m.mp<30)){S.party.forEach(m=>{m.hp=stats(m).hp;m.mp=30});renderMini();save();toast('召喚陣の力で、みんなのHPと気が全回復！');
+  if(followers[0])say(followers[0].mesh,line(followers[0].m,'win'),2000);}
+ // 野良漢字魔
+ for(const w of wild){const p=w.mesh.position;const d=Math.hypot(player.position.x-p.x,player.position.z-p.z);
+  if(d<11&&now>graceUntil){w.tx=player.position.x;w.tz=player.position.z;}
+  else if(Math.hypot(w.tx-p.x,w.tz-p.z)<.5){w.tx=p.x+rand(-8,8);w.tz=p.z+rand(-8,8);if(Math.hypot(w.tx,w.tz)<8){w.tx*=2;w.tz*=2;}}
+  const dx=w.tx-p.x,dz=w.tz-p.z,dl=Math.hypot(dx,dz)||1,sp=d<11?2.6:1.2;p.x+=dx/dl*sp*dt;p.z+=dz/dl*sp*dt;
+  w.mesh.rotation.y=Math.atan2(dx,dz);w.mesh.userData.inner.position.y=.35+Math.sin(now*.003+w.mesh.userData.phase)*.15;
+  w.chat-=dt;if(w.chat<0&&d<16){say(w.mesh,line(w.m,pick(['taunt','idle','talk'])),2400,true);w.chat=rand(5,10);}
+  if(d<1.5&&now>graceUntil&&!sheetOpen()&&S.party.some(m=>m.hp>0)){startBattle(w);return;}
+ }
+ for(const b of bosses){const p=b.mesh.position;const d=Math.hypot(player.position.x-p.x,player.position.z-p.z);
+  b.mesh.lookAt(player.position.x,0,player.position.z);b.mesh.userData.inner.position.y=.35+Math.sin(now*.002+b.mesh.userData.phase)*.2;
+  b.chat-=dt;if(b.chat<0&&d<18){say(b.mesh,d<8?b.intro:line(b.m,'taunt'),3000,true);b.chat=rand(6,10);}
+  if(d<2.3&&now>graceUntil&&!sheetOpen()&&S.party.some(m=>m.hp>0)){startBattle(b);return;}
+ }
+ const tgt=questTarget();
+ if(tgt){const dx=tgt.x-player.position.x,dz=tgt.z-player.position.z;arrow.visible=Math.hypot(dx,dz)>7;
+  arrow.position.set(player.position.x,.15,player.position.z);arrow.rotation.y=Math.atan2(dx,dz);arrow.children[0].material.opacity=.55+Math.sin(now*.006)*.35;}
+ else arrow.visible=false;
+ Object.values(pillars).forEach(p=>{p.sealTab.rotation.y+=dt*.8;});
+ chatT-=dt;if(chatT<0&&followers.length){const a=pick(followers);say(a.mesh,line(a.m,'idle'),2600);
+  const b=followers.find(f=>f!==a);if(b&&Math.random()<.5)setTimeout(()=>{if(mode==='field')say(b.mesh,line(b.m,'cheer',{ally:a.m.k}),2200)},1300);chatT=rand(5,9);}
+ circle.rotation.z+=dt*.25;
+ camera.position.lerp(new THREE.Vector3(player.position.x,9.5,player.position.z+11),.1);
+ camera.lookAt(player.position.x,1,player.position.z-1);
+}
+
+/* ===== バトル ===== */
+const ARENA=new THREE.Vector3(600,0,0);
+const arena=new THREE.Group();arena.position.copy(ARENA);scene.add(arena);
+(function(){const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');
+ const gr=g.createRadialGradient(256,256,20,256,256,256);gr.addColorStop(0,'#3a2c24');gr.addColorStop(1,'#15110e');g.fillStyle=gr;g.fillRect(0,0,512,512);
+ g.strokeStyle='rgba(228,83,63,.35)';g.lineWidth=2;for(let i=0;i<=512;i+=32){g.beginPath();g.moveTo(i,0);g.lineTo(i,512);g.stroke();g.beginPath();g.moveTo(0,i);g.lineTo(512,i);g.stroke();}
+ const f=new THREE.Mesh(new THREE.CircleGeometry(9,48),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(c)}));f.rotation.x=-Math.PI/2;f.position.y=.01;arena.add(f);
+ const bg=new THREE.MeshBasicMaterial({map:washiTex('闘','火',true),transparent:true,opacity:.5});
+ const b=new THREE.Mesh(new THREE.PlaneGeometry(9,10.6),bg);b.position.set(0,5,-10);arena.add(b);
+ for(let i=0;i<14;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.4,rand(1,4),.4),new THREE.MeshLambertMaterial({color:0x2b241f}));const a=i/14*Math.PI*2;m.position.set(Math.cos(a)*10,m.geometry.parameters.height/2,Math.sin(a)*10);arena.add(m);}
+})();
+const cursor=new THREE.Mesh(new THREE.ConeGeometry(.22,.45,4),new THREE.MeshBasicMaterial({color:0xc9a24a}));cursor.rotation.x=Math.PI;arena.add(cursor);cursor.visible=false;
+const tring=new THREE.Mesh(new THREE.RingGeometry(.75,.95,32),new THREE.MeshBasicMaterial({color:0xe4533f,side:THREE.DoubleSide}));tring.rotation.x=-Math.PI/2;tring.position.y=.03;arena.add(tring);tring.visible=false;
+
+let B=null;
+const alive=u=>u.mon.hp>0;
+function log(html){const l=$('#log');const p=document.createElement('p');p.innerHTML=html;l.append(p);l.scrollTop=l.scrollHeight;while(l.children.length>40)l.firstChild.remove();}
+function makeTag(u){const el=document.createElement('div');el.className='tag'+(u.side==='e'?' foe':'');layer.append(el);u.mesh.userData.tagEl=el;anchored.add(u.mesh);refreshTag(u);}
+function refreshTag(u){const s=stats(u.mon),r=Math.max(0,u.mon.hp)/s.hp;const el=u.mesh.userData.tagEl;if(!el)return;
+ el.innerHTML=`${u.mon.k} Lv${u.mon.lv}${u.side==='a'?` <span style="color:#c9a24a">気${u.mon.mp}</span>`:''}<div class="bar"><i class="${hpClass(r)}" style="width:${r*100}%"></i></div>`;}
+
+function startBattle(w){
+ mode='battle';Object.keys(keys).forEach(k=>keys[k]=false);
+ anchored.forEach(o=>hideBubble(o));
+ followers.forEach(f=>f.mesh.visible=false);
+ const mk=(k,lv)=>{const m={id:-1,k,lv:Math.max(1,lv),xp:0,mp:20};m.hp=stats(m).hp;return m;};
+ const foes=[w.m];
+ if(w.kind){w.m.hp=stats(w.m).hp;w.m.mp=30;(w.minions||[]).forEach(k=>foes.push(mk(k,w.m.lv-1)));}
+ else{const {pool}=wildPool();const extra=Math.random()<.35?(Math.random()<.4?2:1):0;for(let i=0;i<extra;i++)foes.push(mk(pick(pool),w.m.lv+Math.round(rand(-1,0))));}
+ const allies=S.party.filter(m=>m.hp>0).slice(0,3);
+ B={w,allies:[],enemies:[],over:false};
+ const place=(list,side,z)=>list.map((m,i)=>{const mesh=monMesh(m.k,{scale:m.boss?1.3:1});const n=list.length;mesh.position.set((i-(n-1)/2)*2.6,0,z);
+  mesh.rotation.y=side==='a'?Math.PI:0;arena.add(mesh);const u={mon:m,mesh,side,defending:false,atkDown:0,home:mesh.position.clone()};makeTag(u);return u;});
+ B.allies=place(allies,'a',3);B.enemies=place(foes,'e',-2.6);
+ $('#log').innerHTML='';$('#battle').hidden=false;$('#hud').hidden=true;$('#hint').hidden=true;$('#joy').style.display='none';$('#speed').hidden=false;
+ camera.position.set(ARENA.x+3.5,6.2,ARENA.z+10);camera.lookAt(ARENA.x,1,ARENA.z-.8);
+ log(`<span class="s">${foes.map(f=>f.k).join('・')}</span> があらわれた！`);
+ battleLoop();
+}
+async function banter(u,kind,o={},ms=2300){say(u.mesh,line(u.mon,kind,o),ms,u.side==='e');await sleep(Math.min(ms,1100));}
+async function battleLoop(){
+ await sleep(300);
+ const e0=B.enemies[0],a0=B.allies[0];
+ if(B.w.intro){say(e0.mesh,B.w.intro,3400,true);log(`<span class="s">${B.w.kind==='final'?'決戦':'守護魔戦'}</span>　${e0.mon.k}「${B.w.intro}」`);await sleep(1900);}
+ else await banter(e0,'taunt');
+ if(B.enemies[1])await banter(B.enemies[1],'talk');
+ await banter(a0,'summon');if(B.allies[1])await banter(B.allies[1],'cheer',{ally:a0.mon.k});
+ while(!B.over){
+  const order=[...B.allies,...B.enemies].filter(alive).sort((a,b)=>stats(b.mon).spd-stats(a.mon).spd+rand(-2,2));
+  for(const u of order){
+   if(B.over)break;if(!alive(u))continue;
+   u.defending=false;u.mon.mp=Math.min(30,u.mon.mp+3);refreshTag(u);
+   cursor.visible=true;cursor.position.set(u.mesh.position.x,u.mesh.userData.headY+.9,u.mesh.position.z);
+   let cmd;
+   if(u.side==='a'){cmd=await playerCommand(u);}
+   else{await sleep(350);cmd=enemyAI(u);}
+   tring.visible=false;
+   if(cmd.type==='run'){if(await tryRun(u))return;continue;}
+   await act(u,cmd);
+   if(!B.enemies.some(alive)){await win();return;}
+   if(!B.allies.some(alive)){await lose();return;}
+  }
+ }
+}
+function playerCommand(u){
+ return new Promise(res=>{
+  const box=$('#cmd');box.hidden=false;
+  const i=info(u.mon.k);
+  $('#cmdWho').innerHTML=`<b>${u.mon.k}</b>のターン　<span class="el" style="background:${EL[i.el]}">${i.el}</span> 気${u.mon.mp}/30`;
+  let target=B.enemies.filter(alive).sort((a,b)=>a.mon.hp-b.mon.hp)[0];
+  const rT=()=>{const t=$('#targets');t.innerHTML='ねらう：';B.enemies.filter(alive).forEach(e=>{const b=document.createElement('button');b.className='tgt'+(e===target?' on':'');b.textContent=e.mon.k;
+   const adv=BEATS[i.el]===info(e.mon.k).el;if(adv)b.title='相剋で有利';b.innerHTML=e.mon.k+(adv?'<small style="font:900 9px sans-serif;color:#c8372a">有利</small>':'');
+   b.onclick=()=>{target=e;rT();};t.append(b);});tring.visible=true;tring.position.set(target.mesh.position.x,.03,target.mesh.position.z);};
+  rT();
+  box.querySelectorAll('[data-cmd]').forEach(b=>{const c=b.dataset.cmd;b.disabled=(c==='skill'&&u.mon.mp<10)||(c==='cheer'&&B.allies.filter(alive).length<2);
+   b.onclick=()=>{box.hidden=true;res({type:c,target});};});
+ });
+}
+function enemyAI(u){const targets=B.allies.filter(alive);const target=Math.random()<.35?targets.sort((a,b)=>a.mon.hp-b.mon.hp)[0]:pick(targets);
+ const r=Math.random();if(r<.18)return{type:'talk',target};if(u.mon.mp>=10&&r<(u.mon.aoe?.6:.5))return{type:'skill',target};return{type:'atk',target};}
+async function fall(t){await anim(420,k=>{t.mesh.rotation.x=-k*Math.PI/2*(t.side==='a'?-1:1);t.mesh.position.y=-k*.2;});}
+async function lunge(u,t){const from=u.mesh.position.clone(),to=t.mesh.position.clone();
+ await anim(260,k=>{const e=Math.sin(k*Math.PI);u.mesh.position.lerpVectors(from,to,e*.62);u.mesh.userData.inner.rotation.x=(u.side==='a'?1:-1)*e*.3;});
+ u.mesh.position.copy(from);u.mesh.userData.inner.rotation.x=0;}
+async function shake(t){const s=t.mesh.userData.side;s.emissiveIntensity=1.6;const x=t.mesh.position.x;
+ await anim(280,k=>{t.mesh.position.x=x+Math.sin(k*40)*.15*(1-k);});t.mesh.position.x=x;s.emissiveIntensity=.45;}
+function dmgCalc(a,d,mult){const sa=stats(a.mon),sd=stats(d.mon);const ea=info(a.mon.k).el,ed=info(d.mon.k).el;
+ let eff=1;if(BEATS[ea]===ed)eff=1.5;else if(BEATS[ed]===ea)eff=.75;
+ let v=sa.atk*(1-.2*a.atkDown)*mult*rand(.9,1.12)-sd.def*.45;v*=eff;if(d.defending)v*=.5;return{dmg:Math.max(1,Math.round(v)),eff};}
+async function act(u,cmd){
+ const foes=u.side==='a'?B.enemies:B.allies,friends=u.side==='a'?B.allies:B.enemies;
+ let t=cmd.target;if(t&&!alive(t))t=foes.filter(alive)[0];
+ const foe=u.side==='e';
+ if(cmd.type==='def'){u.defending=true;say(u.mesh,line(u.mon,'def'),1800,foe);log(`${u.mon.k} は身構えた。`);await sleep(900);return;}
+ if(cmd.type==='cheer'){const ally=pick(friends.filter(f=>f!==u&&alive(f)));if(!ally)return;
+  say(u.mesh,line(u.mon,'cheer',{ally:ally.mon.k}),2000,foe);await sleep(800);ally.mon.mp=Math.min(30,ally.mon.mp+8);refreshTag(ally);
+  say(ally.mesh,pick(['おう、任せろ！','ありがと〜！','…了解','ほっほ、元気が出たわい','クク…力が満ちる']),1800,foe);log(`${u.mon.k} の声援！ ${ally.mon.k} の気が 8 あがった。`);await sleep(900);return;}
+ if(cmd.type==='talk'){say(u.mesh,line(u.mon,'talk'),2400,foe);log(`${u.mon.k} の口撃！`);await sleep(1100);
+  if(t.atkDown<2){t.atkDown++;log(`<span class="s">${t.mon.k}</span> の攻撃力がさがった！`);say(t.mesh,pick(['な、なんだと…！？','え、傷つくんだけど…','…それ、言う？','ぐぬぬ…','し、辞書で調べてくる…']),2000,!foe);}
+  else{log(`${t.mon.k} はもう聞き流している。`);say(t.mesh,'はいはい、もう慣れた',1800,!foe);}
+  await sleep(900);return;}
+ const skill=cmd.type==='skill';
+ if(skill){u.mon.mp-=10;refreshTag(u);}
+ if(skill&&u.mon.aoe){ // 字喰の全体攻撃
+  say(u.mesh,line(u.mon,'skill'),2600,foe);log(`${u.mon.k} の<span class="s">${info(u.mon.k).sk}</span>！ 全員の字がかじられる！`);await sleep(700);
+  const tg=foes.filter(alive);
+  await anim(420,k=>{u.mesh.userData.inner.position.y=.35+Math.sin(k*Math.PI)*1.4;u.mesh.userData.side.emissiveIntensity=.45+Math.sin(k*Math.PI)*2;});
+  tg.forEach(x=>{const {dmg}=dmgCalc(u,x,1.05);x.mon.hp=Math.max(0,x.mon.hp-dmg);popup(x.mesh,dmg);refreshTag(x);});
+  await Promise.all(tg.map(shake));
+  const downs=tg.filter(x=>x.mon.hp<=0);
+  tg.forEach(x=>say(x.mesh,line(x.mon,x.mon.hp<=0?'ko':'hit'),2000,!foe));
+  downs.forEach(x=>log(`${x.mon.k} はたおれた！`));
+  await sleep(700);await Promise.all(downs.map(fall));
+  const rest=tg.filter(alive);if(rest.length)await banter(pick(rest),'low');
+  return;
+ }
+ say(u.mesh,line(u.mon,skill?'skill':'atk',{foe:t.mon.k}),2200,foe);
+ log(`${u.mon.k} の${skill?`<span class="s">${info(u.mon.k).sk}</span>`:'攻撃'}！`);
+ await sleep(500);await lunge(u,t);
+ const {dmg,eff}=dmgCalc(u,t,skill?1.65:1);t.mon.hp=Math.max(0,t.mon.hp-dmg);
+ popup(t.mesh,dmg,eff>1?'eff':eff<1?'weak':'');refreshTag(t);
+ if(eff>1)log(`<span class="e">相剋！ ${info(u.mon.k).el}は${info(t.mon.k).el}に強い！</span>`);
+ log(`${t.mon.k} に ${dmg} のダメージ。`);
+ await shake(t);
+ if(t.mon.hp<=0){say(t.mesh,line(t.mon,'ko'),2200,!foe);log(`${t.mon.k} はたおれた！`);await sleep(700);
+  await fall(t);
+  const bud=friends.filter(f=>f!==u&&alive(f));if(bud.length&&Math.random()<.7)await banter(pick(bud),'cheer',{ally:u.mon.k},1800);
+  const mourn=foes.filter(alive);if(mourn.length&&Math.random()<.6){const m=pick(mourn);say(m.mesh,pick([`${t.mon.k}ーーっ！`,`${t.mon.k}の仇はとる！`,`うそ…${t.mon.k}が…`,`${t.mon.k}、後で拾いにいくね…`]),1800,!foe);await sleep(900);}
+ } else {
+  const r=t.mon.hp/stats(t.mon).hp;say(t.mesh,line(t.mon,r<.3?'low':'hit'),1800,!foe);await sleep(650);
+  if(Math.random()<.35){const bud=friends.filter(f=>f!==u&&alive(f));if(bud.length){await banter(pick(bud),'cheer',{ally:u.mon.k},1700);}}
+ }
+ await sleep(250);
+}
+async function tryRun(u){
+ const ok=Math.random()<.7;say(u.mesh,ok?'撤退〜っ！':'ま、回り込まれた！？',1600);log(ok?'うまく逃げきった！':'逃げられなかった！');await sleep(900);
+ if(ok){endBattle();graceUntil=performance.now()+3500;}return ok;}
+async function win(){
+ B.over=true;cursor.visible=false;
+ const live=B.allies.filter(alive);for(const u of live.slice(0,2))await banter(u,'win');
+ const xp=B.enemies.reduce((a,e)=>a+e.mon.lv*13+(info(e.mon.k).tier-1)*15,0);
+ const drops=[];B.enemies.forEach(e=>{const f=flat(e.mon.k);drops.push(pick(f));if(Math.random()<.5)drops.push(pick(f));});drops.push(pick(PARTS));
+ drops.forEach(p=>S.parts[p]=(S.parts[p]||0)+1);
+ const items=[`経験値 ${xp}`,`素字ゲット：${drops.join('・')}`];
+ for(const u of B.allies){const m=u.mon;m.xp+=xp;while(m.xp>=m.lv*25){m.xp-=m.lv*25;m.lv++;const s=stats(m);m.hp=Math.min(s.hp,m.hp+Math.round(s.hp*.3));items.push(`${m.k} は Lv${m.lv} になった！「${line(m,'lvl')}」`);}}
+ const kind=B.w.kind;S.q.wins++;
+ if(!kind){const wi=wild.indexOf(B.w);if(wi>=0){scene.remove(B.w.mesh);killAnchors(B.w.mesh);wild.splice(wi,1);setTimeout(spawnWild,6000);}}
+ else{const bi=bosses.indexOf(B.w);if(bi>=0){scene.remove(B.w.mesh);killAnchors(B.w.mesh);bosses.splice(bi,1);}}
+ if(kind==='guard'){S.q.seals[B.w.el]=true;refreshStones();updatePillars();
+  items.unshift(`封字碑【${B.w.el}】解放！ ${B.w.el}の石碑に字がもどった（${sealCount()}/5）`);
+  const bonus=pick(PARTS);S.parts[bonus]=(S.parts[bonus]||0)+2;items.push(`守護魔の宝：素字「${bonus}」×2`);}
+ save();await sleep(600);
+ if(kind==='final'){S.q.cleared=true;save();
+  showResult('完','字',['字喰は一文字の「喰」にもどり、どこかへ逃げていった。','喰われた字は石碑へ帰り、墨の国に意味がよみがえった。',
+   `ともに戦った漢字魔：${B.allies.map(a=>a.mon.k).join('・')}`,`図鑑 ${Object.keys(S.dex).length}/${RECIPES.length+JUKUGO.length}　勝利数 ${S.q.wins}`,...items,'──冒険はつづく。まだ見ぬ漢字魔をさがしにいこう。']);
+  return;}
+ showResult(kind==='guard'?'守護魔撃破':'勝利','勝',items);
+}
+async function lose(){
+ B.over=true;cursor.visible=false;for(const e of B.enemies.filter(alive).slice(0,1))await banter(e,'win');
+ showResult('敗北','負',['筆の子はあわてて召喚陣へ逃げ帰った……','召喚陣でみんな元気をとりもどした。']);
+ S.party.forEach(m=>{m.hp=stats(m).hp;m.mp=30});player.position.set(0,0,1.5);trail.length=0;save();
+}
+function showResult(t,big,items){$('#resTitle').textContent=t;$('#resBig').textContent=big;$('#resList').innerHTML=items.map(x=>`<li>${x}</li>`).join('');$('#result').hidden=false;
+ $('#resOk').onclick=()=>{$('#result').hidden=true;endBattle();graceUntil=performance.now()+3000;checkQuest();};}
+function endBattle(){
+ [...B.allies,...B.enemies].forEach(u=>{killAnchors(u.mesh);arena.remove(u.mesh);});
+ cursor.visible=false;tring.visible=false;B=null;mode='field';
+ $('#battle').hidden=true;$('#cmd').hidden=true;$('#hud').hidden=false;$('#hint').hidden=false;$('#joy').style.display='';$('#speed').hidden=true;
+ syncFollowers();save();
+}
+$('#speed').onclick=()=>{speedMul=speedMul===1?.5:1;$('#speed').textContent=speedMul===1?'×1':'×2';};
+
+/* ===== 祭壇 ===== */
+let slots=[null,null],tab='parts';
+const sheetOpen=()=>!$('#altar').hidden||!$('#partyPanel').hidden||!$('#result').hidden||!$('#story').hidden;
+function closeSheets(){$('#altar').hidden=true;$('#partyPanel').hidden=true;}
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheets);
+document.querySelectorAll('.sheet').forEach(s=>s.addEventListener('pointerdown',e=>{if(e.target===s&&s.id!=='result')closeSheets();}));
+$('#altarBtn').onclick=()=>{slots=[null,null];$('#altar').hidden=false;renderAltar();};
+$('#tabParts').onclick=()=>{tab='parts';renderAltar();};$('#tabMons').onclick=()=>{tab='mons';renderAltar();};
+$('#slotA').onclick=()=>{slots[0]=null;renderAltar();};$('#slotB').onclick=()=>{slots[1]=null;renderAltar();};
+const slotK=s=>s?(s.t==='p'?s.k:s.m.k):null;
+function predict(){
+ if(!slots[0]||!slots[1])return null;const a=slotK(slots[0]),b=slotK(slots[1]);
+ if(slots[0].t==='m'&&slots[1].t==='m'&&JMAP[key2(a,b)])return{r:JMAP[key2(a,b)],j:true};
+ const r=RMAP[key2(a,b)];return r?{r,j:false}:{r:null};
+}
+function renderAltar(){
+ const setSlot=(el,s)=>{el.classList.toggle('fill',!!s);el.innerHTML=s?`${slotK(s)}<small>${s.t==='p'?'素字':'漢字魔 Lv'+s.m.lv}</small>`:'';};
+ setSlot($('#slotA'),slots[0]);setSlot($('#slotB'),slots[1]);
+ const p=predict();const R=$('#slotR');
+ const known=p&&p.r&&S.dex[p.r];
+ R.textContent=known?p.r:'？';R.classList.toggle('hot',!!(p&&p.r));
+ R.style.fontSize=p&&p.r&&known&&p.r.length>1?'clamp(28px,7vw,44px)':'';
+ const hasM=slots.some(s=>s&&s.t==='m');
+ $('#fuseBtn').textContent=hasM?'合　体':'召　喚';
+ $('#fuseBtn').disabled=!(slots[0]&&slots[1]);
+ $('#fuseInfo').textContent=!p?'下から字を二つえらんでね':p.r?(p.j?'✦ 熟語の気配…！ 熟語魔に進化できそう':'祭壇が反応してる！'+(known?`→ ${p.r}（${info(p.r).y}）`:' 何が出るかな？')):'反応なし…（合体すると失敗してケンカになるかも）';
+ const g=$('#pickGrid');g.innerHTML='';
+ $('#tabParts').classList.toggle('on',tab==='parts');$('#tabMons').classList.toggle('on',tab==='mons');
+ if(tab==='parts'){
+  PARTS.forEach(k=>{const have=S.parts[k]||0;const used=slots.filter(s=>s&&s.t==='p'&&s.k===k).length;
+   const b=document.createElement('button');b.className='tile';b.innerHTML=`${k}<em>×${have-used}</em>`;b.disabled=have-used<=0;
+   b.onclick=()=>{const i=slots[0]?1:0;if(slots[i]&&slots[0])slots[1]={t:'p',k};else slots[i]={t:'p',k};renderAltar();};g.append(b);});
+ } else {
+  if(!S.party.length)g.innerHTML='<p>まだ漢字魔がいないよ</p>';
+  S.party.forEach(m=>{const used=slots.some(s=>s&&s.t==='m'&&s.m===m);const b=document.createElement('button');b.className='tile'+(m.k.length>1?' wide':'')+(used?' used':'');
+   b.innerHTML=`${m.k}<span>Lv${m.lv}</span>`;b.disabled=used;b.onclick=()=>{const i=slots[0]?1:0;slots[i]={t:'m',m};renderAltar();};g.append(b);});
+ }
+ // 図鑑
+ const d=$('#dex');
+ d.innerHTML=RECIPES.map(([a,b,r])=>S.dex[r]?`<div><span class="k">${a}＋${b}＝${r}</span></div>`:`<div class="no"><span class="k">${a}</span>＋？＝？</div>`).join('')+
+  JUKUGO.map(([a,b])=>S.dex[a+b]?`<div><span class="k">${a}魔＋${b}魔＝${a+b}</span></div>`:`<div class="no">熟語魔 ？？</div>`).join('');
+}
+function chat(who,text){const c=$('#altarChat');const p=document.createElement('p');p.innerHTML=who?`<b>${who}</b>「${text}」`:text;c.append(p);c.scrollTop=c.scrollHeight;}
+$('#fuseBtn').onclick=async()=>{
+ const p=predict();if(!p)return;const [A,Bs]=slots;
+ const mons=slots.filter(s=>s.t==='m').map(s=>s.m);
+ $('#altarChat').innerHTML='';$('#fuseBtn').disabled=true;
+ if(mons.length===2){chat(mons[0].k,line(mons[0],'cheer',{ally:mons[1].k}));await sleep(500);chat(mons[1].k,line(mons[1],'cheer',{ally:mons[0].k}));}
+ else if(mons.length===1){chat(mons[0].k,pick(['この素字、取り込んでいいの？','いくぞ…合体だ！','ちょっと太るかも…']));}
+ else chat('',`${slotK(A)} と ${slotK(Bs)} が祭壇の上で墨色に溶けあう……`);
+ await sleep(600);
+ if(!p.r){
+  const who=mons[0];chat(who?who.k:'',pick(FAIL));if(mons[1]){await sleep(400);chat(mons[1].k,pick(FAIL));}
+  chat('','……合体は失敗した。字はそのまま戻ってきた。');slots=[null,null];renderAltar();return;
+ }
+ if(S.party.length-mons.length+1>8){chat('','手持ちがいっぱい（8体）。どれかを合体させて減らそう。');renderAltar();return;}
+ const ins=slots.map(s=>({k:slotK(s),isMon:s.t==='m',m:s.m,lv:s.m?s.m.lv:0}));
+ slots.forEach(s=>{if(s.t==='p')S.parts[s.k]--;});
+ const pos=mons.length?Math.min(...mons.map(m=>S.party.indexOf(m))):S.party.length;
+ S.party=S.party.filter(m=>!mons.includes(m));
+ const avg=S.party.reduce((a,m)=>a+m.lv,0)/Math.max(1,S.party.length);
+ const lv=mons.length?Math.max(...mons.map(m=>m.lv))+(p.j?2:1):Math.max(1,Math.floor(avg*.7));
+ const nm=newMon(p.r,lv);nm.mp=30;const first=!S.dex[p.r];S.dex[p.r]=true;S.party.splice(Math.min(pos,S.party.length),0,nm);
+ S.q.summons++;if(info(p.r).tier>=2&&mons.length)S.q.tier2=true;if(p.j)S.q.jukugo=true;
+ save();slots=[null,null];renderAltar();
+ await playEvolution({ins,r:p.r,j:p.j,mon:nm,first,fused:mons.length>0});
+ syncFollowers();checkQuest();
+ const f=followers.find(f=>f.m===nm);if(f){say(f.mesh,line(nm,'idle'),3000);}
+};
+
+/* ===== 進化演出 ===== */
+const EVO=new THREE.Vector3(-600,0,0);
+const evo=new THREE.Group();evo.position.copy(EVO);scene.add(evo);
+let evoCircle;
+const column=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.6,16,32,1,true),new THREE.MeshBasicMaterial({color:0xe4533f,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+column.position.y=8;evo.add(column);
+(function(){const f=new THREE.Mesh(new THREE.CircleGeometry(14,48),new THREE.MeshLambertMaterial({color:0x1b1511}));f.rotation.x=-Math.PI/2;evo.add(f);
+ for(let i=0;i<10;i++){const h=rand(3,7);const m=new THREE.Mesh(new THREE.BoxGeometry(.8,h,.5),stoneSide);const a=i/10*Math.PI*2;m.position.set(Math.cos(a)*9,h/2,Math.sin(a)*9-2);m.lookAt(0,h/2,0);evo.add(m);}})();
+const PN=260,pGeo=new THREE.BufferGeometry(),pPos=new Float32Array(PN*3),pData=[];
+for(let i=0;i<PN;i++)pData.push({a:rand(0,7),r:rand(1.5,6),h:rand(0,5),s:rand(.5,1.5),vx:0,vy:0,vz:0});
+pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
+const pMat=new THREE.PointsMaterial({color:0xe4533f,size:.14,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+const pts=new THREE.Points(pGeo,pMat);evo.add(pts);
+const fx={phase:'idle',k:0,res:null};
+function evoUpdate(dt,now){
+ pData.forEach((p,i)=>{
+  if(fx.phase==='swirl'){p.a+=dt*p.s*(1+fx.k*6);const r=p.r*(1-fx.k*.8);pPos[i*3]=Math.cos(p.a)*r;pPos[i*3+1]=p.h*(1-fx.k*.4)+Math.sin(now*.003+i)*.2;pPos[i*3+2]=Math.sin(p.a)*r;}
+  else if(fx.phase==='burst'){pPos[i*3]+=p.vx*dt;pPos[i*3+1]+=p.vy*dt;pPos[i*3+2]+=p.vz*dt;p.vy-=dt*2.5;p.vx*=.985;p.vz*=.985;}
+  else if(fx.phase==='float'){p.a+=dt*p.s*.3;pPos[i*3]=Math.cos(p.a)*p.r;pPos[i*3+1]=(p.h+now*.0006*p.s)%6;pPos[i*3+2]=Math.sin(p.a)*p.r;}
+ });
+ pGeo.attributes.position.needsUpdate=true;
+ if(fx.phase==='burst')pMat.opacity=Math.max(.25,pMat.opacity-dt*.5);
+ if(evoCircle)evoCircle.rotation.z+=dt*(.3+fx.k*6);
+ if(fx.res){fx.res.userData.inner.position.y=.35+Math.sin(now*.003)*.12;fx.res.rotation.y=Math.sin(now*.0008)*.25;}
+}
+let skipEvo=false;
+async function playEvolution(o){
+ mode='evo';skipEvo=false;closeSheets();
+ $('#hud').hidden=true;$('#hint').hidden=true;$('#joy').style.display='none';$('#evoSkip').hidden=false;
+ anchored.forEach(x=>hideBubble(x));
+ const col=o.j?0xffd166:0xe4533f;column.material.color.set(col);pMat.color.set(col);
+ const base=new THREE.Vector3(EVO.x,3.4,EVO.z+9.5);camera.position.copy(base);camera.lookAt(EVO.x,1.8,EVO.z);
+ const S2=ms=>skipEvo?Promise.resolve():sleep(ms);const A2=(ms,fn)=>anim(skipEvo?1:ms,fn);
+ // 1) 素材が向かい合って喋る
+ const items=o.ins.map((s,i)=>{const mesh=monMesh(s.k,{eyes:s.isMon});mesh.position.set(i?2.3:-2.3,0,0);mesh.rotation.y=i?-.5:.5;evo.add(mesh);return {s,mesh};});
+ fx.phase='float';fx.k=0;pMat.opacity=.5;column.material.opacity=0;
+ const title=$('#evoTitle');title.hidden=true;
+ await S2(350);
+ const [a,b]=items;
+ if(a.s.isMon&&b.s.isMon){say(a.mesh,line(a.s.m,'cheer',{ally:b.s.k}),2200);await S2(1100);say(b.mesh,o.j?`${a.s.k}と${b.s.k}…ならべたら熟語じゃん！`:line(b.s.m,'cheer',{ally:a.s.k}),2200);await S2(1300);}
+ else if(a.s.isMon||b.s.isMon){const m=a.s.isMon?a:b,p=a.s.isMon?b:a;say(m.mesh,pick([`「${p.s.k}」を取りこむぞ…！`,`${p.s.k}、いっしょになろう`,'進化の予感…！','ちょっと画数ふえるかも！']),2200);await S2(1300);}
+ else{say(a.mesh,`（「${a.s.k}」がふるえている…）`,1800);say(b.mesh,`（「${b.s.k}」が呼応した…）`,1800);await S2(1200);}
+ items.forEach(it=>hideBubble(it.mesh));
+ // 2) 旋回して一つに
+ fx.phase='swirl';pMat.opacity=.9;
+ await A2(o.j?2800:2200,t=>{fx.k=t;const e=t*t;
+  items.forEach((it,i)=>{const ang=e*Math.PI*(o.j?8:6)+(i?Math.PI:0);const r=2.3*(1-e*.92);it.mesh.position.set(Math.cos(ang)*r,e*2.4,Math.sin(ang)*r);it.mesh.rotation.y=ang*2;it.mesh.userData.side.emissiveIntensity=.45+e*2.5;});
+  column.material.opacity=e*.6;
+  camera.position.set(base.x+rand(-1,1)*e*.12,base.y+rand(-1,1)*e*.12,base.z-e*1.5);camera.lookAt(EVO.x,1.8+e,EVO.z);});
+ // 3) 閃光と墨しぶき
+ const fl=$('#flash');fl.classList.remove('go');void fl.offsetWidth;fl.classList.add('go');
+ items.forEach(it=>{killAnchors(it.mesh);evo.remove(it.mesh);});
+ fx.phase='burst';fx.k=0;pData.forEach((p,i)=>{pPos[i*3]=0;pPos[i*3+1]=2.4;pPos[i*3+2]=0;const a=rand(0,7),u=rand(-1,1),sp=rand(3,9);p.vx=Math.cos(a)*Math.sqrt(1-u*u)*sp;p.vy=u*sp+3;p.vz=Math.sin(a)*Math.sqrt(1-u*u)*sp;});
+ pMat.opacity=1;
+ // 4) 新しい石板がせり上がり、筆で字が書かれる
+ const i=info(o.r),pt=paintTex(o.r,i.el,o.j);
+ const res=monMesh(o.r,{faceTex:pt.tex,gold:o.j});res.userData.eyes.visible=false;res.position.set(0,-2.6,0);evo.add(res);fx.res=res;
+ camera.position.copy(base);camera.lookAt(EVO.x,1.8,EVO.z);
+ await A2(700,t=>{const e=1-Math.pow(1-t,3);res.position.y=-2.6+2.6*e;column.material.opacity=.6*(1-t*.6);});
+ title.textContent=o.j?'熟語魔 誕生！':o.fused?'合体進化！':'漢字魔 召喚！';title.className=o.j?'gold':'';title.hidden=false;
+ await A2(o.j?2600:1800,t=>pt.draw(t));pt.draw(1);
+ // 5) 朱印ドン → 目がひらく
+ await A2(220,t=>{camera.position.set(base.x+rand(-.15,.15)*(1-t),base.y+rand(-.15,.15)*(1-t),base.z);});
+ res.userData.eyes.visible=true;await A2(300,t=>res.userData.eyes.scale.setScalar(.01+t));
+ fx.phase='float';pData.forEach(p=>{p.h=rand(0,5);});pMat.opacity=.6;
+ const lvTxt=o.ins.filter(x=>x.isMon).map(x=>`${x.k} Lv${x.lv}`).join(' ＋ ');
+ const card=$('#evoCard');
+ card.innerHTML=`<div class="row"><div class="big${o.r.length>1?' w':''}">${o.r}</div><div class="meta">${o.first?'<span class="new">NEW 図鑑登録</span><br>':''}<strong>${o.r}</strong>（${i.y}）Lv${o.mon.lv}　<span class="el" style="background:${EL[i.el]}">${i.el}</span> ${i.p}<br>技「${i.sk}」　HP${stats(o.mon).hp}　攻${stats(o.mon).atk}</div></div>
+  <div class="from">${o.ins.map(x=>x.k+(x.isMon?'魔':'')).join(' ＋ ')} ＝ ${o.r}${lvTxt?`（${lvTxt} から進化）`:''}</div><button class="seal" id="evoOk">仲間にする</button>`;
+ card.hidden=false;$('#evoSkip').hidden=true;
+ say(res,line(o.mon,'summon'),2600);
+ const t2=setTimeout(()=>{if(fx.res===res)say(res,i.sig,5000);},1800);
+ await new Promise(r=>$('#evoOk').onclick=r);
+ clearTimeout(t2);
+ card.hidden=true;title.hidden=true;killAnchors(res);evo.remove(res);fx.res=null;fx.phase='idle';pMat.opacity=0;column.material.opacity=0;
+ mode='field';$('#hud').hidden=false;$('#hint').hidden=false;$('#joy').style.display='';
+ graceUntil=performance.now()+2000;
+}
+$('#evoSkip').onclick=()=>{skipEvo=true;};
+
+/* ===== 手持ち ===== */
+$('#partyBtn').onclick=()=>{$('#partyPanel').hidden=false;renderParty();};
+function renderParty(){
+ const l=$('#plist');l.innerHTML='';
+ S.party.forEach((m,idx)=>{const i=info(m.k),s=stats(m);const r=document.createElement('div');r.className='prow';
+  r.innerHTML=`<div class="big">${m.k}</div><div class="meta"><strong>${m.k}</strong>（${i.y}）Lv${m.lv} <span class="el" style="background:${EL[i.el]}">${i.el}</span> ${i.p}${idx<3?' ・<b style="color:#c8372a">出撃</b>':''}<br>HP ${m.hp}/${s.hp}　攻${s.atk}　防${s.def}　速${s.spd}　技「${i.sk}」<br><span class="say" style="color:#6d5d48"></span></div>
+  <div class="acts"><button data-a="up">先頭へ</button><button data-a="talk">話す</button></div>`;
+  r.querySelector('[data-a=up]').onclick=()=>{S.party.splice(idx,1);S.party.unshift(m);save();syncFollowers();renderParty();};
+  r.querySelector('[data-a=talk]').onclick=()=>{const t=Math.random()<.5?i.sig:line(m,'idle');r.querySelector('.say').textContent='「'+t+'」';const f=followers.find(f=>f.m===m);if(f)say(f.mesh,t,3000);};
+  l.append(r);});
+}
+
+/* ===== ループ ===== */
+let last=performance.now();
+let sheetFrames=0;
+function loop(now){
+ const dt=Math.min(.05,(now-last)/1000);last=now;
+ for(let i=anims.length-1;i>=0;i--){const a=anims[i];const k=Math.min(1,(now-a.t0)/a.dur);a.fn(k);if(k>=1){anims.splice(i,1);a.res();}}
+ if(mode==='field')fieldUpdate(dt,now);
+ else if(mode==='evo')evoUpdate(dt,now);
+ else if(B){[...B.allies,...B.enemies].forEach((u,i)=>{if(alive(u))u.mesh.userData.inner.position.y=.35+Math.sin(now*.004+i*1.3)*.1;});
+  cursor.position.y=cursor.position.y*.9+(cursor.position.y+Math.sin(now*.01)*.02)*.1;}
+ updateAnchors(now);
+ if(sheetOpen()){if(sheetFrames<3){sheetFrames++;renderer.render(scene,camera);}}
+ else{sheetFrames=0;renderer.render(scene,camera);}
+ requestAnimationFrame(loop);
+}
+
+/* ===== 起動（フォント読み込み後にテクスチャ生成） ===== */
+function boot(){
+ const tex=circleTex();circle=new THREE.Mesh(new THREE.CircleGeometry(3,48),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}));
+ circle.rotation.x=-Math.PI/2;circle.position.y=.04;scene.add(circle);
+ evoCircle=new THREE.Mesh(new THREE.CircleGeometry(4.5,48),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}));
+ evoCircle.rotation.x=-Math.PI/2;evoCircle.position.y=.05;evo.add(evoCircle);
+ refreshStones();updatePillars();if(S.q.step>=3)spawnGuards();if(S.q.step===5)spawnFinal();checkQuest();
+ if(!S.q.intro){$('#story').hidden=false;}
+ $('#storyOk').onclick=()=>{$('#story').hidden=true;S.q.intro=true;save();};
+ player.position.set(0,0,4);syncFollowers();
+ camera.position.set(0,9.5,15);
+ setTimeout(()=>{if(followers[0])say(followers[0].mesh,'よっしゃ筆の子！祭壇で仲間を増やそうぜ！',3200);},700);
+ if(S.q.step===0)setTimeout(()=>{if(followers[1])say(followers[1].mesh,'…素字、けっこう持ってるね。「木＋木」とか試したら？',3400);},2600);
+ else if(questTarget())setTimeout(()=>{if(followers[1])say(followers[1].mesh,'足もとの赤い矢印…目的地はあっちだね',3400);},2600);
+ requestAnimationFrame(loop);
+}
+const allText=[...new Set((PARTS.join('')+Object.keys(K).join('')+STONE_CH.join('')+'闘木火土金水無召喚合体字喰封').split(''))].join('');
+Promise.race([document.fonts.load('190px "Yuji Syuku"',allText),new Promise(r=>setTimeout(r,2500))]).catch(()=>{}).then(()=>{
+ // フォント読み込み前に作ったテクスチャを描き直す
+ Object.keys(texCache).forEach(k=>delete texCache[k]);
+ arena.children.forEach(o=>{if(o.isMesh&&o.geometry.type==='PlaneGeometry')o.material.map=washiTex('闘','火',true);});
+ boot();
+});
+})();
+</script>
+</body>
+</html>
