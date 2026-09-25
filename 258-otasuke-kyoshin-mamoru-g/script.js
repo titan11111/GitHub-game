@@ -426,7 +426,7 @@ document.addEventListener('visibilitychange',()=>{
 /* ---------- stages ---------- */
 const STAGES=[
   {name:'はれた ひるの まち',sky:0x9fdcff,fogC:0x9fdcff,fogN:140,fogF:390,sunI:0.85,sunC:0xfff0d0,hemi:0.78,light:0,ground:0x9dcf6f,rs:1,pool:['cat','balloon','grandma','traffic']},
-  {name:'よるの まち',sky:0x1a3058,fogC:0x1a3058,fogN:120,fogF:380,sunI:0.32,sunC:0x9bb4ff,hemi:0.40,light:7,ground:0x24382c,rs:1.85,pool:['darkwalk','brokencar','dog','lostkid']},
+  {name:'よるの まち',sky:0x1a3058,fogC:0x1a3058,fogN:120,fogF:380,sunI:0.32,sunC:0x9bb4ff,hemi:0.40,light:7,ground:0x24382c,rs:1.85,pool:['boulder','brokencar','dog','lostkid']},
   {name:'こうじょう地帯',sky:0xff8a4c,fogC:0xe07a55,fogN:190,fogF:620,sunI:0.72,sunC:0xffc090,hemi:0.5,light:0.8,ground:0x8d7a52,rs:3.05,pool:['bomb','container','crane','kaiju']}
 ];
 const _c1=new THREE.Color(),_c2=new THREE.Color();
@@ -868,6 +868,7 @@ if(window.installStages)window.installStages({
   mkMission,makePerson,makeCar,sidewalkSpot,carry,release,complete,fail,toast,say,bounce,
   K,RR,xzDist,R,rand,pick,scene,bx,sph,cyl,mat,sfx,FACT,clamp,groundAt,
   houses(){return houses;},
+  cliffs(){return cliffs;},
   get KIDS(){return KIDS;},
   bump(v){shake=Math.max(shake,v);}
 });

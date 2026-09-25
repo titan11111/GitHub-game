@@ -10,29 +10,59 @@ window.installStages=function(A){
     return p;
   }
 
-  FACT.darkwalk=function(){
-    const m=A.mkMission('darkwalk','🔦','#ffe08a');
-    const s=A.sidewalkSpot();
+  FACT.boulder=function(){
+    const m=A.mkMission('boulder','🪨','#ffd27a');
+    let s=A.sidewalkSpot();
+    for(let i=0;i<8&&s.pos.z<20;i++)s=A.sidewalkSpot();
+    if(s.pos.z<20){
+      const rp=Math.random()<.5?40:80,side=Math.random()<.5?-1:1;
+      s={pos:new THREE.Vector3(s.pos.x,0,rp+side*6.3),face:side>0?Math.PI:0};
+    }
+    const rock=new THREE.Group();
+    rock.position.set(s.pos.x,2.35,s.pos.z);
+    A.scene.add(rock);
+    const body=new THREE.Mesh(new THREE.DodecahedronGeometry(2.35,0),A.mat('#8c6d4f'));
+    body.castShadow=true;body.rotation.set(0.35,0.8,0.15);rock.add(body);
+    const chip=new THREE.Mesh(new THREE.DodecahedronGeometry(1.05,0),A.mat('#a88862'));
+    chip.position.set(1.7,-0.7,0.55);chip.rotation.set(0.2,1.1,0.4);rock.add(chip);
+    const chip2=new THREE.Mesh(new THREE.DodecahedronGeometry(0.72,0),A.mat('#6e5340'));
+    chip2.position.set(-1.45,-0.9,-0.4);rock.add(chip2);
+    m.objs.push(rock);
     const who=personAt('#f4e1b5','#3d4c6b','#2a2118');
-    who.position.copy(s.pos);who.position.y=0.1;who.rotation.y=s.face;A.scene.add(who);
-    m.objs.push(who);
-    const home=homeFar(s.pos,55);
-    A.say(m,who,'くらいよ…おうちがわからない',3.2);
-    m.target.copy(who.position);
-    m.title=()=>A.K('そばを てらして おうちまで','足元を照らして家まで');
-    m.prompt='そばに いる';
-    m.canInteract=()=>false;
+    who.position.set(s.pos.x+4.2,0.1,s.pos.z+1.4);
+    who.rotation.y=Math.atan2(rock.position.x-who.position.x,rock.position.z-who.position.z);
+    A.scene.add(who);m.objs.push(who);
+    const cliffs=A.cliffs();
+    let cliff=cliffs[0]||{minX:-10,maxX:10,minZ:-210,maxZ:-150,h:28};
+    let best=1e9;
+    cliffs.forEach(c=>{
+      const d=Math.abs((c.minX+c.maxX)*0.5-s.pos.x);
+      if(d<best){best=d;cliff=c;}
+    });
+    const drop=new THREE.Vector3((cliff.minX+cliff.maxX)*0.5,cliff.h,(cliff.minZ+cliff.maxZ)*0.5);
+    A.say(m,who,'おおきな いしが おちてきた！',3.2);
+    m.target.copy(rock.position);
+    m.title=()=>m.stage===0?A.K('まちの きょせきを やまへ','街の巨石を山へ'):A.K('やまのうえで おろそう','山の上でおろそう');
+    m.prompt='きょせきを もつ';
+    m.dropHint=A.K('やま（ひかりの はしら）のうえで おろそう','山の光の柱の上でおろそう');
+    m.near=()=>A.xzDist(A.R.pos,drop)<A.RR(26)&&A.groundAt(A.R.pos)>10;
+    m.nearText=A.K('⬇ やまのうえで おろそう','⬇ 山の上で着地');
+    m.canInteract=()=>m.stage===0&&A.xzDist(A.R.pos,rock.position)<A.RR(16)&&A.R.pos.y<A.RR(18);
+    m.interact=()=>{
+      m.stage=1;A.carry(m,rock,'top');m.target.copy(drop);
+      A.say(m,who,'やまに もどして！',3.2);
+      A.toast(A.K('きょせきを やまのうえへ','巨石を山の上へ運ぼう'));
+    };
     m.update=dt=>{
       if(m.done)return;
-      const dx=home.door.x-who.position.x,dz=home.door.z-who.position.z,dist=Math.hypot(dx,dz)||1;
-      const near=A.xzDist(A.R.pos,who.position)<A.RR(11)&&A.R.grounded&&A.R.pos.y<A.RR(8);
-      m.target.copy(near?home.door:who.position);
-      if(near&&dist>6){
-        const sp=A.KIDS?5.5:4.2;
-        who.position.x+=dx/dist*sp*dt;who.position.z+=dz/dist*sp*dt;
-        who.rotation.y=Math.atan2(dx,dz);
+      if(m.stage===0)rock.rotation.y+=dt*0.35;
+      else if(m.stage===1&&A.R.grounded&&A.xzDist(A.R.pos,drop)<A.RR(26)&&A.groundAt(A.R.pos)>10){
+        A.release();
+        rock.position.set(drop.x,drop.y+2.35,drop.z);
+        rock.rotation.y=0;
+        A.bounce(rock);A.say(m,who,'まちが あんぜん！ ありがとう',3.4);
+        m.stage=2;A.complete(m,150,rock.position);
       }
-      if(dist<=6){A.bounce(who);A.say(m,who,'ただいま！ ありがとう',3.2);A.complete(m,120,who.position);}
     };
     return m;
   };
