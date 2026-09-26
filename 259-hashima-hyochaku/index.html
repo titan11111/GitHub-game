@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#14171a">
 <title>端島かくれんぼ ― 日暮れまでに、五人</title>
 <style>
@@ -14,10 +14,10 @@
   box-sizing:border-box;
 }
 *{box-sizing:inherit}
-html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);overflow:hidden;
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);overflow:hidden;position:fixed;width:100%;
   font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;
-  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
-  -webkit-text-size-adjust:100%;touch-action:manipulation}
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  -webkit-text-size-adjust:100%;touch-action:manipulation;overscroll-behavior:none}
 canvas#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-feature-settings:"tnum"}
 
@@ -77,12 +77,45 @@ canvas#fx.on{display:block}
 }
 @media (prefers-reduced-motion: reduce){#found.on{animation:none;opacity:1}}
 
-/* ---------- controls ---------- */
+/* ---------- controls（iOS：ファミコン準拠パッド＋右スティック視点） ---------- */
 #ctl{position:fixed;inset:auto 0 0 0;z-index:5;pointer-events:none;
-  padding:0 calc(16px + env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));
-  display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+  padding:0 calc(8px + env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) calc(8px + env(safe-area-inset-left,0px))}
 #ctl.hide{display:none}
-.stick{width:min(33vw,120px);height:min(33vw,120px);border-radius:50%;border:1px solid var(--line);
+.fc-body{pointer-events:auto;max-width:520px;margin:0 auto}
+.fc-plate{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;
+  padding:6px 8px;background:linear-gradient(180deg,rgba(12,18,28,.55),rgba(6,10,18,.82));
+  border:2px solid rgba(61,242,255,.22);box-shadow:0 4px 0 rgba(0,0,0,.45)}
+.fc-col{display:flex;align-items:center;min-width:0}
+.fc-col-m{flex:1;flex-direction:column;justify-content:flex-end;gap:2px;padding-bottom:2px}
+.fc-col-l,.fc-col-r{flex-direction:column;align-items:center;gap:4px}
+.fc-ablabel{font-size:8px;letter-spacing:.18em;color:var(--dim)}
+.fc-recess{display:flex;gap:8px;padding:2px 4px 0}
+.fc-slot{display:flex;flex-direction:column;align-items:center;gap:1px}
+.fc-pill{width:42px;height:14px;border-radius:7px;background:linear-gradient(#2a3344,#151c28);
+  border:2px solid #3a4558;box-shadow:inset 0 1px 0 rgba(255,255,255,.12);padding:0}
+.fc-pill:active,.fc-pill.is-pressed{transform:translateY(1px);box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
+.fc-print{font-size:7px;letter-spacing:.06em;color:var(--dim)}
+.fc-abhouse{display:flex;gap:10px;padding:4px;background:rgba(0,0,0,.25);border-radius:999px;border:1px solid var(--line)}
+.fc-round{width:min(14vw,56px);height:min(14vw,56px);border-radius:50%;font-size:13px;font-weight:700;
+  letter-spacing:.05em;background:linear-gradient(145deg,#c03848,#8a2030);border:3px solid #2a1018;
+  box-shadow:0 3px 0 #1a0808;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.4);padding:0;
+  transition:transform .08s ease,opacity .08s ease}
+.fc-round#fcA{background:linear-gradient(145deg,#d04838,#902818)}
+.fc-round:active,.fc-round.is-pressed{transform:scale(.92);opacity:.88}
+.fc-ablabels{display:flex;gap:12px;font-size:9px;color:var(--dim);letter-spacing:.04em}
+.dpad{width:min(42vw,148px);height:min(42vw,148px);position:relative;
+  background:linear-gradient(145deg,#1a2234,#0c1018);border:3px solid #2a3548;border-radius:4px;
+  box-shadow:0 4px 0 rgba(0,0,0,.5);touch-action:none}
+.dpad .arr{position:absolute;width:28%;height:28%;display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:rgba(200,220,235,.35);pointer-events:none}
+.dpad .arr.u{top:3%;left:50%;transform:translateX(-50%)}
+.dpad .arr.d{bottom:3%;left:50%;transform:translateX(-50%)}
+.dpad .arr.l{left:5%;top:50%;transform:translateY(-50%)}
+.dpad .arr.r{right:5%;top:50%;transform:translateY(-50%)}
+.dpad.press-u .arr.u,.dpad.press-d .arr.d,.dpad.press-l .arr.l,.dpad.press-r .arr.r{color:var(--neon);text-shadow:0 0 8px rgba(61,242,255,.6)}
+.dpad-nub{position:absolute;left:50%;top:50%;width:22%;height:22%;transform:translate(-50%,-50%);
+  background:#252f42;border:2px solid #3a4558;border-radius:2px;pointer-events:none}
+.stick{width:min(28vw,100px);height:min(28vw,100px);border-radius:50%;border:1px solid var(--line);
   background:radial-gradient(circle,rgba(10,16,26,.2),rgba(10,16,26,.55));position:relative;pointer-events:auto;touch-action:none;
   overflow:visible;transition:opacity .15s}
 /* 親指の位置がずれても掴めるよう、見た目の円より広い当たり judgement を持たせる */
@@ -92,15 +125,12 @@ canvas#fx.on{display:block}
 .stick.on{border-color:rgba(61,242,255,.5)}
 .stick.on .knob{background:rgba(61,242,255,.4);box-shadow:0 0 14px rgba(61,242,255,.4)}
 .stick em{position:absolute;left:50%;bottom:-15px;transform:translateX(-50%);font-size:9px;font-style:normal;color:var(--dim);letter-spacing:.2em}
-.mid{display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:auto;padding-bottom:6px}
-button{font-family:inherit;color:var(--fg);background:rgba(10,16,26,.66);border:1px solid var(--line);cursor:pointer}
-button:active{background:rgba(61,242,255,.18)}
+button{font-family:inherit;color:var(--fg);background:rgba(10,16,26,.66);border:1px solid var(--line);cursor:pointer;
+  transition:transform .08s ease,opacity .08s ease}
+button:active{transform:scale(.92);opacity:.88;background:rgba(61,242,255,.18)}
 button:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
-#bAct{width:78px;height:78px;border-radius:50%;font-size:11.5px;letter-spacing:0;line-height:1.32;padding:0 7px}
-#bAct:disabled{opacity:.3}
-#bAct.hot{border-color:rgba(61,242,255,.75);box-shadow:0 0 16px rgba(61,242,255,.3)}
-#bRun{width:74px;height:34px;border-radius:17px;font-size:11px;letter-spacing:.14em}
-#bRun.on{background:rgba(61,242,255,.24)}
+#fcA.hot{border-color:var(--neon);box-shadow:0 0 14px rgba(61,242,255,.45)}
+#fcB.on{background:linear-gradient(145deg,#4a6888,#2a4058)}
 #topbtns{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 12px);z-index:6;display:flex;gap:6px}
 #topbtns button{width:36px;height:30px;font-size:11px;letter-spacing:.04em}
 #sideL{position:fixed;left:calc(env(safe-area-inset-left,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 250px);z-index:6;display:flex;flex-direction:column;gap:6px}
@@ -157,7 +187,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 
 @media (prefers-reduced-motion: reduce){#status,#prompt,#log div,#vig,#ear{transition:none}}
 @media (max-height:680px){
-  .stick{width:100px;height:100px} #bAct{width:66px;height:66px;font-size:10.5px} #bRun{height:30px}
+  .dpad{width:120px;height:120px} .stick{width:88px;height:88px} .fc-round{width:50px;height:50px;font-size:11px}
   #carry{bottom:calc(env(safe-area-inset-bottom,0px) + 148px)}
   #marks{bottom:calc(env(safe-area-inset-bottom,0px) + 170px)}
   #stamWrap{bottom:calc(env(safe-area-inset-bottom,0px) + 154px)}
@@ -223,12 +253,40 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 </div>
 
 <div id="ctl">
-  <div class="stick" id="stMove" aria-label="移動スティック"><div class="knob"></div><em>移動</em></div>
-  <div class="mid">
-    <button id="bRun" aria-label="走る">走る</button>
-    <button id="bAct" aria-label="みつけた・調べる">みつけた</button>
+  <div class="fc-body">
+    <div class="fc-plate">
+      <div class="fc-col fc-col-l">
+        <div class="dpad" id="dpad" role="group" aria-label="十字キー">
+          <span class="arr u" aria-hidden="true">▲</span>
+          <span class="arr l" aria-hidden="true">◀</span>
+          <span class="arr r" aria-hidden="true">▶</span>
+          <span class="arr d" aria-hidden="true">▼</span>
+          <span class="dpad-nub" aria-hidden="true"></span>
+        </div>
+        <span class="fc-ablabel">移動</span>
+      </div>
+      <div class="fc-col fc-col-m">
+        <div class="fc-recess">
+          <div class="fc-slot">
+            <button type="button" class="fc-pill game-btn" id="fcStart" aria-label="一時停止"></button>
+            <span class="fc-print">START</span>
+          </div>
+          <div class="fc-slot">
+            <button type="button" class="fc-pill game-btn" id="fcSelect" aria-label="地図"></button>
+            <span class="fc-print">SELECT</span>
+          </div>
+        </div>
+      </div>
+      <div class="fc-col fc-col-r">
+        <div class="stick" id="stLook" aria-label="視点スティック"><div class="knob"></div><em>視点</em></div>
+        <div class="fc-abhouse">
+          <button type="button" class="fc-round game-btn" id="fcB" aria-label="走る">B</button>
+          <button type="button" class="fc-round game-btn" id="fcA" aria-label="みつけた">A</button>
+        </div>
+        <div class="fc-ablabels"><span>B 走る</span><span>A みつけた</span></div>
+      </div>
+    </div>
   </div>
-  <div class="stick" id="stLook" aria-label="視点スティック"><div class="knob"></div><em>視点</em></div>
 </div>
 <div id="kbhint"></div>
 
@@ -379,7 +437,7 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
 /* --- スティック（改善1：フローティング／改善2：デッドゾーンと非線形カーブ） --- */
-let jx=0,jy=0,sx=0,sy=0,running=false,runToggled=false;
+let sx=0,sy=0,running=false,runToggled=false;
 const DZ=.16;
 function curve(v,p){                                // デッドゾーンを切り、残りを p 乗で伸ばす
   const a=Math.abs(v);
@@ -415,18 +473,52 @@ function bindStick(el,cb,pow){
   ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,up));
 }
 let moveMag=0;
-bindStick($('stMove'),(x,y,m)=>{jx=x;jy=y;moveMag=m;},1.35);
+
+/* --- 走る（改善4：押しっぱなし／切替を選べる。十字全倒しでも走る） --- */
+function runOn(){ if(S.runHold){running=true;} else {runToggled=!runToggled;running=runToggled;} $('fcB').classList.toggle('on',running); }
+function runOff(){ if(S.runHold){running=false;$('fcB').classList.remove('on');} }
+function tapFb(){try{navigator.vibrate&&navigator.vibrate(14);}catch(_){}}
+function bindHold(el,on,off){
+  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(_){}
+    el.classList.add('is-pressed');tapFb();on();});
+  const end=()=>{el.classList.remove('is-pressed');off();};
+  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,end));
+}
+function bindTap(el,fn){
+  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(_){}
+    el.classList.add('is-pressed');tapFb();fn();});
+  const up=()=>el.classList.remove('is-pressed');
+  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,up));
+}
+const padK={l:0,r:0,u:0,d:0};
+function bindDpad(el){
+  const set=e=>{
+    const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+    padK.l=x<-.12?1:0;padK.r=x>.12?1:0;padK.u=y<-.12?1:0;padK.d=y>.12?1:0;
+    el.classList.toggle('press-l',padK.l);el.classList.toggle('press-r',padK.r);
+    el.classList.toggle('press-u',padK.u);el.classList.toggle('press-d',padK.d);
+  };
+  const clear=()=>{padK.l=padK.r=padK.u=padK.d=0;el.classList.remove('press-l','press-r','press-u','press-d');};
+  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(_){}set(e);});
+  el.addEventListener('pointermove',e=>{if(el.hasPointerCapture(e.pointerId))set(e);});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,clear));
+}
+bindDpad($('dpad'));
+bindHold($('fcB'),runOn,runOff);
+bindTap($('fcA'),()=>doAction());
+bindTap($('fcStart'),()=>togglePause());
+bindTap($('fcSelect'),()=>toggleMap(''));
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTouchEnd<=300)e.preventDefault();lastTouchEnd=now;},{passive:false});
+document.addEventListener('touchmove',e=>{if(e.target.closest('.sheet'))return;e.preventDefault();},{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault());
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('selectstart',e=>e.preventDefault());
+
 bindStick($('stLook'),(x,y)=>{sx=x;sy=y;},2);
+$('bLight').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();toggleLight();});
 
-/* --- 走る（改善4：押しっぱなし／切替を選べる。スティック全倒しでも走る） --- */
-function runOn(){ if(S.runHold){running=true;} else {runToggled=!runToggled;running=runToggled;} $('bRun').classList.toggle('on',running); }
-function runOff(){ if(S.runHold){running=false;$('bRun').classList.remove('on');} }
-$('bRun').addEventListener('pointerdown',e=>{e.preventDefault();try{$('bRun').setPointerCapture(e.pointerId);}catch(_){}runOn();});
-['pointerup','pointercancel','lostpointercapture'].forEach(t=>$('bRun').addEventListener(t,runOff));
-$('bAct').addEventListener('click',e=>{e.preventDefault();doAction();});
-$('bLight').addEventListener('click',e=>{e.preventDefault();toggleLight();});
-
-/* --- 画面ドラッグ（改善3：軽いタップは［みつけた］／改善7：感度を画面幅で正規化） --- */
+/* --- 画面ドラッグ（軽いタップは［みつけた］／感度を画面幅で正規化） --- */
 const cv=$('scene');
 let dragId=null,dx0=0,dy0=0,tapT=0,tapMove=0;
 const lookK=()=>3.1/Math.min(innerWidth,innerHeight);
@@ -469,7 +561,7 @@ function pollPad(){
 }
 
 $('ctlHelp').innerHTML=isTouch
- ?'<b>移動</b><span>左スティック（触った所が中心）</span><b>視点</b><span>右スティック／画面をなぞる</span><b>走る</b><span>走るボタン／移動を目一杯倒す</span><b>みつけた</b><span>中央の丸／画面を軽くタップ</span><b>耳を澄ます</b><span>何も無いとき中央の丸</span><b>明かり</b><span>左のライト</span><b>地図</b><span>右上・地図</span><b>中断</b><span>右上・Ⅱ</span>'
+ ?'<b>移動</b><span>十字キー</span><b>視点</b><span>右スティック／画面をなぞる</span><b>走る</b><span>B／十字を目一杯</span><b>みつけた</b><span>A／画面を軽くタップ</span><b>耳を澄ます</b><span>近くに誰もいないとき A</span><b>地図</b><span>SELECT</span><b>中断</b><span>START</span><b>明かり</b><span>左のライト</span>'
  :'<b>移動</b><span>W A S D ／ 矢印</span><b>視点</b><span>マウスをドラッグ／Q E で振り向く</span><b>走る</b><span>Shift</span><b>みつけた</b><span>Space ／ Enter</span><b>耳を澄ます</b><span>Tab</span><b>明かり</b><span>F</span><b>地図</b><span>M</span><b>中断</b><span>P ／ Esc</span><b>音を消す</b><span>0</span>';
 $('kbhint').textContent=isTouch?'':'W A S D 移動　Q E 振り向く　Shift 走る　Space みつけた　Tab 耳を澄ます　F 明かり　M 地図　P 中断';
 syncCfg();
@@ -683,9 +775,37 @@ function groundY(x,z){
 function canStand(x,z,curY){
   if(!inBounds(x,z)||hit(x,z))return false;
   const gy=groundY(x,z);
-  if(gy-curY>1.2)return false;
+  const onStair=inStair(x,z);
+  const maxUp=onStair?1.45:1.2;
+  if(gy-curY>maxUp)return false;
   if(curY-gy>3.0)return false;
   return true;
+}
+function inShelterAt(x,z){
+  for(let i=0;i<shelters.length;i++){const s=shelters[i];
+    if(x>s.x-s.w/2&&x<s.x+s.w/2&&z>s.z-s.d/2&&z<s.z+s.d/2)return true;}
+  return false;
+}
+function nearWall(x,z,maxD){
+  maxD=maxD||2.7;
+  for(let i=0;i<BLD.length;i++){const b=BLD[i];
+    const dx=Math.max(Math.abs(x-b.x)-b.w/2,0),dz=Math.max(Math.abs(z-b.z)-b.d/2,0);
+    if(Math.hypot(dx,dz)<maxD)return true;}
+  for(let i=0;i<colliders.length;i++){const c=colliders[i];
+    const dx=Math.max(Math.abs(x-c.x)-c.w/2,0),dz=Math.max(Math.abs(z-c.z)-c.d/2,0);
+    if(Math.hypot(dx,dz)<maxD)return true;}
+  return false;
+}
+function hideOk(x,z){
+  if(inMesa(x,z)||inShelterAt(x,z)||inStair(x,z))return true;
+  return nearWall(x,z,2.5);
+}
+function hideFacing(x,z){
+  let bx=x,bz=z,bd=1e9;
+  for(let i=0;i<BLD.length;i++){const b=BLD[i];
+    const dx=Math.max(Math.abs(x-b.x)-b.w/2,0),dz=Math.max(Math.abs(z-b.z)-b.d/2,0);
+    const d=dx*dx+dz*dz;if(d<bd){bd=d;bx=b.x;bz=b.z;}}
+  return Math.atan2(bx-x,bz-z)+Math.PI;
 }
 
 // 海
@@ -900,15 +1020,30 @@ function neonPulse(dt){
    4. 隠れ場所（拾う物は無い。かくれんぼなので、島に落ちているのは瓦礫だけ）
    ========================================================================== */
 /* 候補座標が壁の中に入っていたら、螺旋に探して立てる点へ寄せる */
-function freeSpot(x,z){
-  if(canStand(x,z,groundY(x,z)))return {x:x,z:z};
-  for(let r=1;r<=14;r++){
-    for(let a=0;a<12;a++){
-      const th=a/12*6.2832,nx=x+Math.cos(th)*r*1.1,nz=z+Math.sin(th)*r*1.1;
-      if(canStand(nx,nz,groundY(nx,nz)))return {x:nx,z:nz};
+function freeSpot(x,z,requireHide){
+  const ok=(nx,nz)=>{
+    const gy=groundY(nx,nz);
+    if(!canStand(nx,nz,gy))return null;
+    if(requireHide&&!hideOk(nx,nz))return null;
+    return {x:nx,z:nz};
+  };
+  let p=ok(x,z);
+  if(p)return p;
+  for(let r=1;r<=18;r++){
+    for(let a=0;a<16;a++){
+      const th=a/16*6.2832,nx=x+Math.cos(th)*r*1.05,nz=z+Math.sin(th)*r*1.05;
+      p=ok(nx,nz);if(p)return p;
     }
   }
-  return {x:x,z:z};
+  if(requireHide){
+    for(let t=0;t<24;t++){
+      const s=shelters[(Math.random()*shelters.length)|0];
+      const nx=s.x+(Math.random()-.5)*s.w*.75,nz=s.z+(Math.random()-.5)*s.d*.75;
+      p=ok(nx,nz);if(p)return p;
+    }
+  }
+  p=ok(x,z);
+  return p||{x:x,z:z};
 }
 const PLAZA={x:-120,z:-40};                     // じゃんけんの広場＝スタート地点
 
@@ -1058,16 +1193,16 @@ const KIDS=[
    spots:[[-112,-34],[-64,-34],[-38,-18]]},
   {name:'タケシ',cloth:0x7a4a3c,hair:0x201d1a,cue:'pant',where:'いちばん遠いところ',
    near:'走ったあとの、荒い息づかい。',
-   spots:[[128,-22],[140,16],[132,44]]},
+   spots:[[128,-22],[140,16],[118,-8]]},
   {name:'サエ',cloth:0x6d5a86,hair:0x2b2520,cue:'hum',where:'たかいところ',
    near:'鼻歌。ちいさいが、確かに上のほうから。',
-   spots:[[34,-18],[128,4],[46,-26]]},
+   spots:[[26,-16],[128,4],[44,-24]]},
   {name:'ゴロウ',cloth:0x4f6b4a,hair:0x241f1b,cue:'canKick',where:'たてものの奥',
    near:'奥で、缶が転がった。',
    spots:[[98,6],[-120,12],[-88,-18]]},
   {name:'ハナ',cloth:0x8a7a4a,hair:0x2e2823,cue:'scuff',where:'みずぎわ',
    near:'砂を擦る靴の音。波のすぐそば。',
-   spots:[[-118,-53],[-136,-38],[-60,-46]]}
+   spots:[[-118,-53],[-133,-41],[-124,8]]}
 ];
 const kids=[];
 const kidMat={};
@@ -1098,10 +1233,10 @@ function placeKids(){
     }
     if(!pick)pick=def.spots[0];
     used.push(pick);
-    const p=freeSpot(pick[0],pick[1]);
+    const p=freeSpot(pick[0],pick[1],true);
     const g=new THREE.Group();mkKid(g,def.cloth,def.hair);
     g.position.set(p.x,groundY(p.x,p.z),p.z);
-    g.rotation.y=Math.random()*6.2832;
+    g.rotation.y=hideFacing(p.x,p.z);
     g.scale.set(1,.72,1);                       // 隠れている間はしゃがんでいる
     g.visible=false;                            // 数え終わるまで出さない
     scene.add(g);
@@ -1367,9 +1502,11 @@ function step(dt){
   if(keys.KeyS||keys.ArrowDown)iz-=1;
   if(keys.KeyA||keys.ArrowLeft)ix-=1;
   if(keys.KeyD||keys.ArrowRight)ix+=1;
-  ix+=jx+gpv.mx;iz+=-jy-gpv.my;
+  if(padK.u)iz+=1;if(padK.d)iz-=1;if(padK.l)ix-=1;if(padK.r)ix+=1;
+  ix+=gpv.mx;iz+=-gpv.my;
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il;}
   const moving=il>.06;
+  moveMag=Math.min(1,il);
   if(keys.KeyQ)P.yaw+=1.9*dt*S.sens;               // マウスを使わずに振り向く
   if(keys.KeyE)P.yaw-=1.9*dt*S.sens;
   P.yaw-=(sx+gpv.lx)*2.5*dt*S.sens;
@@ -1458,10 +1595,10 @@ function step(dt){
 
   /* 手の届くもの */
   near=findNear();
-  const pr=$('prompt'),ba=$('bAct');
+  const pr=$('prompt'),ba=$('fcA');
   if(near){pr.textContent=near.label;pr.classList.add('on');}else pr.classList.remove('on');
   const hot=!!near&&near.type==='kid';
-  ba.textContent=near?(hot?'みつけた':'調べる'):'耳を澄ます';
+  ba.textContent=near?(hot?'みつけた':(near.type==='kid'?'みつけた':'調べる')):'耳を澄ます';
   ba.disabled=false;
   ba.classList.toggle('hot',hot);
 
