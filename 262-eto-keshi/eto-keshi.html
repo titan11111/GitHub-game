@@ -2,10 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>干支けし ときどき猫</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
   /* 飛鳥の顔料 */
@@ -22,18 +22,18 @@
   --mokkan-hi:#e9d7b1;  /* 木簡の光る面 */
   --usu:#6e5f49;
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px);
-  padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){ --shikkui:#2a241d; --shikkui2:#211c16; --sumi:#eee4d0; --usu:#b3a488; --mokkan:#463b2a; --mokkan-hi:#5d503a; }
 }
 :root[data-theme="dark"]{ --shikkui:#2a241d; --shikkui2:#211c16; --sumi:#eee4d0; --usu:#b3a488; --mokkan:#463b2a; --mokkan-hi:#5d503a; }
-*,*::before,*::after{box-sizing:border-box}
-html,body{height:100%;margin:0}
+*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+html,body{
+  height:100%;height:100svh;height:100dvh;width:100%;margin:0;padding:0;
+  overflow:hidden;position:fixed;inset:0;overscroll-behavior:none;touch-action:none
+}
 body{
   background-color:var(--shikkui);
-  /* 忍冬唐草（しのぶからくさ）を薄く流す */
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cg fill='none' stroke='%23b7392a' stroke-opacity='.085' stroke-width='2'%3E%3Cpath d='M0 64 Q32 20 64 64 T128 64'/%3E%3Cpath d='M64 0 Q104 32 64 64 T64 128'/%3E%3Cpath d='M64 64 q18-22 34-10'/%3E%3Cpath d='M64 64 q-18 22-34 10'/%3E%3Ccircle cx='64' cy='64' r='5'/%3E%3C/g%3E%3C/svg%3E"),
     linear-gradient(var(--shikkui),var(--shikkui2));
@@ -41,68 +41,146 @@ body{
   color:var(--sumi);
   font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
   display:flex; justify-content:center;
-  overflow:hidden; user-select:none; -webkit-user-select:none;
-  touch-action:manipulation;
 }
-#app{width:100%;max-width:460px;height:100%;position:relative;display:flex;flex-direction:column;padding:10px 12px}
-.screen{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-height:0}
+#app{width:100%;max-width:480px;height:100%;position:relative;display:flex;flex-direction:column;padding:0}
+.screen{display:none;flex:1;flex-direction:column;align-items:center;min-height:0;width:100%}
 .screen.on{display:flex}
-button{font:inherit;cursor:pointer;border:0;-webkit-tap-highlight-color:transparent}
+button{font:inherit;cursor:pointer;border:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  min-height:48px;transition:transform .08s ease,opacity .08s ease}
+button:active{transform:scale(.94);opacity:.9}
 button:focus-visible{outline:3px solid var(--shu);outline-offset:3px}
+button.is-pressed{transform:scale(.92);opacity:.88}
 
-/* タイトル */
-.ring{position:relative;width:min(78vw,300px);aspect-ratio:1}
-.ring::before{ /* 蓮華文の輪 */
-  content:'';position:absolute;inset:6%;border-radius:50%;
-  border:1.5px solid rgba(183,57,42,.22); box-shadow:inset 0 0 0 7px rgba(212,168,67,.12);
+/* タイトル（和） */
+#title{
+  justify-content:flex-start;gap:10px;
+  background:
+    radial-gradient(ellipse 130% 70% at 50% 8%,rgba(183,57,42,.42),transparent 62%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='45'%3E%3Cg fill='none' stroke='%23d4a843' stroke-opacity='.11' stroke-width='1.4'%3E%3Cpath d='M-45 45a45 45 0 0 1 90 0M0 45a45 45 0 0 1 90 0M45 45a45 45 0 0 1 90 0'/%3E%3Cpath d='M-45 45a30 30 0 0 1 90 0M0 45a30 30 0 0 1 90 0M45 45a30 30 0 0 1 90 0'/%3E%3Cpath d='M-45 45a15 15 0 0 1 90 0M0 45a15 15 0 0 1 90 0M45 45a15 15 0 0 1 90 0'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(180deg,#1b1611 0%,#0b0907 46%,#141009 100%);
+  background-size:auto, 68px 34px, 100% 100%;
+  color:#f3ecdf;position:relative;overflow:hidden;
+  padding:max(16px, env(safe-area-inset-top,0px)) 16px max(20px, calc(env(safe-area-inset-bottom,0px) + 10px));
+  box-shadow:inset 0 0 0 2px #b7392a,inset 0 0 0 5px rgba(212,168,67,.32),inset 0 0 90px rgba(0,0,0,.6);
 }
-.ring span{position:absolute;left:50%;top:50%;font-size:clamp(22px,7vw,30px);transform:translate(-50%,-50%)}
-.ring .cat{filter:grayscale(.2)}
-.title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.title h1{margin:0;font-family:"Yuji Syuku","Hiragino Mincho ProN",serif;font-weight:400;font-size:clamp(46px,15vw,64px);line-height:1;color:var(--sumi);letter-spacing:.04em}
-.title p{margin:10px 0 0;font-size:15px;color:var(--usu)}
+#title::after{ /* 麻の葉の帯 */
+  content:'';position:absolute;left:0;right:0;bottom:0;height:14px;pointer-events:none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='14'%3E%3Cg fill='none' stroke='%230c0a08' stroke-width='1.2'%3E%3Cpath d='M0 7h28M14 0v14M0 0l14 7L0 14M28 0L14 7l14 7'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(#d4a843,#a97f22);
+  background-size:28px 14px,100% 100%;
+  border-top:1px solid #6b4f12;
+}
+/* 角印（朱） */
+.brand{
+  position:relative;z-index:2;align-self:flex-end;margin:0;
+  font-family:"Yuji Syuku",serif;font-size:13px;line-height:1.15;letter-spacing:.10em;
+  writing-mode:vertical-rl;text-orientation:upright;
+  color:#fdf3e4;background:#b7392a;border:2px solid #e2705c;border-radius:2px;
+  padding:9px 5px;transform:rotate(3deg);
+  box-shadow:0 2px 6px rgba(0,0,0,.55);
+}
+.ring{position:relative;width:min(84vw,344px);aspect-ratio:1;z-index:1;flex:0 0 auto;margin:auto}
+.ring::before{ /* 円相 */
+  content:'';position:absolute;inset:7%;border-radius:50%;
+  border:2px solid rgba(212,168,67,.55);
+  box-shadow:inset 0 0 26px rgba(212,168,67,.12);
+}
+.ring::after{
+  content:'';position:absolute;inset:13%;border-radius:50%;
+  border:1px solid rgba(183,57,42,.45);
+}
+.ring span{position:absolute;left:50%;top:50%;font-size:clamp(15px,4.4vw,19px);transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1;font-family:"Yuji Syuku",serif;color:#e9d9ac;
+  text-shadow:0 1px 0 #090807,0 0 8px rgba(0,0,0,.6)}
+.ring span img.em{width:clamp(26px,7.4vw,34px);height:clamp(26px,7.4vw,34px);object-fit:contain;display:block;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.ring .cat{color:#f0b64e}
+.title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+.tcol{display:flex;flex-direction:row-reverse;align-items:flex-start;gap:7px}
+.title h1{
+  margin:0;font-family:"Yuji Syuku",serif;font-weight:400;
+  writing-mode:vertical-rl;text-orientation:upright;
+  font-size:clamp(31px,8.8vw,42px);line-height:1.02;letter-spacing:.06em;inline-size:max-content;
+  color:#fbf6ea;
+  text-shadow:0 3px 0 #6b1c12, 2px 0 0 rgba(212,168,67,.9), -2px 0 0 rgba(212,168,67,.45), 0 0 18px rgba(0,0,0,.8);
+}
+.title .kao{
+  display:block;width:clamp(40px,11vw,52px);height:clamp(40px,11vw,52px);object-fit:contain;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.7));
+}
+.title p{
+  margin:0;font-family:"Yuji Syuku",serif;font-size:12px;letter-spacing:.20em;color:#e0cfa2;
+  writing-mode:vertical-rl;text-orientation:upright;padding-top:6px;inline-size:max-content
+}
+.rakkan{
+  transform:rotate(-4deg);font-style:normal;flex:0 0 auto;
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  background:#b7392a;color:#fdf3e4;border-radius:2px;
+  font-family:"Yuji Syuku",serif;font-size:19px;line-height:1;
+  box-shadow:0 2px 7px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.28);
+}
+/* 木札のボタン */
 .hanko{
-  background:var(--shu);color:#f7efdc;font-weight:900;font-size:20px;
-  padding:14px 38px;border-radius:4px;box-shadow:0 4px 0 var(--shu3);letter-spacing:.14em;
-  font-family:"Yuji Syuku",serif
+  position:relative;z-index:1;margin-top:0;
+  background:linear-gradient(180deg,#c84634 0%,#ab3223 46%,#8e2419 100%);
+  color:#fdf6e6;font-family:"Yuji Syuku",serif;font-weight:400;font-size:25px;
+  min-height:58px;min-width:min(78vw,300px);width:min(78vw,300px);padding:13px 30px;
+  border:2px solid #e8c84a;border-radius:3px;letter-spacing:.46em;text-indent:.46em;touch-action:manipulation;
+  text-shadow:0 2px 0 rgba(70,16,10,.85);
+  box-shadow:0 5px 0 #5c1710,0 8px 16px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.28);
+  transition:transform .08s ease,box-shadow .08s ease;
 }
-.hanko:active{transform:translateY(3px);box-shadow:0 1px 0 var(--shu3)}
-.note{font-size:13px;color:var(--usu);text-align:center;line-height:1.7;max-width:30em;margin:0}
-.best{font-size:13px;color:var(--shu)}
+.hanko:active,.hanko.is-pressed{transform:translateY(4px);box-shadow:0 1px 0 #5c1710,0 2px 6px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.2)}
+.note{font-size:12px;color:var(--usu);text-align:center;line-height:1.45;max-width:36em;margin:0;flex-shrink:0}
+.best{font-size:13px;color:#e9d9ac;font-family:"Yuji Syuku",serif;letter-spacing:.18em;position:relative;z-index:1}
+.best:empty{display:none}
 
 /* 干支えらび */
-.sel h2{margin:0;font-family:"Yuji Syuku",serif;font-weight:400;font-size:32px;color:var(--sumi)}
-.grid12{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%}
+.sel{
+  justify-content:flex-start;gap:10px;
+  padding:max(12px, env(safe-area-inset-top,0px)) 10px max(10px, env(safe-area-inset-bottom,0px));
+}
+.sel h2{margin:0;font-family:"Yuji Syuku",serif;font-weight:400;font-size:clamp(24px,7vw,32px);color:var(--sumi);flex-shrink:0}
+.grid12{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr);gap:6px;width:100%;flex:1;min-height:0}
 .grid12 button{
   background:linear-gradient(var(--mokkan-hi),var(--mokkan));color:var(--sumi);border:1px solid #9d8158;border-radius:3px;
-  padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;
-  box-shadow:0 2px 0 rgba(0,0,0,.18)
+  padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  box-shadow:0 2px 0 rgba(0,0,0,.18);min-height:72px;height:100%;position:relative;touch-action:manipulation
+}
+.grid12 button::after{
+  content:'';position:absolute;inset:-4px; /* 見えないタップ余白 */
 }
 .grid12 button:hover,.grid12 button:focus-visible{border-color:var(--shu)}
-.grid12 button:active{transform:translateY(2px);box-shadow:none}
-.grid12 .em{font-size:30px;line-height:1.1}
-.grid12 .kj{font-family:"Yuji Syuku",serif;font-size:20px}
-.grid12 .yo{font-size:11px;color:var(--usu)}
+.grid12 button:active,.grid12 button.is-pressed{transform:scale(.94);box-shadow:none}
+.grid12 .em{font-size:clamp(40px,11vw,50px);line-height:1;order:1}
+.grid12 img.em{width:clamp(52px,14vw,68px);height:clamp(52px,14vw,68px);object-fit:contain;display:block}
+.grid12 .kj{font-family:"Yuji Syuku",serif;font-size:22px;order:2;font-weight:400}
+.grid12 .yo{font-size:11px;color:var(--shu);order:3;font-weight:700}
 
 /* ゲーム */
-#game{justify-content:flex-start;gap:10px}
-.hud{width:100%;display:flex;align-items:stretch;gap:6px}
-.hud .box{flex:1;background:linear-gradient(var(--mokkan-hi),var(--mokkan));color:var(--sumi);border:1px solid #9d8158;border-radius:3px;padding:6px 6px;text-align:center}
-.hud .lb{font-size:11px;color:var(--usu)}
-.hud .v{font-size:21px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
-.hud .me{flex:1.15;border:2px solid var(--shu)}
-.hud .me .v{font-size:19px}
+#game{
+  justify-content:flex-start;gap:6px;
+  padding:max(6px, env(safe-area-inset-top,0px)) 6px max(6px, env(safe-area-inset-bottom,0px));
+}
+.hud{width:100%;display:flex;align-items:stretch;gap:4px;flex-shrink:0}
+.hud .box{flex:1;background:linear-gradient(var(--mokkan-hi),var(--mokkan));color:var(--sumi);border:1px solid #9d8158;border-radius:3px;padding:4px 2px;text-align:center;min-height:48px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 2px 0 rgba(0,0,0,.12);
+  background-image:radial-gradient(circle at 100% 0,rgba(183,57,42,.12),transparent 55%)}
+.hud .lb{font-size:10px;color:var(--usu);line-height:1.1}
+.hud .v{font-size:18px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+.hud .me{flex:1.1;border:2px solid var(--shu)}
+.hud .me .v{font-size:16px}
 .hud .low .v{color:var(--shu)}
-.hud .snd{flex:0 0 42px;display:flex;align-items:center;justify-content:center;font-size:20px;padding:0}
+.hud .snd{flex:0 0 48px;min-width:48px;min-height:48px;display:flex;align-items:center;justify-content:center;font-size:20px;padding:0;touch-action:manipulation}
 .hud .snd.off{opacity:.45}
 
-/* 伽藍（がらん）＝盤の額 */
-#wrap{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+#wrap{flex:1;min-height:0;width:100%;display:flex;align-items:flex-end;justify-content:center;touch-action:none}
 .garan{
-  position:relative;padding:12px 14px 14px;border-radius:3px;
+  position:relative;padding:8px 8px 10px;border-radius:3px;
   background:linear-gradient(90deg,var(--shu3),var(--shu) 16%,var(--shu2) 50%,var(--shu) 84%,var(--shu3));
   box-shadow:inset 0 0 0 2px rgba(0,0,0,.22), 0 6px 0 rgba(0,0,0,.20);
-  will-change:transform
+  will-change:transform;max-width:100%;max-height:100%
 }
 .garan::before{ /* 瓦屋根（軒丸瓦の列） */
   content:'';position:absolute;left:-9px;right:-9px;top:-14px;height:17px;border-radius:3px 3px 0 0;
@@ -117,59 +195,114 @@ button:focus-visible{outline:3px solid var(--shu);outline-offset:3px}
   background:linear-gradient(#6d6459,#4b443b)
 }
 canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.5)}
-.rule{font-size:12.5px;color:var(--usu);text-align:center;line-height:1.6;margin:0}
+.foot{width:100%;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:48px}
+.rule{font-size:11px;color:var(--usu);text-align:left;line-height:1.35;margin:0;flex:1}
 .rule b{color:var(--shu);font-weight:700}
-.quit{background:transparent;color:var(--usu);font-size:13px;text-decoration:underline;padding:4px}
+.quit{background:transparent;color:var(--usu);font-size:13px;text-decoration:underline;padding:12px 10px;min-height:48px;flex-shrink:0;touch-action:manipulation}
 
-/* 結果 */
-#result{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(30,22,16,.74);z-index:5;padding:20px}
+#result{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:5;
+  background:
+    radial-gradient(ellipse 120% 70% at 50% 0%,rgba(183,57,42,.30),transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='%23d4a843' fill-opacity='.14'%3E%3Ccircle cx='14' cy='22' r='1.6'/%3E%3Ccircle cx='62' cy='8' r='1.1'/%3E%3Ccircle cx='96' cy='40' r='1.7'/%3E%3Ccircle cx='34' cy='70' r='1.2'/%3E%3Ccircle cx='80' cy='92' r='1.5'/%3E%3Ccircle cx='18' cy='104' r='1'/%3E%3Ccircle cx='110' cy='74' r='1.1'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(180deg,#171208,#0a0806);
+  background-size:auto,120px 120px,100% 100%;
+  padding:max(20px, env(safe-area-inset-top,0px)) 20px max(20px, env(safe-area-inset-bottom,0px))}
 #result.on{display:flex}
-.card{background:#f2e9d6;color:#2a2320;border-radius:4px;padding:26px 22px;width:100%;max-width:330px;text-align:center;box-shadow:0 10px 0 rgba(0,0,0,.28), inset 0 0 0 2px var(--shu)}
-.card h3{margin:0;font-family:"Yuji Syuku",serif;font-weight:400;font-size:34px}
-.card .big{font-size:48px;font-weight:900;color:var(--shu);line-height:1.1;margin:8px 0 2px;font-variant-numeric:tabular-nums}
-.card .sub{font-size:14px;margin:4px 0}
-.card .rank{font-family:"Yuji Syuku",serif;font-size:22px;margin:14px 0 18px}
-.card .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.card .ghost{background:transparent;color:#2a2320;border:2px solid #2a2320;border-radius:3px;padding:12px 16px;font-weight:700}
+#result::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:14px;pointer-events:none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='14'%3E%3Cg fill='none' stroke='%230c0a08' stroke-width='1.2'%3E%3Cpath d='M0 7h28M14 0v14M0 0l14 7L0 14M28 0L14 7l14 7'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(#d4a843,#a97f22);
+  background-size:28px 14px,100% 100%;
+}
+/* 奉書紙の書付 */
+.card{
+  position:relative;color:#2b2520;border-radius:2px;padding:24px 20px 20px;width:100%;max-width:334px;text-align:center;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cg stroke='%23a08a5e' stroke-opacity='.16' stroke-width='.8'%3E%3Cpath d='M0 15h60M0 30h60M0 45h60'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(180deg,#f6ecd6,#e6d7b6);
+  background-size:60px 60px,100% 100%;
+  border:1px solid #a58f62;
+  box-shadow:0 14px 34px rgba(0,0,0,.55),inset 0 0 0 5px rgba(255,255,255,.45),inset 0 0 0 6px #b7392a;
+}
+.card .brand{ /* 角印 */
+  position:absolute;top:-14px;right:14px;align-self:auto;margin:0;z-index:2;
+  writing-mode:vertical-rl;text-orientation:upright;
+  font-family:"Yuji Syuku",serif;font-size:13px;letter-spacing:.10em;line-height:1.15;
+  color:#fdf3e4;background:#b7392a;border:2px solid #e2705c;border-radius:2px;padding:8px 5px;transform:rotate(4deg);
+  box-shadow:0 2px 6px rgba(0,0,0,.45);
+}
+.card h3{
+  margin:6px 0 0;font-family:"Yuji Syuku",serif;font-weight:400;font-size:clamp(34px,10vw,46px);line-height:1.1;
+  color:#2b2520;letter-spacing:.14em;
+  text-shadow:0 1px 0 rgba(255,255,255,.7);
+}
+.card h3::after{
+  content:'';display:block;width:58%;height:2px;margin:8px auto 0;
+  background:linear-gradient(90deg,transparent,#b7392a 22%,#b7392a 78%,transparent);
+}
+.card .big{font-family:"Yuji Syuku",serif;font-size:46px;font-weight:400;color:#8e2419;line-height:1.1;margin:10px 0 0;font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 0 rgba(255,255,255,.6)}
+.card .sub{font-family:"Yuji Syuku",serif;font-size:14px;margin:5px 0 0;letter-spacing:.18em;color:#5c4f3c}
+.card .rank:empty{display:none}
+.card .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.card .row button{min-height:52px;min-width:44%}
+.card .hanko{margin-top:0;min-width:46%;width:auto;font-size:19px;letter-spacing:.24em;text-indent:.24em;padding:12px 16px}
+.card .ghost{background:transparent;color:#5c4f3c;border:1px solid #9d8158;border-radius:2px;padding:12px 14px;
+  font-family:"Yuji Syuku",serif;font-weight:400;font-size:15px;letter-spacing:.10em}
+.card .ghost:active,.card .ghost.is-pressed{background:rgba(183,57,42,.10)}
 @media (prefers-reduced-motion: reduce){ .hanko:active{transform:none} .garan{transform:none!important} }
+@media (max-height: 640px){
+  .ring{width:min(62vw,250px)}
+  .sel h2{font-size:22px}
+  .grid12 button{min-height:56px;padding:4px 2px}
+  .note{font-size:11px}
+}
 </style>
 </head>
 <body>
 <div id="app">
 
   <section class="screen on" id="title">
+    <p class="brand">流通禁止</p>
     <div class="ring" id="ring">
       <div class="title">
-        <h1>干支けし</h1>
-        <p>ときどき、猫。</p>
+        <div class="tcol">
+          <h1>干支けし</h1>
+          <p>猫は残る。</p>
+        </div>
+        <i class="rakkan" aria-hidden="true">猫</i>
       </div>
     </div>
-    <button class="hanko" id="btnStart">はじめる</button>
+    <button class="hanko" id="btnStart">消せ</button>
     <p class="best" id="bestTitle"></p>
   </section>
 
   <section class="screen sel" id="select">
     <h2>あなたの干支は？</h2>
     <div class="grid12" id="grid12"></div>
-    <p class="note">えらんだ干支の隣にいる🐱は、その干支がそろって消えるとき一緒に消えるよ。</p>
+    <p class="note">猫は、選んだ干支が消えるとき<strong>隣にいれば</strong>一緒に消えます。同じ3つ、または順の3つ（<strong>戌亥子</strong>も）で消えます。</p>
   </section>
 
   <section class="screen" id="game">
     <div class="hud">
-      <div class="box" id="hudMoves"><div class="lb">のこり手数</div><div class="v" id="vMoves">30</div></div>
+      <div class="box" id="hudMoves"><div class="lb">手数</div><div class="v" id="vMoves">30</div></div>
       <div class="box"><div class="lb">点数</div><div class="v" id="vScore">0</div></div>
       <div class="box"><div class="lb">猫</div><div class="v" id="vCats">0</div></div>
       <div class="box me"><div class="lb">あなた</div><div class="v" id="vMe">🐯寅</div></div>
-      <button class="box snd" id="btnSnd" aria-label="音のオンオフ">🔔</button>
+      <button class="box snd" id="btnSnd" aria-label="BGMと効果音のオンオフ">🔔</button>
     </div>
     <div id="wrap"><div class="garan" id="garan"><canvas id="cv"></canvas></div></div>
-    <p class="rule">なぞるか2回タップで入れかえ。同じ干支を3つ並べると消える。<br>🐱は消せない。でも<b id="ruleMe">寅</b>がそろった時、隣の🐱も一緒に消える。</p>
-    <button class="quit" id="btnQuit">やめてタイトルへ</button>
+    <div class="foot">
+      <p class="rule">なぞる／隣タップ。同じ3つ、または順の3つ（<strong>子丑寅</strong>…<strong>戌亥子</strong>）。<b id="ruleMe">寅</b>の隣の猫も消える。</p>
+      <button class="quit" id="btnQuit">やめる</button>
+    </div>
   </section>
 
   <div id="result">
     <div class="card">
-      <h3>おしまい</h3>
+      <p class="brand">終了</p>
+      <h3 id="rHead">尽きた</h3>
       <div class="big" id="rScore">0</div>
       <p class="sub" id="rCats"></p>
       <p class="sub" id="rBest"></p>
@@ -182,6 +315,12 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
   </div>
 </div>
 
+<audio id="bgm" loop playsinline preload="none">
+  <source src="Twelve_Symbols_Rising.m4a" type="audio/mp4">
+  <source src="Twelve_Symbols_Rising.mp3" type="audio/mpeg">
+</audio>
+
+<script src="animals.js"></script>
 <script>
 (() => {
 // 色は飛鳥の顔料に寄せる（白群・代赭・黄土・緑青・群青・蘇芳・緑土）
@@ -191,8 +330,9 @@ const ETO = [
   ['午','🐴','うま','#b93c2c'], ['未','🐑','ひつじ','#cdbf9a'], ['申','🐵','さる','#a86234'],
   ['酉','🐔','とり','#b23a5e'], ['戌','🐶','いぬ','#4e6fa3'], ['亥','🐗','い','#5a6b3a']
 ];
-const COLS = 7, ROWS = 8, CAT = -1, MOVES = 30, CAT_RATE = 0.09, KINDS = 6;
-const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const COLS = 7, ROWS = 8, CAT = -1, MOVES = 30, CAT_RATE = 0.09, KINDS = 12;
+const ETO_SPR = bakeEtoSprites(160);
+const NEKO_SPR = bakeNekoSprite(160);
 const TAU = Math.PI * 2;
 const KANSUJI = ['','','二','三','四','五','六','七','八','九'];
 const $ = id => document.getElementById(id);
@@ -207,19 +347,119 @@ function loadMute(){ try{ return localStorage.getItem('tg.262.mute') === '1' }ca
 function saveMute(v){ try{ localStorage.setItem('tg.262.mute', v ? '1' : '0') }catch(e){} }
 
 // ---------- sound ----------
-let ac = null, muted = loadMute();
+let ac = null, master = null, bgmGain = null, muted = loadMute();
+let bgmOn = false, bgmStep = 0, bgmNext = 0;
+/* 曲（MP3/M4A）。iOSは <audio> の volume を無視するので必ずWebAudioのGainを通す */
+let bgmEl = null, bgmRouted = false, mp3State = 'wait';
+const BGM_BPM = 78, BGM_BEAT = 60 / BGM_BPM;
+const RITSU_BGM = [0, 2, 5, 7, 9, 12, 14, 17]; /* 律音階の度数 */
+const bgmRoot = () => 293.66; /* ダ */
+
 function audio(){ if(!ac){ try{ ac = new (window.AudioContext||window.webkitAudioContext)() }catch(e){} } return ac }
-function unlock(){ const a = audio(); if(a && a.state === 'suspended') a.resume() }
+function ensureGraph(){
+  const a = audio(); if(!a || master) return;
+  master = a.createGain(); master.gain.value = muted ? 0 : 1; master.connect(a.destination);
+  bgmGain = a.createGain(); bgmGain.gain.value = 0; bgmGain.connect(master);
+  const el = $('bgm');
+  if(el){
+    bgmEl = el;
+    try{ a.createMediaElementSource(el).connect(bgmGain); bgmRouted = true }
+    catch(e){ bgmRouted = false }   // 経路が作れなければ要素の音量で代用する
+  }
+  bgmOn = true; bgmStep = 0; bgmNext = a.currentTime + 0.1;
+}
+function bgmPlay(){
+  if(!bgmEl || muted) return;
+  const p = bgmEl.play();
+  if(p && p.catch) p.catch(() => {});   // 自動再生拒否は次のタップで拾う
+}
+function bgmPause(){ if(bgmEl){ try{ bgmEl.pause() }catch(e){} } }
+function setMasterMute(){
+  if(bgmEl){
+    bgmEl.muted = muted && !bgmRouted;
+    if(muted) bgmPause();
+  }
+  if(!master) return;
+  master.gain.setTargetAtTime(muted ? 0 : 1, ac.currentTime, 0.08);
+}
+function syncBgmVol(){
+  if(!ac || !bgmGain) return;
+  const onScr = ['title','select','game'].some(id => $(id).classList.contains('on'));
+  const inPlay = running && $('game').classList.contains('on');
+  const resultOn = $('result').classList.contains('on');
+  const want = bgmOn && !muted && onScr && !resultOn;
+  const useMp3 = mp3State !== 'fail' && !!bgmEl;
+  const v = want ? (useMp3 ? (inPlay ? 0.62 : 0.40) : (inPlay ? 0.11 : 0.075)) : 0;
+  bgmGain.gain.setTargetAtTime(v, ac.currentTime, 0.35);
+  if(bgmEl){
+    if(!bgmRouted) bgmEl.volume = want ? (inPlay ? 0.62 : 0.40) : 0;
+    if(want && useMp3) bgmPlay(); else bgmPause();
+  }
+}
+function playBgmPluck(freq, when, vol){
+  if(!ac || !bgmGain || when < ac.currentTime - 0.02) return;
+  const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+  f.type = 'lowpass'; f.frequency.value = 2400;
+  o.type = 'triangle'; o.frequency.setValueAtTime(freq * 1.01, when);
+  o.frequency.exponentialRampToValueAtTime(freq, when + 0.04);
+  g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(vol, when + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.28);
+  o.connect(f); f.connect(g); g.connect(bgmGain);
+  o.start(when); o.stop(when + 0.35);
+}
+function playBgmNote(freq, dur, type, vol, when){
+  if(!ac || !bgmGain || when < ac.currentTime - 0.02) return;
+  const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+  f.type = 'lowpass'; f.frequency.value = type === 'sine' ? 1800 : 900;
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(vol, when + 0.04);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  o.connect(f); f.connect(g); g.connect(bgmGain);
+  o.start(when); o.stop(when + dur + 0.05);
+}
+function bgmTick(){
+  if(mp3State !== 'fail') return;          // 曲が鳴っている間は合成BGMを止める
+  if(!ac || !bgmGain || muted || !bgmOn) return;
+  const t = ac.currentTime;
+  while(bgmNext < t + 0.35){
+    const pat = bgmStep % 16, bar = Math.floor(bgmStep / 16) % 4;
+    const root = bgmRoot() * Math.pow(2, [0, -2, -5, -7][bar] / 12);
+    const deg = RITSU_BGM[(pat + bar * 2) % RITSU_BGM.length];
+    const freq = root * Math.pow(2, deg / 12);
+    if(pat % 4 === 0) playBgmNote(freq, BGM_BEAT * 1.7, 'sine', 0.07, bgmNext);
+    if(pat % 4 === 2) playBgmNote(freq * 2, BGM_BEAT * 0.6, 'triangle', 0.038, bgmNext);
+    if(pat % 2 === 1) playBgmPluck(freq * 1.25, bgmNext + BGM_BEAT * 0.48, 0.042);
+    if(pat % 8 === 0) playBgmNote(82.41, BGM_BEAT * 0.32, 'sine', 0.055, bgmNext);
+    if(pat % 16 === 0){
+      playBgmNote(root * 0.5, BGM_BEAT * 3.2, 'sine', 0.028, bgmNext);
+      playBgmNote(root, BGM_BEAT * 3.2, 'sine', 0.022, bgmNext + 0.02);
+    }
+    bgmNext += BGM_BEAT; bgmStep++;
+  }
+}
+function unlock(){ ensureGraph(); const a = audio(); if(a && a.state === 'suspended') a.resume().then(syncBgmVol).catch(syncBgmVol); else syncBgmVol(); }
+(function bindBgmEl(){
+  const el = $('bgm'); if(!el) return;
+  el.addEventListener('canplay', () => { if(mp3State === 'wait'){ mp3State = 'ok'; syncBgmVol() } });
+  el.addEventListener('playing', () => { mp3State = 'ok' });
+  el.addEventListener('error', () => { mp3State = 'fail'; syncBgmVol() });
+  el.addEventListener('stalled', () => { if(mp3State === 'wait') mp3State = 'fail' });
+})();
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible') unlock();
+  else bgmPause();
+});
 function tone(f1, f2, dur, type='triangle', vol=.12){
   const a = audio(); if(!a || muted) return;
+  ensureGraph();
   const o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
   o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(Math.max(1,f2), t+dur);
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t+dur);
-  o.connect(g).connect(a.destination); o.start(t); o.stop(t+dur);
+  o.connect(g).connect(master); o.start(t); o.stop(t+dur);
 }
-// 鐸（たく）＝ 飛鳥の金属打楽器。倍音を重ねて余韻を残す
 function bell(f, dur, vol){
   const a = audio(); if(!a || muted) return;
+  ensureGraph();
   const t = a.currentTime, out = a.createGain();
   out.gain.setValueAtTime(vol, t); out.gain.exponentialRampToValueAtTime(.0006, t+dur);
   [[1,1],[2.02,.34],[2.97,.16],[4.1,.07]].forEach(([m,v]) => {
@@ -227,7 +467,7 @@ function bell(f, dur, vol){
     o.type = 'sine'; o.frequency.value = f*m; g.gain.value = v;
     o.connect(g).connect(out); o.start(t); o.stop(t+dur);
   });
-  out.connect(a.destination);
+  out.connect(master);
 }
 // 律音階（りつおんかい）で連鎖ごとに音が上がる
 const RITSU = [0,2,5,7,9,12,14,17,19,21];
@@ -244,45 +484,82 @@ const sfx = {
 };
 function buzz(ms){ if(!muted && navigator.vibrate) try{ navigator.vibrate(ms) }catch(e){} }
 function refreshSnd(){ $('btnSnd').textContent = muted ? '🔇' : '🔔'; $('btnSnd').classList.toggle('off', muted) }
-$('btnSnd').onclick = () => { muted = !muted; saveMute(muted); refreshSnd(); if(!muted){ unlock(); bell(step2f(0), .4, .09) } };
+
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if(now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener('dblclick', e => e.preventDefault());
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('touchmove', e => { e.preventDefault() }, { passive: false });
+
+function bindTap(el, handler){
+  if(!el) return;
+  const release = () => el.classList.remove('is-pressed');
+  el.addEventListener('pointerdown', e => {
+    if(e.button !== 0 && e.pointerType === 'mouse') return;
+    e.preventDefault();
+    unlock();
+    try{ el.setPointerCapture(e.pointerId) }catch(err){}
+    el.classList.add('is-pressed');
+    buzz(12);
+    handler(e);
+  });
+  el.addEventListener('pointerup', release);
+  el.addEventListener('pointercancel', release);
+  el.addEventListener('pointerleave', release);
+}
+
+bindTap($('btnSnd'), () => { muted = !muted; saveMute(muted); setMasterMute(); refreshSnd(); syncBgmVol(); if(!muted){ bell(step2f(0), .4, .09) } });
 refreshSnd();
 
 // ---------- screens ----------
-function show(id){ document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)) }
+function show(id){ document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); syncBgmVol(); }
 
 // タイトルの干支リング（12支＋猫がひとつまぎれこむ）
 (function buildRing(){
   const ring = $('ring');
-  const items = ETO.map(e => e[1]);
-  items.splice(7, 0, '🐱');
-  items.forEach((em, i) => {
+  const items = ETO.map((e, k) => ({ kj: e[0], em: e[1], cat: false, k }));
+  items.splice(7, 0, { kj: '猫', em: '🐱', cat: true, k: -1 });
+  items.forEach((it, i) => {
     const s = document.createElement('span');
     const a = (i / items.length) * TAU - Math.PI/2;
-    s.textContent = em;
     s.style.left = (50 + Math.cos(a) * 44) + '%';
     s.style.top  = (50 + Math.sin(a) * 44) + '%';
-    if(em === '🐱') s.className = 'cat';
+    if(it.cat) s.className = 'cat';
+    const em = document.createElement('img');
+    em.className = 'em';
+    em.src = (it.cat ? NEKO_SPR : ETO_SPR[it.k]).toDataURL();
+    em.alt = it.kj;
+    const kj = document.createElement('span');
+    kj.textContent = it.kj;
+    s.appendChild(em); s.appendChild(kj);
     ring.appendChild(s);
   });
 })();
-function refreshBestTitle(){ const b = loadBest(); $('bestTitle').textContent = b ? `さいこう点 ${b}` : '' }
+function refreshBestTitle(){ const b = loadBest(); $('bestTitle').textContent = b ? `最高 ${b}` : '' }
 refreshBestTitle();
 
 (function buildSelect(){
   const g = $('grid12');
   ETO.forEach((e, i) => {
     const b = document.createElement('button');
-    b.innerHTML = `<span class="em">${e[1]}</span><span class="kj">${e[0]}</span><span class="yo">${e[2]}</span>`;
+    const em = document.createElement('img'); em.className = 'em'; em.src = ETO_SPR[i].toDataURL(); em.alt = e[0];
+    const kj = document.createElement('span'); kj.className = 'kj'; kj.textContent = e[0];
+    const yo = document.createElement('span'); yo.className = 'yo'; yo.textContent = e[2];
+    b.append(em, kj, yo);
     b.setAttribute('aria-label', `${e[0]}（${e[2]}）`);
-    b.onclick = () => { my = i; saveMe(i); startGame() };
+    bindTap(b, () => { my = i; saveMe(i); startGame() });
     g.appendChild(b);
   });
 })();
 
-$('btnStart').onclick = () => { unlock(); show('select') };
-$('btnQuit').onclick = () => { running = false; refreshBestTitle(); show('title') };
-$('btnAgain').onclick = () => { $('result').classList.remove('on'); startGame() };
-$('btnReselect').onclick = () => { $('result').classList.remove('on'); show('select') };
+bindTap($('btnStart'), () => { unlock(); show('select') });
+bindTap($('btnQuit'), () => { running = false; refreshBestTitle(); show('title'); syncBgmVol(); });
+bindTap($('btnAgain'), () => { $('result').classList.remove('on'); startGame() });
+bindTap($('btnReselect'), () => { $('result').classList.remove('on'); show('select') });
 
 // ---------- game state ----------
 const cv = $('cv'), ctx = cv.getContext('2d'), garan = $('garan');
@@ -310,6 +587,7 @@ function makeBoard(){
       do{
         k = randKind(); guard++;
       }while(k !== CAT && guard < 30 && (
+        wouldTripleAt(r, c, k) ||
         (c >= 2 && grid[r][c-1].k === k && grid[r][c-2].k === k) ||
         (r >= 2 && grid[r-1][c].k === k && grid[r-2][c].k === k)
       ));
@@ -319,10 +597,72 @@ function makeBoard(){
   if(!hasMoves()) shuffle();
 }
 
+function isEtoK(k){ return k !== CAT && k >= 0 && k < 12 }
+function trioMatch(a, b, c){
+  // 同じ3つ、または十二支の順3つ（子丑寅…戌亥子）と逆順（子亥戌）
+  if(!isEtoK(a) || !isEtoK(b) || !isEtoK(c)) return false;
+  if(a === b && b === c) return true;
+  const d1 = (b - a + 12) % 12, d2 = (c - b + 12) % 12;
+  if(d1 === 1 && d2 === 1) return true;
+  if(d1 === 11 && d2 === 11) return true;
+  return false;
+}
+function wouldTripleAt(r, c, k){
+  if(k === CAT) return false;
+  if(c >= 2){
+    const a = grid[r][c-2].k, b = grid[r][c-1].k;
+    if(trioMatch(a, b, k)) return true;
+  }
+  if(r >= 2){
+    const a = grid[r-2][c].k, b = grid[r-1][c].k;
+    if(trioMatch(a, b, k)) return true;
+  }
+  return false;
+}
+
 function findMatches(){
   const m = new Set();
   const same = (a, b) => a && b && a.k !== CAT && a.k === b.k;
+  function markSeqRow(r){
+    let run = 1, dir = 0;
+    for(let c = 1; c <= COLS; c++){
+      let ok = false;
+      if(c < COLS){
+        const ta = grid[r][c-1], tb = grid[r][c];
+        if(ta && tb && ta.k !== CAT && tb.k !== CAT){
+          const d = (tb.k - ta.k + 12) % 12;
+          if(d === 1 && (run === 1 || dir === 1)){ dir = 1; ok = true }
+          else if(d === 11 && (run === 1 || dir === -1)){ dir = -1; ok = true }
+        }
+      }
+      if(ok) run++;
+      else {
+        if(run >= 3) for(let j = c - run; j < c; j++) m.add(r*COLS + j);
+        run = 1; dir = 0;
+      }
+    }
+  }
+  function markSeqCol(c){
+    let run = 1, dir = 0;
+    for(let r = 1; r <= ROWS; r++){
+      let ok = false;
+      if(r < ROWS){
+        const ta = grid[r-1][c], tb = grid[r][c];
+        if(ta && tb && ta.k !== CAT && tb.k !== CAT){
+          const d = (tb.k - ta.k + 12) % 12;
+          if(d === 1 && (run === 1 || dir === 1)){ dir = 1; ok = true }
+          else if(d === 11 && (run === 1 || dir === -1)){ dir = -1; ok = true }
+        }
+      }
+      if(ok) run++;
+      else {
+        if(run >= 3) for(let j = r - run; j < r; j++) m.add(j*COLS + c);
+        run = 1; dir = 0;
+      }
+    }
+  }
   for(let r = 0; r < ROWS; r++){
+    markSeqRow(r);
     let run = 1;
     for(let c = 1; c <= COLS; c++){
       if(c < COLS && same(grid[r][c], grid[r][c-1])) run++;
@@ -330,6 +670,7 @@ function findMatches(){
     }
   }
   for(let c = 0; c < COLS; c++){
+    markSeqCol(c);
     let run = 1;
     for(let r = 1; r <= ROWS; r++){
       if(r < ROWS && same(grid[r][c], grid[r-1][c])) run++;
@@ -415,6 +756,7 @@ function step(now){
   }else if(garan.style.transform){ garan.style.transform = '' }
   if(flash > 0) flash = Math.max(0, flash - dt * 2.2);
   if(settleWaiters.length && settled()){ const w = settleWaiters; settleWaiters = []; w.forEach(f => f()) }
+  bgmTick(); syncBgmVol();
   draw(now);
   requestAnimationFrame(step);
 }
@@ -439,16 +781,19 @@ function floatText(txt, c, r, color, big){ floats.push({ txt, x: c, y: r, life: 
 // ---------- drawing ----------
 function resize(){
   const wrap = $('wrap'), gs = getComputedStyle(garan);
+  if(!wrap.clientWidth || !wrap.clientHeight) return;
   const padX = parseFloat(gs.paddingLeft) + parseFloat(gs.paddingRight);
   const padY = parseFloat(gs.paddingTop) + parseFloat(gs.paddingBottom);
-  const w = wrap.clientWidth - padX - 4, h = wrap.clientHeight - padY - 22;  // 22 = 屋根と礎石の逃げ
-  cs = Math.max(26, Math.floor(Math.min(w / COLS, h / ROWS)));
+  const w = wrap.clientWidth - padX - 4, h = wrap.clientHeight - padY - 22;
+  cs = Math.max(28, Math.floor(Math.min(w / COLS, h / ROWS)));
   dpr = Math.min(3, window.devicePixelRatio || 1);
   cv.style.width = COLS*cs + 'px'; cv.style.height = ROWS*cs + 'px';
   cv.width = COLS*cs*dpr; cv.height = ROWS*cs*dpr;
   buildBg();
 }
-window.addEventListener('resize', () => { if(running) resize() });
+function onViewResize(){ if(running) resize() }
+window.addEventListener('resize', onViewResize);
+if(window.visualViewport) visualViewport.addEventListener('resize', onViewResize);
 
 function rr(x, y, w, h, r){ ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h) }
 
@@ -507,6 +852,23 @@ function catReady(t){
   return false;
 }
 
+function drawEtoMark(k, R, y){
+  const s = R * 1.26;                       // 猫の顔と同じ見かけの大きさに揃える
+  ctx.drawImage(ETO_SPR[k], -s / 2, y - s * 0.5, s, s);
+}
+function drawEtoLabel(e, R){
+  ctx.fillStyle = 'rgba(21,17,13,.58)';
+  rr(-R * 0.78, R * 0.52, R * 1.56, R * 0.38, R * 0.08); ctx.fill();
+  ctx.font = `${Math.max(9, R * 0.34)}px "Yuji Syuku",serif`;
+  ctx.fillStyle = '#f6f1e6'; ctx.fillText(e[0], 0, R * 0.72);
+}
+function strokeKanji(txt, x, y, size, fill, stroke, lw){
+  ctx.font = `${size}px "Yuji Syuku",serif`;
+  ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.strokeText(txt, x, y);
+  ctx.fillStyle = fill; ctx.fillText(txt, x, y);
+}
+
+// 軒丸瓦（のきまるがわら）の蓮華文タイル — draw() から呼ぶ
 function draw(now){
   if(!running) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -516,7 +878,6 @@ function draw(now){
 
   ctx.save(); rr(0, 0, W, H, 2); ctx.clip();
 
-  // 仏の光（大きく消えたとき立つ金の光柱）
   for(const b of beams){
     const k = 1 - b.life/b.max, a = (1-k) * .30;
     const gr = ctx.createLinearGradient(0, 0, 0, H);
@@ -529,14 +890,12 @@ function draw(now){
   const pulse = .5 + .5*Math.sin(now/260);
   for(const t of tiles) drawTile(t, pulse);
 
-  // 衝撃の輪
   for(const w of waves){
     const k = 1 - w.life/w.max;
     ctx.globalAlpha = (1-k) * .95;
     ctx.strokeStyle = w.color; ctx.lineWidth = Math.max(.8, cs*.14*(1-k));
     ctx.beginPath(); ctx.arc(w.x*cs, w.y*cs, cs*(.20 + k*1.45), 0, TAU); ctx.stroke();
   }
-  // 花びらと金粉
   for(const p of parts){
     ctx.globalAlpha = Math.max(0, Math.min(1, p.life/p.max*1.5));
     ctx.save(); ctx.translate(p.x*cs, p.y*cs); ctx.rotate(p.rot);
@@ -564,9 +923,8 @@ function draw(now){
   ctx.globalAlpha = 1;
 }
 
-// 軒丸瓦（のきまるがわら）の蓮華文タイル
 function drawTile(t, pulse){
-  const cx = (t.x+.5)*cs, cy = (t.y+.5)*cs, R = cs*.42;
+  const cx = (t.x+.5)*cs, cy = (t.y+.5)*cs, R = cs*.46;
   if(cy < -cs) return;
   ctx.save(); ctx.translate(cx, cy);
   const s = Math.max(0, t.s);
@@ -575,27 +933,31 @@ function drawTile(t, pulse){
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
   if(t.k === CAT){
-    // 礎石（そせき）＝四角い石。消せない印
     const ready = !t.dying && catReady(t);
-    if(ready){ // 光背（こうはい）
-      ctx.beginPath(); ctx.arc(0, 0, R*1.28, 0, TAU);
-      ctx.fillStyle = `rgba(212,168,67,${.10 + pulse*.16})`; ctx.fill();
+    if(ready){
+      ctx.beginPath(); ctx.arc(0, 0, R*1.32, 0, TAU);
+      ctx.fillStyle = `rgba(212,168,67,${.12 + pulse*.18})`; ctx.fill();
     }
-    rr(-R, -R, R*2, R*2, R*.14);
-    ctx.fillStyle = '#5b544a'; ctx.fill();
-    ctx.lineWidth = ready ? 3 + pulse*2 : 2;
-    ctx.strokeStyle = ready ? `rgba(212,168,67,${.6 + pulse*.4})` : '#7d7466'; ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,.07)'; rr(-R*.82, -R*.82, R*1.64, R*1.64, R*.1); ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1;
-    for(let i = -2; i <= 2; i++){ ctx.beginPath(); ctx.moveTo(-R*.7, i*R*.3); ctx.lineTo(R*.7, i*R*.3 - R*.08); ctx.stroke() }
-    ctx.font = `${R*1.1}px ${EMOJI_FONT}`; ctx.fillText('🐱', 0, R*.06);
+    rr(-R, -R, R*2, R*2, R*.12);
+    const g = ctx.createLinearGradient(-R, -R, R, R);
+    g.addColorStop(0, '#6a5f52'); g.addColorStop(1, '#4a433b');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = ready ? 3.5 + pulse*2 : 2.5;
+    ctx.strokeStyle = ready ? `rgba(212,168,67,${.75 + pulse*.25})` : '#b7392a'; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,248,235,.12)'; rr(-R*.78, -R*.78, R*1.56, R*1.56, R*.08); ctx.fill();
+    { const s = R * 1.26; ctx.drawImage(NEKO_SPR, -s / 2, -R * 0.12 - s * 0.5, s, s) }
+    strokeKanji('猫', 0, R * 0.82, R * 0.30, '#f6f1e6', '#2b2520', Math.max(2, R * 0.07));
+    if(ready){
+      ctx.font = `700 ${R * 0.20}px "Zen Maru Gothic",sans-serif`;
+      ctx.fillStyle = `rgba(212,168,67,${.85 + pulse * .15})`;
+      ctx.fillText('消せる', 0, -R * 0.92);
+    }
   }else{
     const e = ETO[t.k], mine = t.k === my;
     if(mine){ ctx.shadowColor = 'rgba(212,168,67,.85)'; ctx.shadowBlur = cs*.20 }
     ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fillStyle = e[3]; ctx.fill();
     ctx.shadowBlur = 0;
-    // 複弁蓮華文の花弁8枚
-    ctx.fillStyle = 'rgba(255,255,255,.22)';
+    ctx.fillStyle = 'rgba(255,255,255,.16)';
     for(let i = 0; i < 8; i++){
       ctx.save(); ctx.rotate(i/8*TAU);
       ctx.beginPath(); ctx.moveTo(0, -R*.30);
@@ -603,19 +965,12 @@ function drawTile(t, pulse){
       ctx.quadraticCurveTo(-R*.21, -R*.68, 0, -R*.30);
       ctx.fill(); ctx.restore();
     }
-    // 珠文（しゅもん）の外縁
     ctx.strokeStyle = 'rgba(0,0,0,.22)'; ctx.lineWidth = Math.max(1, R*.09);
     ctx.beginPath(); ctx.arc(0, 0, R*.955, 0, TAU); ctx.stroke();
-    // 中房（ちゅうぼう）
-    ctx.beginPath(); ctx.arc(0, 0, R*.37, 0, TAU); ctx.fillStyle = 'rgba(0,0,0,.20)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, R*.22, 0, TAU); ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fill();
     if(mine){ ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.lineWidth = 3.5; ctx.strokeStyle = '#d4a843'; ctx.stroke() }
-    ctx.font = `${R*.92}px ${EMOJI_FONT}`; ctx.fillText(e[1], 0, -R*.05);
-    // 隅に干支の印
-    ctx.beginPath(); ctx.arc(R*.56, R*.58, R*.30, 0, TAU);
-    ctx.fillStyle = mine ? '#b7392a' : 'rgba(21,17,13,.78)'; ctx.fill();
-    ctx.font = `${R*.40}px "Yuji Syuku",serif`; ctx.fillStyle = '#f2e9d6';
-    ctx.fillText(e[0], R*.56, R*.60);
-    // 白熱（消える瞬間）
+    drawEtoMark(t.k, R, -R * 0.12);
+    drawEtoLabel(e, R);
     if(t.fl > 0){
       ctx.beginPath(); ctx.arc(0, 0, R*1.02, 0, TAU);
       ctx.fillStyle = `rgba(255,248,224,${t.fl*.92})`; ctx.fill();
@@ -643,10 +998,13 @@ function startGame(){
   unlock();
   pickKinds(); score = 0; moves = MOVES; cats = 0; busy = false; sel = null;
   parts = []; floats = []; waves = []; beams = []; shake = 0; flash = 0; hs = 0;
-  $('vMe').textContent = ETO[my][1] + ETO[my][0];
+  $('vMe').textContent = ETO[my][0] + '・' + ETO[my][2];
   $('ruleMe').textContent = ETO[my][0];
-  show('game'); running = true;
-  requestAnimationFrame(() => { resize(); makeBoard(); hud() });
+  show('game'); running = true; syncBgmVol();
+  requestAnimationFrame(() => {
+    resize(); makeBoard(); hud();
+    requestAnimationFrame(resize);
+  });
 }
 
 async function trySwap(a, b){
@@ -725,43 +1083,71 @@ function gravity(){
 function endGame(){
   running && hud();
   const best = Math.max(loadBest(), score); saveBest(best);
-  $('rScore').textContent = score + ' 点';
-  $('rCats').textContent = `一緒に消した猫 ${cats} 匹`;
-  $('rBest').textContent = `さいこう点 ${best}`;
-  const rank = score >= 3000 ? '干支の神さま級' : score >= 2000 ? '年神さまに好かれてる' : score >= 1200 ? 'なかなかの年男・年女' : score >= 600 ? 'まだまだ伸びる' : 'ねこに遊ばれた';
-  $('rRank').textContent = rank;
+  $('rScore').textContent = String(score);
+  $('rCats').textContent = `猫 ${cats}`;
+  $('rBest').textContent = `最高 ${best}`;
+  const rank = score >= 3000 ? '神域' : score >= 2000 ? '流通' : score >= 1200 ? '残印' : score >= 600 ? '端数' : '猫勝ち';
+  $('rHead').textContent = rank;
+  $('rRank').textContent = '';
   $('result').classList.add('on');
+  syncBgmVol();
 }
 
 // ---------- input ----------
 let press = null;
+const SWIPE_MIN = 0.18, CELL_HIT = 0.92;
+
 function cellAt(e){
   const b = cv.getBoundingClientRect();
-  const c = Math.floor((e.clientX - b.left) / cs), r = Math.floor((e.clientY - b.top) / cs);
-  return (r >= 0 && r < ROWS && c >= 0 && c < COLS) ? { r, c } : null;
+  const x = e.clientX - b.left, y = e.clientY - b.top;
+  if(x < 0 || y < 0 || x > b.width || y > b.height) return null;
+  const br = Math.max(0, Math.min(ROWS - 1, Math.floor(y / cs)));
+  const bc = Math.max(0, Math.min(COLS - 1, Math.floor(x / cs)));
+  let best = null, bestD = Infinity;
+  for(let dr = -1; dr <= 1; dr++) for(let dc = -1; dc <= 1; dc++){
+    const r = br + dr, c = bc + dc;
+    if(r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+    const cx = (c + 0.5) * cs, cy = (r + 0.5) * cs;
+    const d = (x - cx) ** 2 + (y - cy) ** 2;
+    if(d < bestD){ bestD = d; best = { r, c } }
+  }
+  return bestD <= (cs * CELL_HIT) ** 2 ? best : null;
 }
+
+function endPress(e){
+  if(!press || (e && press.id != null && e.pointerId !== press.id)) return;
+  const p = press; press = null;
+  if(sel && Math.abs(sel.r - p.r) + Math.abs(sel.c - p.c) === 1){ trySwap(sel, p); sel = null; return }
+  if(sel && sel.r === p.r && sel.c === p.c) sel = null;
+  else sel = { r: p.r, c: p.c };
+  buzz(8);
+}
+
 cv.addEventListener('pointerdown', e => {
+  if(e.button !== 0 && e.pointerType === 'mouse') return;
   unlock();
   if(busy) return;
   const p = cellAt(e); if(!p) return;
-  press = { ...p, x: e.clientX, y: e.clientY };
+  if(sel && Math.abs(sel.r - p.r) + Math.abs(sel.c - p.c) === 1){
+    trySwap(sel, p); sel = null; press = null;
+    try{ cv.setPointerCapture(e.pointerId) }catch(err){}
+    return;
+  }
+  press = { ...p, x: e.clientX, y: e.clientY, id: e.pointerId };
   try{ cv.setPointerCapture(e.pointerId) }catch(err){}
 });
 cv.addEventListener('pointermove', e => {
-  if(!press || busy) return;
+  if(!press || busy || e.pointerId !== press.id) return;
   const dx = e.clientX - press.x, dy = e.clientY - press.y;
-  if(Math.hypot(dx, dy) < cs*.35) return;
-  const b = Math.abs(dx) > Math.abs(dy) ? { r: press.r, c: press.c + Math.sign(dx) } : { r: press.r + Math.sign(dy), c: press.c };
+  if(Math.hypot(dx, dy) < cs * SWIPE_MIN) return;
+  const b = Math.abs(dx) > Math.abs(dy)
+    ? { r: press.r, c: press.c + Math.sign(dx) }
+    : { r: press.r + Math.sign(dy), c: press.c };
   const a = { r: press.r, c: press.c }; press = null;
   if(b.r >= 0 && b.r < ROWS && b.c >= 0 && b.c < COLS) trySwap(a, b);
 });
-cv.addEventListener('pointerup', () => {
-  if(!press) return;
-  const p = press; press = null;
-  if(sel && Math.abs(sel.r - p.r) + Math.abs(sel.c - p.c) === 1){ const a = sel; trySwap(a, p) }
-  else if(sel && sel.r === p.r && sel.c === p.c) sel = null;
-  else sel = { r: p.r, c: p.c };
-});
+cv.addEventListener('pointerup', endPress);
+cv.addEventListener('pointercancel', endPress);
 
 requestAnimationFrame(step);
 })();
