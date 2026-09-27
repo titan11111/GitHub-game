@@ -300,6 +300,7 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
       <p class="arrow">↘ 子 → 丑 → 寅 で消える</p>
       <p>② <strong>同じ干支3つ</strong>、または<strong>十二支の順に3つ</strong>で消えます。逆順も、戌→亥→子のような一周も有効です。</p>
       <p>③ 自分の干支が消えると、隣の猫も一緒に消えて高得点。手詰まりなら「猫けし」で盤面の猫をまとめて消せます（1匹50点）。<strong>1ゲーム2回まで</strong>。</p>
+      <p>④ 制限時間は<strong>3分</strong>。時間内に<strong>何枚消せるか</strong>を競います。</p>
       <button class="hanko" id="btnHow">干支を選ぶ</button>
     </div>
   </section>
@@ -312,8 +313,8 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
 
   <section class="screen" id="game">
     <div class="hud">
-      <div class="box" id="hudMoves"><div class="lb">手数</div><div class="v" id="vMoves">30</div></div>
-      <div class="box"><div class="lb">点数</div><div class="v" id="vScore">0</div></div>
+      <div class="box" id="hudTime"><div class="lb">のこり</div><div class="v" id="vTime">3:00</div></div>
+      <div class="box"><div class="lb">消した</div><div class="v" id="vCleared">0</div></div>
       <div class="box"><div class="lb">猫</div><div class="v" id="vCats">0</div></div>
       <div class="box me"><div class="lb">あなた</div><div class="v" id="vMe">🐯寅</div></div>
       <button class="box snd" id="btnSnd" aria-label="BGMと効果音のオンオフ">🔔</button>
@@ -328,7 +329,7 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
 
   <div id="result">
     <div class="card">
-      <p class="brand">終了</p>
+      <p class="brand">時間切れ</p>
       <h3 id="rHead">尽きた</h3>
       <div class="big" id="rScore">0</div>
       <p class="sub" id="rCats"></p>
@@ -357,7 +358,9 @@ const ETO = [
   ['午','🐴','うま','#b93c2c'], ['未','🐑','ひつじ','#cdbf9a'], ['申','🐵','さる','#a86234'],
   ['酉','🐔','とり','#b23a5e'], ['戌','🐶','いぬ','#4e6fa3'], ['亥','🐗','い','#5a6b3a']
 ];
-const COLS = 9, ROWS = 12, CAT = -1, MOVES = 30, CAT_RATE = 0.09, KINDS = 12;
+const COLS = 9, ROWS = 12, CAT = -1, TIME = 180, CAT_RATE = 0.09, KINDS = 12;
+const RANK = [600, 450, 300, 150];   // 消した枚数のしきい値（神域／達人／一人前／端数）
+// 根拠（WebKit 390×844・3分の自動プレイ実測）: 即断ボット=294手/1380枚、1.2秒考えるボット=104手/450枚。1手あたり約4.3枚
 const ETO_SPR = bakeEtoSprites(160);
 const NEKO_SPR = bakeNekoSprite(160);
 const TAU = Math.PI * 2;
@@ -366,8 +369,9 @@ const $ = id => document.getElementById(id);
 const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ---------- storage ----------
-function loadBest(){ try{ return +localStorage.getItem('etokeshi_best') || 0 }catch(e){ return 0 } }
-function saveBest(v){ try{ localStorage.setItem('etokeshi_best', v) }catch(e){} }
+const BEST_KEY = 'tg.262.best-cleared';   // 3分で消した枚数。旧 etokeshi_best（点数）とは別指標なので別キー
+function loadBest(){ try{ return +localStorage.getItem(BEST_KEY) || 0 }catch(e){ return 0 } }
+function saveBest(v){ try{ localStorage.setItem(BEST_KEY, v) }catch(e){} }
 function loadMe(){ try{ const v = localStorage.getItem('etokeshi_me'); return v === null ? null : +v }catch(e){ return null } }
 function saveMe(v){ try{ localStorage.setItem('etokeshi_me', v) }catch(e){} }
 function loadMute(){ try{ return localStorage.getItem('tg.262.mute') === '1' }catch(e){ return false } }
@@ -505,6 +509,7 @@ const sfx = {
     if(size >= 4) tone(110, 62, .22, 'sine', .16);            // 太鼓のひと打ち
     if(size >= 5) setTimeout(() => bell(step2f(RITSU[Math.min(combo+1, RITSU.length-1)]+12), .9, .07), 70);
   },
+  tick: () => tone(1180, 1180, .05, 'square', .09),
   nya: () => { tone(900, 520, .22, 'sine', .14); setTimeout(()=>tone(700, 1000, .12, 'sine', .08), 90) },
   bad: () => tone(200, 150, .12, 'square', .05),
   swap: () => tone(360, 420, .05, 'sine', .05)
@@ -566,7 +571,7 @@ function show(id){ document.querySelectorAll('.screen').forEach(s => s.classList
     ring.appendChild(s);
   });
 })();
-function refreshBestTitle(){ const b = loadBest(); $('bestTitle').textContent = b ? `最高 ${b}` : '' }
+function refreshBestTitle(){ const b = loadBest(); $('bestTitle').textContent = b ? `最高 ${b}枚` : '' }
 refreshBestTitle();
 
 (function buildSelect(){
@@ -592,7 +597,7 @@ bindTap($('btnReselect'), () => { $('result').classList.remove('on'); show('sele
 // ---------- game state ----------
 const cv = $('cv'), ctx = cv.getContext('2d'), garan = $('garan');
 let my = loadMe() ?? 2, kinds = [], grid = [], tiles = [], parts = [], floats = [], waves = [], beams = [];
-let score = 0, moves = MOVES, cats = 0, rescues = 2, stuck = false, busy = false, sel = null, running = false, cs = 48, dpr = 1;
+let score = 0, timeLeft = TIME, cleared = 0, cats = 0, rescues = 2, stuck = false, busy = false, sel = null, running = false, ended = false, cs = 48, dpr = 1;
 // 迷ったら光らせる：最後に消してからの経過秒。HINT_SEC で光り出す
 const HINT_SEC = 30;
 let idle = 0, hintCells = [];
@@ -753,8 +758,16 @@ function step(now){
   }else if(garan.style.transform){ garan.style.transform = '' }
   if(flash > 0) flash = Math.max(0, flash - dt * 2.2);
   if(settleWaiters.length && settled()){ const w = settleWaiters; settleWaiters = []; w.forEach(f => f()) }
+  // 残り時間：実時間で進める（ヒットストップでは止めない）
+  if(running && !ended && document.visibilityState === 'visible'){
+    const was = Math.max(0, Math.ceil(timeLeft));
+    timeLeft -= raw;
+    const nowS = Math.max(0, Math.ceil(timeLeft));
+    if(nowS !== was){ hud(); if(nowS > 0 && nowS <= 5) sfx.tick() }
+    if(timeLeft <= 0){ timeLeft = 0; if(!busy) endGame() }
+  }
   // 迷っている時間を数える：手を動かせる状態で HINT_SEC 秒止まったらキラキラで教える
-  if(running && !busy && !stuck && moves > 0 && !$('result').classList.contains('on')){
+  if(running && !busy && !stuck && timeLeft > 0 && !$('result').classList.contains('on')){
     idle += raw;
     if(idle >= HINT_SEC && !hintCells.length) hintCells = findHint();
   }
@@ -1012,16 +1025,18 @@ function drawTile(t, pulse){
 
 // ---------- HUD ----------
 function hud(){
-  $('vMoves').textContent = moves; $('vScore').textContent = score; $('vCats').textContent = cats;
-  $('hudMoves').classList.toggle('low', moves <= 5);
+  const s = Math.max(0, Math.ceil(timeLeft));
+  $('vTime').textContent = (s/60|0) + ':' + String(s%60).padStart(2, '0');
+  $('vCleared').textContent = cleared; $('vCats').textContent = cats;
+  $('hudTime').classList.toggle('low', timeLeft <= 30);
   $('vRescue').textContent = `あと${rescues}回`;
-  $('btnRescue').disabled = !stuck || rescues <= 0 || busy || moves <= 0;
+  $('btnRescue').disabled = !stuck || rescues <= 0 || busy || timeLeft <= 0;
 }
 
 // ---------- flow ----------
 function startGame(){
   unlock();
-  pickKinds(); score = 0; moves = MOVES; cats = 0; rescues = 2; stuck = false; busy = false; sel = null;
+  pickKinds(); score = 0; timeLeft = TIME; cleared = 0; cats = 0; rescues = 2; stuck = false; busy = false; sel = null; ended = false;
   idle = 0; hintCells = [];
   parts = []; floats = []; waves = []; beams = []; shake = 0; flash = 0; hs = 0;
   $('vMe').textContent = ETO[my][0] + '・' + ETO[my][2];
@@ -1034,7 +1049,7 @@ function startGame(){
 }
 
 async function trySwap(a, b){
-  if(busy || moves <= 0) return;
+  if(busy || timeLeft <= 0) return;
   busy = true; sel = null;
   swapGrid(a, b); sfx.swap();
   await waitSettle();
@@ -1042,7 +1057,7 @@ async function trySwap(a, b){
   if(m.size === 0){
     sfx.bad(); swapGrid(a, b); await waitSettle(); busy = false; return;
   }
-  moves--; stuck = false; hud();
+  stuck = false; hud();
   await resolveMatches(m);
 }
 
@@ -1061,7 +1076,7 @@ async function resolveMatches(m){
       }
     });
     const gained = m.size * 10 * combo + catSet.size * 50 * combo;
-    score += gained; cats += catSet.size;
+    score += gained; cats += catSet.size; cleared += m.size + catSet.size;
     sfx.pop(combo, m.size);
     if(catSet.size) setTimeout(sfx.nya, 80);
     buzz(Math.min(60, 10 + combo*6 + m.size*3));
@@ -1095,7 +1110,7 @@ async function resolveMatches(m){
     m = findMatches();
   }
   idle = 0; hintCells = [];                 // 盤が動いたらヒントを消して数え直す
-  if(moves <= 0){ await sleep(400); endGame(); return }
+  if(timeLeft <= 0){ await sleep(400); endGame(); return }
   stuck = !hasMoves();
   if(stuck && rescues > 0) floatText('手詰まり！猫けしを使おう', COLS/2 - .5, ROWS/2 - .5, '#ffe6a3');
   if(stuck && rescues <= 0){ floatText('シャッフル', COLS/2 - .5, ROWS/2 - .5, '#b3a488'); shuffle(); stuck = false }
@@ -1104,7 +1119,7 @@ async function resolveMatches(m){
 }
 
 bindTap($('btnRescue'), async () => {
-  if(busy || !stuck || rescues <= 0 || moves <= 0) return;
+  if(busy || !stuck || rescues <= 0 || timeLeft <= 0) return;
   const catIdx = [];
   for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]?.k === CAT) catIdx.push(r*COLS+c);
   if(!catIdx.length){ shuffle(); stuck = false; hud(); return }   // 猫がいないときは消費せずシャッフル
@@ -1112,10 +1127,10 @@ bindTap($('btnRescue'), async () => {
   await eraseCats(catIdx);
 });
 
-// 盤面の猫をまとめて消す（1匹50点）。手数は消費しない
+// 盤面の猫をまとめて消す（1匹50点）
 async function eraseCats(idxs){
   const gained = idxs.length * 50;
-  score += gained; cats += idxs.length;
+  score += gained; cats += idxs.length; cleared += idxs.length;
   sfx.pop(1, idxs.length);
   setTimeout(sfx.nya, 80);
   buzz(Math.min(60, 12 + idxs.length * 5));
@@ -1149,12 +1164,13 @@ function gravity(){
 }
 
 function endGame(){
-  running && hud();
-  const best = Math.max(loadBest(), score); saveBest(best);
-  $('rScore').textContent = String(score);
-  $('rCats').textContent = `猫 ${cats}`;
-  $('rBest').textContent = `最高 ${best}`;
-  const rank = score >= 3000 ? '神域' : score >= 2000 ? '流通' : score >= 1200 ? '残印' : score >= 600 ? '端数' : '猫勝ち';
+  if(ended) return;
+  ended = true; timeLeft = 0; running && hud();
+  const best = Math.max(loadBest(), cleared); saveBest(best);
+  $('rScore').textContent = cleared + '枚';
+  $('rCats').textContent = `点数 ${score}　猫 ${cats}`;
+  $('rBest').textContent = `最高 ${best}枚`;
+  const rank = cleared >= RANK[0] ? '神域' : cleared >= RANK[1] ? '達人' : cleared >= RANK[2] ? '一人前' : cleared >= RANK[3] ? '端数' : '猫勝ち';
   $('rHead').textContent = rank;
   $('rRank').textContent = '';
   $('result').classList.add('on');
