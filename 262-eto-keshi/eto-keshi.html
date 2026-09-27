@@ -135,6 +135,15 @@ button.is-pressed{transform:scale(.92);opacity:.88}
 .note{font-size:12px;color:var(--usu);text-align:center;line-height:1.45;max-width:36em;margin:0;flex-shrink:0}
 .best{font-size:13px;color:#e9d9ac;font-family:"Yuji Syuku",serif;letter-spacing:.18em;position:relative;z-index:1}
 .best:empty{display:none}
+.how{justify-content:center;gap:12px;padding:max(14px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px));overflow:auto}
+.how .card{max-width:390px;padding:20px 18px;text-align:left}
+.how h2{font-family:"Yuji Syuku",serif;text-align:center;font-size:30px;margin:0 0 10px}
+.how p{font-size:14px;line-height:1.5;margin:8px 0}
+.how .diagram{display:grid;grid-template-columns:repeat(3,48px);gap:3px;justify-content:center;margin:8px auto}
+.how .diagram span{height:43px;display:grid;place-items:center;background:#e7d6b2;border:1px solid #a58f62;border-radius:3px;font-size:21px}
+.how .diagram .pick{background:#e9b866;border:2px solid var(--shu)}
+.how .arrow{text-align:center;color:var(--shu);font-weight:900}
+.how .hanko{display:block;margin:8px auto 0;font-size:22px}
 
 /* 干支えらび */
 .sel{
@@ -175,7 +184,7 @@ button.is-pressed{transform:scale(.92);opacity:.88}
 .hud .snd{flex:0 0 48px;min-width:48px;min-height:48px;display:flex;align-items:center;justify-content:center;font-size:20px;padding:0;touch-action:manipulation}
 .hud .snd.off{opacity:.45}
 
-#wrap{flex:1;min-height:0;width:100%;display:flex;align-items:flex-end;justify-content:center;touch-action:none}
+#wrap{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;touch-action:none}
 .garan{
   position:relative;padding:8px 8px 10px;border-radius:3px;
   background:linear-gradient(90deg,var(--shu3),var(--shu) 16%,var(--shu2) 50%,var(--shu) 84%,var(--shu3));
@@ -199,6 +208,8 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
 .rule{font-size:11px;color:var(--usu);text-align:left;line-height:1.35;margin:0;flex:1}
 .rule b{color:var(--shu);font-weight:700}
 .quit{background:transparent;color:var(--usu);font-size:13px;text-decoration:underline;padding:12px 10px;min-height:48px;flex-shrink:0;touch-action:manipulation}
+.rescue{background:#b7392a;color:#fff5df;border:1px solid #d4a843;border-radius:3px;padding:5px 9px;font-size:12px;line-height:1.2;min-width:94px}
+.rescue:disabled{opacity:.43;cursor:default}
 
 #result{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:5;
   background:
@@ -264,7 +275,6 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
 <div id="app">
 
   <section class="screen on" id="title">
-    <p class="brand">流通禁止</p>
     <div class="ring" id="ring">
       <div class="title">
         <div class="tcol">
@@ -278,10 +288,26 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
     <p class="best" id="bestTitle"></p>
   </section>
 
+  <section class="screen how" id="how">
+    <div class="card">
+      <h2>遊びかた</h2>
+      <p>① 干支をひとつ選びます。盤面の駒を<strong>縦・横・斜め</strong>に入れ替えて、3つを一列にそろえましょう。</p>
+      <div class="diagram" aria-label="子、丑、寅を斜めにそろえる例">
+        <span class="pick">子</span><span>卯</span><span>申</span>
+        <span>午</span><span class="pick">丑</span><span>亥</span>
+        <span>巳</span><span>酉</span><span class="pick">寅</span>
+      </div>
+      <p class="arrow">↘ 子 → 丑 → 寅 で消える</p>
+      <p>② <strong>同じ干支3つ</strong>、または<strong>十二支の順に3つ</strong>で消えます。逆順も、戌→亥→子のような一周も有効です。</p>
+      <p>③ 自分の干支が消えると、隣の猫も一緒に消えて高得点。手詰まりなら「猫けし」で盤面の猫をまとめて消せます（1匹50点）。<strong>1ゲーム2回まで</strong>。</p>
+      <button class="hanko" id="btnHow">干支を選ぶ</button>
+    </div>
+  </section>
+
   <section class="screen sel" id="select">
     <h2>あなたの干支は？</h2>
     <div class="grid12" id="grid12"></div>
-    <p class="note">猫は、選んだ干支が消えるとき<strong>隣にいれば</strong>一緒に消えます。同じ3つ、または順の3つ（<strong>戌亥子</strong>も）で消えます。</p>
+    <p class="note">選んだ干支が消えると、隣の猫も一緒に消えます。</p>
   </section>
 
   <section class="screen" id="game">
@@ -294,7 +320,8 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
     </div>
     <div id="wrap"><div class="garan" id="garan"><canvas id="cv"></canvas></div></div>
     <div class="foot">
-      <p class="rule">なぞる／隣タップ。同じ3つ、または順の3つ（<strong>子丑寅</strong>…<strong>戌亥子</strong>）。<b id="ruleMe">寅</b>の隣の猫も消える。</p>
+      <p class="rule">縦横斜めに交換。3つそろえて消す。<b id="ruleMe">寅</b>の隣の猫も消える。</p>
+      <button class="rescue" id="btnRescue" disabled>猫けし<br><span id="vRescue">あと2回</span></button>
       <button class="quit" id="btnQuit">やめる</button>
     </div>
   </section>
@@ -330,7 +357,7 @@ const ETO = [
   ['午','🐴','うま','#b93c2c'], ['未','🐑','ひつじ','#cdbf9a'], ['申','🐵','さる','#a86234'],
   ['酉','🐔','とり','#b23a5e'], ['戌','🐶','いぬ','#4e6fa3'], ['亥','🐗','い','#5a6b3a']
 ];
-const COLS = 7, ROWS = 8, CAT = -1, MOVES = 30, CAT_RATE = 0.09, KINDS = 12;
+const COLS = 9, ROWS = 12, CAT = -1, MOVES = 30, CAT_RATE = 0.09, KINDS = 12;
 const ETO_SPR = bakeEtoSprites(160);
 const NEKO_SPR = bakeNekoSprite(160);
 const TAU = Math.PI * 2;
@@ -556,7 +583,8 @@ refreshBestTitle();
   });
 })();
 
-bindTap($('btnStart'), () => { unlock(); show('select') });
+bindTap($('btnStart'), () => { unlock(); show('how') });
+bindTap($('btnHow'), () => show('select'));
 bindTap($('btnQuit'), () => { running = false; refreshBestTitle(); show('title'); syncBgmVol(); });
 bindTap($('btnAgain'), () => { $('result').classList.remove('on'); startGame() });
 bindTap($('btnReselect'), () => { $('result').classList.remove('on'); show('select') });
@@ -564,7 +592,10 @@ bindTap($('btnReselect'), () => { $('result').classList.remove('on'); show('sele
 // ---------- game state ----------
 const cv = $('cv'), ctx = cv.getContext('2d'), garan = $('garan');
 let my = loadMe() ?? 2, kinds = [], grid = [], tiles = [], parts = [], floats = [], waves = [], beams = [];
-let score = 0, moves = MOVES, cats = 0, busy = false, sel = null, running = false, cs = 48, dpr = 1;
+let score = 0, moves = MOVES, cats = 0, rescues = 2, stuck = false, busy = false, sel = null, running = false, cs = 48, dpr = 1;
+// 迷ったら光らせる：最後に消してからの経過秒。HINT_SEC で光り出す
+const HINT_SEC = 30;
+let idle = 0, hintCells = [];
 let uid = 0, shake = 0, flash = 0, hs = 0, bg = null;
 
 function pickKinds(){
@@ -609,72 +640,20 @@ function trioMatch(a, b, c){
 }
 function wouldTripleAt(r, c, k){
   if(k === CAT) return false;
-  if(c >= 2){
-    const a = grid[r][c-2].k, b = grid[r][c-1].k;
-    if(trioMatch(a, b, k)) return true;
-  }
-  if(r >= 2){
-    const a = grid[r-2][c].k, b = grid[r-1][c].k;
-    if(trioMatch(a, b, k)) return true;
+  for(const [dr,dc] of [[0,1],[1,0],[1,1],[1,-1]]){
+    const a = grid[r-2*dr]?.[c-2*dc]?.k;
+    const b = grid[r-dr]?.[c-dc]?.k;
+    if(a !== undefined && b !== undefined && trioMatch(a,b,k)) return true;
   }
   return false;
 }
 
 function findMatches(){
   const m = new Set();
-  const same = (a, b) => a && b && a.k !== CAT && a.k === b.k;
-  function markSeqRow(r){
-    let run = 1, dir = 0;
-    for(let c = 1; c <= COLS; c++){
-      let ok = false;
-      if(c < COLS){
-        const ta = grid[r][c-1], tb = grid[r][c];
-        if(ta && tb && ta.k !== CAT && tb.k !== CAT){
-          const d = (tb.k - ta.k + 12) % 12;
-          if(d === 1 && (run === 1 || dir === 1)){ dir = 1; ok = true }
-          else if(d === 11 && (run === 1 || dir === -1)){ dir = -1; ok = true }
-        }
-      }
-      if(ok) run++;
-      else {
-        if(run >= 3) for(let j = c - run; j < c; j++) m.add(r*COLS + j);
-        run = 1; dir = 0;
-      }
-    }
-  }
-  function markSeqCol(c){
-    let run = 1, dir = 0;
-    for(let r = 1; r <= ROWS; r++){
-      let ok = false;
-      if(r < ROWS){
-        const ta = grid[r-1][c], tb = grid[r][c];
-        if(ta && tb && ta.k !== CAT && tb.k !== CAT){
-          const d = (tb.k - ta.k + 12) % 12;
-          if(d === 1 && (run === 1 || dir === 1)){ dir = 1; ok = true }
-          else if(d === 11 && (run === 1 || dir === -1)){ dir = -1; ok = true }
-        }
-      }
-      if(ok) run++;
-      else {
-        if(run >= 3) for(let j = r - run; j < r; j++) m.add(j*COLS + c);
-        run = 1; dir = 0;
-      }
-    }
-  }
-  for(let r = 0; r < ROWS; r++){
-    markSeqRow(r);
-    let run = 1;
-    for(let c = 1; c <= COLS; c++){
-      if(c < COLS && same(grid[r][c], grid[r][c-1])) run++;
-      else { if(run >= 3) for(let i = c - run; i < c; i++) m.add(r*COLS + i); run = 1 }
-    }
-  }
-  for(let c = 0; c < COLS; c++){
-    markSeqCol(c);
-    let run = 1;
-    for(let r = 1; r <= ROWS; r++){
-      if(r < ROWS && same(grid[r][c], grid[r-1][c])) run++;
-      else { if(run >= 3) for(let i = r - run; i < r; i++) m.add(i*COLS + c); run = 1 }
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    for(const [dr,dc] of [[0,1],[1,0],[1,1],[1,-1]]){
+      const a=grid[r][c]?.k,b=grid[r+dr]?.[c+dc]?.k,d=grid[r+2*dr]?.[c+2*dc]?.k;
+      if(trioMatch(a,b,d)) for(let i=0;i<3;i++) m.add((r+i*dr)*COLS+c+i*dc);
     }
   }
   return m;
@@ -689,8 +668,8 @@ function swapGrid(a, b){
 
 function hasMoves(){
   for(let r = 0; r < ROWS; r++) for(let c = 0; c < COLS; c++){
-    for(const [dr, dc] of [[0,1],[1,0]]){
-      const r2 = r+dr, c2 = c+dc; if(r2 >= ROWS || c2 >= COLS) continue;
+    for(const [dr, dc] of [[0,1],[1,0],[1,1],[1,-1]]){
+      const r2 = r+dr, c2 = c+dc; if(r2 >= ROWS || c2 < 0 || c2 >= COLS) continue;
       swapGrid({r,c}, {r:r2,c:c2});
       const ok = findMatches().size > 0;
       swapGrid({r,c}, {r:r2,c:c2});
@@ -698,6 +677,24 @@ function hasMoves(){
     }
   }
   return false;
+}
+
+// 1手で消せる組を1つだけ返す（交換する2マス＋そろう3マス）
+function findHint(){
+  for(let r = 0; r < ROWS; r++) for(let c = 0; c < COLS; c++){
+    for(const [dr, dc] of [[0,1],[1,0],[1,1],[1,-1]]){
+      const r2 = r+dr, c2 = c+dc; if(r2 >= ROWS || c2 < 0 || c2 >= COLS) continue;
+      swapGrid({r,c}, {r:r2,c:c2});
+      const m = findMatches();
+      swapGrid({r,c}, {r:r2,c:c2});
+      if(m.size){
+        const idx = new Set(m);
+        idx.add(r*COLS + c); idx.add(r2*COLS + c2);      // 交換する2マスも光らせる（重複はSetで潰す）
+        return [...idx].map(i => ({ r: i / COLS | 0, c: i % COLS }));
+      }
+    }
+  }
+  return [];
 }
 
 function shuffle(){
@@ -756,6 +753,11 @@ function step(now){
   }else if(garan.style.transform){ garan.style.transform = '' }
   if(flash > 0) flash = Math.max(0, flash - dt * 2.2);
   if(settleWaiters.length && settled()){ const w = settleWaiters; settleWaiters = []; w.forEach(f => f()) }
+  // 迷っている時間を数える：手を動かせる状態で HINT_SEC 秒止まったらキラキラで教える
+  if(running && !busy && !stuck && moves > 0 && !$('result').classList.contains('on')){
+    idle += raw;
+    if(idle >= HINT_SEC && !hintCells.length) hintCells = findHint();
+  }
   bgmTick(); syncBgmVol();
   draw(now);
   requestAnimationFrame(step);
@@ -890,6 +892,27 @@ function draw(now){
   const pulse = .5 + .5*Math.sin(now/260);
   for(const t of tiles) drawTile(t, pulse);
 
+  if(hintCells.length){
+    const k = RM ? .6 : .5 + .5*Math.sin(now/200);
+    ctx.save();
+    for(const h of hintCells){
+      const x = (h.c+.5)*cs, y = (h.r+.5)*cs, R = cs*.46;
+      ctx.globalAlpha = .30 + k*.45;
+      ctx.strokeStyle = '#ffe9b0'; ctx.lineWidth = Math.max(1.5, cs*.055);
+      ctx.beginPath(); ctx.arc(x, y, R*(1.02 + k*.10), 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#fff6df';
+      for(let i = 0; i < 4; i++){
+        const a = (RM ? 0 : now/700) + i/4*TAU, d = R*(1.12 + k*.16);
+        const sx = x + Math.cos(a)*d, sy = y + Math.sin(a)*d, s = cs*(.05 + k*.035);
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - s); ctx.lineTo(sx + s*.30, sy - s*.30); ctx.lineTo(sx + s, sy);
+        ctx.lineTo(sx + s*.30, sy + s*.30); ctx.lineTo(sx, sy + s); ctx.lineTo(sx - s*.30, sy + s*.30);
+        ctx.lineTo(sx - s, sy); ctx.lineTo(sx - s*.30, sy - s*.30); ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+
   for(const w of waves){
     const k = 1 - w.life/w.max;
     ctx.globalAlpha = (1-k) * .95;
@@ -991,12 +1014,15 @@ function drawTile(t, pulse){
 function hud(){
   $('vMoves').textContent = moves; $('vScore').textContent = score; $('vCats').textContent = cats;
   $('hudMoves').classList.toggle('low', moves <= 5);
+  $('vRescue').textContent = `あと${rescues}回`;
+  $('btnRescue').disabled = !stuck || rescues <= 0 || busy || moves <= 0;
 }
 
 // ---------- flow ----------
 function startGame(){
   unlock();
-  pickKinds(); score = 0; moves = MOVES; cats = 0; busy = false; sel = null;
+  pickKinds(); score = 0; moves = MOVES; cats = 0; rescues = 2; stuck = false; busy = false; sel = null;
+  idle = 0; hintCells = [];
   parts = []; floats = []; waves = []; beams = []; shake = 0; flash = 0; hs = 0;
   $('vMe').textContent = ETO[my][0] + '・' + ETO[my][2];
   $('ruleMe').textContent = ETO[my][0];
@@ -1016,7 +1042,11 @@ async function trySwap(a, b){
   if(m.size === 0){
     sfx.bad(); swapGrid(a, b); await waitSettle(); busy = false; return;
   }
-  moves--; hud();
+  moves--; stuck = false; hud();
+  await resolveMatches(m);
+}
+
+async function resolveMatches(m){
   let combo = 0;
   while(m.size){
     combo++;
@@ -1025,7 +1055,7 @@ async function trySwap(a, b){
     m.forEach(idx => {
       const r = idx / COLS | 0, c = idx % COLS;
       if(grid[r][c].k !== my) return;
-      for(const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      for(const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
         const n = grid[r+dr]?.[c+dc];
         if(n && n.k === CAT) catSet.add((r+dr)*COLS + (c+dc));
       }
@@ -1064,9 +1094,47 @@ async function trySwap(a, b){
     await waitSettle();
     m = findMatches();
   }
+  idle = 0; hintCells = [];                 // 盤が動いたらヒントを消して数え直す
   if(moves <= 0){ await sleep(400); endGame(); return }
-  if(!hasMoves()){ floatText('シャッフル', COLS/2 - .5, ROWS/2 - .5, '#b3a488'); shuffle() }
+  stuck = !hasMoves();
+  if(stuck && rescues > 0) floatText('手詰まり！猫けしを使おう', COLS/2 - .5, ROWS/2 - .5, '#ffe6a3');
+  if(stuck && rescues <= 0){ floatText('シャッフル', COLS/2 - .5, ROWS/2 - .5, '#b3a488'); shuffle(); stuck = false }
   busy = false;
+  hud();
+}
+
+bindTap($('btnRescue'), async () => {
+  if(busy || !stuck || rescues <= 0 || moves <= 0) return;
+  const catIdx = [];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]?.k === CAT) catIdx.push(r*COLS+c);
+  if(!catIdx.length){ shuffle(); stuck = false; hud(); return }   // 猫がいないときは消費せずシャッフル
+  busy = true; rescues--; stuck = false; hud();
+  await eraseCats(catIdx);
+});
+
+// 盤面の猫をまとめて消す（1匹50点）。手数は消費しない
+async function eraseCats(idxs){
+  const gained = idxs.length * 50;
+  score += gained; cats += idxs.length;
+  sfx.pop(1, idxs.length);
+  setTimeout(sfx.nya, 80);
+  buzz(Math.min(60, 12 + idxs.length * 5));
+  hs = .10; shake = Math.min(9, 2.6 + idxs.length * .9);
+  flash = Math.min(1, .28 + idxs.length * .08);
+  let sumC = 0, sumR = 0;
+  idxs.forEach(idx => {
+    const r = idx / COLS | 0, c = idx % COLS, t = grid[r][c];
+    burst(c, r, '#d4a843', 18); ring(c, r, 'rgba(212,168,67,.95)'); beam(c, r);
+    t.dying = true; t.age = 0; grid[r][c] = null; sumC += c; sumR += r;
+    floatText('にゃ！', c, r, '#ffe6a3');
+  });
+  floatText('猫けし　+' + gained, sumC/idxs.length, sumR/idxs.length, '#ffe6a3', true);
+  hud();
+  await sleep(235);
+  tiles = tiles.filter(t => !t.dying);
+  gravity();
+  await waitSettle();
+  await resolveMatches(findMatches());   // 落ちて偶然そろったぶんは連鎖として扱う
 }
 
 function gravity(){
@@ -1117,7 +1185,7 @@ function cellAt(e){
 function endPress(e){
   if(!press || (e && press.id != null && e.pointerId !== press.id)) return;
   const p = press; press = null;
-  if(sel && Math.abs(sel.r - p.r) + Math.abs(sel.c - p.c) === 1){ trySwap(sel, p); sel = null; return }
+  if(sel && Math.max(Math.abs(sel.r - p.r), Math.abs(sel.c - p.c)) === 1){ trySwap(sel, p); sel = null; return }
   if(sel && sel.r === p.r && sel.c === p.c) sel = null;
   else sel = { r: p.r, c: p.c };
   buzz(8);
@@ -1126,9 +1194,9 @@ function endPress(e){
 cv.addEventListener('pointerdown', e => {
   if(e.button !== 0 && e.pointerType === 'mouse') return;
   unlock();
-  if(busy) return;
+  if(busy || stuck) return;
   const p = cellAt(e); if(!p) return;
-  if(sel && Math.abs(sel.r - p.r) + Math.abs(sel.c - p.c) === 1){
+  if(sel && Math.max(Math.abs(sel.r - p.r), Math.abs(sel.c - p.c)) === 1){
     trySwap(sel, p); sel = null; press = null;
     try{ cv.setPointerCapture(e.pointerId) }catch(err){}
     return;
@@ -1140,9 +1208,8 @@ cv.addEventListener('pointermove', e => {
   if(!press || busy || e.pointerId !== press.id) return;
   const dx = e.clientX - press.x, dy = e.clientY - press.y;
   if(Math.hypot(dx, dy) < cs * SWIPE_MIN) return;
-  const b = Math.abs(dx) > Math.abs(dy)
-    ? { r: press.r, c: press.c + Math.sign(dx) }
-    : { r: press.r + Math.sign(dy), c: press.c };
+  const b = { r: press.r + (Math.abs(dy) > cs*SWIPE_MIN ? Math.sign(dy) : 0),
+    c: press.c + (Math.abs(dx) > cs*SWIPE_MIN ? Math.sign(dx) : 0) };
   const a = { r: press.r, c: press.c }; press = null;
   if(b.r >= 0 && b.r < ROWS && b.c >= 0 && b.c < COLS) trySwap(a, b);
 });
