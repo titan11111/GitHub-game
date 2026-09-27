@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>FINAL BRAWL 3D（仮）</title>
+<link rel="stylesheet" href="style.css">
+<script>
+window.addEventListener('error', function () {
+  var el = document.getElementById('boot-error');
+  if (el) el.hidden = false;
+});
+</script>
+</head>
+<body>
+<div id="start">
+  <p class="kicker">NIGHT STREET</p>
+  <h1>FINAL BRAWL 3D<span>（仮）</span></h1>
+  <p class="how">
+    十字キーで移動（上下で奥行き）／<b>A</b> パンチ（押しっぱなしでジャブ→ストレート→アッパー）／<b>B</b> キック／<b>跳</b> ジャンプ<br>
+    ジャンプ中に <b>A</b> で空中パンチ、<b>B</b> で飛び蹴り。<b>START</b> で停止、<b>SELECT</b> で消音。<br>
+    キーボード: WASD・矢印 ／ J・X パンチ ／ K・Z キック ／ Space ジャンプ ／ P 停止
+  </p>
+  <button type="button" id="start-btn" class="start-btn">TAP TO START</button>
+</div>
+
+<div id="view"></div>
+
+<div id="hud">
+  <div class="side">
+    <div class="who">RYDER</div>
+    <div class="bar"><div id="php" class="fill" style="width:100%"></div></div>
+    <div id="score">SCORE 0</div>
+    <div id="best">BEST 0</div>
+    <div id="stage">STAGE 1-1</div>
+  </div>
+  <div id="ebox" class="side enemy">
+    <span id="ename"></span>
+    <div class="bar"><div id="ehp" class="fill"></div></div>
+  </div>
+</div>
+
+<div id="banner"></div>
+
+<div id="help">
+  十字キー / WASD・矢印: 移動　A(J/X): パンチ　B(K/Z): キック　跳(Space): ジャンプ　空中で A / B は空中パンチ・飛び蹴り　P: 停止
+</div>
+
+<div id="controls">
+  <div class="pad-body">
+    <div class="dpad" id="dpad" role="group" aria-label="十字キー">
+      <span class="edge"></span>
+      <span class="cross"></span>
+      <span class="arm u"></span>
+      <span class="arm d"></span>
+      <span class="arm l"></span>
+      <span class="arm r"></span>
+      <span class="hub"></span>
+    </div>
+    <div class="mid">
+      <button type="button" id="btn-mute" class="pill" aria-pressed="false" aria-label="音を消す"><b id="mute-glyph">🔊</b><i>SELECT</i></button>
+      <button type="button" id="btn-pause" class="pill dim" aria-pressed="false" aria-label="一時停止"><b id="pause-glyph">⏸</b><i>START</i></button>
+    </div>
+    <div class="abs">
+      <button type="button" id="btn-jump" class="rnd jmp" aria-label="ジャンプ">跳</button>
+      <button type="button" id="btn-kick" class="rnd" aria-label="キック">B<span>蹴</span></button>
+      <button type="button" id="btn-punch" class="rnd" aria-label="パンチ">A<span>拳</span></button>
+    </div>
+  </div>
+</div>
+
+<div id="paused" hidden>
+  <p>停止中</p>
+  <button type="button" id="btn-resume" class="start-btn">再開</button>
+</div>
+
+<p id="boot-error" hidden>画面を出せませんでした</p>
+
+<script type="importmap">
+{"imports":{"three":"./three.module.js"}}
+</script>
+<script type="module" src="script.js"></script>
+</body>
+</html>
