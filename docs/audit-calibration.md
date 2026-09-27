@@ -80,6 +80,21 @@ iOS Safari は MP4 中の AAC しか再生しないため実機で無音にな�
 harness はファイルの codec を見ないので PASS のまま通る。`ffprobe` での codec 確認は人間箱に近い。
 → AAC-LC 128kbps へ変換して解消済み。
 
+### 2026-09-27 audit.mjs の「死にファイル」「参照切れ」— importmap 方式での偽陽性（2項目）
+
+| 項目 | 内容 |
+|---|---|
+| 対象 | `272-getsuyo-tsukin-rpg`（月曜朝の通勤RPG・three.js r160） |
+| audit判定 | ×「読み込まれていないJS/CSSがない」→ `three.module.js` が HTML から未参照 ／ ×「参照切れがない」→ `three`（＋`esbuild` `node:fs` `node:path` `node:url`） |
+| 実際 | **両方とも正常**。`three.module.js` は `<script type="importmap">{"imports":{"three":"./three.module.js"}}</script>` 経由で読まれており、ゲームは動く（harness PASS・描画61RAF/秒） |
+| 原因 | 判定が `<script src>` と相対パスだけを見ており、**importmap を解決していない**。bare specifier（`three`）はフォルダ内に同名ファイルが無いため「参照切れ」に落ちる。`node:*` と `esbuild` はブラウザ用ではなくビルドスクリプトの依存 |
+| 裏取り | **公開済みの `268-final-brawl` で同じ×が再現する**。`node _tools/audit.mjs 268-final-brawl` → 「HTMLから未参照 1件 / 1243.1KB: three.module.js」。268 は importmap 方式で実際に公開・稼働している作品なので、この×は作品側の欠陥ではない |
+| audit.mjsをどう直したか | **直していない**（鉄則: 監査ループは `audit.mjs` を書き換えない）。判定を通すためだけに `<script src="three.module.js">` を足すのは、モジュール版では動かない**採点の細工**になるので入れない。次に `audit.mjs` を触る機会があれば「importmap の `imports` を解決してから参照グラフを作る」を追加候補としてここに残す |
+
+**教訓**: 依存の解決方法が増える（importmap / bundler / dynamic import）たびに、**静的な参照グラフは実態から遅れる**。
+「HTMLから辿れるか」ではなく「実行して読まれたか」で測れる harness 側に寄せるほうが正しい。
+
+
 ---
 
 ### 書き方のルール

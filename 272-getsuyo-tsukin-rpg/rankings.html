@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1020" />
+<title>スコアランキング | 月曜朝の通勤RPG</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="public/static/style.css" />
+</head>
+<body class="ranking-body">
+<div class="ranking-wrap">
+  <h1>🏆 スコアランキング</h1>
+  <p class="rank-sub">月曜の朝、いちばん輝いた出社は誰だ。</p>
+  <div id="stats" class="rank-stats"></div>
+  <div class="rank-wrapscroll">
+    <table id="rank-table">
+      <thead><tr><th>#</th><th>エンディング</th><th>スコア</th><th>到達時刻</th><th>日時</th></tr></thead>
+      <tbody><tr><td colspan="5">読み込み中…</td></tr></tbody>
+    </table>
+  </div>
+  <a class="rank-back" href="index.html">← ゲームに戻る</a>
+</div>
+<script>
+// GitHub Pages は静的なので、D1（/api/results）の代わりに localStorage を読む。
+// キーは鉄則どおり tg.272.* を使う。
+const LS = { RESULTS: 'tg.272.results', BEST: 'tg.272.best', RUNS: 'tg.272.runs' };
+const ENDING_LABEL = { clear:'★出社成功', late:'遅刻', sick:'仮病', missstop:'乗り過ごし', tetris:'テトリス' };
+function fmt(m){ m=Math.floor(m); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function read(key, fb){ try{ const v=localStorage.getItem(key); return v===null?fb:JSON.parse(v); }catch(e){ return fb; } }
+
+const rows = read(LS.RESULTS, []);
+const list = Array.isArray(rows) ? rows.slice().sort((a,b)=>b.score-a.score).slice(0,20) : [];
+const tb = document.querySelector('#rank-table tbody');
+if(!list.length){
+  tb.innerHTML = '<tr><td colspan="5">まだ記録がありません。ゲームをプレイしよう！</td></tr>';
+}else{
+  tb.innerHTML = list.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+(ENDING_LABEL[r.ending]||r.ending)+'</td><td><b>'+r.score+'</b></td><td>'+fmt(r.arrive_min)+'</td><td>'+(r.created_at||'')+'</td></tr>').join('');
+}
+const best = Number(read(LS.BEST,0))||0;
+const runs = Number(read(LS.RUNS,0))||0;
+document.getElementById('stats').innerHTML = 'プレイ数 <b>'+runs+'</b> ／ 最高スコア <b>'+best+'</b>';
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>月曜朝の通勤RPG</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='54'%3E🚃%3C/text%3E%3C/svg%3E" />
+<style>/*__CSS__*/</style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+<div id="alarm-flash"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-top">
+    <div id="hud-left">
+      <span id="hud-scene">自宅</span>
+      <span id="hud-objective">▶ 目覚ましを止めろ</span>
+    </div>
+    <div id="hud-right">
+      <div id="hud-clock">
+        <span class="clock-icon">🕐</span>
+        <span id="hud-time">06:30</span>
+      </div>
+      <div id="hud-score-box">SCORE <span id="hud-score">0</span></div>
+    </div>
+  </div>
+  <div id="hud-timebar"><div id="hud-progress"></div></div>
+</div>
+
+<div id="prompt"></div>
+<div id="toast"></div>
+
+<!-- ダイアログ -->
+<div id="dialog" class="hidden">
+  <div class="dialog-box">
+    <div id="dialog-speaker"></div>
+    <div id="dialog-text"></div>
+    <div id="dialog-hint"></div>
+  </div>
+</div>
+
+<!-- ミニゲーム -->
+<div id="minigame" class="hidden"></div>
+
+<!-- 操作ヘルプ -->
+<button id="help-btn">❔ 操作</button>
+<div id="help-panel" class="hidden">
+  <button id="help-close">✕</button>
+  <h3>操作方法</h3>
+  <ul>
+    <li><b>W A S D / ↑←↓→</b> 移動</li>
+    <li><b>Shift</b> 走る</li>
+    <li><b>Space</b> ジャンプ</li>
+    <li><b>E</b> 調べる / 攻撃（鞄を取得後）</li>
+    <li><b>Space / E</b> ダイアログ送り</li>
+  </ul>
+  <p class="help-goal">9:00までに会社5階で課長に挨拶すればクリア！<br>寄り道・サボり・ミニゲームも自由。</p>
+</div>
+
+<!-- タイトル画面 -->
+<div id="title-screen">
+  <div class="title-inner">
+    <div class="title-train">🚃</div>
+    <h1>月曜朝の<br /><span>通勤RPG</span></h1>
+    <p class="title-sub">6:30 起床 ── 9:00 出社<br/>朝の街を駆け抜けろ。道はひとつじゃない。</p>
+    <button id="title-start">▶ 月曜日をはじめる</button>
+    <p class="title-note">3D / HTML5 / Three.js ── 単体HTML版</p>
+  </div>
+</div>
+
+<!-- ローディング -->
+<div id="loading">
+  <div class="load-box">
+    <div class="spinner"></div>
+    <p id="loading-status">起動中…</p>
+  </div>
+</div>
+
+<!-- エンディング -->
+<div id="ending" class="hidden">
+  <div class="ending-box">
+    <div id="ending-rank">RANK S</div>
+    <h2 id="ending-title">★ 出社成功 ★</h2>
+    <p id="ending-desc"></p>
+    <div id="ending-stats"></div>
+    <div class="ending-actions">
+      <button id="ending-again">もう一度月曜を迎える</button>
+    </div>
+  </div>
+</div>
+
+<script>/*__JS__*/</script>
+</body>
+</html>
