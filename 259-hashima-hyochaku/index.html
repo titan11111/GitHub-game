@@ -2102,7 +2102,13 @@ function listen(){
   ear.style.setProperty('--ey',(Math.abs(rb)>Math.PI*.62?68:44)+'%');
   ear.classList.add('on');
   clearTimeout(listen._to);listen._to=setTimeout(()=>ear.classList.remove('on'),2000);
-  note(bd<18?'息づかいが、はっきり聞こえた。':'かすかに──遠い。');
+  /* にじみと同じ向きを、断定せず一行にする */
+  let side;
+  if(Math.abs(rb)>Math.PI*.62) side=rb<0?'うしろ、左の方かな。':'うしろ、右の方かな。';
+  else if(Math.abs(rb)<Math.PI*.18) side='まえの方かな。';
+  else if(rb<0) side=rb<-Math.PI*.38?'左の方かな。':'左まえの方かな。';
+  else side=rb>Math.PI*.38?'右の方かな。':'右まえの方かな。';
+  note(bd<18?'息が近い。'+side:'かすかに──'+side);
 }
 function doAction(){
   if(state==='title'){$('bStart').click();return;}
@@ -2499,20 +2505,33 @@ function fxDraw(now){
 }
 
 /* ==========================================================================
-   13. じゃんけん（プレイヤーの手は改変しない。相手の手だけを引き直す）
+   13. じゃんけん（プレイヤーの手は改変しない。勝ちは出さない。
+       あいこ／三すくみは引き直し。3回目で必ず負ける）
    ========================================================================== */
 const HANDS=['グー','チョキ','パー'];
-const beats=(a,b)=>(a===0&&b===1)||(a===1&&b===2)||(a===2&&b===0);   // a が b に勝つ
 let janRound=0;
+function shuffle5(a){
+  const h=a.slice();
+  for(let i=4;i>0;i--){const j=(Math.random()*(i+1))|0;const t=h[i];h[i]=h[j];h[j]=t;}
+  return h;
+}
 function janPlay(my){
   if(portraitLocked())return;
   janRound++;
-  let opp=(Math.random()*3)|0;
-  if(janRound>=3)opp=[2,0,1][my];                    // 3回目からは必ず自分が負ける（鬼はじぶん）
-  const others=[opp,opp,opp,opp,opp];
-  const won=beats(my,opp), lost=beats(opp,my);
+  const loseHand=[2,0,1][my];                      // 自分に勝つ手。自分の手は触らない
+  let others, kind;                                // lose | tie | sukumi
+  if(janRound>=3){
+    kind='lose';
+    others=[loseHand,loseHand,loseHand,loseHand,loseHand];
+  }else{
+    const r=Math.random();
+    if(r<0.34){ kind='lose'; others=[loseHand,loseHand,loseHand,loseHand,loseHand]; }
+    else if(r<0.67){ kind='sukumi'; others=shuffle5([0,1,2,0,1]); }
+    else { kind='tie'; others=[my,my,my,my,my]; }
+  }
   const names=['ミチル','タケシ','サエ','ゴロウ','ハナ'];
-  $('janBoard').innerHTML='<b>じぶん</b><span'+(won?' class="hit"':(lost?' class="miss"':''))+'>'+HANDS[my]+'</span>'
+  const lost=kind==='lose';
+  $('janBoard').innerHTML='<b>じぶん</b><span'+(lost?' class="miss"':'')+'>'+HANDS[my]+'</span>'
     +names.map((n,i)=>'<b>'+n+'</b><span>'+HANDS[others[i]]+'</span>').join('');
   sfx.janHit();
   if(lost){
@@ -2522,7 +2541,7 @@ function janPlay(my){
     sfx.janLose();
     setTimeout(startCount,1100);
   }else{
-    $('janTxt').textContent=won?'勝った。だれも負けていない。もう一回。':'あいこ。もう一回。';
+    $('janTxt').textContent=kind==='sukumi'?'三すくみ。もう一回。':'あいこ。もう一回。';
     $('janRound').textContent=janRound+'回目';
   }
 }
@@ -2616,6 +2635,8 @@ $('bStart').onclick=()=>{
   sheet('shTitle',false);
   fxMode='jan';
   sheet('shJan',true);
+  janRound=0;
+  document.querySelectorAll('.jan').forEach(b=>b.disabled=false);
   $('janTxt').textContent='だれが鬼になるか。手を出せ。';
   $('janRound').textContent='';
 };
