@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#14171a">
-<title>端島かくれんぼ ― 日暮れまでに、五人</title>
+<title>或る孤島のかくれんぼ ― 日暮れまでに、五人</title>
 <style>
 /* ---------- iOS 共通ヘッダー（body=manipulation / canvas=none の2段構え） ---------- */
 :root{
@@ -19,6 +19,20 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);overflow:hid
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   -webkit-text-size-adjust:100%;touch-action:manipulation;overscroll-behavior:none}
 canvas#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#chame{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;
+  background:
+    radial-gradient(circle at 18% 28%, rgba(122,168,46,.72), transparent 36%),
+    radial-gradient(circle at 78% 22%, rgba(186,132,48,.66), transparent 34%),
+    radial-gradient(circle at 62% 78%, rgba(64,96,58,.7), transparent 40%),
+    radial-gradient(circle at 30% 70%, rgba(150,148,132,.55), transparent 38%);
+  mix-blend-mode:multiply}
+#chame.on{animation:chameShift .55s linear infinite}
+@keyframes chameShift{
+  0%{filter:hue-rotate(0deg) saturate(1.7)}
+  50%{filter:hue-rotate(110deg) saturate(2)}
+  100%{filter:hue-rotate(200deg) saturate(1.5)}
+}
+@media (prefers-reduced-motion: reduce){#chame.on{animation:none}}
 .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-feature-settings:"tnum"}
 
 /* ---------- 和風サイバーパンク：背景レイヤーと走査線 ---------- */
@@ -134,7 +148,11 @@ button:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
 #topbtns{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 12px);z-index:6;display:flex;gap:6px}
 #topbtns button{width:36px;height:30px;font-size:11px;letter-spacing:.04em}
 #sideL{position:fixed;left:calc(env(safe-area-inset-left,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 250px);z-index:6;display:flex;flex-direction:column;gap:6px}
-#sideL button{width:54px;height:28px;font-size:10px;letter-spacing:.08em}
+#sideL button{width:58px;min-height:44px;font-size:11px;letter-spacing:.06em}
+#callLine{position:absolute;left:12px;right:12px;top:18%;text-align:center;font-size:clamp(32px,9vw,56px);
+  letter-spacing:.16em;color:#f4f0e6;text-shadow:0 2px 0 #14110c,0 0 16px rgba(0,0,0,.75);
+  opacity:0;transition:opacity .25s}
+#callLine.on{opacity:1}
 #sideL button.on{background:rgba(61,242,255,.26)}
 #kbhint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
   font-size:10px;color:var(--dim);letter-spacing:.08em;z-index:4;pointer-events:none;white-space:nowrap}
@@ -199,13 +217,8 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 </head>
 <body>
 <div class="sheet art on" id="shTitle"><div class="panel">
-  <h1 class="neon">端島かくれんぼ<small>日 暮 れ ま で に 、 五 人</small></h1>
+  <h1 class="neon">或る孤島の<br>かくれんぼ<small>日 暮 れ ま で に 、 五 人</small></h1>
   <div class="rule"></div>
-  <p>夕方の広場に、六人あつまった。じゃんけんで負けた者が鬼。十数えるあいだに、五人が散る。</p>
-  <p>ここは端島。コンクリートだけでできた島。路地も、階段も、屋上も、隠れる場所しかない。</p>
-  <p class="q">日が落ちるまで六分。落ちたら、そこで終わり。</p>
-  <h2>操作</h2>
-  <div class="kv" id="ctlHelp"></div>
   <button class="go" id="bStart">じ ゃ ん け ん を す る</button>
   <p class="q" id="bestRec" style="text-align:center;margin-top:14px"></p>
 </div></div>
@@ -226,6 +239,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 <div id="janCount"><span id="janNum">０</span><small>お に は 目 を つ ぶ る</small></div>
 
 <canvas id="scene"></canvas>
+<div id="chame" aria-hidden="true"></div>
 
 <div id="hud">
   <div id="readout" class="mono"></div>
@@ -240,6 +254,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   <div id="ear"></div>
   <div id="vig"></div>
   <div id="pulse"></div>
+  <div id="callLine" aria-live="polite"></div>
 </div>
 
 <div id="topbtns">
@@ -250,6 +265,8 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 <div id="sideL">
   <button id="bLight" aria-label="懐中電灯">ライト</button>
   <button id="bPad" aria-label="仮想パッドの表示切替">パッド</button>
+  <button id="bView" aria-label="視点を切り替える">目</button>
+  <button id="bCall" aria-label="まーだだよ">まだ</button>
 </div>
 
 <div id="ctl">
@@ -433,6 +450,8 @@ addEventListener('keydown',e=>{
   else if(e.code==='Digit0'){S.mute=!S.mute;store.set('mute',S.mute);syncCfg();}
   else if(e.code==='Tab'){e.preventDefault();listen();}
   else if(e.code==='Space'||e.code==='Enter'){e.preventDefault();doAction();}
+  else if(e.code==='KeyV'){e.preventDefault();cycleView();}
+  else if(e.code==='KeyC'){e.preventDefault();toggleCall();}
 });
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
@@ -517,6 +536,8 @@ document.addEventListener('selectstart',e=>e.preventDefault());
 
 bindStick($('stLook'),(x,y)=>{sx=x;sy=y;},2);
 $('bLight').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();toggleLight();});
+$('bView').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();cycleView();});
+$('bCall').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();toggleCall();});
 
 /* --- 画面ドラッグ（軽いタップは［みつけた］／感度を画面幅で正規化） --- */
 const cv=$('scene');
@@ -560,9 +581,6 @@ function pollPad(){
   gpv.mx=gpv.my=gpv.lx=gpv.ly=0;gpv.run=false;
 }
 
-$('ctlHelp').innerHTML=isTouch
- ?'<b>移動</b><span>十字キー</span><b>視点</b><span>右スティック／画面をなぞる</span><b>走る</b><span>B／十字を目一杯</span><b>みつけた</b><span>A／画面を軽くタップ</span><b>耳を澄ます</b><span>近くに誰もいないとき A</span><b>地図</b><span>SELECT</span><b>中断</b><span>START</span><b>明かり</b><span>左のライト</span>'
- :'<b>移動</b><span>W A S D ／ 矢印</span><b>視点</b><span>マウスをドラッグ／Q E で振り向く</span><b>走る</b><span>Shift</span><b>みつけた</b><span>Space ／ Enter</span><b>耳を澄ます</b><span>Tab</span><b>明かり</b><span>F</span><b>地図</b><span>M</span><b>中断</b><span>P ／ Esc</span><b>音を消す</b><span>0</span>';
 $('kbhint').textContent=isTouch?'':'W A S D 移動　Q E 振り向く　Shift 走る　Space みつけた　Tab 耳を澄ます　F 明かり　M 地図　P 中断';
 syncCfg();
 {const b=store.get('bestFind',0);if(b)$('bestRec').textContent='五人そろえた最短　'+fmtDur(b);}
@@ -725,6 +743,11 @@ const M={
   can:lamb({color:0x72695a}),
   intFloor:lamb({color:0x45423c}),
   intWall:lamb({color:0x5c5953}),
+  /* 小物用の無地材。手続きテクスチャは1枚=6mの前提で作ってあるため、
+     1m前後の小物に貼ると模様が伸びて白飛びする（2026-09-27 実測） */
+  slab:lamb({color:0x6a665f}),
+  slabDark:lamb({color:0x514d47}),
+  wet:lamb({color:0x3d444a}),
   fur:lamb({color:0x4a4540}),
   tiger:lamb({color:0x6a5344}),
   tigerDark:lamb({color:0x3d342c}),
@@ -743,9 +766,51 @@ function scaleUV(geo,w,h,d){
 /* --- 地形 --- */
 const ISL={x0:-150,x1:150,z0:-50,z1:50};
 const PIER={x:-118,z:-56};
+const PLAZA={x:-120,z:-40};                                // じゃんけんの広場＝スタート地点
 const MESA={x0:8,x1:60,z0:-34,z1:0,top:9};                 // 中部の岩山
-const STAIR={x0:60,x1:74,z0:-17,z1:-12};                   // 地獄段
-const colliders=[],shelters=[],BLD=[];
+/* 地獄段。2026-09-27: 幅5mでは両側が「見えない崖」になり、縁で足が止まって進めなくなった。
+   8mに広げ、両側に擁壁を立てて、段であることが目で分かるようにした */
+const STAIR={x0:60,x1:74,z0:-18.6,z1:-10.6};
+const colliders=[],shelters=[],BLD=[],covers=[];
+
+/* 小物は材質ごとに1メッシュへまとめる（iPhoneでの描画コールを増やさない）。
+   y は接地面。cover:true のものは「しゃがんだ子が隠れる嵩」として hideOk が参照する */
+const propQ=new Map(),cylQ=new Map();
+function prop(mat,x,y,z,w,h,d,ry,opt){
+  let q=propQ.get(mat);if(!q){q=[];propQ.set(mat,q);}
+  q.push([x,y,z,w,h,d,ry||0]);
+  const o=opt||{};
+  const sw=Math.abs(Math.cos(ry||0))*w+Math.abs(Math.sin(ry||0))*d;   // 回した分を含む外接
+  const sd=Math.abs(Math.sin(ry||0))*w+Math.abs(Math.cos(ry||0))*d;
+  if(o.collide)colliders.push({x:x,z:z,w:sw,d:sd});
+  if(o.cover)covers.push({x:x,z:z,w:sw,d:sd,h:h});
+  return q.length-1;
+}
+/* ドラム缶・係船柱・タンクは丸い。四角い箱で置くと廃墟に見えないので円筒で置く */
+function cyl(mat,x,y,z,r,h,ry,opt){
+  let q=cylQ.get(mat);if(!q){q=[];cylQ.set(mat,q);}
+  q.push([x,y,z,r*2,h,r*2,ry||0]);
+  const o=opt||{};
+  if(o.collide)colliders.push({x:x,z:z,w:r*1.9,d:r*1.9});
+  if(o.cover)covers.push({x:x,z:z,w:r*1.9,d:r*1.9,h:h});
+}
+function buildProps(){
+  const m4=new THREE.Matrix4(),qt=new THREE.Quaternion(),eu=new THREE.Euler(),pv=new THREE.Vector3(),sv=new THREE.Vector3();
+  const fill=(map,geo)=>{
+    map.forEach((q,mat)=>{
+      const im=new THREE.InstancedMesh(geo,mat,q.length);
+      q.forEach((r,i)=>{
+        eu.set(0,r[6],0);qt.setFromEuler(eu);
+        pv.set(r[0],r[1]+r[4]/2,r[2]);sv.set(r[3],r[4],r[5]);
+        m4.compose(pv,qt,sv);im.setMatrixAt(i,m4);
+      });
+      scene.add(im);
+    });
+    map.clear();
+  };
+  fill(propQ,new THREE.BoxGeometry(1,1,1));
+  fill(cylQ,new THREE.CylinderGeometry(.5,.5,1,10));
+}
 
 function box(w,h,d,mat,x,y,z,collide,uv){
   const geo=new THREE.BoxGeometry(w,h,d);if(uv)scaleUV(geo,w,h,d);
@@ -765,6 +830,15 @@ function inBounds(x,z){
   return false;
 }
 const inMesa=(x,z)=>x>MESA.x0&&x<MESA.x1&&z>MESA.z0&&z<MESA.z1;
+/* 進もうとした先が岩肌そのものか。岩山の角では「隣の点が内側」の判定が
+   両軸とも外れて登りも歩きもできない死点になっていた（2026-09-27）。
+   代わりに進行方向を0.6m先まで見る。岩の手前で塞がれた場合はここが false になる */
+function mesaAhead(x,z,mx,mz){
+  const s=Math.hypot(mx,mz);
+  if(s<1e-6)return false;
+  const px=x+mx/s*.6,pz=z+mz/s*.6;
+  return inMesa(px,pz)&&!hit(px,pz,0);
+}
 const inStair=(x,z)=>z>STAIR.z0&&z<STAIR.z1&&x>MESA.x1-.2&&x<STAIR.x1;
 function groundY(x,z){
   if(inMesa(x,z))return MESA.top;
@@ -781,31 +855,187 @@ function canStand(x,z,curY){
   if(curY-gy>3.0)return false;
   return true;
 }
+function wallNear(x,z,reach){
+  let best=null,bd=reach||1.2;
+  for(let i=0;i<BLD.length;i++){
+    const b=BLD[i];
+    const dx=Math.max(Math.abs(x-b.x)-b.w/2,0),dz=Math.max(Math.abs(z-b.z)-b.d/2,0);
+    const d=Math.hypot(dx,dz);
+    if(d<bd){bd=d;best=b;}
+  }
+  return best;
+}
+function onRoof(x,z,b){
+  const m=.6;
+  return x>b.x-b.w/2+m&&x<b.x+b.w/2-m&&z>b.z-b.d/2+m&&z<b.z+b.d/2-m;
+}
+function roofSpot(x,z,b){
+  const m=.8;
+  return {x:clamp(x,b.x-b.w/2+m,b.x+b.w/2-m),z:clamp(z,b.z-b.d/2+m,b.z+b.d/2-m)};
+}
+function mesaEntry(x,z){
+  return {x:clamp(x,MESA.x0+1.2,MESA.x1-1.2),z:clamp(z,MESA.z0+1.2,MESA.z1-1.2)};
+}
+function wallAhead(x,z,yaw,reach){
+  const fx=-Math.sin(yaw),fz=-Math.cos(yaw);
+  let best=null,bd=reach||1.8;
+  for(let i=0;i<BLD.length;i++){
+    const b=BLD[i];
+    const cx=clamp(x,b.x-b.w/2,b.x+b.w/2),cz=clamp(z,b.z-b.d/2,b.z+b.d/2);
+    const dx=cx-x,dz=cz-z,d=Math.hypot(dx,dz);
+    if(d<0.08||d>=bd)continue;
+    if((dx*fx+dz*fz)/d>.5){bd=d;best=b;}
+  }
+  return best;
+}
+/* 壁と岩を登る。push は壁へ押し込むとき。autoDown は端まで来たら降りる */
+function stepClimber(o,mx,mz,dt,push,autoDown){
+  if(o.roof){
+    const b=o.roof,nx=o.x+mx,nz=o.z+mz;
+    if(onRoof(nx,nz,b)){o.x=nx;o.z=nz;return;}
+    if(push&&!autoDown)return;
+    const ox=o.x-b.x,oz=o.z-b.z;
+    if(Math.abs(ox)/(b.w/2)>Math.abs(oz)/(b.d/2)) o.x=b.x+Math.sign(ox||1)*(b.w/2+.62);
+    else o.z=b.z+Math.sign(oz||1)*(b.d/2+.62);
+    o.up=b.h;o.roof=null;o.grip=wallNear(o.x,o.z,1.6)||'mesa';
+    return;
+  }
+  if(o.up>0.04){
+    const b=(o.grip&&o.grip.h)?o.grip:wallNear(o.x,o.z,1.5);
+    const top=(b&&b.h)?b.h:(o.grip==='mesa'?MESA.top:0);
+    if(push&&top>0){
+      o.up=Math.min(top,o.up+2.7*dt);
+      if(o.up>=top-.2){
+        if(b&&b.h){
+          const s=roofSpot(o.x,o.z,b);
+          o.x=s.x;o.z=s.z;o.roof=b;o.up=0;o.grip=null;
+        }else{
+          const s=mesaEntry(o.x,o.z);
+          o.x=s.x;o.z=s.z;o.up=0;o.grip=null;
+        }
+      }
+    }else{
+      o.up=Math.max(0,o.up-2.7*dt);
+      if(o.up<=0)o.grip=null;
+    }
+    return;
+  }
+  const cy=groundY(o.x,o.z);
+  const nx=o.x+mx,nz=o.z+mz;
+  const okX=canStand(nx,o.z,cy),okZ=canStand(o.x,nz,cy);
+  if(okX)o.x=nx;
+  if(okZ)o.z=nz;
+  /* 壁と岩にとりつく。
+     2026-09-27: 以前は「塞がれた瞬間」と「正面1.8m」で即座に登り始めたため、
+     壁をかすめただけで登り、戸口へ歩くだけで屋根へ上がってしまって、
+     建物の奥に隠れた子へ近づけなかった。触れるまで近づいて押し続けたときだけ登る。 */
+  if(push&&o.up<.05&&!o.roof){
+    let g=null;
+    if(!okX||!okZ){
+      const b=wallNear(o.x,o.z,1.35);
+      if(b)g=b;
+      else if(!inMesa(o.x,o.z)&&mesaAhead(o.x,o.z,mx,mz))g='mesa';
+    }
+    /* 戸口へ歩くときに登り始めないよう、壁に触る距離だけを見る */
+    if(!g&&o.face){const ahead=wallAhead(o.x,o.z,o.yaw,.6);if(ahead)g=ahead;}
+    if(g){
+      o.wallT=(o.wallT||0)+dt;
+      if(o.wallT>.34){o.grip=g;o.up=.16;o.wallT=0;}
+    }else o.wallT=0;
+  }else o.wallT=0;
+}
 function inShelterAt(x,z){
   for(let i=0;i<shelters.length;i++){const s=shelters[i];
     if(x>s.x-s.w/2&&x<s.x+s.w/2&&z>s.z-s.d/2&&z<s.z+s.d/2)return true;}
   return false;
 }
-function nearWall(x,z,maxD){
-  maxD=maxD||2.7;
-  for(let i=0;i<BLD.length;i++){const b=BLD[i];
-    const dx=Math.max(Math.abs(x-b.x)-b.w/2,0),dz=Math.max(Math.abs(z-b.z)-b.d/2,0);
-    if(Math.hypot(dx,dz)<maxD)return true;}
-  for(let i=0;i<colliders.length;i++){const c=colliders[i];
+/* いちばん近い遮蔽物。HIDE_REACH 以内でなければ「隠れていない」＝道端に立っている。
+   2026-09-27: 身を寄せる距離まで詰める。
+   2026-09-27夕: 壁のそばに立つだけでは不可。物陰の裏側（広場から見て隠れる側）に寄せる。 */
+const HIDE_REACH=.72, HIDE_MIN_H=.8;
+function coverNear(x,z,maxD){
+  let best=null,bd=maxD||HIDE_REACH;
+  for(let i=0;i<covers.length;i++){
+    const c=covers[i];
+    if(c.h<HIDE_MIN_H)continue;
     const dx=Math.max(Math.abs(x-c.x)-c.w/2,0),dz=Math.max(Math.abs(z-c.z)-c.d/2,0);
-    if(Math.hypot(dx,dz)<maxD)return true;}
+    const d=Math.hypot(dx,dz);
+    if(d<bd){bd=d;best=c;}
+  }
+  return best;
+}
+function coverDist(c,x,z){
+  const dx=Math.max(Math.abs(x-c.x)-c.w/2,0),dz=Math.max(Math.abs(z-c.z)-c.d/2,0);
+  return Math.hypot(dx,dz);
+}
+function openSides(x,z){
+  let n=0;
+  for(const v of [[1.6,0],[-1.6,0],[0,1.6],[0,-1.6]]){
+    const nx=x+v[0],nz=z+v[1];
+    if(inBounds(nx,nz)&&!hit(nx,nz)&&!coverNear(nx,nz,.55))n++;
+  }
+  return n;
+}
+function cornered(x,z){
+  const near=[];
+  for(let i=0;i<covers.length;i++){
+    const c=covers[i];
+    if(c.h<HIDE_MIN_H)continue;
+    if(coverDist(c,x,z)<1.35)near.push(c);
+  }
+  if(near.length<2)return false;
+  for(let i=0;i<near.length;i++){
+    for(let j=i+1;j<near.length;j++){
+      const a=Math.atan2(near[i].x-x,near[i].z-z);
+      const b=Math.atan2(near[j].x-x,near[j].z-z);
+      let d=Math.abs(a-b);if(d>Math.PI)d=Math.PI*2-d;
+      if(d>.7)return true;                       // 二つの物が角を作っている
+    }
+  }
   return false;
 }
 function hideOk(x,z){
-  if(inMesa(x,z)||inShelterAt(x,z)||inStair(x,z))return true;
-  return nearWall(x,z,2.5);
+  if(inShelterAt(x,z))return true;
+  if(!coverNear(x,z,HIDE_REACH))return false;
+  if(openSides(x,z)<=1)return true;              // 出口が一方だけの窪み
+  return cornered(x,z);                          // 長い壁の道端立ちは不可
 }
 function hideFacing(x,z){
-  let bx=x,bz=z,bd=1e9;
-  for(let i=0;i<BLD.length;i++){const b=BLD[i];
-    const dx=Math.max(Math.abs(x-b.x)-b.w/2,0),dz=Math.max(Math.abs(z-b.z)-b.d/2,0);
-    const d=dx*dx+dz*dz;if(d<bd){bd=d;bx=b.x;bz=b.z;}}
-  return Math.atan2(bx-x,bz-z)+Math.PI;
+  const c=coverNear(x,z,60);
+  if(!c)return Math.random()*6.2832;
+  return Math.atan2(c.x-x,c.z-z)+Math.PI;
+}
+/* 物の陰へ寄せる。広場側に顔を出す位置は、反対側へ回す */
+function tuckHide(x,z){
+  if(inShelterAt(x,z)){
+    let best=null,bd=1e9;
+    for(let i=0;i<covers.length;i++){
+      const c=covers[i];
+      if(c.h<1.6)continue;
+      const d=coverDist(c,x,z);
+      if(d<bd){bd=d;best=c;}
+    }
+    if(!best)return {x:x,z:z};
+    const sx=Math.sign(x-best.x)||1,sz=Math.sign(z-best.z)||1;
+    const nx=best.x+sx*(best.w/2+.42),nz=best.z+sz*(best.d/2+.42);
+    return canStand(nx,nz,groundY(nx,nz))?{x:nx,z:nz}:{x:x,z:z};
+  }
+  const c=coverNear(x,z,8);
+  if(!c)return {x:x,z:z};
+  const fromPlaza=Math.atan2(PLAZA.x-c.x,PLAZA.z-c.z);
+  const ox=-Math.sin(fromPlaza),oz=-Math.cos(fromPlaza);
+  const nx=c.x+ox*(c.w/2+.48),nz=c.z+oz*(c.d/2+.48);
+  if(canStand(nx,nz,groundY(nx,nz))&&hideOk(nx,nz))return {x:nx,z:nz};
+  const sides=[[c.w/2+.48,0],[-(c.w/2+.48),0],[0,c.d/2+.48],[0,-(c.d/2+.48)]];
+  let pick=null,ps=1e9;
+  for(const s of sides){
+    const px=c.x+s[0],pz=c.z+s[1];
+    if(!canStand(px,pz,groundY(px,pz)))continue;
+    if(!hideOk(px,pz)&&!coverNear(px,pz,.8))continue;
+    const open=openSides(px,pz);
+    if(open<ps){ps=open;pick={x:px,z:pz};}
+  }
+  return pick||{x:x,z:z};
 }
 
 // 海
@@ -822,6 +1052,12 @@ box(1.6,2.6,100,M.stone,150.8,.7,0,true,true);
 box(1.6,2.6,43,M.stone,-150.8,.7,-28.5,true,true);
 box(1.6,2.6,43,M.stone,-150.8,.7,28.5,true,true);
 box(5.4,.7,1.8,M.deck,PIER.x,-.35,-50.8,false,false);   // 護岸の切れ目（打ち上げられた場所）
+/* 南護岸の通路。建物の陰を回って島の北へ出るための道。当たり判定は持たせない */
+box(268,.08,3.4,M.slab,8,.04,-47.2,false,false);
+for(let x=-128;x<140;x+=18){
+  cyl(M.metal,x,0,-48.6,.12,.55,0);                       // 残った係船柱
+  if(x%36===-128%36)prop(M.rust,x+.8,0,-45.8,.08,1.1,.08,0);
+}
 
 // ドルフィン桟橋
 box(5.6,.7,14,M.roof,PIER.x,-.35,PIER.z,false,false);
@@ -829,7 +1065,7 @@ for(let z=-50;z>-64;z-=3.5){box(.42,4,.42,M.rust,PIER.x-2.4,-1.7,z,false,false);
 box(.18,1,14,M.rust,PIER.x-2.7,.5,PIER.z,false,false);
 box(.18,1,14,M.rust,PIER.x+2.7,.5,PIER.z,false,false);
 
-// 中部の岩山（端島神社・貯水槽・地獄段）
+// 中部の岩山（孤島神社・貯水槽・地獄段）
 box(MESA.x1-MESA.x0,MESA.top,MESA.z1-MESA.z0,M.rock,(MESA.x0+MESA.x1)/2,MESA.top/2,(MESA.z0+MESA.z1)/2,false,false);
 const rubbleQ=[],weedQ=[];
 for(let i=0;i<24;i++){const s=.6+Math.random()*1.9;
@@ -837,20 +1073,75 @@ for(let i=0;i<24;i++){const s=.6+Math.random()*1.9;
                 s,s*.8,Math.random(),Math.random()*3,Math.random()]);}
 for(let i=0;i<14;i++){ // 地獄段
   const x=STAIR.x1-1-i;
-  box(1.15,.6,4.4,M.rock,x,groundY(x,-14.5)-.3,-14.5,false,false);
+  const gy=groundY(x,-14.6);
+  box(1.15,.6,7.4,i%2?M.rock:M.stone,x,gy-.3,-14.6,false,true);
+  prop(M.slabDark,x+.52,gy-.06,-14.6,.12,.2,7.4,0);    // 段鼻（これが無いと滑り台に見える）
+  /* 両側の擁壁。段より少し高く出して、縁が見えるようにする */
+  prop(M.stone,x,gy,-18.5,1.15,.9+gy*.04,.7,0);
+  prop(M.stone,x,gy,-10.7,1.15,.9+gy*.04,.7,0);
+  if(i%4===1){                                     // 手すりの支柱（残っているのは数本だけ）
+    prop(M.rust,x,gy+.4,-18.5,.1,1.0,.1,0);
+    prop(M.rust,x,gy+.4,-10.7,.1,1.0,.1,0);
+  }
 }
-box(.16,1.1,4.6,M.rust,STAIR.x0+6,3.2,-12.1,false,false);
-box(.16,1.1,4.6,M.rust,STAIR.x0+10,1.4,-12.1,false,false);
-// 端島神社（祠と鳥居）
+box(.16,1.1,7.6,M.rust,STAIR.x0+6,3.2,-14.6,false,false);
+box(.16,1.1,7.6,M.rust,STAIR.x0+10,1.4,-14.6,false,false);
+/* 岩山の裾に崩れ落ちた岩（直方体の箱に見えないようにする。物陰にもなる） */
+[[6.2,-30,3.2,2.6,2.2],[5.4,-14,2.6,3.4,1.8],[7.0,-3.2,3.0,2.4,2.4],
+ [18,1.8,3.4,2.6,1.9],[38,2.2,2.8,2.4,1.6],[54,2.0,3.2,2.8,2.1],
+ [61.6,-6,2.6,3.0,1.7],[62.4,-31.2,3.0,2.6,2.3],[30,-32.2,3.4,2.6,1.8],[48,-32.0,2.8,2.4,1.5]].forEach(r=>{
+  prop(M.rock,r[0],0,r[1],r[2],r[4],r[3],Math.random()*.8,{collide:true,cover:true});
+  prop(M.rock,r[0]+(Math.random()-.5)*3,0,r[1]+(Math.random()-.5)*3,1.4,.6,1.2,Math.random()*3);
+});
+// 孤島神社（祠と鳥居）
 box(2.3,2.1,2.1,M.stone,26,MESA.top+1.05,-16,true,false);
+covers.push({x:26,z:-16,w:2.3,d:2.1,h:2.1});
 box(3.1,.34,.38,M.rust,26,MESA.top+2.4,-16,false,false);
 box(.26,2.9,.26,M.rust,24.6,MESA.top+1.45,-10.6,false,false);
 box(.26,2.9,.26,M.rust,27.4,MESA.top+1.45,-10.6,false,false);
 box(3.5,.28,.28,M.rust,26,MESA.top+3,-10.6,false,false);
 // 貯水槽
 box(6.6,3.2,6.6,M.conc,44,MESA.top+1.6,-25,true,true);
+covers.push({x:44,z:-25,w:6.6,d:6.6,h:3.2});
+// 岩山の露岩（隠れられる嵩のある岩。頂上を平らな板にしない）
+[[14,-28,3.4,2.6,1.6],[20,-6,2.8,3.2,1.9],[36,-31,3.0,2.4,1.4],
+ [52,-8,3.6,2.8,1.8],[33,-4,2.4,2.2,1.2],[56,-30,2.6,3.0,1.5]].forEach(r=>{
+  prop(M.rock,r[0],MESA.top,r[1],r[2],r[4],r[3],Math.random()*.6,{collide:true,cover:true});
+});
 
 /* --- 建物（実在名。南＝鉱業施設／中＝岩山／北＝住宅） --- */
+/* 外観のディテール。材質ごとに instanced へまとめるので描画コールは増えない。
+   バルコニーの帯・手すり・屋上のパラペットと貯水タンク・外壁を這う立管。
+   屋上と壁面の物は当たり判定を持たせない（colliders は高さを持たないため、
+   持たせると地面まで通行止めになる） */
+function facade(x,z,w,d,h,door){
+  /* 階数の上限は4。7階まで出すと iPhone のフィルレートで実測3割落ちた（2026-09-27） */
+  const floors=Math.max(1,Math.min(4,Math.floor((h-2.6)/4.4)));
+  for(let f=1;f<=floors;f++){
+    const y=1.9+f*4.4;
+    if(y>h-1.6)break;
+    [[-1,'w'],[1,'e']].forEach(s=>{
+      if(door===s[1])return;                            // 戸口の面は開けておく
+      const cz=z+s[0]*(d/2+.34);
+      prop(M.roof,x,y,cz,w*.86,.2,.68,0);               // 通路床のスラブ
+      prop(M.rust,x,y+.2,cz+s[0]*.28,w*.86,.5,.07,0);   // 手すり
+    });
+  }
+  prop(M.slab,x,h,z-(d/2-.3),w,.6,.5,0);                // 屋上のパラペット
+  prop(M.slab,x,h,z+(d/2-.3),w,.6,.5,0);
+  prop(M.slab,x-(w/2-.3),h,z,.5,.6,d-1,0);
+  prop(M.slab,x+(w/2-.3),h,z,.5,.6,d-1,0);
+  cyl(M.metal,x+w*.2,h+.25,z-d*.16,1.05,1.5,0);         // 屋上の貯水タンク
+  prop(M.slabDark,x-w*.28,h,z+d*.22,2.6,2.3,2.4,0);     // 塔屋（階段室の上屋）
+  prop(M.rust,x+w/2+.16,0,z-d*.3,.2,h*.94,.2,0);        // 外壁を這う立管
+  for(let i=0;i<6;i++){                                 // 壁ぎわに生えた草
+    const e=Math.random()<.5;
+    const gx=e?x+(Math.random()-.5)*w:x+(Math.random()<.5?-1:1)*(w/2+.5);
+    const gz=e?z+(Math.random()<.5?-1:1)*(d/2+.5):z+(Math.random()-.5)*d;
+    if(!inBounds(gx,gz)||inMesa(gx,gz))continue;
+    weedQ.push([gx,.1,gz,.4+Math.random()*.8,.3+Math.random()*.34,.4+Math.random(),Math.random()*3]);
+  }
+}
 function rubbleAround(x,z,w,d){
   for(let k=0;k<5;k++){
     const s=.4+Math.random()*1.3;
@@ -864,8 +1155,10 @@ function plain(x,z,w,d,h,name){
   const geo=new THREE.BoxGeometry(w,h,d);scaleUV(geo,w,h,d);
   const m=new THREE.Mesh(geo,MATS6);m.position.set(x,h/2,z);scene.add(m);
   colliders.push({x:x,z:z,w:w,d:d});
+  covers.push({x:x,z:z,w:w,d:d,h:h});
   BLD.push({x:x,z:z,w:w,d:d,h:h,name:name,enter:false});
   rubbleAround(x,z,w,d);
+  facade(x,z,w,d,h);
 }
 /* 1階の室内（床・低い天井・奥壁＋間仕切り。外壁の高さとは別） */
 function buildInterior(x,z,w,d,h,door){
@@ -913,13 +1206,15 @@ function shelter(x,z,w,d,h,name,door){
   box(w*.5,.45,d*.5,M.roof,x-w*.1,h*.76,z+d*.08,false,false);
   shelters.push({x:x,z:z,w:w-t*2.6,d:d-t*2.6,door:door});
   buildInterior(x,z,w,d,h,door);
+  covers.push({x:x,z:z,w:w,d:d,h:h});
   BLD.push({x:x,z:z,w:w,d:d,h:h,name:name,enter:true});
   rubbleAround(x,z,w,d);
+  facade(x,z,w,d,h,door);
 }
 
 // 南部（鉱業施設）
 shelter(-124,12,26,20,8,'総合事務所','n');
-plain(-138,-16,14,12,6,'鉱員浴場跡');
+plain(-132,-20,12,10,6,'鉱員浴場跡');
 plain(-104,22,16,12,11,'25号棟');
 for(let i=0;i<7;i++)box(1.1,9,1.1,M.rust,-142+i*3,4.5,-41,false,false);  // 第二竪坑坑口桟橋跡
 box(20,.8,2.2,M.rust,-133,9,-41,false,false);
@@ -931,20 +1226,250 @@ plain(-70,18,15,20,14,'21号棟');
 plain(-38,-8,13,16,16,'16号棟');
 plain(-30,26,12,11,12,'17号棟');
 // 北部（住宅群）
-shelter(86,4,38,28,27,'65号棟','s');
-shelter(126,-22,28,17,21,'端島小中学校','w');
-plain(120,26,17,13,15,'端島病院');
+shelter(96,12,32,22,27,'65号棟','s');
+shelter(126,-22,28,17,21,'孤島小中学校','w');
+plain(120,26,17,13,15,'孤島病院');
 plain(56,28,20,13,18,'13号棟');
-plain(46,-44,12,9,9,'鉱員社宅');
-plain(140,8,13,11,10,'共同浴場');
-box(13,.6,10,M.stone,128,.3,4,false,false);   // プール
-box(11,.3,8,M.deck,128,.5,4,false,false);
+plain(36,-28,12,9,9,'鉱員社宅');
+plain(132,36,13,11,10,'共同浴場');
+/* プール：平らな板だと隠れる場所にならないので、縁石で囲った窪みにする。
+   南の縁は割れていて（幅2.8m）そこから底へ降りられる */
+box(13.6,.24,10.6,M.stone,128,.12,4,false,false);      // プールサイドの敷石
+box(11.4,.16,8.4,M.deck,128,.18,4,false,false);        // 水の抜けた底
+prop(M.stone,128,0,8.9,13.6,.95,.7,0,{collide:true,cover:true});     // 北の縁石
+prop(M.stone,123.8,0,-.9,5.6,.95,.7,0,{collide:true,cover:true});    // 南の縁石（西側）
+prop(M.stone,132.2,0,-.9,5.6,.95,.7,0,{collide:true,cover:true});    // 南の縁石（東側）
+prop(M.stone,121.3,0,4,.7,.95,10.6,0,{collide:true,cover:true});     // 西の縁石
+prop(M.stone,134.7,0,4,.7,.95,10.6,0,{collide:true,cover:true});     // 東の縁石
+prop(M.rust,121.9,.95,7.4,.16,1.0,.16,0);                            // 錆びた飛込台の支柱
+prop(M.rust,121.9,1.95,6.2,.5,.12,2.6,0);
+prop(M.metal,134.0,0,-2.2,.7,1.1,.7,.3,{collide:true});              // ろ過機の残骸
 // 空中回廊
-[[-92,-9.5,-64,-17.5],[86,-10,56,21.5],[126,-13.5,120,19.5]].forEach(a=>{
+[[-92,-9.5,-64,-17.5],[96,-1,56,21.5],[126,-13.5,120,19.5]].forEach(a=>{
   const len=Math.hypot(a[2]-a[0],a[3]-a[1]);
   const b=box(1.8,.5,len,M.roof,(a[0]+a[2])/2,9.5,(a[1]+a[3])/2,false,false);
   b.rotation.y=Math.atan2(a[2]-a[0],a[3]-a[1]);
 });
+
+/* ==========================================================================
+   3b. 島の細部（2026-09-27）
+   「廃墟の島に見えるか」と「隠れる場所が本当に物陰か」を同時に満たすために置く。
+   すべて prop() 経由＝材質ごとの instanced なので描画コールは増えない。
+   cover:true を付けた物だけが、子供の隠れ場所として認められる。
+   ========================================================================== */
+/* かくれんぼの広場（じゃんけんの場所）。ここが一番よく見られるので作り込む */
+/* 広場の舗装。M.conc は窓入りのテクスチャなので地面に貼ると窓が並んで見える（実測） */
+box(24,.14,18,M.slab,PLAZA.x,.07,PLAZA.z,false,false);
+for(let i=0;i<9;i++){                                            // 剥がれた舗装と目地
+  const px=PLAZA.x+(Math.random()-.5)*21,pz=PLAZA.z+(Math.random()-.5)*15;
+  prop(M.slabDark,px,.14,pz,1.2+Math.random()*2.6,.03,.8+Math.random()*1.8,Math.random()*3);
+}
+prop(M.slabDark,PLAZA.x,.14,PLAZA.z,23,.04,.16,0);
+prop(M.slabDark,PLAZA.x,.14,PLAZA.z,.16,.04,17,0);
+prop(M.rock,-113,0,-36,3.0,1.35,2.4,.08,{collide:true,cover:true});  // 崩れた壁の瓦礫の山
+prop(M.rock,-126.4,0,-33.6,2.4,1.15,2.6,-.4,{collide:true,cover:true});
+prop(M.rock,-111.6,0,-34.8,2.6,1.1,2.2,.8,{collide:true,cover:true}); // 護岸通路は塞がない
+prop(M.slab,-128.6,0,-36.2,3.2,1.9,.8,.22,{collide:true,cover:true});
+prop(M.slab,-120,0,-33.4,2.6,.62,1.1,0,{collide:true});              // 水飲み場の水槽
+prop(M.rust,-120.7,.62,-33.4,.12,.5,.12,0);
+prop(M.wood,-110.6,0,-42.6,2.2,.5,.6,.15,{collide:true});            // 板を渡したベンチ
+prop(M.rust,-110.6,0,-42.6,2.0,.42,.12,.15);
+prop(M.wood,-126.2,0,-36.8,1.3,1.2,1.2,.5,{collide:true,cover:true});
+prop(M.wood,-124.2,1.2,-47.2,1.1,.9,1.0,.9);
+cyl(M.rust,-131.6,0,-38.4,.31,1.0,0,{collide:true});                 // ドラム缶
+cyl(M.rust,-130.6,0,-37.2,.31,1.0,0,{collide:true});
+cyl(M.rust,-131.2,0,-39.8,.31,1.0,.4,{collide:true});
+
+/* ドルフィン桟橋（上陸地点。荷揚げ場だったことが分かるようにする） */
+prop(M.wood,-119.5,0,-58.4,1.5,1.35,1.6,.12,{collide:true,cover:true});  // 荷揚げの木箱
+prop(M.wood,-119.5,1.35,-58.4,1.2,1.0,1.3,.5);
+cyl(M.rust,-116.4,0,-57.2,.33,1.05,0,{collide:true,cover:true});         // ドラム缶
+cyl(M.rust,-116.6,0,-58.3,.33,1.05,.3,{collide:true});
+cyl(M.metal,-116.2,0,-52.4,.21,.72,0,{collide:true});                   // 係船柱
+cyl(M.metal,-119.8,0,-52.4,.21,.72,0,{collide:true});
+cyl(M.rust,-117.2,0,-61.4,.8,.3,.4);                                    // ロープのコイル
+prop(M.wood,-119.2,0,-62.6,2.4,.26,.4,.9);                              // 流木
+/* 護岸の切れ目（打ち上げられた場所）。漂着物が溜まっている */
+prop(M.wood,-116.8,0,-49.4,1.7,1.05,1.4,.34,{collide:true,cover:true});
+prop(M.wood,-116.8,1.05,-49.4,1.2,.5,1.0,.7);
+cyl(M.rust,-121.4,0,-49.6,.31,1.0,0,{collide:true});
+prop(M.wood,-114.4,0,-50.2,2.8,.3,.42,1.25);
+prop(M.weed,-115.2,0,-48.2,1.8,.34,1.2,.5);                             // 打ち上げられた海藻
+
+/* 第二竪坑坑口桟橋跡（トロッコの軌条と崩れた基礎） */
+prop(M.slab,-133,0,-45.2,3.6,1.55,2.6,.14,{collide:true,cover:true});   // 崩れた基礎
+prop(M.slabDark,-137.4,0,-44.6,2.0,1.0,1.8,-.3,{collide:true,cover:true});
+for(let i=0;i<22;i++)prop(M.wood,-142+i*2.2,0,-37.6,.36,.16,2.2,0);     // 枕木
+prop(M.rust,-118,.16,-38.35,50,.12,.1,0);                               // 軌条
+prop(M.rust,-118,.16,-36.85,50,.12,.1,0);
+prop(M.rust,-104.6,0,-37.6,1.6,1.1,.9,.1,{collide:true,cover:true});    // 横転したトロッコ
+prop(M.rust,-104.6,0,-37.6,1.7,.2,1.0,.1);
+
+/* 街路の電柱と垂れた電線（島に人が住んでいた痕跡） */
+const wireP=[];
+for(let i=0;i<11;i++){
+  const px=-104+i*22;
+  let pz=null;
+  for(const cz of [-2.4,-3.2,-5.6,1.8,-7.4,4.6]){          // 建物にぶつからない位置を探す
+    if(!inBounds(px,cz)||inMesa(px,cz)||inStair(px,cz)||hit(px,cz,1.3))continue;
+    pz=cz;break;
+  }
+  if(pz===null)continue;
+  prop(M.wood,px,0,pz,.3,8.4,.3,0,{collide:true});
+  prop(M.wood,px,7.4,pz,.24,.18,2.6,0);
+  prop(M.rust,px,6.6,pz,.5,.44,.5,0);
+  wireP.push([px,pz]);
+}
+(()=>{                                            // 電線は1本の LineSegments にまとめる
+  const pts=[];
+  for(let i=0;i<wireP.length-1;i++){
+    const a=wireP[i],b=wireP[i+1];
+    for(let s=0;s<8;s++){
+      const t0=s/8,t1=(s+1)/8;
+      const sag=v=>7.5-Math.sin(v*Math.PI)*1.15;
+      [[t0,t1]].forEach(()=>{
+        pts.push(a[0]+(b[0]-a[0])*t0,sag(t0),a[1]+(b[1]-a[1])*t0+.9);
+        pts.push(a[0]+(b[0]-a[0])*t1,sag(t1),a[1]+(b[1]-a[1])*t1+.9);
+        pts.push(a[0]+(b[0]-a[0])*t0,sag(t0)-.45,a[1]+(b[1]-a[1])*t0-.9);
+        pts.push(a[0]+(b[0]-a[0])*t1,sag(t1)-.45,a[1]+(b[1]-a[1])*t1-.9);
+      });
+    }
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+  scene.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x2a2724,transparent:true,opacity:.8})));
+})();
+
+/* 崩れた塀。南護岸の通路（z≈-47）は塞がない。北へ回る道も残す */
+[[144,45.4,6.4,2.3,.8,0],[-146.4,30,.8,2.2,7.0,0],[62,-36.2,5.4,2.0,.8,.1],
+ [8,34.6,6.0,2.2,.8,-.08],[-20,-36.4,5.2,1.8,.8,.16],[104,-36.0,6.2,2.0,.8,-.12],
+ [-48,42,5.6,2.1,.8,.06],[78,10,.8,1.9,4.2,0]].forEach(w=>{
+  prop(M.slab,w[0],0,w[1],w[2],w[3],w[4],w[5],{collide:true,cover:true});
+  prop(M.rock,w[0]+w[2]*.3,0,w[1]+w[4]*.6+.6,1.6,.5,1.4,.3);        // 足元に落ちた瓦礫
+  prop(M.rust,w[0]-w[2]*.25,w[3],w[1],.06,.5,.06,0);                // 露出した鉄筋
+  prop(M.rust,w[0]+w[2]*.1,w[3],w[1]+w[4]*.2,.06,.42,.06,0);
+});
+/* 隠れ用のL字の物陰。返す座標は、壁の中ではなく角の内側の立てる点 */
+function hideNook(x,z,yaw){
+  const c=Math.cos(yaw),s=Math.sin(yaw);
+  const px=(lx,lz)=>[x+c*lx-s*lz,z+s*lx+c*lz];
+  const a=px(0,0),b=px(1.9,1.0);
+  prop(M.slab,a[0],0,a[1],2.6,2.15,.62,yaw,{collide:true,cover:true});
+  prop(M.slab,b[0],0,b[1],.62,2.0,2.0,yaw,{collide:true,cover:true});
+  prop(M.wood,a[0]-c*.75,0,a[1]-s*.75,1.15,1.25,1.05,yaw+.35,{collide:true,cover:true});
+  prop(M.rock,a[0]+c*.4-s*.55,0,a[1]+s*.4+c*.55,1.05,.85,1.15,yaw+.2,{collide:true,cover:true});
+  const tryAt=[[-.85,-.85],[-1.05,-.55],[-.55,-1.05],[-1.2,-.7],[-.7,-1.2],[-.95,-.95]];
+  for(let i=0;i<tryAt.length;i++){
+    const p=px(tryAt[i][0],tryAt[i][1]);
+    if(canStand(p[0],p[1],groundY(p[0],p[1]))&&hideOk(p[0],p[1]))return {x:p[0],z:p[1]};
+  }
+  for(let i=0;i<tryAt.length;i++){
+    const p=px(tryAt[i][0],tryAt[i][1]);
+    if(canStand(p[0],p[1],groundY(p[0],p[1])))return {x:p[0],z:p[1]};
+  }
+  const fb=px(-.85,-.85);
+  return {x:fb[0],z:fb[1]};
+}
+const NOOK={
+  plaza:hideNook(-112.2,-36.4,.2),
+  b31:hideNook(-63.4,-33.8,3.3),
+  b16:hideNook(-38.4,-18.8,3.2),
+  bath:hideNook(131.2,42.2,0),
+  east:hideNook(143.2,46.2,3.14),
+  pool:hideNook(128.0,1.4,0),
+  shrine:hideNook(25.4,-17.2,0),
+  tank:hideNook(44.6,-22.6,1.6)
+};
+/* 住宅側の物干し竿と、塩で白い護岸。箱の島に生活の跡を足す */
+[[-90,-28],[-68,-18],[-42,-18],[50,22],[88,24],[118,18]].forEach(p=>{
+  prop(M.rust,p[0],0,p[1],.08,2.4,.08,0);
+  prop(M.rust,p[0]+2.2,0,p[1],.08,2.4,.08,0);
+  prop(M.cloth,p[0]+1.1,1.9,p[1],2.3,.04,.7,0);
+});
+for(let i=0;i<14;i++){
+  const sx=-140+i*21;
+  prop(M.slab,sx,.05,-45.7,5.4,.04,.16,0);          // 通路側に残った塩の白い線（壁の外側だと見えない）
+  prop(M.weed,sx+2.2,0,-46.1,1.1,.22,.7,0);
+}
+/* 学校の前庭。白線の剥げた跡 */
+prop(M.slab,114,.02,-22,16,.03,.08,0);
+prop(M.slab,114,.02,-22,.08,.03,10,0);
+/* 南部の炭の粉。鉱業側の地面だけ色を落とす */
+for(let i=0;i<6;i++){
+  const cx=-130+Math.random()*28,cz=-8+Math.random()*22;
+  if(hit(cx,cz,1.4))continue;
+  prop(M.slabDark,cx,-.01,cz,2.4+Math.random()*2,.04,1.6+Math.random(),Math.random()*2);
+}
+/* 棟の足元を伝う錆水。路地の文「足元が赤い」を絵にする */
+[[-64,-32.7],[-54,-32.7],[-74,-32.6],[-38,-16.1],[-32,-16.2],[-80,-26.4],
+ [-92,-9.6],[-104,-10.6],[96,1.2],[88,1.2],[112,23.2]].forEach(p=>{
+  prop(M.rust,p[0],.01,p[1],2.8,.035,1.15,0);
+  prop(M.rust,p[0]+.4,.5,p[1]-.02,.08,1.4,.08,0);
+});
+
+const ZONES=[
+  {id:'plaza',enter:'広場の舗装は剥げて、目地から草が出ている。靴底が砂を噛む。',
+   has:(x,z)=>Math.hypot(x-PLAZA.x,z-PLAZA.z)<16},
+  {id:'pier',enter:'桟橋の板が潮を吸って黒い。係船柱に、古いロープの跡が残っている。',
+   has:(x,z)=>z<-52||(x>-128&&x<-108&&z<-46)},
+  {id:'shaft',enter:'枕木の間に、錆びた軌条が埋まっている。竪坑の風が、まだ冷たい。',
+   has:(x,z)=>x<-128&&z>-48&&z<-32},
+  {id:'office',enter:'窓口の跡が残っている。帳簿棚は空で、床に石灰が吹いている。',
+   has:(x,z)=>x>-137&&x<-111&&z>2&&z<22},
+  {id:'b30',enter:'階段室の壁に、部屋番号のペンキが薄く残っている。湿ったコンクリートの匂い。',
+   has:(x,z)=>x>-104&&x<-80&&z>-26.5&&z<-9.5},
+  {id:'alley',enter:'棟と棟の隙間は、一日中日が当たらない。壁を伝う錆水が、足元を赤くしている。',
+   has:(x,z)=>x>-80&&x<-30&&z>-36&&z<6},
+  {id:'prom',enter:'南の護岸を歩く。コンクリートの継ぎ目に、塩が白い線を引いている。',
+   has:(x,z)=>z>-49&&z<-45&&x>-140&&x<140},
+  {id:'mesa',enter:'岩の上は風が違う。祠の石は海風で丸く、貯水槽の鉄は穴が開いている。',
+   has:(x,z)=>inMesa(x,z)||inStair(x,z)},
+  {id:'b65',enter:'中庭に洗濯物の竿だけが残っている。コの字の影が、午後でも深い。',
+   has:(x,z)=>x>80&&x<112&&z>1&&z<23},
+  {id:'school',enter:'黒板の跡が白い。プールは水が抜けて、底に落ち葉ではなく砂が溜まっている。',
+   has:(x,z)=>x>112&&x<140&&z>-31&&z<10},
+  {id:'east',enter:'島の端だ。崩れた塀の向こうは、すぐ海の音だけになる。',
+   has:(x,z)=>x>132&&z>20}
+];
+function areaAt(x,z){
+  if(inShelterAt(x,z)){
+    let b=null,bd=1e9;
+    for(let i=0;i<BLD.length;i++){
+      const d=Math.hypot(BLD[i].x-x,BLD[i].z-z);
+      if(d<bd){bd=d;b=BLD[i];}
+    }
+    if(b){
+      const indoor={
+        '総合事務所':'窓口の跡が残っている。帳簿棚は空で、床に石灰が吹いている。',
+        '30号棟':'階段室の壁に、部屋番号のペンキが薄く残っている。湿ったコンクリートの匂い。',
+        '65号棟':'中庭に洗濯物の竿だけが残っている。コの字の影が、午後でも深い。',
+        '孤島小中学校':'黒板の跡が白い。靴音が、抜けた窓から海へ出ていく。'
+      };
+      return {id:'in:'+b.name,enter:indoor[b.name]||'中は暗い。足音がコンクリートに響く。'};
+    }
+  }
+  for(let i=0;i<ZONES.length;i++)if(ZONES[i].has(x,z))return ZONES[i];
+  return null;
+}
+
+/* 消波ブロック（護岸の外。島が海に囲まれていることを見せる） */
+for(let i=0;i<18;i++){
+  const side=i%4;
+  let tx,tz;
+  if(side===0){tx=-150+Math.random()*300;tz=-54-Math.random()*4;}
+  else if(side===1){tx=-150+Math.random()*300;tz=54+Math.random()*4;}
+  else if(side===2){tx=-154-Math.random()*4;tz=-50+Math.random()*100;}
+  else{tx=154+Math.random()*4;tz=-50+Math.random()*100;}
+  const s=1.9+Math.random()*1.5;
+  prop(M.rock,tx,-2.1,tz,s,s*1.5,s,Math.random()*1.5);
+}
+/* 割れた舗装に溜まった雨水と、飛ばされてきた廃材（地面を単色にしない） */
+for(let i=0;i<8;i++){
+  const tx=-146+Math.random()*292,tz=-46+Math.random()*92;
+  if(hit(tx,tz,1.6)||inMesa(tx,tz)||inStair(tx,tz))continue;
+  prop(M.wet,tx,-.02,tz,2.0+Math.random()*2.6,.06,1.3+Math.random()*1.8,Math.random()*3);
+  if(Math.random()<.5)prop(M.wood,tx+1.6,0,tz,1.6+Math.random(),.22,.3,Math.random()*3);
+}
 // 散乱する瓦礫と草
 for(let i=0;i<140;i++){
   const x=ISL.x0+5+Math.random()*(ISL.x1-ISL.x0-10),z=ISL.z0+5+Math.random()*(ISL.z1-ISL.z0-10);
@@ -966,6 +1491,22 @@ for(let i=0;i<140;i++){
     pv.set(r[0],r[1],r[2]);sv.set(r[3],r[4],r[5]);m4.compose(pv,qt,sv);wm.setMatrixAt(i,m4);});
   scene.add(wm);
 })();
+buildProps();                                     // 細部の小物を材質ごとに1メッシュへ
+/* 南護岸と岩山の北側に、歩ける幅を必ず残す。小物の当たりが通路を塞がないようにする */
+function keepLane(z0,z1,x0,x1){
+  for(let i=colliders.length-1;i>=0;i--){
+    const c=colliders[i];
+    const overlap=!(c.z+c.d/2<z0||c.z-c.d/2>z1||c.x+c.w/2<x0||c.x-c.w/2>x1);
+    if(!overlap)continue;
+    if(c.w>20||c.d>20)continue;                 // 建物本体は残す
+    colliders.splice(i,1);
+  }
+}
+keepLane(-48.4,-45.2,-145,145);                   // 西護岸の通路（広場→北）
+keepLane(5.2,9.2,8,78);                           // 岩山の北側（65号棟の手前まで）
+keepLane(-48,48,142,148);                         // 東端の通路
+keepLane(-3.2,1.2,126.4,129.6);                   // プール南の切れ目
+keepLane(-8,4,78,84);                             // 65号棟の南戸口
 
 
 /* --- ネオン看板（日が落ちてから灯る。和風サイバーパンクの様式・SPEC §7）
@@ -1000,11 +1541,11 @@ function neonSign(chars,rgb,x,y,z,ry,h){
 }
 const NEON_C='61,242,255', NEON_S='255,46,91', NEON_K='242,193,78';
 /* 高さは「立って見上げれば画角に入る」8m前後に置く（14mでは頭上すぎて見えなかった） */
-neonSign('端島',NEON_C,  86,8.4,-10.6,0,6.4);        // 65号棟
-neonSign('小中学校',NEON_S,126,8.0,-30.8,0,7.2);     // 端島小中学校
+neonSign('或る孤島',NEON_C,  96,8.4,1.2,0,6.4);          // 65号棟
+neonSign('小中学校',NEON_S,126,8.0,-30.8,0,7.2);     // 孤島小中学校
 neonSign('事務所',NEON_K,-124,7.2,2.2,0,6.0);        // 総合事務所
 neonSign('三十号',NEON_C,-92,8.6,-9.8,0,6.4);        // 30号棟
-neonSign('湯',NEON_S,140,5.6,2.2,0,2.8);             // 共同浴場
+neonSign('湯',NEON_S,132,5.6,30.2,0,2.8);            // 共同浴場
 neonSign('桟橋',NEON_C,-118,4.6,-52,Math.PI*.5,3.8); // ドルフィン桟橋
 function neonPulse(dt){
   for(let i=0;i<neonSigns.length;i+=2){
@@ -1029,7 +1570,9 @@ function freeSpot(x,z,requireHide){
   };
   let p=ok(x,z);
   if(p)return p;
-  for(let r=1;r<=18;r++){
+  /* 隠れ場所は遠くへ逃がさない（外すと道端まで流れる）。それ以外は広く探す */
+  const maxR=requireHide?2.2:18;
+  for(let r=1;r<=maxR;r++){
     for(let a=0;a<16;a++){
       const th=a/16*6.2832,nx=x+Math.cos(th)*r*1.05,nz=z+Math.sin(th)*r*1.05;
       p=ok(nx,nz);if(p)return p;
@@ -1043,9 +1586,20 @@ function freeSpot(x,z,requireHide){
     }
   }
   p=ok(x,z);
-  return p||{x:x,z:z};
+  const raw=p||{x:x,z:z};
+  if(requireHide){
+    const t=tuckHide(raw.x,raw.z);
+    if(ok(t.x,t.z))return t;
+    let best=null,bd=1e9;
+    for(const key in NOOK){
+      const n=NOOK[key];
+      const d=Math.hypot(n.x-x,n.z-z);
+      if(d<bd&&ok(n.x,n.z)){bd=d;best={x:n.x,z:n.z};}
+    }
+    if(best)return best;
+  }
+  return raw;
 }
-const PLAZA={x:-120,z:-40};                     // じゃんけんの広場＝スタート地点
 
 /* ==========================================================================
    4b. 島の異物（紛らわしい気配。発見数には数えない）
@@ -1089,7 +1643,8 @@ function spawnCritter(kind,x,z,yaw){
   g.position.set(p.x,groundY(p.x,p.z),p.z);g.rotation.y=yaw||0;scene.add(g);
   const info=CRITTER[kind];
   creatures.push({kind,x:p.x,z:p.z,g,yaw:yaw||0,phase:Math.random()*6,homeAng:yaw||0,cue:Math.random()*6,
-    label:info.label,hint:info.hint,hint2:info.hint2,flashed:false,quizzed:false,gone:false});
+    label:info.label,hint:info.hint,hint2:info.hint2,flashed:false,quizzed:false,gone:false,
+    up:0,roof:null,grip:null});
 }
 spawnCritter('rat',-136,-18,Math.PI*.15);
 spawnCritter('rat',-50,-44,Math.PI*-.3);
@@ -1125,13 +1680,11 @@ function updateCreatures(dt){
     }
     if(d<6&&!c.flashed){c.flashed=true;note('物音。──子供の背丈ではない。');}
     if(spd){
-      const nx=c.x+Math.sin(dir)*spd*dt,nz=c.z+Math.cos(dir)*spd*dt;
-      if(inBounds(nx,nz)&&!hit(nx,nz,.75)&&!inStair(nx,nz)&&(!inMesa(nx,nz)||c.kind==='martian')){
-        c.x=nx;c.z=nz;
-      }
+      const mx=Math.sin(dir)*spd*dt,mz=Math.cos(dir)*spd*dt;
+      stepClimber(c,mx,mz,dt,true,true);
     }
-    const gy=groundY(c.x,c.z)+(c.kind==='rat'?.08:0);
-    c.g.position.set(c.x,gy+Math.sin(c.phase*3)*.012,c.z);
+    const foot=c.roof?c.roof.h:groundY(c.x,c.z)+(c.up||0);
+    c.g.position.set(c.x,foot+(c.kind==='rat'?.08:0)+Math.sin(c.phase*3)*.012,c.z);
     const tail=c.g.userData.tail;
     if(tail)tail.rotation.y=Math.sin(c.phase*9)*.18;
     if(c.kind==='tiger')c.g.position.y+=Math.sin(c.phase*5)*.004;
@@ -1187,22 +1740,24 @@ function updateElders(dt){
 /* ==========================================================================
    4d. 五人の子供（隠れる／見つかる／うしろについてくる）
    ========================================================================== */
+/* 候補座標は「物に身を寄せられる点」だけを書く（2026-09-27 改訂）。
+   以前は壁から2.4m離れた道端に立ってしまう候補が6件あった。 */
 const KIDS=[
   {name:'ミチル',cloth:0x4a6f8a,hair:0x2a2622,cue:'giggle',where:'ひくい物かげ',
    near:'すぐ近くで、笑いをこらえる息がする。',
-   spots:[[-112,-34],[-64,-34],[-38,-18]]},
+   spots:[[NOOK.plaza.x,NOOK.plaza.z],[NOOK.b31.x,NOOK.b31.z],[NOOK.b16.x,NOOK.b16.z]]},
   {name:'タケシ',cloth:0x7a4a3c,hair:0x201d1a,cue:'pant',where:'いちばん遠いところ',
    near:'走ったあとの、荒い息づかい。',
-   spots:[[128,-22],[140,16],[118,-8]]},
+   spots:[[124,-24],[NOOK.bath.x,NOOK.bath.z],[NOOK.east.x,NOOK.east.z]]},
   {name:'サエ',cloth:0x6d5a86,hair:0x2b2520,cue:'hum',where:'たかいところ',
    near:'鼻歌。ちいさいが、確かに上のほうから。',
-   spots:[[26,-16],[128,4],[44,-24]]},
+   spots:[[NOOK.shrine.x,NOOK.shrine.z],[NOOK.pool.x,NOOK.pool.z],[NOOK.tank.x,NOOK.tank.z]]},
   {name:'ゴロウ',cloth:0x4f6b4a,hair:0x241f1b,cue:'canKick',where:'たてものの奥',
    near:'奥で、缶が転がった。',
-   spots:[[98,6],[-120,12],[-88,-18]]},
+   spots:[[82,10],[-119,15],[-88,-16]]},
   {name:'ハナ',cloth:0x8a7a4a,hair:0x2e2823,cue:'scuff',where:'みずぎわ',
    near:'砂を擦る靴の音。波のすぐそば。',
-   spots:[[-118,-53],[-133,-41],[-124,8]]}
+   spots:[[-119.2,-58.2],[-133.4,-44.2],[-117.2,-50.0]]}
 ];
 const kids=[];
 const kidMat={};
@@ -1222,6 +1777,42 @@ function mkKid(g,cloth,hair){
   });
   return g;
 }
+const selfG=new THREE.Group();
+mkKid(selfG,0x2f4d68,0x221c18);
+selfG.traverse(o=>{
+  if(o.material){o.material=o.material.clone();o.material.transparent=true;}
+});
+selfG.visible=false;
+scene.add(selfG);
+let viewMode=0, callMode='mada';
+const VIEW_NAME=['目','後ろ','鬼'];
+function shout(mode){
+  callMode=mode;
+  const line=mode==='mada'?'まーだだよ':'もういいよ';
+  const btn=$('bCall');
+  btn.textContent=mode==='mada'?'まだ':'いいよ';
+  btn.setAttribute('aria-label',line);
+  btn.setAttribute('aria-pressed',mode==='iiyo'?'true':'false');
+  const el=$('callLine');
+  el.textContent=line;
+  el.classList.add('on');
+  clearTimeout(shout._t);shout._t=setTimeout(()=>el.classList.remove('on'),2400);
+  say(line,2.4);
+  if(mode==='mada')note(role==='hide'?'鬼はわかっている。まだ、来ない。':'鬼はわかっている。まだ、探せない。');
+  else note(role==='hide'?'もういいよ。鬼が、動きだす。':'もういいよ。探しはじめる。');
+}
+function toggleCall(){
+  if(state!=='play'&&state!=='pause')return;
+  shout(callMode==='mada'?'iiyo':'mada');
+}
+function cycleView(){
+  if(state!=='play'&&state!=='pause')return;
+  viewMode=(viewMode+1)%3;
+  const btn=$('bView');
+  btn.textContent=VIEW_NAME[viewMode];
+  btn.setAttribute('aria-label','視点 '+VIEW_NAME[viewMode]);
+  note(viewMode===0?'自分の目。':viewMode===1?'うしろから、自分が見える。':'鬼はわかっている。その目のうしろ。');
+}
 function placeKids(){
   const used=[];
   KIDS.forEach(def=>{
@@ -1233,7 +1824,17 @@ function placeKids(){
     }
     if(!pick)pick=def.spots[0];
     used.push(pick);
-    const p=freeSpot(pick[0],pick[1],true);
+    let p=freeSpot(pick[0],pick[1],true);
+    if(!hideOk(p.x,p.z)){
+      let best=null,bd=1e9;
+      for(const key in NOOK){
+        const n=NOOK[key];
+        if(used.some(u=>Math.hypot(u[0]-n.x,u[1]-n.z)<6))continue;
+        const d=Math.hypot(n.x-p.x,n.z-p.z);
+        if(d<bd&&hideOk(n.x,n.z)&&canStand(n.x,n.z,groundY(n.x,n.z))){bd=d;best=n;}
+      }
+      if(best)p={x:best.x,z:best.z};
+    }
     const g=new THREE.Group();mkKid(g,def.cloth,def.hair);
     g.position.set(p.x,groundY(p.x,p.z),p.z);
     g.rotation.y=hideFacing(p.x,p.z);
@@ -1278,7 +1879,8 @@ function updateKids(dt){
     k.phase+=dt;
     const d=Math.hypot(k.x-P.x,k.z-P.z);
     if(!k.found){
-      k.g.visible=d<34;                         // 遠景では描かない（iPhone対策）
+      if(k.isOni)continue;
+      k.g.visible=d<34||(viewMode===2);         // 鬼の視点では、わかっている子を見せる
       /* 気配：14m以内で、距離に応じた間隔と音量で鳴る。方向は左右に振る */
       k.cueT-=dt;
       if(k.cueT<=0&&d<14){
@@ -1316,9 +1918,9 @@ function showFound(name){
    5. 状態
    ========================================================================== */
 const P={x:PLAZA.x,z:PLAZA.z,yaw:Math.PI*.55,pitch:0,vx:0,vz:0,y:1.28,   // 子供なので目線は1.28m
-         stam:100,lightOn:false,batt:100};
+         stam:100,lightOn:false,batt:100,up:0,roof:null,grip:null,blend:0,face:true};
 let t=0,bobT=0,shake=0,flash=0,stepT=0,breathT=0,creakT=10,
-    fallT=8,near=null,sayT=0,lastShelter=false,goHomeT=0,earCd=0,neonOn=false;
+    fallT=8,near=null,sayT=0,lastArea='',goHomeT=0,earCd=0,neonOn=false;
 
 /* 空（夕方から夜へ。6分で落ちる） */
 const W={rain:0,wind:.24,wave:.8,vis:190,light:.92};
@@ -1360,6 +1962,12 @@ const markEls=[].slice.call($('marks').children);
 function statusLine(){
   const left=LIMIT-t,n=foundCount();
   if(goHomeT>0)return '';
+  if(role==='hide'){
+    if(P.blend>.82)return '肌が、景色と同じ色になった。';
+    if(P.roof||P.up>.3)return '登っている。止まれば、壁の色になる。';
+    if(P.blend>.35)return '色が、寄ってきている。';
+    return '鬼が来る。壁にとりついて、止まれ。';
+  }
   if(left<30)return '日が落ちる。';
   if(left<75)return 'もう暗い。あと少しで何も見えなくなる。';
   if(n===0&&t<24)return '十数えた。どこにも、いない。';
@@ -1375,11 +1983,19 @@ function hud(){
   const n=foundCount();
   for(let i=0;i<markEls.length;i++)markEls[i].classList.toggle('got',i<n);
   $('stamBar').style.width=clamp(P.stam,0,100)+'%';
-  const row=kids.filter(k=>k.found).map(k=>k.name);
-  $('carry').innerHTML=row.length?('うしろ<br><span>'+row.join('</span><br><span>')+'</span>'):'うしろ<br>だれもいない';
+  const row=role==='hide'
+    ? ['同化 '+(Math.round(P.blend*100))+'%']
+    : kids.filter(k=>k.found&&!k.isOni).map(k=>k.name);
+  $('carry').innerHTML=row.length?(role==='hide'?'肌<br><span>'+row[0]+'</span>':'うしろ<br><span>'+row.join('</span><br><span>')+'</span>'):'うしろ<br>だれもいない';
   drawCompass();
   const dark=1-W.light;
   $('vig').style.boxShadow='inset 0 0 '+((70+dark*90)|0)+'px '+((16+dark*34)|0)+'px rgba(0,0,0,'+(.26+dark*.3).toFixed(2)+')';
+  const ch=$('chame');
+  if(ch){
+    const wash=viewMode===0?Math.min(.92,P.blend*.96):Math.min(.22,P.blend*.24);
+    ch.style.opacity=role==='hide'?String(wash):'0';
+    ch.classList.toggle('on',role==='hide'&&P.blend>.12);
+  }
 }
 
 /* ==========================================================================
@@ -1401,7 +2017,7 @@ function findNear(){
   let best=null,bs=1e9;
   const take=(s,o)=>{if(s<bs){bs=s;best=o;}};
   for(let i=0;i<kids.length;i++){
-    const k=kids[i];if(k.found)continue;
+    const k=kids[i];if(k.found||k.isOni||role==='hide')continue;
     const d=Math.hypot(k.x-P.x,k.z-P.z);
     if(d<3.4)take(aim(k.x,k.z,d),{type:'kid',k:k,label:'みつけた'});
   }
@@ -1422,6 +2038,12 @@ function findNear(){
 function listen(){
   if(state!=='play')return;
   if(earCd>0){note('いまは、耳が音でいっぱいだ。');return;}
+  if(role==='hide'&&oni){
+    earCd=8;
+    sfx.pant(1,panOf(oni.k.x,oni.k.z));
+    note('鬼の足音がする。');
+    return;
+  }
   const rest=kids.filter(k=>!k.found);
   if(!rest.length)return;
   let k=rest[0],bd=1e9;
@@ -1445,7 +2067,10 @@ function doAction(){
   if(state!=='play')return;
   if(!near){listen();return;}
   const n=near;
-  if(n.type==='kid'){findKid(n.k);return;}
+  if(n.type==='kid'){
+    if(callMode==='mada'){say('まーだだよ',2.2);note('鬼はわかっている。まだ、探せない。');return;}
+    findKid(n.k);return;
+  }
   if(n.type==='elder'){say(elderHint(n.e),7);burst(280,.15,.035,'lowpass');return;}
   if(n.type==='critter'){
     const c=n.c;
@@ -1521,12 +2146,14 @@ function step(dt){
   const tvx=(fx*iz+rx*ix)*spd,tvz=(fz*iz+rz*ix)*spd;
   const k=1-Math.exp(-dt/(moving?.12:.09));         // 立ち上がり0.12秒・停止0.09秒
   P.vx+=(tvx-P.vx)*k;P.vz+=(tvz-P.vz)*k;
-  const cy=P.y-1.28;
-  const nx=P.x+P.vx*dt,nz=P.z+P.vz*dt;
-  if(canStand(nx,P.z,cy))P.x=nx; else P.vx=0;
-  if(canStand(P.x,nz,cy))P.z=nz; else P.vz=0;
-  const gy=groundY(P.x,P.z)+1.28;
-  P.y+=(gy-P.y)*Math.min(1,dt*7);
+  const x0=P.x,z0=P.z,up0=P.up,roof0=P.roof;
+  stepClimber(P,P.vx*dt,P.vz*dt,dt,iz>.18&&moving,false);
+  if(P.x===x0)P.vx=0;
+  if(P.z===z0)P.vz=0;
+  const foot=P.roof?P.roof.h:groundY(P.x,P.z)+P.up;
+  P.y=foot+1.28;
+  if(up0<.05&&P.up>.1)note(P.grip==='mesa'?'岩肌に手をかけた。':'壁にとりついた。');
+  if(!roof0&&P.roof)note('屋根まで登った。');
 
   /* 足音 */
   const realMove=Math.hypot(P.vx,P.vz);
@@ -1540,10 +2167,16 @@ function step(dt){
   breathT-=dt;
   if(breathT<=0){const hard=P.stam<35;breathT=hard?1.15:2.8;if(realMove>.4||hard)sfx.breath(hard);}
 
-  /* 屋内 */
-  const sheltered=inShelter();
-  if(sheltered&&!lastShelter)note('中は暗い。足音がコンクリートに響く。');
-  lastShelter=sheltered;
+  if(role==='hide'){
+    const still=Math.hypot(P.vx,P.vz)<.45&&P.up<.15;
+    const goal=still?1:0;
+    P.blend+=(goal-P.blend)*Math.min(1,dt*(still?3.4:5.2));
+  }else P.blend=0;
+
+  /* エリア。入ったときだけ、その場所の匂いと足元を一行出す */
+  const area=areaAt(P.x,P.z);
+  if(area&&area.id!==lastArea){lastArea=area.id;note(area.enter);}
+  if(!area)lastArea='';
 
   /* 明かり */
   if(P.lightOn){P.batt-=.42*dt;
@@ -1583,6 +2216,7 @@ function step(dt){
   updateKids(dt);
   updateCreatures(dt);
   updateElders(dt);
+  updateOni(dt);
 
   /* 五人そろったら、みんなで帰る */
   if(goHomeT>0){
@@ -1591,7 +2225,7 @@ function step(dt){
     if(d>1.2){P.x+=dx/d*Math.min(d,5.4*dt);P.z+=dz/d*Math.min(d,5.4*dt);}
     P.yaw+=(Math.atan2(-dx,-dz)-P.yaw)*Math.min(1,dt*1.6);
     if(goHomeT>3.4){end('win');return;}
-  }else if(t>=LIMIT){end('dusk');return;}
+  }else if(t>=LIMIT){end(role==='hide'?'hid':'dusk');return;}
 
   /* 手の届くもの */
   near=findNear();
@@ -1652,12 +2286,62 @@ function render(dt,now){
 
   shake=Math.max(0,shake-dt*1.3);
   const sway=S.bob?Math.sin(bobT)*.042+Math.sin(bobT*.5)*.018:0;
-  camera.position.set(
-    P.x+(Math.random()-.5)*shake,
-    P.y+sway+(Math.random()-.5)*shake,
-    P.z+(Math.random()-.5)*shake);
-  camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;
+  placeCamera(sway,shake);
   renderer.render(scene,camera);
+}
+function placeCamera(sway,shake){
+  const jx=(Math.random()-.5)*shake,jz=(Math.random()-.5)*shake;
+  const foot=P.roof?P.roof.h:groundY(P.x,P.z)+P.up;
+  const eyeY=foot+1.28+sway;
+  const showSelf=viewMode!==0;
+  selfG.visible=showSelf;
+  if(showSelf){
+    const fade=Math.max(.34,1-P.blend*.66);
+    selfG.traverse(o=>{if(o.material)o.material.opacity=fade;});
+    selfG.position.set(P.x,foot,P.z);
+    selfG.rotation.y=P.yaw;
+    const bob=Math.abs(Math.sin(bobT))*.04;
+    selfG.position.y=foot+bob;
+  }
+  if(viewMode===0){
+    camera.position.set(P.x+jx,eyeY+(Math.random()-.5)*shake,P.z+jz);
+    camera.rotation.order='YXZ';
+    camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;camera.rotation.z=0;
+    return;
+  }
+  let cx,cy,cz,lx,ly,lz;
+  if(viewMode===2){
+    const known=knownSubject();
+    const face=Math.atan2(known.tx-known.ox,known.tz-known.oz);
+    cx=known.ox-Math.sin(face)*2.5+jx;
+    cz=known.oz-Math.cos(face)*2.5+jz;
+    cy=known.oy+1.15;
+    lx=known.tx; ly=known.ty; lz=known.tz;
+  }else{
+    cx=P.x+Math.sin(P.yaw)*2.7+jx;
+    cz=P.z+Math.cos(P.yaw)*2.7+jz;
+    cy=eyeY+.45;
+    lx=P.x; ly=eyeY-.2; lz=P.z;
+  }
+  camera.position.set(cx,cy,cz);
+  camera.lookAt(lx,ly,lz);
+}
+function knownSubject(){
+  const myFoot=P.roof?P.roof.h:groundY(P.x,P.z)+P.up;
+  if(role==='hide'&&oni){
+    const k=oni.k;
+    const of=k.roof?k.roof.h:groundY(k.x,k.z)+(k.up||0);
+    return {ox:k.x,oz:k.z,oy:of+1.05,tx:P.x,tz:P.z,ty:myFoot+1.05};
+  }
+  let best=null,bd=1e9;
+  for(let i=0;i<kids.length;i++){
+    const k=kids[i];
+    if(k.found||k.isOni)continue;
+    const d=Math.hypot(k.x-P.x,k.z-P.z);
+    if(d<bd){bd=d;best=k;}
+  }
+  if(!best)return {ox:P.x,oz:P.z,oy:myFoot+1.05,tx:P.x-Math.sin(P.yaw)*4,tz:P.z-Math.cos(P.yaw)*4,ty:myFoot+1.05};
+  return {ox:P.x,oz:P.z,oy:myFoot+1.05,tx:best.x,tz:best.z,ty:groundY(best.x,best.z)+.9};
 }
 
 /* ==========================================================================
@@ -1695,10 +2379,12 @@ function drawMap(){
   g.fillText('広場',mx(PLAZA.x),mz(PLAZA.z)-7);
   g.fillText('岩山・祠',mx(34),mz(-17));
   g.fillText('地獄段',mx(67),mz(-14)+3);
-  g.fillText('65号棟',mx(86),mz(4)+3);
+  g.fillText('65号棟',mx(96),mz(12)+3);
   g.fillText('学校',mx(126),mz(-22)+3);
   g.fillText('30号棟',mx(-92),mz(-18)+3);
   g.fillText('総合事務所',mx(-124),mz(12)+3);
+  g.fillText('南護岸',mx(8),mz(-47)+4);
+  g.fillText('プール',mx(128),mz(4)+3);
   // 方位（右が北）
   const ax=W0-52,ay=H0-22;
   g.strokeStyle='#3df2ff';g.lineWidth=1.4;
@@ -1759,7 +2445,7 @@ function fxDraw(now){
       fg.moveTo(x+u/2,y);fg.lineTo(x+u/2,y+u);fg.stroke();
     }
   }
-  /* 島のシルエット（端島＝細長い箱の連なり）と縁のネオン */
+  /* 島のシルエット（或る孤島＝細長い箱の連なり）と縁のネオン */
   const seed=[.10,.30,.16,.46,.28,.58,.38,.24,.50,.34,.18,.40,.12];
   const bw=w/(seed.length-1);
   fg.fillStyle='#03050a';
@@ -1827,37 +2513,64 @@ function fxDraw(now){
    ========================================================================== */
 const HANDS=['グー','チョキ','パー'];
 const beats=(a,b)=>(a===0&&b===1)||(a===1&&b===2)||(a===2&&b===0);   // a が b に勝つ
-let janRound=0;
-function soleLoser(my,others){
-  // 全員が同じ手で、それが自分に勝っている＝自分ひとりの負け
-  return others.every(h=>h===others[0])&&beats(others[0],my);
+let janRound=0, role='seek', oni=null;
+function makeOni(){
+  const k=kids[(Math.random()*kids.length)|0];
+  k.isOni=true;
+  k.x=PLAZA.x+4.2; k.z=PLAZA.z+1.4; k.up=0; k.roof=null; k.grip=null;
+  k.g.scale.set(1.15,1.15,1.15);
+  k.g.visible=true;
+  const band=new THREE.Mesh(new THREE.BoxGeometry(.24,.07,.2),lamb({color:0xd24a3a}));
+  band.position.y=1.02; k.g.add(band);
+  oni={k:k,phase:0,grace:5,lost:0,look:null};
 }
-function otherSoleLoser(others){
-  // 誰かひとりだけが負ける形（主人公以外が鬼になってしまう形）
-  for(let i=0;i<others.length;i++){
-    const rest=others.filter((_,j)=>j!==i);
-    if(rest.every(h=>h===rest[0])&&beats(rest[0],others[i]))return true;
-  }
-  return false;
+function updateOni(dt){
+  if(role!=='hide'||!oni||state!=='play')return;
+  const k=oni.k;
+  oni.phase+=dt;
+  if(oni.grace>0)oni.grace-=dt;
+  const waiting=callMode!=='iiyo';
+  const hidden=P.blend>.78&&!waiting;
+  let tx,tz,spd;
+  if(waiting){
+    tx=P.x; tz=P.z; spd=0;
+  }else if(hidden){
+    oni.lost+=dt;
+    if(!oni.look||oni.lost>3.5){
+      oni.look=BLD[(Math.random()*BLD.length)|0];
+      oni.lost=0;
+    }
+    tx=oni.look.x; tz=oni.look.z; spd=1.8;
+  }else{tx=P.x; tz=P.z; oni.look=null; spd=2.55;}
+  const dx=tx-k.x, dz=tz-k.z, dist=Math.hypot(dx,dz)||1;
+  stepClimber(k,dx/dist*spd*dt,dz/dist*spd*dt,dt,true,true);
+  const foot=k.roof?k.roof.h:groundY(k.x,k.z)+(k.up||0);
+  k.g.visible=true;
+  k.g.position.set(k.x,foot,k.z);
+  if(dist>.3)k.g.rotation.y=Math.atan2(dx,dz);
+  const pd=Math.hypot(k.x-P.x,k.z-P.z);
+  const myFoot=P.roof?P.roof.h:groundY(P.x,P.z)+P.up;
+  const reach=hidden?.72:2.4;
+  if(!waiting&&oni.grace<=0&&pd<reach&&Math.abs(foot-myFoot)<2.4)end('caught');
 }
 function janPlay(my){
   janRound++;
-  const force=janRound>=3;                       // 3回目は必ず決着（SPEC §2）
-  let others=null;
-  if(force){const w=[2,0,1][my];others=[w,w,w,w,w];}             // 3回目は必ず決着させる
-  else for(let tr=0;tr<120;tr++){
-    const c=[0,0,0,0,0].map(()=>(Math.random()*3)|0);
-    if(soleLoser(my,c)){others=c;break;}
-    if(otherSoleLoser(c))continue;                               // 他人が鬼になる形は引き直す
-    others=c;break;
-  }
-  if(!others){const w=[2,0,1][my];others=[w,w,w,w,w];}          // 保険：必ず一人負けの形にする
-  const lost=soleLoser(my,others);
+  let opp=(Math.random()*3)|0;
+  if(janRound>=3&&opp===my)opp=Math.random()<.5?[1,2,0][my]:[2,0,1][my];
+  const others=[opp,opp,opp,opp,opp];
+  const won=beats(my,opp), lost=beats(opp,my);
   const names=['ミチル','タケシ','サエ','ゴロウ','ハナ'];
-  $('janBoard').innerHTML='<b>じぶん</b><span'+(lost?' class="miss"':'')+'>'+HANDS[my]+'</span>'
+  $('janBoard').innerHTML='<b>じぶん</b><span'+(won?' class="hit"':(lost?' class="miss"':''))+'>'+HANDS[my]+'</span>'
     +names.map((n,i)=>'<b>'+n+'</b><span>'+HANDS[others[i]]+'</span>').join('');
   sfx.janHit();
-  if(lost){
+  if(won){
+    role='hide';
+    $('janTxt').textContent='勝った。肌の色が、勝手に変わりはじめる。';
+    $('janRound').textContent='鬼は、ほかの誰か。';
+    document.querySelectorAll('.jan').forEach(b=>b.disabled=true);
+    setTimeout(startCount,1100);
+  }else if(lost){
+    role='seek';
     $('janTxt').textContent='ひとりだけ、負けた。';
     $('janRound').textContent='鬼は、じぶん。';
     document.querySelectorAll('.jan').forEach(b=>b.disabled=true);
@@ -1877,6 +2590,7 @@ function startCount(){
   sheet('shJan',false);
   fxRun=false;fx.classList.remove('on');
   $('janCount').classList.add('on');
+  $('janCount').querySelector('small').textContent=role==='hide'?'肌 が 、 色 を 変 え る':'お に は 目 を つ ぶ る';
   const KAN=['０','１','２','３','４','５','６','７','８','９','十'];
   let n=0;
   const tick=()=>{
@@ -1892,8 +2606,13 @@ function startCount(){
 function beginPlay(){
   $('janCount').classList.remove('on');
   state='play';last=performance.now();
-  say('もう、いいかい。',6);
-  note('十数えた。五人が、どこかに隠れている。');
+  if(role==='hide'){
+    makeOni();
+    note('止まれば同化。壁も岩も、鬼と同じように登れる。');
+  }else{
+    note('十数えた。五人が、どこかに隠れている。壁も岩も登れる。');
+  }
+  shout('mada');
 }
 
 /* ==========================================================================
@@ -1908,6 +2627,10 @@ function end(kind){
   if(kind==='win'){
     if(!best||t<best){store.set('bestFind',Math.round(t));rec='最短記録を更新した。';}
     else rec='これまでの最短　'+fmtDur(best);
+  }else if(kind==='hid'){
+    rec='日が落ちるまで、ばれなかった。';
+  }else if(kind==='caught'){
+    rec='肌の色が、追いつかれた。';
   }else rec=best?('これまでの最短　'+fmtDur(best)):'まだ一度も、五人そろえていない。';
 
   let html;
@@ -1918,6 +2641,17 @@ function end(kind){
       +'<div class="kv"><b>かかった時間</b><span class="hit">'+fmtDur(t)+'</span>'
       +'<b>日暮れまで</b><span>'+fmtDur(Math.max(0,LIMIT-t))+' 残していた</span></div>';
     fxMode='win';
+  }else if(kind==='hid'){
+    html='<h1 class="neon">ばれなかった<small>肌 は 、 島 の 色</small></h1><div class="rule"></div>'
+      +'<p>日が落ちても、鬼は屋根の上を探していた。自分の輪郭は、もうコンクリートだった。</p>'
+      +'<p class="q">止まっていれば、色は寄ってくる。歩きだすと、また子供の色に戻る。</p>';
+    fxMode='win';
+  }else if(kind==='caught'){
+    html='<h1 class="shu">見つかった<small>色 が 、 遅 れ た</small></h1><div class="rule"></div>'
+      +'<p>鬼の手が、まだ色の変わりきらない肩に触れた。「ばれた」と言って、輪がほどけた。</p>'
+      +'<p class="q">壁に止まれば、もう一度、景色の色になれる。</p>';
+    fxMode='dusk';
+    sfx.dusk();
   }else{
     const miss=kids.filter(k=>!k.found);
     html='<h1 class="shu">日が落ちた<small>か く れ ん ぼ 　 お わ り</small></h1><div class="rule"></div>'
