@@ -19,20 +19,6 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);overflow:hid
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   -webkit-text-size-adjust:100%;touch-action:manipulation;overscroll-behavior:none}
 canvas#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
-#chame{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;
-  background:
-    radial-gradient(circle at 18% 28%, rgba(122,168,46,.72), transparent 36%),
-    radial-gradient(circle at 78% 22%, rgba(186,132,48,.66), transparent 34%),
-    radial-gradient(circle at 62% 78%, rgba(64,96,58,.7), transparent 40%),
-    radial-gradient(circle at 30% 70%, rgba(150,148,132,.55), transparent 38%);
-  mix-blend-mode:multiply}
-#chame.on{animation:chameShift .55s linear infinite}
-@keyframes chameShift{
-  0%{filter:hue-rotate(0deg) saturate(1.7)}
-  50%{filter:hue-rotate(110deg) saturate(2)}
-  100%{filter:hue-rotate(200deg) saturate(1.5)}
-}
-@media (prefers-reduced-motion: reduce){#chame.on{animation:none}}
 .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-feature-settings:"tnum"}
 
 /* ---------- 和風サイバーパンク：背景レイヤーと走査線 ---------- */
@@ -213,6 +199,40 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   #sideL{bottom:calc(env(safe-area-inset-bottom,0px) + 214px)}
   #log{top:calc(env(safe-area-inset-top,0px) + 132px)}
 }
+
+/* ---------- 横持ち（探すゲームなので、画面をできるだけ広くあける） ---------- */
+#rotate{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;pointer-events:none;
+  background:#04070e;color:var(--fg);text-align:center;letter-spacing:.18em;font-size:15px;line-height:2.3}
+#rotate b{color:var(--neon);font-weight:400;text-shadow:0 0 12px rgba(61,242,255,.6)}
+#rotate small{display:block;margin-top:16px;font-size:11px;color:var(--dim);letter-spacing:.24em}
+@media (orientation:portrait) and (pointer:coarse){#rotate{display:flex}}
+
+@media (orientation:landscape) and (max-height:560px){
+  /* ファミコン筐体の板をやめ、十字キーとボタンを両隅へ寄せて視界を空ける */
+  .fc-body{max-width:none}
+  .fc-plate{background:none;border:0;box-shadow:none;padding:0}
+  .fc-recess{display:none}                 /* START/SELECT は右上の 地図／Ⅱ に集約済み */
+  .dpad{width:min(40vh,132px);height:min(40vh,132px)}
+  .stick{width:min(26vh,86px);height:min(26vh,86px)}
+  .fc-round{width:min(16vh,52px);height:min(16vh,52px);font-size:12px}
+  /* 左上は「時刻・残り・五人・息」を縦に積む。左下は十字キーのために空ける */
+  #readout{font-size:11px;line-height:1.7}
+  #marks{top:calc(env(safe-area-inset-top,0px) + 52px)!important;bottom:auto!important;gap:5px}
+  #marks i{font-size:13px}
+  #stamWrap{top:calc(env(safe-area-inset-top,0px) + 74px)!important;bottom:auto!important;width:92px}
+  #sideL{top:calc(env(safe-area-inset-top,0px) + 88px)!important;bottom:auto!important;gap:4px}
+  #sideL button{width:50px;min-height:34px;font-size:10px}
+  #log{top:calc(env(safe-area-inset-top,0px) + 42px)!important;width:min(30vw,216px);font-size:11px;line-height:1.6}
+  #carry{bottom:calc(env(safe-area-inset-bottom,0px) + 190px);font-size:10.5px;line-height:1.8}
+  #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+  #status{top:calc(env(safe-area-inset-top,0px) + 28px);font-size:12.5px;width:46vw}
+  #callLine{top:24%;font-size:clamp(28px,6.5vw,52px)}
+  h1{font-size:clamp(26px,5.4vw,42px)}
+  h1 small{margin-top:8px}
+  .sheet{padding:12px}
+  .panel{max-width:540px}
+}
+
 </style>
 </head>
 <body>
@@ -239,7 +259,6 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 <div id="janCount"><span id="janNum">０</span><small>お に は 目 を つ ぶ る</small></div>
 
 <canvas id="scene"></canvas>
-<div id="chame" aria-hidden="true"></div>
 
 <div id="hud">
   <div id="readout" class="mono"></div>
@@ -257,6 +276,8 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   <div id="callLine" aria-live="polite"></div>
 </div>
 
+<div id="rotate" aria-hidden="true"><div>画面を<b>横</b>にしてください<small>島 を 広 く 見 わ た す た め</small></div></div>
+
 <div id="topbtns">
   <button id="bMap" aria-label="地図を開く">地図</button>
   <button id="bPause" aria-label="一時停止">Ⅱ</button>
@@ -266,7 +287,6 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   <button id="bLight" aria-label="懐中電灯">ライト</button>
   <button id="bPad" aria-label="仮想パッドの表示切替">パッド</button>
   <button id="bView" aria-label="視点を切り替える">目</button>
-  <button id="bCall" aria-label="まーだだよ">まだ</button>
 </div>
 
 <div id="ctl">
@@ -297,10 +317,10 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
       <div class="fc-col fc-col-r">
         <div class="stick" id="stLook" aria-label="視点スティック"><div class="knob"></div><em>視点</em></div>
         <div class="fc-abhouse">
-          <button type="button" class="fc-round game-btn" id="fcB" aria-label="走る">B</button>
+          <button type="button" class="fc-round game-btn" id="fcB" aria-label="ダッシュ切替">B</button>
           <button type="button" class="fc-round game-btn" id="fcA" aria-label="みつけた">A</button>
         </div>
-        <div class="fc-ablabels"><span>B 走る</span><span>A みつけた</span></div>
+        <div class="fc-ablabels"><span>B ダッシュ切替</span><span>A みつけた</span></div>
       </div>
     </div>
   </div>
@@ -325,7 +345,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   <div class="opt"><span>視点の感度</span><input type="range" id="oSens" min="0.4" max="2" step="0.1" aria-label="視点の感度"></div>
   <div class="opt"><span>画面の揺れ</span><button class="tgl" id="oBob">ON</button></div>
   <div class="opt"><span>仮想パッド</span><button class="tgl" id="oPad">ON</button></div>
-  <div class="opt"><span>走るは押しっぱなし</span><button class="tgl" id="oRunHold">ON</button></div>
+  <div class="opt"><span>Bは押しっぱなしで走る</span><button class="tgl" id="oRunHold">ON</button></div>
   <div class="opt"><span>走査線の演出</span><button class="tgl" id="oScan">ON</button></div>
   <div class="opt"><span>曲を流す</span><button class="tgl" id="oBgm">ON</button></div>
   <button class="go" id="bCfgClose">閉 じ る</button>
@@ -341,7 +361,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 <div class="sheet art" id="shEnd"><div class="panel" id="endPanel"></div></div>
 
 <audio id="bgm" loop preload="none" playsinline
-  src="%E9%AC%BC%E3%81%8C%E7%AC%91%E3%81%86%E5%A4%9C%E3%81%AE%E9%9A%85.mp3"></audio>
+  src="bgm-oni-no-yoru.mp3"></audio>
 
 <canvas id="fx" class="on"></canvas>
 <div id="scan"></div>
@@ -369,13 +389,13 @@ const store={
 const S={
   mute:store.get('mute',false), vol:store.get('vol',.7), sens:store.get('sens',1),
   bob:store.get('bob',true),    pad:store.get('pad',isTouch),
-  runHold:store.get('runhold',true), scan:store.get('scan',true), bgm:store.get('bgm',true)
+  runHold:store.get('runhold',false), scan:store.get('scan',true), bgm:store.get('bgm',true)
 };
 const LIMIT=360;                                   // 日暮れまで6分（SPEC §2）
 const fmtClock=s=>{const m=(1020+s*.30)|0;return String(((m/60)|0)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 const fmtDur=s=>{s=Math.max(0,s|0);return ((s/60)|0)+'分'+String(s%60).padStart(2,'0')+'秒';};
 
-/* BGM「鬼が笑う夜の隅」。ミュートと音量はゲーム内の音と同じつまみに従う */
+/* BGM「鬼が笑う夜の隅」（bgm-oni-no-yoru.mp3）。ミュートと音量はゲーム内の音と同じつまみに従う */
 const bgmEl=$('bgm');
 function bgmSync(){
   const on=S.bgm&&!S.mute;
@@ -438,6 +458,10 @@ $('bPause').onclick=togglePause;
 $('bResume').onclick=togglePause;
 $('bPQuit').onclick=()=>location.reload();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'){state='pause';pauseInfo();sheet('shPause',true);}});
+/* 縦持ちのあいだは進行を止める（探す時間を縦画面で削られないように） */
+const mqPortrait=matchMedia('(orientation:portrait) and (pointer:coarse)');
+const rotateGate=()=>{if(mqPortrait.matches&&state==='play'){state='pause';pauseInfo();sheet('shPause',true);}};
+mqPortrait.addEventListener?mqPortrait.addEventListener('change',rotateGate):mqPortrait.addListener(rotateGate);
 
 /* --- キーボード --- */
 const keys={};
@@ -451,7 +475,6 @@ addEventListener('keydown',e=>{
   else if(e.code==='Tab'){e.preventDefault();listen();}
   else if(e.code==='Space'||e.code==='Enter'){e.preventDefault();doAction();}
   else if(e.code==='KeyV'){e.preventDefault();cycleView();}
-  else if(e.code==='KeyC'){e.preventDefault();toggleCall();}
 });
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
@@ -493,9 +516,10 @@ function bindStick(el,cb,pow){
 }
 let moveMag=0;
 
-/* --- 走る（改善4：押しっぱなし／切替を選べる。十字全倒しでも走る） --- */
-function runOn(){ if(S.runHold){running=true;} else {runToggled=!runToggled;running=runToggled;} $('fcB').classList.toggle('on',running); }
-function runOff(){ if(S.runHold){running=false;$('fcB').classList.remove('on');} }
+/* --- 走る（Bを1回押すとダッシュ、もう1回押すと歩きへ戻る。設定で押しっぱなしにも出来る） --- */
+function setRun(v){ running=!!v; runToggled=running; $('fcB').classList.toggle('on',running); }
+function runOn(){ if(S.runHold){setRun(true);} else {setRun(!running);} }
+function runOff(){ if(S.runHold) setRun(false); }
 function tapFb(){try{navigator.vibrate&&navigator.vibrate(14);}catch(_){}}
 function bindHold(el,on,off){
   el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(_){}
@@ -537,7 +561,6 @@ document.addEventListener('selectstart',e=>e.preventDefault());
 bindStick($('stLook'),(x,y)=>{sx=x;sy=y;},2);
 $('bLight').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();toggleLight();});
 $('bView').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();cycleView();});
-$('bCall').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();toggleCall();});
 
 /* --- 画面ドラッグ（軽いタップは［みつけた］／感度を画面幅で正規化） --- */
 const cv=$('scene');
@@ -1784,26 +1807,15 @@ selfG.traverse(o=>{
 });
 selfG.visible=false;
 scene.add(selfG);
-let viewMode=0, callMode='mada';
+let viewMode=0, ready=false;
 const VIEW_NAME=['目','後ろ','鬼'];
-function shout(mode){
-  callMode=mode;
-  const line=mode==='mada'?'まーだだよ':'もういいよ';
-  const btn=$('bCall');
-  btn.textContent=mode==='mada'?'まだ':'いいよ';
-  btn.setAttribute('aria-label',line);
-  btn.setAttribute('aria-pressed',mode==='iiyo'?'true':'false');
+/* 画面いっぱいの掛け声。十数えたあとの「もーいいかい／もういいよ」に使う */
+function callLine(line,sec){
   const el=$('callLine');
   el.textContent=line;
   el.classList.add('on');
-  clearTimeout(shout._t);shout._t=setTimeout(()=>el.classList.remove('on'),2400);
-  say(line,2.4);
-  if(mode==='mada')note(role==='hide'?'鬼はわかっている。まだ、来ない。':'鬼はわかっている。まだ、探せない。');
-  else note(role==='hide'?'もういいよ。鬼が、動きだす。':'もういいよ。探しはじめる。');
-}
-function toggleCall(){
-  if(state!=='play'&&state!=='pause')return;
-  shout(callMode==='mada'?'iiyo':'mada');
+  clearTimeout(callLine._t);callLine._t=setTimeout(()=>el.classList.remove('on'),(sec||2.4)*1000);
+  say(line,sec||2.4);
 }
 function cycleView(){
   if(state!=='play'&&state!=='pause')return;
@@ -1879,7 +1891,6 @@ function updateKids(dt){
     k.phase+=dt;
     const d=Math.hypot(k.x-P.x,k.z-P.z);
     if(!k.found){
-      if(k.isOni)continue;
       k.g.visible=d<34||(viewMode===2);         // 鬼の視点では、わかっている子を見せる
       /* 気配：14m以内で、距離に応じた間隔と音量で鳴る。方向は左右に振る */
       k.cueT-=dt;
@@ -1918,9 +1929,9 @@ function showFound(name){
    5. 状態
    ========================================================================== */
 const P={x:PLAZA.x,z:PLAZA.z,yaw:Math.PI*.55,pitch:0,vx:0,vz:0,y:1.28,   // 子供なので目線は1.28m
-         stam:100,lightOn:false,batt:100,up:0,roof:null,grip:null,blend:0,face:true};
+         stam:100,lightOn:false,batt:100,up:0,roof:null,grip:null,face:true};
 let t=0,bobT=0,shake=0,flash=0,stepT=0,breathT=0,creakT=10,
-    fallT=8,near=null,sayT=0,lastArea='',goHomeT=0,earCd=0,neonOn=false;
+    fallT=8,near=null,sayT=0,lastArea='',areaSaid={},goHomeT=0,earCd=0,neonOn=false;
 
 /* 空（夕方から夜へ。6分で落ちる） */
 const W={rain:0,wind:.24,wave:.8,vis:190,light:.92};
@@ -1962,12 +1973,6 @@ const markEls=[].slice.call($('marks').children);
 function statusLine(){
   const left=LIMIT-t,n=foundCount();
   if(goHomeT>0)return '';
-  if(role==='hide'){
-    if(P.blend>.82)return '肌が、景色と同じ色になった。';
-    if(P.roof||P.up>.3)return '登っている。止まれば、壁の色になる。';
-    if(P.blend>.35)return '色が、寄ってきている。';
-    return '鬼が来る。壁にとりついて、止まれ。';
-  }
   if(left<30)return '日が落ちる。';
   if(left<75)return 'もう暗い。あと少しで何も見えなくなる。';
   if(n===0&&t<24)return '十数えた。どこにも、いない。';
@@ -1983,19 +1988,11 @@ function hud(){
   const n=foundCount();
   for(let i=0;i<markEls.length;i++)markEls[i].classList.toggle('got',i<n);
   $('stamBar').style.width=clamp(P.stam,0,100)+'%';
-  const row=role==='hide'
-    ? ['同化 '+(Math.round(P.blend*100))+'%']
-    : kids.filter(k=>k.found&&!k.isOni).map(k=>k.name);
-  $('carry').innerHTML=row.length?(role==='hide'?'肌<br><span>'+row[0]+'</span>':'うしろ<br><span>'+row.join('</span><br><span>')+'</span>'):'うしろ<br>だれもいない';
+  const row=kids.filter(k=>k.found).map(k=>k.name);
+  $('carry').innerHTML=row.length?'うしろ<br><span>'+row.join('</span><br><span>')+'</span>':'うしろ<br>だれもいない';
   drawCompass();
   const dark=1-W.light;
   $('vig').style.boxShadow='inset 0 0 '+((70+dark*90)|0)+'px '+((16+dark*34)|0)+'px rgba(0,0,0,'+(.26+dark*.3).toFixed(2)+')';
-  const ch=$('chame');
-  if(ch){
-    const wash=viewMode===0?Math.min(.92,P.blend*.96):Math.min(.22,P.blend*.24);
-    ch.style.opacity=role==='hide'?String(wash):'0';
-    ch.classList.toggle('on',role==='hide'&&P.blend>.12);
-  }
 }
 
 /* ==========================================================================
@@ -2017,7 +2014,7 @@ function findNear(){
   let best=null,bs=1e9;
   const take=(s,o)=>{if(s<bs){bs=s;best=o;}};
   for(let i=0;i<kids.length;i++){
-    const k=kids[i];if(k.found||k.isOni||role==='hide')continue;
+    const k=kids[i];if(k.found)continue;
     const d=Math.hypot(k.x-P.x,k.z-P.z);
     if(d<3.4)take(aim(k.x,k.z,d),{type:'kid',k:k,label:'みつけた'});
   }
@@ -2038,12 +2035,6 @@ function findNear(){
 function listen(){
   if(state!=='play')return;
   if(earCd>0){note('いまは、耳が音でいっぱいだ。');return;}
-  if(role==='hide'&&oni){
-    earCd=8;
-    sfx.pant(1,panOf(oni.k.x,oni.k.z));
-    note('鬼の足音がする。');
-    return;
-  }
   const rest=kids.filter(k=>!k.found);
   if(!rest.length)return;
   let k=rest[0],bd=1e9;
@@ -2068,7 +2059,7 @@ function doAction(){
   if(!near){listen();return;}
   const n=near;
   if(n.type==='kid'){
-    if(callMode==='mada'){say('まーだだよ',2.2);note('鬼はわかっている。まだ、探せない。');return;}
+    if(!ready){say('まだ、声が返ってこない。',1.6);return;}
     findKid(n.k);return;
   }
   if(n.type==='elder'){say(elderHint(n.e),7);burst(280,.15,.035,'lowpass');return;}
@@ -2121,7 +2112,7 @@ function step(dt){
   pushTrail();
 
   /* 移動（改善2：デッドゾーンと非線形カーブ済みの値が jx/jy に来る
-     改善4：スティック全倒しでも走る　改善8：加減速を入れて足を滑らせない） */
+     改善8：加減速を入れて足を滑らせない） */
   let ix=0,iz=0;
   if(keys.KeyW||keys.ArrowUp)iz+=1;
   if(keys.KeyS||keys.ArrowDown)iz-=1;
@@ -2138,7 +2129,8 @@ function step(dt){
   P.pitch=clamp(P.pitch-(sy+gpv.ly)*1.7*dt*S.sens,-1.1,1.1);
 
   const spent=P.stam<6;
-  const dash=(keys.ShiftLeft||keys.ShiftRight||running||gpv.run||moveMag>.92)&&moving&&!spent;
+  const dash=(keys.ShiftLeft||keys.ShiftRight||running||gpv.run)&&moving&&!spent;
+  if(spent&&running)setRun(false);            // 息切れしたらBのランプも消す（表示は実際の状態から出す）
   const spd=(dash?5.4:2.8)*(P.stam<22?.86:1);
   P.stam=clamp(P.stam+(dash?-15:(moving?7:14))*dt,0,100);
 
@@ -2167,16 +2159,13 @@ function step(dt){
   breathT-=dt;
   if(breathT<=0){const hard=P.stam<35;breathT=hard?1.15:2.8;if(realMove>.4||hard)sfx.breath(hard);}
 
-  if(role==='hide'){
-    const still=Math.hypot(P.vx,P.vz)<.45&&P.up<.15;
-    const goal=still?1:0;
-    P.blend+=(goal-P.blend)*Math.min(1,dt*(still?3.4:5.2));
-  }else P.blend=0;
-
   /* エリア。入ったときだけ、その場所の匂いと足元を一行出す */
   const area=areaAt(P.x,P.z);
-  if(area&&area.id!==lastArea){lastArea=area.id;note(area.enter);}
-  if(!area)lastArea='';
+  /* 境界線の上で行き来しても鳴り続けないよう、同じ場所は30秒あけて1回だけにする */
+  if(area){
+    if(area.id!==lastArea&&t-(areaSaid[area.id]||-1e3)>30){areaSaid[area.id]=t;note(area.enter);}
+    lastArea=area.id;
+  }else lastArea='';
 
   /* 明かり */
   if(P.lightOn){P.batt-=.42*dt;
@@ -2216,7 +2205,6 @@ function step(dt){
   updateKids(dt);
   updateCreatures(dt);
   updateElders(dt);
-  updateOni(dt);
 
   /* 五人そろったら、みんなで帰る */
   if(goHomeT>0){
@@ -2225,7 +2213,7 @@ function step(dt){
     if(d>1.2){P.x+=dx/d*Math.min(d,5.4*dt);P.z+=dz/d*Math.min(d,5.4*dt);}
     P.yaw+=(Math.atan2(-dx,-dz)-P.yaw)*Math.min(1,dt*1.6);
     if(goHomeT>3.4){end('win');return;}
-  }else if(t>=LIMIT){end(role==='hide'?'hid':'dusk');return;}
+  }else if(t>=LIMIT){end('dusk');return;}
 
   /* 手の届くもの */
   near=findNear();
@@ -2296,7 +2284,7 @@ function placeCamera(sway,shake){
   const showSelf=viewMode!==0;
   selfG.visible=showSelf;
   if(showSelf){
-    const fade=Math.max(.34,1-P.blend*.66);
+    const fade=.34;
     selfG.traverse(o=>{if(o.material)o.material.opacity=fade;});
     selfG.position.set(P.x,foot,P.z);
     selfG.rotation.y=P.yaw;
@@ -2328,15 +2316,10 @@ function placeCamera(sway,shake){
 }
 function knownSubject(){
   const myFoot=P.roof?P.roof.h:groundY(P.x,P.z)+P.up;
-  if(role==='hide'&&oni){
-    const k=oni.k;
-    const of=k.roof?k.roof.h:groundY(k.x,k.z)+(k.up||0);
-    return {ox:k.x,oz:k.z,oy:of+1.05,tx:P.x,tz:P.z,ty:myFoot+1.05};
-  }
   let best=null,bd=1e9;
   for(let i=0;i<kids.length;i++){
     const k=kids[i];
-    if(k.found||k.isOni)continue;
+    if(k.found)continue;
     const d=Math.hypot(k.x-P.x,k.z-P.z);
     if(d<bd){bd=d;best=k;}
   }
@@ -2513,71 +2496,25 @@ function fxDraw(now){
    ========================================================================== */
 const HANDS=['グー','チョキ','パー'];
 const beats=(a,b)=>(a===0&&b===1)||(a===1&&b===2)||(a===2&&b===0);   // a が b に勝つ
-let janRound=0, role='seek', oni=null;
-function makeOni(){
-  const k=kids[(Math.random()*kids.length)|0];
-  k.isOni=true;
-  k.x=PLAZA.x+4.2; k.z=PLAZA.z+1.4; k.up=0; k.roof=null; k.grip=null;
-  k.g.scale.set(1.15,1.15,1.15);
-  k.g.visible=true;
-  const band=new THREE.Mesh(new THREE.BoxGeometry(.24,.07,.2),lamb({color:0xd24a3a}));
-  band.position.y=1.02; k.g.add(band);
-  oni={k:k,phase:0,grace:5,lost:0,look:null};
-}
-function updateOni(dt){
-  if(role!=='hide'||!oni||state!=='play')return;
-  const k=oni.k;
-  oni.phase+=dt;
-  if(oni.grace>0)oni.grace-=dt;
-  const waiting=callMode!=='iiyo';
-  const hidden=P.blend>.78&&!waiting;
-  let tx,tz,spd;
-  if(waiting){
-    tx=P.x; tz=P.z; spd=0;
-  }else if(hidden){
-    oni.lost+=dt;
-    if(!oni.look||oni.lost>3.5){
-      oni.look=BLD[(Math.random()*BLD.length)|0];
-      oni.lost=0;
-    }
-    tx=oni.look.x; tz=oni.look.z; spd=1.8;
-  }else{tx=P.x; tz=P.z; oni.look=null; spd=2.55;}
-  const dx=tx-k.x, dz=tz-k.z, dist=Math.hypot(dx,dz)||1;
-  stepClimber(k,dx/dist*spd*dt,dz/dist*spd*dt,dt,true,true);
-  const foot=k.roof?k.roof.h:groundY(k.x,k.z)+(k.up||0);
-  k.g.visible=true;
-  k.g.position.set(k.x,foot,k.z);
-  if(dist>.3)k.g.rotation.y=Math.atan2(dx,dz);
-  const pd=Math.hypot(k.x-P.x,k.z-P.z);
-  const myFoot=P.roof?P.roof.h:groundY(P.x,P.z)+P.up;
-  const reach=hidden?.72:2.4;
-  if(!waiting&&oni.grace<=0&&pd<reach&&Math.abs(foot-myFoot)<2.4)end('caught');
-}
+let janRound=0;
 function janPlay(my){
   janRound++;
   let opp=(Math.random()*3)|0;
-  if(janRound>=3&&opp===my)opp=Math.random()<.5?[1,2,0][my]:[2,0,1][my];
+  if(janRound>=3)opp=[2,0,1][my];                    // 3回目からは必ず自分が負ける（鬼はじぶん）
   const others=[opp,opp,opp,opp,opp];
   const won=beats(my,opp), lost=beats(opp,my);
   const names=['ミチル','タケシ','サエ','ゴロウ','ハナ'];
   $('janBoard').innerHTML='<b>じぶん</b><span'+(won?' class="hit"':(lost?' class="miss"':''))+'>'+HANDS[my]+'</span>'
     +names.map((n,i)=>'<b>'+n+'</b><span>'+HANDS[others[i]]+'</span>').join('');
   sfx.janHit();
-  if(won){
-    role='hide';
-    $('janTxt').textContent='勝った。肌の色が、勝手に変わりはじめる。';
-    $('janRound').textContent='鬼は、ほかの誰か。';
-    document.querySelectorAll('.jan').forEach(b=>b.disabled=true);
-    setTimeout(startCount,1100);
-  }else if(lost){
-    role='seek';
+  if(lost){
     $('janTxt').textContent='ひとりだけ、負けた。';
     $('janRound').textContent='鬼は、じぶん。';
     document.querySelectorAll('.jan').forEach(b=>b.disabled=true);
     sfx.janLose();
     setTimeout(startCount,1100);
   }else{
-    $('janTxt').textContent='あいこ。もう一回。';
+    $('janTxt').textContent=won?'勝った。だれも負けていない。もう一回。':'あいこ。もう一回。';
     $('janRound').textContent=janRound+'回目';
   }
 }
@@ -2590,7 +2527,7 @@ function startCount(){
   sheet('shJan',false);
   fxRun=false;fx.classList.remove('on');
   $('janCount').classList.add('on');
-  $('janCount').querySelector('small').textContent=role==='hide'?'肌 が 、 色 を 変 え る':'お に は 目 を つ ぶ る';
+  $('janCount').querySelector('small').textContent='お に は 目 を つ ぶ る';
   const KAN=['０','１','２','３','４','５','６','７','８','９','十'];
   let n=0;
   const tick=()=>{
@@ -2606,13 +2543,16 @@ function startCount(){
 function beginPlay(){
   $('janCount').classList.remove('on');
   state='play';last=performance.now();
-  if(role==='hide'){
-    makeOni();
-    note('止まれば同化。壁も岩も、鬼と同じように登れる。');
-  }else{
-    note('十数えた。五人が、どこかに隠れている。壁も岩も登れる。');
-  }
-  shout('mada');
+  ready=false;
+  callLine('もーいいかい',1.5);                       // 鬼（じぶん）が叫ぶ
+  burst(520,.5,.05,'bandpass',3);
+  setTimeout(()=>{
+    if(state==='over')return;
+    callLine('もういいよ',2.2);                       // 島のどこかから、五つの声が返る
+    for(let i=0;i<5;i++)setTimeout(()=>burst(430+i*70,.35,.045,'bandpass',3,(Math.random()*2-1)),i*110);
+    ready=true;
+    note('五人が、どこかに隠れている。壁も岩も登れる。');
+  },1600);
 }
 
 /* ==========================================================================
@@ -2627,10 +2567,6 @@ function end(kind){
   if(kind==='win'){
     if(!best||t<best){store.set('bestFind',Math.round(t));rec='最短記録を更新した。';}
     else rec='これまでの最短　'+fmtDur(best);
-  }else if(kind==='hid'){
-    rec='日が落ちるまで、ばれなかった。';
-  }else if(kind==='caught'){
-    rec='肌の色が、追いつかれた。';
   }else rec=best?('これまでの最短　'+fmtDur(best)):'まだ一度も、五人そろえていない。';
 
   let html;
@@ -2641,17 +2577,6 @@ function end(kind){
       +'<div class="kv"><b>かかった時間</b><span class="hit">'+fmtDur(t)+'</span>'
       +'<b>日暮れまで</b><span>'+fmtDur(Math.max(0,LIMIT-t))+' 残していた</span></div>';
     fxMode='win';
-  }else if(kind==='hid'){
-    html='<h1 class="neon">ばれなかった<small>肌 は 、 島 の 色</small></h1><div class="rule"></div>'
-      +'<p>日が落ちても、鬼は屋根の上を探していた。自分の輪郭は、もうコンクリートだった。</p>'
-      +'<p class="q">止まっていれば、色は寄ってくる。歩きだすと、また子供の色に戻る。</p>';
-    fxMode='win';
-  }else if(kind==='caught'){
-    html='<h1 class="shu">見つかった<small>色 が 、 遅 れ た</small></h1><div class="rule"></div>'
-      +'<p>鬼の手が、まだ色の変わりきらない肩に触れた。「ばれた」と言って、輪がほどけた。</p>'
-      +'<p class="q">壁に止まれば、もう一度、景色の色になれる。</p>';
-    fxMode='dusk';
-    sfx.dusk();
   }else{
     const miss=kids.filter(k=>!k.found);
     html='<h1 class="shu">日が落ちた<small>か く れ ん ぼ 　 お わ り</small></h1><div class="rule"></div>'
