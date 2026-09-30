@@ -286,7 +286,6 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 <div id="sideL">
   <button id="bLight" aria-label="懐中電灯">ライト</button>
   <button id="bPad" aria-label="仮想パッドの表示切替">パッド</button>
-  <button id="bView" aria-label="視点を切り替える">目</button>
 </div>
 
 <div id="ctl">
@@ -474,7 +473,6 @@ addEventListener('keydown',e=>{
   else if(e.code==='Digit0'){S.mute=!S.mute;store.set('mute',S.mute);syncCfg();}
   else if(e.code==='Tab'){e.preventDefault();listen();}
   else if(e.code==='Space'||e.code==='Enter'){e.preventDefault();doAction();}
-  else if(e.code==='KeyV'){e.preventDefault();cycleView();}
 });
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
@@ -560,7 +558,6 @@ document.addEventListener('selectstart',e=>e.preventDefault());
 
 bindStick($('stLook'),(x,y)=>{sx=x;sy=y;},2);
 $('bLight').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();toggleLight();});
-$('bView').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();cycleView();});
 
 /* --- 画面ドラッグ（軽いタップは［みつけた］／感度を画面幅で正規化） --- */
 const cv=$('scene');
@@ -655,6 +652,8 @@ const sfx={
   step(kind){burst(kind==='conc'?600:1100,.09,.05,'lowpass');},
   thud(d){burst(150,.55,clamp(.5*(1-d/40),.03,.5),'lowpass');},
   patter(pan){burst(2600,.22,.055,'bandpass',2,pan);},
+  bark(v,pan){burst(320,.09,.075*v,'bandpass',2,pan);setTimeout(()=>burst(260,.14,.06*v,'lowpass',0,pan),110);},
+  mew(v,pan){swell(720,520,.42,.05*v,'triangle',pan);},
   creak(){if(!AC)return;const t0=AC.currentTime,o=AC.createOscillator(),g=AC.createGain(),f=AC.createBiquadFilter();
     o.type='sawtooth';o.frequency.setValueAtTime(70+Math.random()*40,t0);o.frequency.linearRampToValueAtTime(52,t0+1.1);
     f.type='lowpass';f.frequency.value=360;
@@ -771,13 +770,18 @@ const M={
   slab:lamb({color:0x6a665f}),
   slabDark:lamb({color:0x514d47}),
   wet:lamb({color:0x3d444a}),
-  fur:lamb({color:0x4a4540}),
-  tiger:lamb({color:0x6a5344}),
-  tigerDark:lamb({color:0x3d342c}),
-  martSkin:lamb({color:0x5a6458}),
-  martSuit:lamb({color:0x4a4f52}),
-  coat:lamb({color:0x5c5850}),
-  skin:lamb({color:0x7a7268})
+  fur:lamb({color:0x4a4540}),                 // ネズミ
+  furDark:lamb({color:0x332f2b}),
+  dog:lamb({color:0x6b5a48}),                 // 野良犬
+  dogDark:lamb({color:0x3e352c}),
+  cat:lamb({color:0x56504a}),                 // 野良猫
+  catDark:lamb({color:0x2c2926}),
+  tanu:lamb({color:0x5b4c3b}),                // 狸
+  tanuDark:lamb({color:0x282220}),
+  tanuPale:lamb({color:0x8a7f6d}),
+  skin:lamb({color:0x9b8570}),                // 子供の肌
+  skinDark:lamb({color:0x7d6a58}),
+  shoe:lamb({color:0x2f2b27})
 };
 function scaleUV(geo,w,h,d){
   const uv=geo.attributes.uv,dims=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
@@ -795,6 +799,17 @@ const MESA={x0:8,x1:60,z0:-34,z1:0,top:9};                 // 中部の岩山
    8mに広げ、両側に擁壁を立てて、段であることが目で分かるようにした */
 const STAIR={x0:60,x1:74,z0:-18.6,z1:-10.6};
 const colliders=[],shelters=[],BLD=[],covers=[];
+/* すり抜け防止（2026-09-30）。
+   置いた物の当たり判定は手で1つずつ指定していたため、指定漏れが柱・ドラム缶・木箱に残っていた。
+   判定は2D（高さを持たない）ので、なんでも足すと頭上の梁や屋上の物まで壁になる。
+   そこで「足元0.32mより上・目線1.45mより下に重なる立体」だけを自動で壁にする。
+   - 低い瓦礫・板・段差（0.32m以下）は踏み越えられる
+   - 頭上の梁・屋根スラブ・屋上の物（1.45mより上）はくぐれる
+   - 細すぎる物（最小辺0.14m未満＝物干し竿の類）は、引っかかると邪魔なので通す */
+const BODY_LO=.32, BODY_HI=1.45;
+function autoSolid(bottom,top,w,d){
+  return top>BODY_LO && bottom<BODY_HI && Math.min(w,d)>=.14;
+}
 
 /* 小物は材質ごとに1メッシュへまとめる（iPhoneでの描画コールを増やさない）。
    y は接地面。cover:true のものは「しゃがんだ子が隠れる嵩」として hideOk が参照する */
@@ -805,7 +820,7 @@ function prop(mat,x,y,z,w,h,d,ry,opt){
   const o=opt||{};
   const sw=Math.abs(Math.cos(ry||0))*w+Math.abs(Math.sin(ry||0))*d;   // 回した分を含む外接
   const sd=Math.abs(Math.sin(ry||0))*w+Math.abs(Math.cos(ry||0))*d;
-  if(o.collide)colliders.push({x:x,z:z,w:sw,d:sd});
+  if(o.collide||(o.collide!==false&&autoSolid(y,y+h,sw,sd)))colliders.push({x:x,z:z,w:sw,d:sd});
   if(o.cover)covers.push({x:x,z:z,w:sw,d:sd,h:h});
   return q.length-1;
 }
@@ -814,7 +829,7 @@ function cyl(mat,x,y,z,r,h,ry,opt){
   let q=cylQ.get(mat);if(!q){q=[];cylQ.set(mat,q);}
   q.push([x,y,z,r*2,h,r*2,ry||0]);
   const o=opt||{};
-  if(o.collide)colliders.push({x:x,z:z,w:r*1.9,d:r*1.9});
+  if(o.collide||(o.collide!==false&&autoSolid(y,y+h,r*1.9,r*1.9)))colliders.push({x:x,z:z,w:r*1.9,d:r*1.9});
   if(o.cover)covers.push({x:x,z:z,w:r*1.9,d:r*1.9,h:h});
 }
 function buildProps(){
@@ -838,7 +853,7 @@ function buildProps(){
 function box(w,h,d,mat,x,y,z,collide,uv){
   const geo=new THREE.BoxGeometry(w,h,d);if(uv)scaleUV(geo,w,h,d);
   const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);scene.add(m);
-  if(collide)colliders.push({x:x,z:z,w:w,d:d});
+  if(collide||autoSolid(y-h/2,y+h/2,w,d))colliders.push({x:x,z:z,w:w,d:d});
   return m;
 }
 function hit(x,z,r){
@@ -1629,77 +1644,88 @@ function freeSpot(x,z,requireHide){
        前版から流用。かくれんぼでは「時間を捨てさせる罠」として働く。
    ========================================================================== */
 const creatures=[];
+/* 島に残った生きもの。子供とまぎらわしい物音を立てるのが役目で、
+   近づいて1回見ると正体が分かり、2回目でいなくなる（2026-09-30：爺さんの代わり） */
 const CRITTER={
-  rat:{label:'巨大なネズミ',hint:'犬より大きい。子供ではない。',hint2:'跡だけが濡れている。もういない。'},
-  tiger:{label:'小さな虎',hint:'子供の手のひらより小さい。それでも牙がある。',hint2:'影だけが残った。'},
-  martian:{label:'火星人',hint:'しゃべらない。ただ、観測している。',hint2:'光を当てても、体温がない。'}
+  dog :{label:'野良犬',hint:'やせている。人を覚えている目をしている。',hint2:'匂いを嗅いで、路地の奥へ戻っていった。'},
+  cat :{label:'野良猫',hint:'耳が片方欠けている。逃げない。',      hint2:'塀の上へ上がって、こちらを見下ろした。'},
+  rat :{label:'ネズミ',hint:'配管の影から出てきた。子供ではない。',hint2:'跡だけが濡れている。もういない。'},
+  tanu:{label:'狸',   hint:'目のまわりが黒い。腹が丸い。',        hint2:'草むらが揺れて、それきり。'}
 };
-function mkGiantRat(g){
-  const body=new THREE.Mesh(new THREE.BoxGeometry(1.35,.52,.62),M.fur);body.position.y=.38;g.add(body);
-  const head=new THREE.Mesh(new THREE.BoxGeometry(.42,.38,.38),M.fur);head.position.set(.78,.4,0);g.add(head);
-  const snout=new THREE.Mesh(new THREE.BoxGeometry(.2,.14,.18),M.fur);snout.position.set(1.02,.36,0);g.add(snout);
-  const tail=new THREE.Mesh(new THREE.BoxGeometry(.95,.1,.1),M.fur);tail.position.set(-.82,.28,0);tail.rotation.z=.15;
-  g.add(tail);g.userData.tail=tail;
+/* 四つ足の共通の型。体長 len・体高 hi・幅 wid と毛色を変えて4種を作り分ける。
+   前後の脚を userData に持たせ、歩いた量に応じて交互に振る */
+function mkBeast(g,o){
+  const F=o.fur,D=o.dark,L=o.len,H=o.hi,W=o.wid;
+  const add=(mat,w,h,d,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);g.add(m);return m;};
+  add(F,L*.62,H*.42,W,        0,       H*.66,0);          // 胴
+  add(F,L*.3, H*.46,W*1.04,   L*.24,   H*.66,0);          // 胸
+  add(F,L*.18,H*.28,W*.66,    L*.4,    H*.8, 0);          // 首
+  const head=add(F,L*.24,H*.28,W*.8,   L*.52,H*.9, 0);    // 頭
+  add(D,L*.16,H*.15,W*.42,    L*.66,   H*.85,0);          // 鼻づら
+  if(o.mask)add(D,L*.1,H*.13,W*.84,    L*.53,H*.93,0);    // 狸の目のまわり
+  [-1,1].forEach(sd=>{                                     // 耳
+    const e=add(o.earMat||F,L*.07,H*.2*(o.ear||1),W*.16,L*.5,H*1.02,sd*W*.26);
+    e.rotation.x=sd*.18;
+  });
+  const legs=[];
+  [[L*.26,1],[L*.26,-1],[-L*.24,1],[-L*.24,-1]].forEach(pz=>{
+    const lg=add(D,L*.1,H*.5,W*.2, pz[0], H*.26, pz[1]*W*.3);
+    legs.push(lg);
+  });
+  g.userData.legs=legs;
+  const tail=add(o.tailMat||F,L*(o.tailLen||.34),H*(o.tailThin?.06:.16),W*(o.tailThin?.16:.34),
+                 -L*.42,H*(o.tailUp||.7),0);
+  tail.rotation.z=o.tailUp?.5:.15;
+  g.userData.tail=tail;
+  g.userData.head=head;
 }
-function mkSmallTiger(g){
-  const body=new THREE.Mesh(new THREE.BoxGeometry(.42,.28,.22),M.tiger);body.position.y=.22;g.add(body);
-  const stripe=new THREE.Mesh(new THREE.BoxGeometry(.44,.06,.12),M.tigerDark);stripe.position.set(0,.28,0);g.add(stripe);
-  const head=new THREE.Mesh(new THREE.BoxGeometry(.22,.2,.2),M.tiger);head.position.set(.24,.28,0);g.add(head);
-  [[-.12,.07,-.08],[.08,.07,-.08],[-.12,.07,.08],[.08,.07,.08]].forEach(p=>{
-    const leg=new THREE.Mesh(new THREE.BoxGeometry(.06,.14,.06),M.tiger);leg.position.set(p[0],p[1],p[2]);g.add(leg);});
-}
-function mkMartian(g){
-  const body=new THREE.Mesh(new THREE.BoxGeometry(.32,.75,.22),M.martSuit);body.position.y=.55;g.add(body);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),M.martSkin);head.position.y=1.05;g.add(head);
-  const dish=new THREE.Mesh(new THREE.SphereGeometry(.28,8,6,0,6.3),M.martSkin);
-  dish.scale.set(1,.55,1);dish.position.y=1.12;g.add(dish);
-  [-1,1].forEach(s=>{
-    const ant=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.45,6),M.metal);
-    ant.position.set(s*.12,1.38,0);ant.rotation.z=s*.35;g.add(ant);});
-}
+const BEAST={
+  dog :{fur:'dog', dark:'dogDark', len:1.05,hi:.62,wid:.28,tailLen:.4,tailUp:.9,spd:.5,   nearMv:-1.0},
+  cat :{fur:'cat', dark:'catDark', len:.62, hi:.34,wid:.17,tailLen:.55,tailUp:1.1,tailThin:true,ear:1.4,spd:.34,nearMv:-1.5},
+  rat :{fur:'fur', dark:'furDark', len:.4,  hi:.18,wid:.12,tailLen:.9,tailThin:true,spd:.3,nearMv:-1.6},
+  tanu:{fur:'tanu',dark:'tanuDark',len:.82, hi:.46,wid:.3, tailLen:.42,tailUp:.6,mask:true,earMat:'tanuPale',spd:.24,nearMv:-.7}
+};
 function spawnCritter(kind,x,z,yaw){
   const p=freeSpot(x,z);
   const g=new THREE.Group();
-  if(kind==='rat')mkGiantRat(g);
-  else if(kind==='tiger')mkSmallTiger(g);
-  else mkMartian(g);
+  const def=BEAST[kind];
+  mkBeast(g,{fur:M[def.fur],dark:M[def.dark],len:def.len,hi:def.hi,wid:def.wid,
+             tailLen:def.tailLen,tailUp:def.tailUp,tailThin:def.tailThin,ear:def.ear,
+             mask:def.mask,earMat:def.earMat?M[def.earMat]:null});
   g.position.set(p.x,groundY(p.x,p.z),p.z);g.rotation.y=yaw||0;scene.add(g);
   const info=CRITTER[kind];
   creatures.push({kind,x:p.x,z:p.z,g,yaw:yaw||0,phase:Math.random()*6,homeAng:yaw||0,cue:Math.random()*6,
     label:info.label,hint:info.hint,hint2:info.hint2,flashed:false,quizzed:false,gone:false,
     up:0,roof:null,grip:null});
 }
-spawnCritter('rat',-136,-18,Math.PI*.15);
-spawnCritter('rat',-50,-44,Math.PI*-.3);
-spawnCritter('tiger',122,-19,Math.PI);
-spawnCritter('tiger',58,30,Math.PI*.4);
-spawnCritter('martian',30,-18,Math.PI*.7);
-spawnCritter('martian',-96,10,Math.PI*-.2);
+spawnCritter('dog', -136,-18,Math.PI*.15);
+spawnCritter('rat', -50, -44,Math.PI*-.3);
+spawnCritter('cat',  122,-19,Math.PI);
+spawnCritter('cat',  58,  30,Math.PI*.4);
+spawnCritter('tanu', 30, -18,Math.PI*.7);
+spawnCritter('dog', -96,  10,Math.PI*-.2);
 
 function updateCreatures(dt){
   for(let i=0;i<creatures.length;i++){
     const c=creatures[i];
     if(c.gone){c.g.visible=false;continue;}
     const d=Math.hypot(c.x-P.x,c.z-P.z);
-    if(c.kind==='martian')c.g.visible=d<30&&(W.light<.38||P.lightOn);
-    else c.g.visible=true;
+    c.g.visible=d<44;
     if(!c.g.visible)continue;
     c.phase+=dt;
     if(d<16)c.g.rotation.y=Math.atan2(P.x-c.x,P.z-c.z);
-    let spd=0,dir=c.homeAng+Math.sin(c.phase*.6)*.4;
-    if(c.kind==='rat'){
-      if(d<10&&d>2.2){spd=-1.1;dir=Math.atan2(c.x-P.x,c.z-P.z);}
-      else spd=.32;
-    }else if(c.kind==='tiger')spd=.22;
-    else spd=.07;
+    const def=BEAST[c.kind];
+    let spd=def.spd*(.7+Math.sin(c.phase*.5)*.3),dir=c.homeAng+Math.sin(c.phase*.6)*.4;
+    if(d<9&&d>2.0){spd=def.nearMv;dir=Math.atan2(c.x-P.x,c.z-P.z);}   // 近づくと、その分だけ下がる
     /* 紛らわしい気配：子供と同じ帯域で、こちらも音を出す */
     c.cue-=dt;
     if(c.cue<=0&&d<13){
       c.cue=3.4+Math.random()*3;
       const v=clamp(1-d/13,0,1),pn=panOf(c.x,c.z);
-      if(c.kind==='rat')sfx.patter(pn);
-      else if(c.kind==='tiger')sfx.scuff(v*.7,pn);
-      else burst(880,.25,.03*v,'bandpass',2,pn);
+      if(c.kind==='dog')sfx.bark(v,pn);
+      else if(c.kind==='cat')sfx.mew(v,pn);
+      else if(c.kind==='rat')sfx.patter(pn);
+      else sfx.scuff(v*.8,pn);
     }
     if(d<6&&!c.flashed){c.flashed=true;note('物音。──子供の背丈ではない。');}
     if(spd){
@@ -1707,59 +1733,21 @@ function updateCreatures(dt){
       stepClimber(c,mx,mz,dt,true,true);
     }
     const foot=c.roof?c.roof.h:groundY(c.x,c.z)+(c.up||0);
-    c.g.position.set(c.x,foot+(c.kind==='rat'?.08:0)+Math.sin(c.phase*3)*.012,c.z);
-    const tail=c.g.userData.tail;
-    if(tail)tail.rotation.y=Math.sin(c.phase*9)*.18;
-    if(c.kind==='tiger')c.g.position.y+=Math.sin(c.phase*5)*.004;
+    c.g.position.set(c.x,foot+Math.sin(c.phase*3)*.012,c.z);
+    const ud=c.g.userData;
+    if(ud.tail)ud.tail.rotation.y=Math.sin(c.phase*(c.kind==='dog'?11:7))*.22;
+    if(ud.legs){
+      const sw=Math.sin(c.phase*8)*Math.min(.5,Math.abs(spd)*.7);
+      ud.legs[0].rotation.x=sw;ud.legs[3].rotation.x=sw;
+      ud.legs[1].rotation.x=-sw;ud.legs[2].rotation.x=-sw;
+    }
+    if(ud.head)ud.head.rotation.z=Math.sin(c.phase*2.2)*.05;
   }
 }
 
 /* ==========================================================================
    4c. 島の番人（3人。方角と場所の種類だけ教える。座標は言わない）
    ========================================================================== */
-const elders=[];
-function mkElder(g){
-  const body=new THREE.Mesh(new THREE.BoxGeometry(.44,.74,.3),M.coat);body.position.y=.58;g.add(body);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.17,8,8),M.skin);head.position.y=1.08;g.add(head);
-  const hat=new THREE.Mesh(new THREE.BoxGeometry(.38,.09,.34),M.roof);hat.position.y=1.22;g.add(hat);
-  const cane=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.78,6),M.wood);
-  cane.position.set(.24,.4,.14);cane.rotation.z=.25;g.add(cane);
-}
-function spawnElder(x,z,yaw){
-  const p=freeSpot(x,z);
-  const g=new THREE.Group();mkElder(g);
-  g.position.set(p.x,groundY(p.x,p.z),p.z);g.rotation.y=yaw||0;scene.add(g);
-  elders.push({x:p.x,z:p.z,g,yaw:yaw||0,left:2,phase:Math.random()*4,near:false});
-}
-spawnElder(-126,-46,Math.PI*.35);
-spawnElder(-66,8,Math.PI*-.5);
-spawnElder(110,-6,Math.PI*.85);
-
-const DIRNAME=(dx,dz)=>{                       // +x=北 / +z=東
-  const a=Math.atan2(dz,dx)*180/Math.PI;       // 0=北, 90=東
-  const n=((a%360)+360)%360;
-  return ['北','北東','東','南東','南','南西','西','北西'][Math.round(n/45)%8];
-};
-function elderHint(e){
-  const rest=kids.filter(k=>!k.found);
-  if(!rest.length)return 'もう、みんな出てきとる。';
-  if(e.left<=0)return 'わしの知っとることは、もう言うた。';
-  e.left--;
-  const k=rest[(Math.random()*rest.length)|0];
-  return '「'+k.name+'」なら、'+DIRNAME(k.x-P.x,k.z-P.z)+'の、'+k.where+'じゃ。';
-}
-function updateElders(dt){
-  for(let i=0;i<elders.length;i++){
-    const e=elders[i];
-    const d=Math.hypot(e.x-P.x,e.z-P.z);
-    e.phase+=dt;
-    if(d<16)e.g.rotation.y=Math.atan2(P.x-e.x,P.z-e.z);
-    e.g.position.set(e.x,groundY(e.x,e.z)+Math.sin(e.phase*1.3)*.01,e.z);
-    if(d<9&&!e.near){e.near=true;note('杖をついた爺さんが、こちらを見ている。');}
-    if(d>14)e.near=false;
-  }
-}
-
 /* ==========================================================================
    4d. 五人の子供（隠れる／見つかる／うしろについてくる）
    ========================================================================== */
@@ -1787,28 +1775,46 @@ const kidMat={};
 function mkKid(g,cloth,hair){
   const mc=kidMat['c'+cloth]||(kidMat['c'+cloth]=lamb({color:cloth}));
   const mh=kidMat['h'+hair]||(kidMat['h'+hair]=lamb({color:hair}));
-  /* 子供の背丈は約1.0m。頭は全高の1/6ほどに収める（1/4だと人形に見える） */
-  const body=new THREE.Mesh(new THREE.BoxGeometry(.28,.44,.19),mc);body.position.y=.50;g.add(body);
-  const neck=new THREE.Mesh(new THREE.BoxGeometry(.09,.06,.09),M.skin);neck.position.y=.75;g.add(neck);
-  const head=new THREE.Mesh(new THREE.BoxGeometry(.19,.21,.18),M.skin);head.position.y=.88;g.add(head);
-  const hairTop=new THREE.Mesh(new THREE.BoxGeometry(.205,.09,.195),mh);hairTop.position.y=.965;g.add(hairTop);
-  const fringe=new THREE.Mesh(new THREE.BoxGeometry(.205,.055,.03),mh);fringe.position.set(0,.915,-.085);g.add(fringe);
-  [-1,1].forEach(s=>{
-    const arm=new THREE.Mesh(new THREE.BoxGeometry(.065,.33,.065),mc);arm.position.set(0,.50,s*.125);g.add(arm);
-    const leg=new THREE.Mesh(new THREE.BoxGeometry(.085,.30,.085),M.wood);leg.position.set(0,.15,s*.07);g.add(leg);
-    g.userData['leg'+(s>0?'R':'L')]=leg;
+  const mp=kidMat['p'+cloth]||(kidMat['p'+cloth]=lamb({color:(cloth>>1)&0x7f7f7f}));   // 半袖の下＝半ズボン
+  const box=(mat,w,h,d,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);g.add(m);return m;};
+  /* 背丈は約1.05m。頭は全高の1/6ほど（1/4だと人形に見える）。
+     2026-09-30：面を増やして写実寄りへ — 胴を胸と腰に割り、袖から先は肌、
+     半ズボンから下も肌、足首に靴、頭は後頭部・前髪・もみあげの3枚で髪型を作る */
+  // 胴
+  box(mc,.27,.26,.17, 0,.635,0);                    // 胸（肩がある）
+  box(mc,.245,.15,.155,0,.44,0);                    // 腰
+  box(M.skin,.085,.055,.085,0,.775,0);              // 首
+  // 頭
+  const head=box(M.skin,.175,.195,.17,0,.885,0);
+  box(M.skinDark,.03,.022,.012, .045,.905,-.088);   // 目（影で置く。顔は作り込まない）
+  box(M.skinDark,.03,.022,.012,-.045,.905,-.088);
+  box(mh,.19,.075,.185, 0,.985,.004);               // 後頭部
+  box(mh,.19,.05,.03,   0,.945,-.079);              // 前髪
+  [-1,1].forEach(sd=>box(mh,.022,.105,.155,sd*.086,.905,.008));   // もみあげ
+  // 腕（肩→袖口までが服、その先は肌）
+  const arms=[];
+  [-1,1].forEach(sd=>{
+    const a=new THREE.Group();a.position.set(0,.735,sd*.145);g.add(a);
+    const up=new THREE.Mesh(new THREE.BoxGeometry(.062,.155,.062),mc);up.position.y=-.077;a.add(up);
+    const lo=new THREE.Mesh(new THREE.BoxGeometry(.055,.155,.055),M.skin);lo.position.y=-.232;a.add(lo);
+    const hand=new THREE.Mesh(new THREE.BoxGeometry(.06,.055,.058),M.skin);hand.position.y=-.335;a.add(hand);
+    arms.push(a);
   });
+  g.userData.armL=arms[0];g.userData.armR=arms[1];
+  // 脚（半ズボン→肌→靴）
+  const legs=[];
+  [-1,1].forEach(sd=>{
+    const l=new THREE.Group();l.position.set(0,.375,sd*.072);g.add(l);
+    const th=new THREE.Mesh(new THREE.BoxGeometry(.085,.135,.088),mp);th.position.y=-.068;l.add(th);
+    const sh=new THREE.Mesh(new THREE.BoxGeometry(.072,.165,.074),M.skin);sh.position.y=-.218;l.add(sh);
+    const sho=new THREE.Mesh(new THREE.BoxGeometry(.082,.06,.125),M.shoe);sho.position.set(0,-.33,-.018);l.add(sho);
+    legs.push(l);
+  });
+  g.userData.legL=legs[0];g.userData.legR=legs[1];
+  g.userData.head=head;
   return g;
 }
-const selfG=new THREE.Group();
-mkKid(selfG,0x2f4d68,0x221c18);
-selfG.traverse(o=>{
-  if(o.material){o.material=o.material.clone();o.material.transparent=true;}
-});
-selfG.visible=false;
-scene.add(selfG);
-let viewMode=0, ready=false;
-const VIEW_NAME=['目','後ろ','鬼'];
+let ready=false;                                 // 「もういいよ」が返るまでは、まだ探せない
 /* 画面いっぱいの掛け声。十数えたあとの「もーいいかい／もういいよ」に使う */
 function callLine(line,sec){
   const el=$('callLine');
@@ -1816,14 +1822,6 @@ function callLine(line,sec){
   el.classList.add('on');
   clearTimeout(callLine._t);callLine._t=setTimeout(()=>el.classList.remove('on'),(sec||2.4)*1000);
   say(line,sec||2.4);
-}
-function cycleView(){
-  if(state!=='play'&&state!=='pause')return;
-  viewMode=(viewMode+1)%3;
-  const btn=$('bView');
-  btn.textContent=VIEW_NAME[viewMode];
-  btn.setAttribute('aria-label','視点 '+VIEW_NAME[viewMode]);
-  note(viewMode===0?'自分の目。':viewMode===1?'うしろから、自分が見える。':'鬼はわかっている。その目のうしろ。');
 }
 function placeKids(){
   const used=[];
@@ -1891,7 +1889,7 @@ function updateKids(dt){
     k.phase+=dt;
     const d=Math.hypot(k.x-P.x,k.z-P.z);
     if(!k.found){
-      k.g.visible=d<34||(viewMode===2);         // 鬼の視点では、わかっている子を見せる
+      k.g.visible=d<34;
       /* 気配：14m以内で、距離に応じた間隔と音量で鳴る。方向は左右に振る */
       k.cueT-=dt;
       if(k.cueT<=0&&d<14){
@@ -1914,8 +1912,10 @@ function updateKids(dt){
     if(mv>.002)k.g.rotation.y=Math.atan2(k.fx-k.x,k.fz-k.z);
     k.x=k.fx;k.z=k.fz;
     k.g.position.set(k.x,groundY(k.x,k.z)+Math.abs(Math.sin(k.phase*7))*.03*Math.min(1,mv*60),k.z);
-    const lr=k.g.userData.legR,ll=k.g.userData.legL;
-    if(lr&&ll){const sw=Math.sin(k.phase*9)*Math.min(.5,mv*22);lr.rotation.x=sw;ll.rotation.x=-sw;}
+    const ud=k.g.userData,sw=Math.sin(k.phase*9)*Math.min(.55,mv*22);
+    if(ud.legR&&ud.legL){ud.legR.rotation.x=sw;ud.legL.rotation.x=-sw;}
+    if(ud.armR&&ud.armL){ud.armR.rotation.x=-sw*.7;ud.armL.rotation.x=sw*.7;}
+    if(ud.head)ud.head.rotation.y=Math.sin(k.phase*1.7)*.12;
   }
 }
 function showFound(name){
@@ -2010,24 +2010,31 @@ function aim(x,z,d){
   const c=((x-P.x)*fx+(z-P.z)*fz)/(d||1);        // 1=正面 / -1=真後ろ
   return d*(1+(1-c)*.85);
 }
+/* 目で見えているか。壁ごしに「みつけた」が出ると、誰もいない場所でボタンを押すことになる。
+   子は物の陰に身を寄せているので、背にしている物で塞がないよう手前0.7mで打ち切る */
+function losClear(x0,z0,x1,z1){
+  const dx=x1-x0,dz=z1-z0,d=Math.hypot(dx,dz);
+  if(d<1.6)return true;                          // 手の届く距離なら、陰にいても見えている
+  const stop=d-.7,n=Math.max(2,Math.ceil(stop/.45));
+  for(let i=1;i<=n;i++){
+    const f=(stop*i/n)/d;
+    if(hit(x0+dx*f,z0+dz*f,.06))return false;
+  }
+  return true;
+}
 function findNear(){
   let best=null,bs=1e9;
   const take=(s,o)=>{if(s<bs){bs=s;best=o;}};
   for(let i=0;i<kids.length;i++){
     const k=kids[i];if(k.found)continue;
     const d=Math.hypot(k.x-P.x,k.z-P.z);
-    if(d<3.4)take(aim(k.x,k.z,d),{type:'kid',k:k,label:'みつけた'});
-  }
-  for(let i=0;i<elders.length;i++){
-    const e=elders[i];
-    const d=Math.hypot(e.x-P.x,e.z-P.z);
-    if(d<4.8)take(aim(e.x,e.z,d),{type:'elder',e:e,label:'聞く：爺さん'});
+    if(d<3.4&&losClear(P.x,P.z,k.x,k.z))take(aim(k.x,k.z,d),{type:'kid',k:k,label:'みつけた'});
   }
   for(let i=0;i<creatures.length;i++){
     const c=creatures[i];
     if(c.gone||!c.g.visible)continue;
     const d=Math.hypot(c.x-P.x,c.z-P.z);
-    if(d<4.2)take(aim(c.x,c.z,d),{type:'critter',c:c,label:'見る：'+c.label});
+    if(d<4.2&&losClear(P.x,P.z,c.x,c.z))take(aim(c.x,c.z,d),{type:'critter',c:c,label:'見る：'+c.label});
   }
   return best;
 }
@@ -2062,14 +2069,14 @@ function doAction(){
     if(!ready){say('まだ、声が返ってこない。',1.6);return;}
     findKid(n.k);return;
   }
-  if(n.type==='elder'){say(elderHint(n.e),7);burst(280,.15,.035,'lowpass');return;}
   if(n.type==='critter'){
     const c=n.c;
     if(!c.quizzed){note(c.hint);c.quizzed=true;}
     else{
       note(c.hint2);c.gone=true;
-      if(c.kind==='rat')sfx.patter();
-      else if(c.kind==='tiger')shake=Math.max(shake,.15);
+      if(c.kind==='dog')sfx.bark(1,0);
+      else if(c.kind==='cat')sfx.mew(1,0);
+      else sfx.patter();
     }
     return;
   }
@@ -2204,7 +2211,6 @@ function step(dt){
 
   updateKids(dt);
   updateCreatures(dt);
-  updateElders(dt);
 
   /* 五人そろったら、みんなで帰る */
   if(goHomeT>0){
@@ -2280,51 +2286,10 @@ function render(dt,now){
 function placeCamera(sway,shake){
   const jx=(Math.random()-.5)*shake,jz=(Math.random()-.5)*shake;
   const foot=P.roof?P.roof.h:groundY(P.x,P.z)+P.up;
-  const eyeY=foot+1.28+sway;
-  const showSelf=viewMode!==0;
-  selfG.visible=showSelf;
-  if(showSelf){
-    const fade=.34;
-    selfG.traverse(o=>{if(o.material)o.material.opacity=fade;});
-    selfG.position.set(P.x,foot,P.z);
-    selfG.rotation.y=P.yaw;
-    const bob=Math.abs(Math.sin(bobT))*.04;
-    selfG.position.y=foot+bob;
-  }
-  if(viewMode===0){
-    camera.position.set(P.x+jx,eyeY+(Math.random()-.5)*shake,P.z+jz);
-    camera.rotation.order='YXZ';
-    camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;camera.rotation.z=0;
-    return;
-  }
-  let cx,cy,cz,lx,ly,lz;
-  if(viewMode===2){
-    const known=knownSubject();
-    const face=Math.atan2(known.tx-known.ox,known.tz-known.oz);
-    cx=known.ox-Math.sin(face)*2.5+jx;
-    cz=known.oz-Math.cos(face)*2.5+jz;
-    cy=known.oy+1.15;
-    lx=known.tx; ly=known.ty; lz=known.tz;
-  }else{
-    cx=P.x+Math.sin(P.yaw)*2.7+jx;
-    cz=P.z+Math.cos(P.yaw)*2.7+jz;
-    cy=eyeY+.45;
-    lx=P.x; ly=eyeY-.2; lz=P.z;
-  }
-  camera.position.set(cx,cy,cz);
-  camera.lookAt(lx,ly,lz);
-}
-function knownSubject(){
-  const myFoot=P.roof?P.roof.h:groundY(P.x,P.z)+P.up;
-  let best=null,bd=1e9;
-  for(let i=0;i<kids.length;i++){
-    const k=kids[i];
-    if(k.found)continue;
-    const d=Math.hypot(k.x-P.x,k.z-P.z);
-    if(d<bd){bd=d;best=k;}
-  }
-  if(!best)return {ox:P.x,oz:P.z,oy:myFoot+1.05,tx:P.x-Math.sin(P.yaw)*4,tz:P.z-Math.cos(P.yaw)*4,ty:myFoot+1.05};
-  return {ox:P.x,oz:P.z,oy:myFoot+1.05,tx:best.x,tz:best.z,ty:groundY(best.x,best.z)+.9};
+  const eyeY=foot+1.28+sway;                    // 子供の目線
+  camera.position.set(P.x+jx,eyeY+(Math.random()-.5)*shake,P.z+jz);
+  camera.rotation.order='YXZ';
+  camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;camera.rotation.z=0;
 }
 
 /* ==========================================================================
