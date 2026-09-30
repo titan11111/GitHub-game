@@ -144,8 +144,10 @@ button:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
   font-size:10px;color:var(--dim);letter-spacing:.08em;z-index:4;pointer-events:none;white-space:nowrap}
 
 /* ---------- overlays ---------- */
-.sheet{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:18px;
-  background:linear-gradient(rgba(4,7,14,.62),rgba(4,7,14,.9));overflow:auto;overscroll-behavior:contain}
+.sheet{position:fixed;inset:0;z-index:32;display:none;align-items:center;justify-content:center;padding:18px;
+  background:linear-gradient(rgba(4,7,14,.88),rgba(4,7,14,.96));overflow:auto;overscroll-behavior:contain}
+body.sheet-open #hud,body.sheet-open #topbtns,body.sheet-open #sideL,body.sheet-open #ctl,body.sheet-open #kbhint{
+  visibility:hidden;pointer-events:none}
 .sheet.on{display:flex}
 /* 背景の絵を見せる画面だけ覆いを薄くし、文字は影で読ませる */
 .sheet.art{background:linear-gradient(rgba(4,7,14,.30),rgba(4,7,14,.62) 42%,rgba(4,7,14,.86))}
@@ -183,7 +185,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 #janHands button{flex:1;padding:18px 0;font-size:15px;letter-spacing:.14em}
 #janHands button:disabled{opacity:.35}
 #janBoard{margin-top:14px}
-#janCount{position:fixed;inset:0;z-index:22;display:none;align-items:center;justify-content:center;
+#janCount{position:fixed;inset:0;z-index:34;display:none;align-items:center;justify-content:center;
   background:#04070e;color:var(--neon);font-size:clamp(64px,26vw,190px);letter-spacing:.1em;
   text-shadow:0 0 18px rgba(61,242,255,.8),0 0 60px rgba(61,242,255,.3)}
 #janCount.on{display:flex}
@@ -227,15 +229,20 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
   #status{top:calc(env(safe-area-inset-top,0px) + 28px);font-size:12.5px;width:46vw}
   #callLine{top:24%;font-size:clamp(28px,6.5vw,52px)}
-  h1{font-size:clamp(26px,5.4vw,42px)}
-  h1 small{margin-top:8px}
-  .sheet{padding:12px}
-  .panel{max-width:540px}
+  h1{font-size:clamp(22px,4.6vw,34px)}
+  h1 small{margin-top:4px}
+  .sheet{padding:8px}
+  .panel{max-width:min(540px,92vw);max-height:calc(100dvh - 16px);overflow:auto}
+  .rule{margin:10px 0}
+  .go{padding:10px;margin-top:8px;font-size:13px}
+  .opt{padding:7px 0;font-size:12px}
+  .panel p{font-size:12.5px;margin:0 0 8px;line-height:1.7}
+  #mapc{max-height:28vh}
 }
 
 </style>
 </head>
-<body>
+<body class="sheet-open">
 <div class="sheet art on" id="shTitle"><div class="panel">
   <h1 class="neon">或る孤島の<br>かくれんぼ<small>日 暮 れ ま で に 、 五 人</small></h1>
   <div class="rule"></div>
@@ -319,7 +326,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
           <button type="button" class="fc-round game-btn" id="fcB" aria-label="ダッシュ切替">B</button>
           <button type="button" class="fc-round game-btn" id="fcA" aria-label="みつけた">A</button>
         </div>
-        <div class="fc-ablabels"><span>B ダッシュ切替</span><span>A みつけた</span></div>
+        <div class="fc-ablabels"><span id="labB">B ダッシュ切替</span><span id="labA">A 耳を澄ます</span></div>
       </div>
     </div>
   </div>
@@ -344,7 +351,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   <div class="opt"><span>視点の感度</span><input type="range" id="oSens" min="0.4" max="2" step="0.1" aria-label="視点の感度"></div>
   <div class="opt"><span>画面の揺れ</span><button class="tgl" id="oBob">ON</button></div>
   <div class="opt"><span>仮想パッド</span><button class="tgl" id="oPad">ON</button></div>
-  <div class="opt"><span>Bは押しっぱなしで走る</span><button class="tgl" id="oRunHold">ON</button></div>
+  <div class="opt"><span>Bは押しっぱなしで走る</span><button class="tgl" id="oRunHold">OFF</button></div>
   <div class="opt"><span>走査線の演出</span><button class="tgl" id="oScan">ON</button></div>
   <div class="opt"><span>曲を流す</span><button class="tgl" id="oBgm">ON</button></div>
   <button class="go" id="bCfgClose">閉 じ る</button>
@@ -371,6 +378,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
 const $=id=>document.getElementById(id);
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
 const isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+let near=null;
 
 /* ==========================================================================
    1. コントロールパネル（設定の保存／入力／ポーズ／ミュート）
@@ -410,8 +418,31 @@ function syncCfg(){
   $('scan').classList.toggle('on',S.scan);
   if(master)master.gain.value=S.mute?0:S.vol;
   bgmSync();
+  syncLabels();
 }
-const sheet=(id,on)=>$(id).classList.toggle('on',on);
+function actionLabel(n){
+  if(!n)return '耳を澄ます';
+  if(n.type==='kid')return 'みつけた';
+  return '見る';
+}
+function syncLabels(){
+  const a=actionLabel(near);
+  const ba=$('fcA');
+  ba.textContent=a;
+  ba.classList.toggle('hot',!!near&&near.type==='kid');
+  ba.setAttribute('aria-label',a);
+  $('labA').textContent='A '+a;
+  $('labB').textContent=S.runHold?'B 走る':'B ダッシュ切替';
+  $('fcB').setAttribute('aria-label',S.runHold?'走る':'ダッシュ切替');
+  if(!isTouch){
+    const run=S.runHold?'Shift 走る':'Shift ダッシュ切替';
+    $('kbhint').textContent='W A S D 移動　Q E 振り向く　'+run+'　Space '+a+'　Tab 耳を澄ます　F 明かり　M 地図　P 中断';
+  }
+}
+function sheet(id,on){
+  $(id).classList.toggle('on',on);
+  document.body.classList.toggle('sheet-open',!!document.querySelector('.sheet.on'));
+}
 const sheetOpen=id=>$(id).classList.contains('on');
 function opt(id,key,prop){$(id).onclick=()=>{S[prop]=!S[prop];store.set(key,S[prop]);syncCfg();};}
 opt('oMute','mute','mute');opt('oBob','bob','bob');opt('oPad','pad','pad');
@@ -425,15 +456,19 @@ let resumeTo='';                                   // 設定・地図から戻�
 function openCfg(from){resumeTo=from||'';if(state==='play')state='pause';sheet('shCfg',true);}
 $('bCfg').onclick=()=>openCfg('');
 $('bPCfg').onclick=()=>{sheet('shPause',false);openCfg('shPause');};
+function tryResumePlay(){
+  if(state!=='pause'||sheetOpen('shPause')||portraitLocked())return;
+  state='play';last=performance.now();
+}
 $('bCfgClose').onclick=()=>{
   sheet('shCfg',false);
   if(resumeTo){sheet(resumeTo,true);resumeTo='';}
-  else if(state==='pause'&&!sheetOpen('shPause')){state='play';last=performance.now();}
+  else tryResumePlay();
 };
 function toggleMap(from){
   if(sheetOpen('shMap')){sheet('shMap',false);
     if(resumeTo){sheet(resumeTo,true);resumeTo='';}
-    else if(state==='pause'&&!sheetOpen('shPause')){state='play';last=performance.now();}
+    else tryResumePlay();
     return;}
   if(state!=='play'&&state!=='pause')return;
   resumeTo=from||'';if(state==='play')state='pause';
@@ -451,16 +486,24 @@ function pauseInfo(){
 }
 function togglePause(){
   if(state==='play'){state='pause';pauseInfo();sheet('shPause',true);bgmEl.pause();}
-  else if(state==='pause'&&sheetOpen('shPause')){sheet('shPause',false);state='play';last=performance.now();bgmSync();}
+  else if(state==='pause'&&sheetOpen('shPause')){
+    if(portraitLocked())return;
+    sheet('shPause',false);state='play';last=performance.now();bgmSync();
+  }
 }
 $('bPause').onclick=togglePause;
 $('bResume').onclick=togglePause;
 $('bPQuit').onclick=()=>location.reload();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'){state='pause';pauseInfo();sheet('shPause',true);}});
-/* 縦持ちのあいだは進行を止める（探す時間を縦画面で削られないように） */
+/* 縦持ちのあいだは進行を止める。案内の下にタップが抜けても、開始と再開は受けない */
 const mqPortrait=matchMedia('(orientation:portrait) and (pointer:coarse)');
-const rotateGate=()=>{if(mqPortrait.matches&&state==='play'){state='pause';pauseInfo();sheet('shPause',true);}};
+const portraitLocked=()=>mqPortrait.matches;
+const rotateGate=()=>{
+  if(!portraitLocked())return;
+  if(state==='play'){state='pause';pauseInfo();sheet('shPause',true);bgmEl.pause();}
+};
 mqPortrait.addEventListener?mqPortrait.addEventListener('change',rotateGate):mqPortrait.addListener(rotateGate);
+rotateGate();
 
 /* --- キーボード --- */
 const keys={};
@@ -473,8 +516,12 @@ addEventListener('keydown',e=>{
   else if(e.code==='Digit0'){S.mute=!S.mute;store.set('mute',S.mute);syncCfg();}
   else if(e.code==='Tab'){e.preventDefault();listen();}
   else if(e.code==='Space'||e.code==='Enter'){e.preventDefault();doAction();}
+  else if((e.code==='ShiftLeft'||e.code==='ShiftRight')&&!e.repeat){e.preventDefault();runOn();}
 });
-addEventListener('keyup',e=>{keys[e.code]=false;});
+addEventListener('keyup',e=>{
+  keys[e.code]=false;
+  if(e.code==='ShiftLeft'||e.code==='ShiftRight')runOff();
+});
 
 /* --- スティック（改善1：フローティング／改善2：デッドゾーンと非線形カーブ） --- */
 let sx=0,sy=0,running=false,runToggled=false;
@@ -592,21 +639,22 @@ function pollPad(){
     gpv.mx=curve(g.axes[0]||0,1.35);gpv.my=curve(g.axes[1]||0,1.35);
     gpv.lx=curve(g.axes[2]||0,2);gpv.ly=curve(g.axes[3]||0,2);
     if(b(12))gpv.my=-1;if(b(13))gpv.my=1;if(b(14))gpv.mx=-1;if(b(15))gpv.mx=1;
-    gpv.run=b(0)||b(5)||b(7);
+    gpv.run=S.runHold&&(b(0)||b(5)||b(7));
     const edge=(n,fn)=>{const now=b(n);if(now&&!gpPrev[n])fn();gpPrev[n]=now;};
     edge(2,doAction);edge(1,doAction);edge(3,toggleLight);edge(4,()=>toggleMap(''));edge(9,togglePause);
-    edge(0,()=>{if(state==='title')$('bStart').click();});
+    edge(0,()=>{if(state==='title')$('bStart').click(); else if(!S.runHold)runOn();});
+    if(!S.runHold){edge(5,runOn);edge(7,runOn);}
     return;
   }
   gpv.mx=gpv.my=gpv.lx=gpv.ly=0;gpv.run=false;
 }
 
-$('kbhint').textContent=isTouch?'':'W A S D 移動　Q E 振り向く　Shift 走る　Space みつけた　Tab 耳を澄ます　F 明かり　M 地図　P 中断';
+$('kbhint').textContent='';
 syncCfg();
 {const b=store.get('bestFind',0);if(b)$('bestRec').textContent='五人そろえた最短　'+fmtDur(b);}
 
 /* ==========================================================================
-   2. 音（すべて合成。外部音源ゼロ。長調のアルペジオは鳴らさない）
+   2. 音（効果音は合成。BGMだけ外部ファイル。長調のアルペジオは鳴らさない）
       気配は「どちらから聞こえるか」が手がかりなので、すべて左右に振る。
    ========================================================================== */
 function audioInit(){
@@ -1746,10 +1794,7 @@ function updateCreatures(dt){
 }
 
 /* ==========================================================================
-   4c. 島の番人（3人。方角と場所の種類だけ教える。座標は言わない）
-   ========================================================================== */
-/* ==========================================================================
-   4d. 五人の子供（隠れる／見つかる／うしろについてくる）
+   4c. 五人の子供（隠れる／見つかる／うしろについてくる）
    ========================================================================== */
 /* 候補座標は「物に身を寄せられる点」だけを書く（2026-09-27 改訂）。
    以前は壁から2.4m離れた道端に立ってしまう候補が6件あった。 */
@@ -1825,26 +1870,25 @@ function callLine(line,sec){
 }
 function placeKids(){
   const used=[];
+  const MIN=10;                                   // 発見距離3.4mの倍以上。同じ物陰に二人置かない
+  const far=(x,z)=>used.every(u=>Math.hypot(u[0]-x,u[1]-z)>=MIN);
   KIDS.forEach(def=>{
-    let pick=null;
-    for(let tries=0;tries<12&&!pick;tries++){
-      const c=def.spots[(Math.random()*def.spots.length)|0];
-      if(used.some(u=>Math.hypot(u[0]-c[0],u[1]-c[1])<10))continue;
-      pick=c;
+    let p=null;
+    const order=def.spots.slice();
+    for(let i=order.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;const t=order[i];order[i]=order[j];order[j]=t;}
+    for(let i=0;i<order.length&&!p;i++){
+      const q=freeSpot(order[i][0],order[i][1],true);
+      if(q&&hideOk(q.x,q.z)&&far(q.x,q.z))p=q;
     }
-    if(!pick)pick=def.spots[0];
-    used.push(pick);
-    let p=freeSpot(pick[0],pick[1],true);
-    if(!hideOk(p.x,p.z)){
-      let best=null,bd=1e9;
+    if(!p){
       for(const key in NOOK){
         const n=NOOK[key];
-        if(used.some(u=>Math.hypot(u[0]-n.x,u[1]-n.z)<6))continue;
-        const d=Math.hypot(n.x-p.x,n.z-p.z);
-        if(d<bd&&hideOk(n.x,n.z)&&canStand(n.x,n.z,groundY(n.x,n.z))){bd=d;best=n;}
+        if(!far(n.x,n.z))continue;
+        if(hideOk(n.x,n.z)&&canStand(n.x,n.z,groundY(n.x,n.z))){p={x:n.x,z:n.z};break;}
       }
-      if(best)p={x:best.x,z:best.z};
     }
+    if(!p)p=freeSpot(def.spots[0][0],def.spots[0][1],true);
+    used.push([p.x,p.z]);
     const g=new THREE.Group();mkKid(g,def.cloth,def.hair);
     g.position.set(p.x,groundY(p.x,p.z),p.z);
     g.rotation.y=hideFacing(p.x,p.z);
@@ -1931,7 +1975,7 @@ function showFound(name){
 const P={x:PLAZA.x,z:PLAZA.z,yaw:Math.PI*.55,pitch:0,vx:0,vz:0,y:1.28,   // 子供なので目線は1.28m
          stam:100,lightOn:false,batt:100,up:0,roof:null,grip:null,face:true};
 let t=0,bobT=0,shake=0,flash=0,stepT=0,breathT=0,creakT=10,
-    fallT=8,near=null,sayT=0,lastArea='',areaSaid={},goHomeT=0,earCd=0,neonOn=false;
+    fallT=8,sayT=0,lastArea='',areaSaid={},goHomeT=0,earCd=0,neonOn=false;
 
 /* 空（夕方から夜へ。6分で落ちる） */
 const W={rain:0,wind:.24,wave:.8,vis:190,light:.92};
@@ -2136,7 +2180,7 @@ function step(dt){
   P.pitch=clamp(P.pitch-(sy+gpv.ly)*1.7*dt*S.sens,-1.1,1.1);
 
   const spent=P.stam<6;
-  const dash=(keys.ShiftLeft||keys.ShiftRight||running||gpv.run)&&moving&&!spent;
+  const dash=(running||gpv.run)&&moving&&!spent;
   if(spent&&running)setRun(false);            // 息切れしたらBのランプも消す（表示は実際の状態から出す）
   const spd=(dash?5.4:2.8)*(P.stam<22?.86:1);
   P.stam=clamp(P.stam+(dash?-15:(moving?7:14))*dt,0,100);
@@ -2223,12 +2267,10 @@ function step(dt){
 
   /* 手の届くもの */
   near=findNear();
-  const pr=$('prompt'),ba=$('fcA');
+  const pr=$('prompt');
   if(near){pr.textContent=near.label;pr.classList.add('on');}else pr.classList.remove('on');
-  const hot=!!near&&near.type==='kid';
-  ba.textContent=near?(hot?'みつけた':(near.type==='kid'?'みつけた':'調べる')):'耳を澄ます';
-  ba.disabled=false;
-  ba.classList.toggle('hot',hot);
+  $('fcA').disabled=false;
+  syncLabels();
 
   sayT-=dt;
   if(sayT<=0)$('status').textContent=statusLine();
@@ -2463,6 +2505,7 @@ const HANDS=['グー','チョキ','パー'];
 const beats=(a,b)=>(a===0&&b===1)||(a===1&&b===2)||(a===2&&b===0);   // a が b に勝つ
 let janRound=0;
 function janPlay(my){
+  if(portraitLocked())return;
   janRound++;
   let opp=(Math.random()*3)|0;
   if(janRound>=3)opp=[2,0,1][my];                    // 3回目からは必ず自分が負ける（鬼はじぶん）
@@ -2565,6 +2608,7 @@ function end(kind){
    ========================================================================== */
 placeKids();
 $('bStart').onclick=()=>{
+  if(portraitLocked())return;
   audioInit();
   if(AC&&AC.state==='suspended')AC.resume();
   bgmEl.load();                                    // preload=none なのでここで初めて読む
