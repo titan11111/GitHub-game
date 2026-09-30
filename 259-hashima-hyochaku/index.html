@@ -916,15 +916,6 @@ function inBounds(x,z){
   return false;
 }
 const inMesa=(x,z)=>x>MESA.x0&&x<MESA.x1&&z>MESA.z0&&z<MESA.z1;
-/* 進もうとした先が岩肌そのものか。岩山の角では「隣の点が内側」の判定が
-   両軸とも外れて登りも歩きもできない死点になっていた（2026-09-27）。
-   代わりに進行方向を0.6m先まで見る。岩の手前で塞がれた場合はここが false になる */
-function mesaAhead(x,z,mx,mz){
-  const s=Math.hypot(mx,mz);
-  if(s<1e-6)return false;
-  const px=x+mx/s*.6,pz=z+mz/s*.6;
-  return inMesa(px,pz)&&!hit(px,pz,0);
-}
 const inStair=(x,z)=>z>STAIR.z0&&z<STAIR.z1&&x>MESA.x1-.2&&x<STAIR.x1;
 function groundY(x,z){
   if(inMesa(x,z))return MESA.top;
@@ -951,6 +942,33 @@ function wallNear(x,z,reach){
   }
   return best;
 }
+function wallDist(b,x,z){
+  const dx=Math.max(Math.abs(x-b.x)-b.w/2,0),dz=Math.max(Math.abs(z-b.z)-b.d/2,0);
+  return Math.hypot(dx,dz);
+}
+/* 建物の外側に触れているときだけ返す。中にいると距離0になり、室内で浮く原因になる */
+function wallTouch(x,z,reach){
+  let best=null,bd=reach||.58;
+  for(let i=0;i<BLD.length;i++){
+    const b=BLD[i];
+    const d=wallDist(b,x,z);
+    if(d<=1e-4)continue;
+    if(d<bd){bd=d;best=b;}
+  }
+  return best;
+}
+function mesaDist(x,z){
+  const dx=Math.max(MESA.x0-x,0,x-MESA.x1);
+  const dz=Math.max(MESA.z0-z,0,z-MESA.z1);
+  return Math.hypot(dx,dz);
+}
+/* 進行先が岩山の崖そのものか。近くを歩いただけでは登らない */
+function mesaFace(x,z,mx,mz,cy){
+  const s=Math.hypot(mx,mz);
+  if(s<1e-6||inMesa(x,z))return false;
+  const px=x+mx/s*.45,pz=z+mz/s*.45;
+  return inMesa(px,pz)&&(groundY(px,pz)-cy)>1.15;
+}
 function onRoof(x,z,b){
   const m=.6;
   return x>b.x-b.w/2+m&&x<b.x+b.w/2-m&&z>b.z-b.d/2+m&&z<b.z+b.d/2-m;
@@ -961,18 +979,6 @@ function roofSpot(x,z,b){
 }
 function mesaEntry(x,z){
   return {x:clamp(x,MESA.x0+1.2,MESA.x1-1.2),z:clamp(z,MESA.z0+1.2,MESA.z1-1.2)};
-}
-function wallAhead(x,z,yaw,reach){
-  const fx=-Math.sin(yaw),fz=-Math.cos(yaw);
-  let best=null,bd=reach||1.8;
-  for(let i=0;i<BLD.length;i++){
-    const b=BLD[i];
-    const cx=clamp(x,b.x-b.w/2,b.x+b.w/2),cz=clamp(z,b.z-b.d/2,b.z+b.d/2);
-    const dx=cx-x,dz=cz-z,d=Math.hypot(dx,dz);
-    if(d<0.08||d>=bd)continue;
-    if((dx*fx+dz*fz)/d>.5){bd=d;best=b;}
-  }
-  return best;
 }
 /* 壁と岩を登る。push は壁へ押し込むとき。autoDown は端まで来たら降りる */
 function stepClimber(o,mx,mz,dt,push,autoDown){
@@ -987,8 +993,10 @@ function stepClimber(o,mx,mz,dt,push,autoDown){
     return;
   }
   if(o.up>0.04){
-    const b=(o.grip&&o.grip.h)?o.grip:wallNear(o.x,o.z,1.5);
-    const top=(b&&b.h)?b.h:(o.grip==='mesa'?MESA.top:0);
+    const b=(o.grip&&o.grip.h)?o.grip:null;
+    const wd=b?wallDist(b,o.x,o.z):0;
+    const holding=b?(wd>1e-4&&wd<.9):(o.grip==='mesa'&&mesaDist(o.x,o.z)<.7);
+    const top=holding?((b&&b.h)?b.h:(o.grip==='mesa'?MESA.top:0)):0;
     if(push&&top>0){
       o.up=Math.min(top,o.up+2.7*dt);
       if(o.up>=top-.2){
@@ -1014,16 +1022,16 @@ function stepClimber(o,mx,mz,dt,push,autoDown){
   /* 壁と岩にとりつく。
      2026-09-27: 以前は「塞がれた瞬間」と「正面1.8m」で即座に登り始めたため、
      壁をかすめただけで登り、戸口へ歩くだけで屋根へ上がってしまって、
-     建物の奥に隠れた子へ近づけなかった。触れるまで近づいて押し続けたときだけ登る。 */
+     建物の奥に隠れた子へ近づけなかった。
+     2026-09-30: P.face が常に true のまま正面0.6mでとりついていたので、
+     前ボタンを押し続けるだけで空中へ浮いた。塞がれて、外壁／崖に触れているときだけ。 */
   if(push&&o.up<.05&&!o.roof){
     let g=null;
     if(!okX||!okZ){
-      const b=wallNear(o.x,o.z,1.35);
+      const b=wallTouch(o.x,o.z,.58);
       if(b)g=b;
-      else if(!inMesa(o.x,o.z)&&mesaAhead(o.x,o.z,mx,mz))g='mesa';
+      else if(mesaFace(o.x,o.z,mx,mz,cy))g='mesa';
     }
-    /* 戸口へ歩くときに登り始めないよう、壁に触る距離だけを見る */
-    if(!g&&o.face){const ahead=wallAhead(o.x,o.z,o.yaw,.6);if(ahead)g=ahead;}
     if(g){
       o.wallT=(o.wallT||0)+dt;
       if(o.wallT>.34){o.grip=g;o.up=.16;o.wallT=0;}
