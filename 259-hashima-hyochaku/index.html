@@ -62,6 +62,11 @@ canvas#fx.on{display:block}
 #ear{position:absolute;inset:0;opacity:0;transition:opacity .5s;
   background:radial-gradient(circle at var(--ex,50%) var(--ey,50%),rgba(61,242,255,.30),rgba(61,242,255,0) 44%)}
 #ear.on{opacity:1}
+#guide{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 82px);transform:translateX(-50%);
+  max-width:70vw;padding:7px 12px;background:rgba(5,12,23,.88);border:1px solid rgba(61,242,255,.65);
+  color:#e9fbff;font-size:13px;text-align:center;line-height:1.45;text-shadow:0 1px 3px #000;
+  opacity:0;transition:opacity .2s;white-space:nowrap}
+#guide.on{opacity:1}
 /* 発見した名前のネオン */
 #found{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);opacity:0;
   font-size:clamp(30px,10vw,58px);letter-spacing:.3em;color:var(--neon);white-space:nowrap;
@@ -140,6 +145,7 @@ button:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
   opacity:0;transition:opacity .25s}
 #callLine.on{opacity:1}
 #sideL button.on{background:rgba(61,242,255,.26)}
+#bListen{border-color:rgba(61,242,255,.7);color:#e9fbff;background:rgba(8,30,43,.82)}
 #kbhint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
   font-size:10px;color:var(--dim);letter-spacing:.08em;z-index:4;pointer-events:none;white-space:nowrap}
 
@@ -224,6 +230,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   #stamWrap{top:calc(env(safe-area-inset-top,0px) + 74px)!important;bottom:auto!important;width:92px}
   #sideL{top:calc(env(safe-area-inset-top,0px) + 88px)!important;bottom:auto!important;gap:4px}
   #sideL button{width:50px;min-height:34px;font-size:10px}
+  #sideL button{width:60px;min-height:44px}
   #log{top:calc(env(safe-area-inset-top,0px) + 42px)!important;width:min(30vw,216px);font-size:11px;line-height:1.6}
   #carry{bottom:calc(env(safe-area-inset-bottom,0px) + 190px);font-size:10.5px;line-height:1.8}
   #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
@@ -274,6 +281,7 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   <div id="stamWrap"><b id="stamBar"></b></div>
   <div id="carry"></div>
   <div id="status"></div>
+  <div id="guide" role="status" aria-live="polite"></div>
   <div id="prompt"></div>
   <div id="log"><div></div><div></div><div></div></div>
   <div id="found"></div>
@@ -291,6 +299,8 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   <button id="bCfg" aria-label="設定を開く">設定</button>
 </div>
 <div id="sideL">
+  <button id="bListen" aria-label="近くの子の方向を探す">耳を澄ます</button>
+  <button id="bClimb" aria-label="押しながら前進して登る">登る</button>
   <button id="bLight" aria-label="懐中電灯">ライト</button>
   <button id="bPad" aria-label="仮想パッドの表示切替">パッド</button>
 </div>
@@ -351,7 +361,6 @@ h1.kin small{color:var(--kin);text-shadow:0 0 10px rgba(242,193,78,.55)}
   <div class="opt"><span>視点の感度</span><input type="range" id="oSens" min="0.4" max="2" step="0.1" aria-label="視点の感度"></div>
   <div class="opt"><span>画面の揺れ</span><button class="tgl" id="oBob">ON</button></div>
   <div class="opt"><span>仮想パッド</span><button class="tgl" id="oPad">ON</button></div>
-  <div class="opt"><span>Bは押しっぱなしで走る</span><button class="tgl" id="oRunHold">OFF</button></div>
   <div class="opt"><span>走査線の演出</span><button class="tgl" id="oScan">ON</button></div>
   <div class="opt"><span>曲を流す</span><button class="tgl" id="oBgm">ON</button></div>
   <button class="go" id="bCfgClose">閉 じ る</button>
@@ -396,7 +405,7 @@ const store={
 const S={
   mute:store.get('mute',false), vol:store.get('vol',.7), sens:store.get('sens',1),
   bob:store.get('bob',true),    pad:store.get('pad',isTouch),
-  runHold:store.get('runhold',false), scan:store.get('scan',true), bgm:store.get('bgm',true)
+  scan:store.get('scan',true), bgm:store.get('bgm',true)
 };
 const LIMIT=360;                                   // 日暮れまで6分（SPEC §2）
 const fmtClock=s=>{const m=(1020+s*.30)|0;return String(((m/60)|0)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
@@ -412,7 +421,7 @@ function bgmSync(){
 }
 function syncCfg(){
   const tg=(id,v)=>{$(id).textContent=v?'ON':'OFF';$(id).classList.toggle('on',v);};
-  tg('oMute',S.mute);tg('oBob',S.bob);tg('oPad',S.pad);tg('oRunHold',S.runHold);tg('oScan',S.scan);tg('oBgm',S.bgm);
+  tg('oMute',S.mute);tg('oBob',S.bob);tg('oPad',S.pad);tg('oScan',S.scan);tg('oBgm',S.bgm);
   $('oVol').value=S.vol;$('oSens').value=S.sens;
   $('ctl').classList.toggle('hide',!S.pad);
   $('scan').classList.toggle('on',S.scan);
@@ -432,11 +441,11 @@ function syncLabels(){
   ba.classList.toggle('hot',!!near&&near.type==='kid');
   ba.setAttribute('aria-label',a);
   $('labA').textContent='A '+a;
-  $('labB').textContent=S.runHold?'B 走る':'B ダッシュ切替';
-  $('fcB').setAttribute('aria-label',S.runHold?'走る':'ダッシュ切替');
+  $('labB').textContent='B ダッシュ切替';
+  $('fcB').setAttribute('aria-label','ダッシュ切替');
   if(!isTouch){
-    const run=S.runHold?'Shift 走る':'Shift ダッシュ切替';
-    $('kbhint').textContent='W A S D 移動　Q E 振り向く　'+run+'　Space '+a+'　Tab 耳を澄ます　F 明かり　M 地図　P 中断';
+    const run='Shift ダッシュ切替';
+    $('kbhint').textContent='W A S D 移動　Q E 振り向く　'+run+'　C+前進 登る　Space '+a+'　Tab 耳を澄ます　F 明かり　M 地図　P 中断';
   }
 }
 function sheet(id,on){
@@ -446,7 +455,7 @@ function sheet(id,on){
 const sheetOpen=id=>$(id).classList.contains('on');
 function opt(id,key,prop){$(id).onclick=()=>{S[prop]=!S[prop];store.set(key,S[prop]);syncCfg();};}
 opt('oMute','mute','mute');opt('oBob','bob','bob');opt('oPad','pad','pad');
-opt('oRunHold','runhold','runHold');opt('oScan','scan','scan');opt('oBgm','bgm','bgm');
+opt('oScan','scan','scan');opt('oBgm','bgm','bgm');
 $('bPad').onclick=()=>{S.pad=!S.pad;store.set('pad',S.pad);syncCfg();};
 $('oVol').oninput=e=>{S.vol=+e.target.value;store.set('vol',S.vol);syncCfg();};
 $('oSens').oninput=e=>{S.sens=+e.target.value;store.set('sens',S.sens);};
@@ -520,11 +529,10 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{
   keys[e.code]=false;
-  if(e.code==='ShiftLeft'||e.code==='ShiftRight')runOff();
 });
 
 /* --- スティック（改善1：フローティング／改善2：デッドゾーンと非線形カーブ） --- */
-let sx=0,sy=0,running=false,runToggled=false;
+let sx=0,sy=0,running=false;
 const DZ=.16;
 function curve(v,p){                                // デッドゾーンを切り、残りを p 乗で伸ばす
   const a=Math.abs(v);
@@ -561,17 +569,10 @@ function bindStick(el,cb,pow){
 }
 let moveMag=0;
 
-/* --- 走る（Bを1回押すとダッシュ、もう1回押すと歩きへ戻る。設定で押しっぱなしにも出来る） --- */
-function setRun(v){ running=!!v; runToggled=running; $('fcB').classList.toggle('on',running); }
-function runOn(){ if(S.runHold){setRun(true);} else {setRun(!running);} }
-function runOff(){ if(S.runHold) setRun(false); }
+/* --- 走る（Bを押すたびにダッシュと歩きを切り替える） --- */
+function setRun(v){ running=!!v; $('fcB').classList.toggle('on',running); }
+function runOn(){ setRun(!running); }
 function tapFb(){try{navigator.vibrate&&navigator.vibrate(14);}catch(_){}}
-function bindHold(el,on,off){
-  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(_){}
-    el.classList.add('is-pressed');tapFb();on();});
-  const end=()=>{el.classList.remove('is-pressed');off();};
-  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,end));
-}
 function bindTap(el,fn){
   el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(_){}
     el.classList.add('is-pressed');tapFb();fn();});
@@ -592,7 +593,7 @@ function bindDpad(el){
   ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,clear));
 }
 bindDpad($('dpad'));
-bindHold($('fcB'),runOn,runOff);
+bindTap($('fcB'),runOn);
 bindTap($('fcA'),()=>doAction());
 bindTap($('fcStart'),()=>togglePause());
 bindTap($('fcSelect'),()=>toggleMap(''));
@@ -605,6 +606,11 @@ document.addEventListener('selectstart',e=>e.preventDefault());
 
 bindStick($('stLook'),(x,y)=>{sx=x;sy=y;},2);
 $('bLight').addEventListener('pointerdown',e=>{e.preventDefault();tapFb();toggleLight();});
+bindTap($('bListen'),()=>listen());
+let climbHeld=false;
+const climbBtn=$('bClimb');
+climbBtn.addEventListener('pointerdown',e=>{e.preventDefault();climbHeld=true;climbBtn.classList.add('on');try{climbBtn.setPointerCapture(e.pointerId);}catch(_){}});
+['pointerup','pointercancel','lostpointercapture'].forEach(type=>climbBtn.addEventListener(type,()=>{climbHeld=false;climbBtn.classList.remove('on');}));
 
 /* --- 画面ドラッグ（軽いタップは［みつけた］／感度を画面幅で正規化） --- */
 const cv=$('scene');
@@ -639,11 +645,11 @@ function pollPad(){
     gpv.mx=curve(g.axes[0]||0,1.35);gpv.my=curve(g.axes[1]||0,1.35);
     gpv.lx=curve(g.axes[2]||0,2);gpv.ly=curve(g.axes[3]||0,2);
     if(b(12))gpv.my=-1;if(b(13))gpv.my=1;if(b(14))gpv.mx=-1;if(b(15))gpv.mx=1;
-    gpv.run=S.runHold&&(b(0)||b(5)||b(7));
+    gpv.run=false;
     const edge=(n,fn)=>{const now=b(n);if(now&&!gpPrev[n])fn();gpPrev[n]=now;};
     edge(2,doAction);edge(1,doAction);edge(3,toggleLight);edge(4,()=>toggleMap(''));edge(9,togglePause);
-    edge(0,()=>{if(state==='title')$('bStart').click(); else if(!S.runHold)runOn();});
-    if(!S.runHold){edge(5,runOn);edge(7,runOn);}
+    edge(0,()=>{if(state==='title')$('bStart').click(); else runOn();});
+    edge(5,runOn);edge(7,runOn);
     return;
   }
   gpv.mx=gpv.my=gpv.lx=gpv.ly=0;gpv.run=false;
@@ -746,8 +752,9 @@ addEventListener('resize',()=>{renderer.setPixelRatio(maxDpr());renderer.setSize
 const hemi=new THREE.HemisphereLight(0x7a8894,0x1c1a17,.44);scene.add(hemi);
 const sky=new THREE.DirectionalLight(0xd8ccb4,0);sky.position.set(-80,40,60);scene.add(sky);
 const fill=new THREE.DirectionalLight(0x6a7888,.14);fill.position.set(55,28,-70);scene.add(fill);
-const torch=new THREE.SpotLight(0xfff2d2,0,34,.42,.55,1.2);camera.add(torch);
+const torch=new THREE.SpotLight(0xfff2d2,0,52,.62,.65,1.05);camera.add(torch);
 const tTarget=new THREE.Object3D();tTarget.position.set(0,0,-1);camera.add(tTarget);torch.target=tTarget;
+const torchFill=new THREE.PointLight(0xd8e6ee,0,12,1.5);camera.add(torchFill);
 
 /* --- 手続きテクスチャ（外部画像ゼロ・彩度は落とす） --- */
 function cvs(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return [c,c.getContext('2d')];}
@@ -901,7 +908,8 @@ function buildProps(){
 function box(w,h,d,mat,x,y,z,collide,uv){
   const geo=new THREE.BoxGeometry(w,h,d);if(uv)scaleUV(geo,w,h,d);
   const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);scene.add(m);
-  if(collide||autoSolid(y-h/2,y+h/2,w,d))colliders.push({x:x,z:z,w:w,d:d});
+  /* collide:true は必ず壁。false は見た目だけ（段・床・梁）。未指定は autoSolid */
+  if(collide===true||(collide!==false&&autoSolid(y-h/2,y+h/2,w,d)))colliders.push({x:x,z:z,w:w,d:d});
   return m;
 }
 function hit(x,z,r){
@@ -1310,9 +1318,9 @@ function shelter(x,z,w,d,h,name,door){
 shelter(-124,12,26,20,8,'総合事務所','n');
 plain(-132,-20,12,10,6,'鉱員浴場跡');
 plain(-104,22,16,12,11,'25号棟');
-for(let i=0;i<7;i++)box(1.1,9,1.1,M.rust,-142+i*3,4.5,-41,false,false);  // 第二竪坑坑口桟橋跡
+for(let i=0;i<7;i++)box(1.1,9,1.1,M.rust,-142+i*3,4.5,-41,true,false);  // 第二竪坑坑口桟橋跡
 box(20,.8,2.2,M.rust,-133,9,-41,false,false);
-for(let i=0;i<8;i++)box(.7,7,.7,M.rust,-96+i*7,3.5,-34,false,false);      // ベルトコンベアの支柱
+for(let i=0;i<8;i++)box(.7,7,.7,M.rust,-96+i*7,3.5,-34,true,false);      // ベルトコンベアの支柱
 // 南西（30号棟・31号棟）
 shelter(-92,-18,24,17,21,'30号棟','e');
 plain(-64,-25,20,15,18,'31号棟');
@@ -1601,6 +1609,8 @@ keepLane(5.2,9.2,8,78);                           // 岩山の北側（65号棟�
 keepLane(-48,48,142,148);                         // 東端の通路
 keepLane(-3.2,1.2,126.4,129.6);                   // プール南の切れ目
 keepLane(-8,4,78,84);                             // 65号棟の南戸口
+keepLane(STAIR.z0-.6,STAIR.z1+.6,MESA.x1-.8,STAIR.x1+1.4);  // 地獄段。段の見た目が autoSolid で壁になっていた
+keepLane(PIER.z-1,ISL.z0+2,PIER.x-3.2,PIER.x+3.2);          // 桟橋への切れ目
 
 
 /* --- ネオン看板（日が落ちてから灯る。和風サイバーパンクの様式・SPEC §7）
@@ -1876,26 +1886,89 @@ function callLine(line,sec){
   clearTimeout(callLine._t);callLine._t=setTimeout(()=>el.classList.remove('on'),(sec||2.4)*1000);
   say(line,sec||2.4);
 }
+/* 広場から歩いて塗れるマス。屋根の上や段の壁の向こうには置かない */
+function walkFlood(sx,sz){
+  const s=1.15;
+  const key=(x,z)=>Math.round(x/s)+','+Math.round(z/s);
+  const seen=new Set();
+  const q=[[sx,sz,groundY(sx,sz)]];
+  seen.add(key(sx,sz));
+  const d=[[s,0],[-s,0],[0,s],[0,-s],[s,s],[s,-s],[-s,s],[-s,-s]];
+  for(let i=0;i<q.length;i++){
+    const x=q[i][0],z=q[i][1],cy=q[i][2];
+    for(let k=0;k<8;k++){
+      const nx=x+d[k][0],nz=z+d[k][1],kk=key(nx,nz);
+      if(seen.has(kk))continue;
+      if(!canStand(nx,nz,cy))continue;
+      seen.add(kk);
+      q.push([nx,nz,groundY(nx,nz)]);
+    }
+  }
+  return (x,z)=>{
+    if(!canStand(x,z,groundY(x,z)))return false;
+    if(seen.has(key(x,z)))return true;
+    for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){
+      if(seen.has(key(x+i*s,z+j*s)))return true;
+    }
+    return false;
+  };
+}
 function placeKids(){
   const used=[];
-  const MIN=10;                                   // 発見距離3.4mの倍以上。同じ物陰に二人置かない
+  const MIN=10;
+  const reach=walkFlood(PLAZA.x,PLAZA.z);
   const far=(x,z)=>used.every(u=>Math.hypot(u[0]-x,u[1]-z)>=MIN);
+  const hanaSafe=q=>{
+    if(hit(q.x,q.z,.65))return false;
+    // 通路確保のため当たり判定を外した壁も、見た目の箱にはめり込ませない。
+    return covers.every(c=>Math.abs(q.x-c.x)>=c.w/2+.18||Math.abs(q.z-c.z)>=c.d/2+.18);
+  };
   KIDS.forEach(def=>{
+    const okPlace=q=>q&&canStand(q.x,q.z,groundY(q.x,q.z))&&hideOk(q.x,q.z)
+      &&far(q.x,q.z)&&reach(q.x,q.z)&&(def.name!=='ハナ'||hanaSafe(q));
     let p=null;
     const order=def.spots.slice();
     for(let i=order.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;const t=order[i];order[i]=order[j];order[j]=t;}
     for(let i=0;i<order.length&&!p;i++){
       const q=freeSpot(order[i][0],order[i][1],true);
-      if(q&&hideOk(q.x,q.z)&&far(q.x,q.z))p=q;
+      if(okPlace(q))p=q;
+    }
+    if(!p&&def.name==='ハナ'){
+      // 南の護岸沿いを優先。壁際の元候補が使えないと島の反対側へ飛んでいた。
+      for(let x=-140;x<=-128&&!p;x+=.6)
+        for(let z=-47.5;z<=-39&&!p;z+=.6){
+          const q={x,z};if(okPlace(q))p=q;
+        }
     }
     if(!p){
       for(const key in NOOK){
         const n=NOOK[key];
-        if(!far(n.x,n.z))continue;
-        if(hideOk(n.x,n.z)&&canStand(n.x,n.z,groundY(n.x,n.z))){p={x:n.x,z:n.z};break;}
+        if(okPlace(n)){p={x:n.x,z:n.z};break;}
       }
     }
-    if(!p)p=freeSpot(def.spots[0][0],def.spots[0][1],true);
+    if(!p){
+      for(let t=0;t<40&&!p;t++){
+        const s=shelters[(Math.random()*shelters.length)|0];
+        const nx=s.x+(Math.random()-.5)*s.w*.6,nz=s.z+(Math.random()-.5)*s.d*.6;
+        const q=freeSpot(nx,nz,true);
+        if(okPlace(q))p=q;
+      }
+    }
+    if(!p){
+      // 候補の探索が失敗しても、未検査の元座標を使わない。
+      for(let x=ISL.x0+3;x<ISL.x1-3&&!p;x+=2.4)
+        for(let z=ISL.z0+3;z<ISL.z1-3&&!p;z+=2.4){
+          const q={x,z};if(okPlace(q))p=q;
+        }
+    }
+    if(!p){
+      // 隠れる条件より、壁の外に立てることを優先する最後の安全策。
+      for(let x=ISL.x0+3;x<ISL.x1-3&&!p;x+=2.4)
+        for(let z=ISL.z0+3;z<ISL.z1-3&&!p;z+=2.4){
+          const q={x,z};if(canStand(x,z,groundY(x,z))&&far(x,z)&&reach(x,z)
+            &&(def.name!=='ハナ'||hanaSafe(q)))p=q;
+        }
+    }
     used.push([p.x,p.z]);
     const g=new THREE.Group();mkKid(g,def.cloth,def.hair);
     g.position.set(p.x,groundY(p.x,p.z),p.z);
@@ -1924,6 +1997,7 @@ function pushTrail(){
 }
 function findKid(k){
   k.found=true;
+  if(guideKid===k){guideKid=null;guideT=0;}
   k.g.scale.set(1,1,1);
   k.order=foundCount()-1;
   showFound(k.name);
@@ -1983,7 +2057,7 @@ function showFound(name){
 const P={x:PLAZA.x,z:PLAZA.z,yaw:Math.PI*.55,pitch:0,vx:0,vz:0,y:1.28,   // 子供なので目線は1.28m
          stam:100,lightOn:false,batt:100,up:0,roof:null,grip:null,face:true};
 let t=0,bobT=0,shake=0,flash=0,stepT=0,breathT=0,creakT=10,
-    fallT=8,sayT=0,lastArea='',areaSaid={},goHomeT=0,earCd=0,neonOn=false;
+    fallT=8,sayT=0,lastArea='',areaSaid={},goHomeT=0,earCd=0,guideT=0,guideKid=null,neonOn=false;
 
 /* 空（夕方から夜へ。6分で落ちる） */
 const W={rain:0,wind:.24,wave:.8,vis:190,light:.92};
@@ -2093,12 +2167,12 @@ function findNear(){
 /* 耳を澄ます（矢印は出さない。音の向きと、画面の縁のにじみだけ） */
 function listen(){
   if(state!=='play')return;
-  if(earCd>0){note('いまは、耳が音でいっぱいだ。');return;}
+  if(earCd>0){guideT=Math.max(guideT,2);return;}
   const rest=kids.filter(k=>!k.found);
   if(!rest.length)return;
   let k=rest[0],bd=1e9;
   rest.forEach(r=>{const d=Math.hypot(r.x-P.x,r.z-P.z);if(d<bd){bd=d;k=r;}});
-  earCd=18;
+  earCd=5;guideT=9;guideKid=k;
   sfx[k.cue](1,panOf(k.x,k.z));
   /* 画面のどちら側からの音か。前後は「にじみ」の位置で示す */
   const fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw),rx=Math.cos(P.yaw),rz=-Math.sin(P.yaw);
@@ -2117,6 +2191,32 @@ function listen(){
   else if(rb<0) side=rb<-Math.PI*.38?'左の方かな。':'左まえの方かな。';
   else side=rb>Math.PI*.38?'右の方かな。':'右まえの方かな。';
   note(bd<18?'息が近い。'+side:'かすかに──'+side);
+}
+function updateGuide(dt){
+  const el=$('guide');
+  if(guideT>0&&guideKid&&!guideKid.found){
+    guideT-=dt;
+    const kidHigh=groundY(guideKid.x,guideKid.z)>MESA.top-1;
+    const useStair=kidHigh&&groundY(P.x,P.z)<MESA.top-1;
+    const targetX=useStair?STAIR.x1+2:guideKid.x;
+    const targetZ=useStair?(STAIR.z0+STAIR.z1)/2:guideKid.z;
+    const dx=targetX-P.x,dz=targetZ-P.z,d=Math.hypot(dx,dz);
+    const forward=dx*-Math.sin(P.yaw)+dz*-Math.cos(P.yaw);
+    const right=dx*Math.cos(P.yaw)-dz*Math.sin(P.yaw);
+    const angle=Math.atan2(right,forward);
+    const arrow=Math.abs(angle)<.39?'↑':Math.abs(angle)>2.75?'↓':angle>0?(angle<1.35?'↗':'→'):(angle> -1.35?'↖':'←');
+    el.textContent=useStair?arrow+' 高い所の子へ：まず階段（約'+Math.max(1,Math.round(d))+'m）':arrow+' 子どもの気配  約'+Math.max(1,Math.round(d))+'m';
+    el.classList.add('on');return;
+  }
+  guideKid=null;
+  const stairD=Math.hypot(P.x-STAIR.x1,P.z-(STAIR.z0+STAIR.z1)/2);
+  if(stairD<18&&groundY(P.x,P.z)<MESA.top-1){
+    el.textContent='階段：両側の壁の間を、岩山の方向へ進む';el.classList.add('on');return;
+  }
+  if(wallTouch(P.x,P.z,.65)){
+    el.textContent='建物に登る：登るボタン（Cキー）を押しながら前進';el.classList.add('on');return;
+  }
+  el.classList.remove('on');
 }
 function doAction(){
   if(state==='title'){$('bStart').click();return;}
@@ -2195,8 +2295,7 @@ function step(dt){
 
   const spent=P.stam<6;
   const dash=(running||gpv.run)&&moving&&!spent;
-  if(spent&&running)setRun(false);            // 息切れしたらBのランプも消す（表示は実際の状態から出す）
-  const spd=(dash?5.4:2.8)*(P.stam<22?.86:1);
+  const spd=(dash?8.1:2.8)*(P.stam<22?.86:1);
   P.stam=clamp(P.stam+(dash?-15:(moving?7:14))*dt,0,100);
 
   const fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw),rx=Math.cos(P.yaw),rz=-Math.sin(P.yaw);
@@ -2204,7 +2303,7 @@ function step(dt){
   const k=1-Math.exp(-dt/(moving?.12:.09));         // 立ち上がり0.12秒・停止0.09秒
   P.vx+=(tvx-P.vx)*k;P.vz+=(tvz-P.vz)*k;
   const x0=P.x,z0=P.z,up0=P.up,roof0=P.roof;
-  stepClimber(P,P.vx*dt,P.vz*dt,dt,iz>.18&&moving,false);
+  stepClimber(P,P.vx*dt,P.vz*dt,dt,iz>.18&&moving&&(climbHeld||keys.KeyC),false);
   if(P.x===x0)P.vx=0;
   if(P.z===z0)P.vz=0;
   const foot=P.roof?P.roof.h:groundY(P.x,P.z)+P.up;
@@ -2235,7 +2334,8 @@ function step(dt){
   /* 明かり */
   if(P.lightOn){P.batt-=.42*dt;
     if(P.batt<=0){P.batt=0;P.lightOn=false;$('bLight').classList.remove('on');note('明かりが落ちた。');}}
-  torch.intensity=P.lightOn?2.3:0;
+  torch.intensity=P.lightOn?5.2:0;
+  torchFill.intensity=P.lightOn?1.25:0;
   if(earCd>0)earCd-=dt;
 
   /* 日が落ちるとネオンが灯る（和風サイバーパンクが前景化する瞬間） */
@@ -2269,6 +2369,7 @@ function step(dt){
 
   updateKids(dt);
   updateCreatures(dt);
+  updateGuide(dt);
 
   /* 五人そろったら、みんなで帰る */
   if(goHomeT>0){
@@ -2602,7 +2703,7 @@ function end(kind){
   if(kind==='win'){
     if(!best||t<best){store.set('bestFind',Math.round(t));rec='最短記録を更新した。';}
     else rec='これまでの最短　'+fmtDur(best);
-  }else rec=best?('これまでの最短　'+fmtDur(best)):'まだ一度も、五人そろえていない。';
+  }else rec=best?('これまでの最短　'+fmtDur(best)):'五人見つけていない。';
 
   let html;
   if(kind==='win'){
