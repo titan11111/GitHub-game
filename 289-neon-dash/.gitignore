@@ -1,2 +1,5 @@
 .DS_Store
 robot-action.html
+# 元の音源（圧縮前）は公開しない。配信は audio/bgm-*.m4a のみ
+audio/*.mp3
+audio/neon-rush.m4a

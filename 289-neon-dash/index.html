@@ -69,6 +69,20 @@ h1 small{font-size:11px;font-weight:400;color:var(--mute);letter-spacing:.04em;m
   text-shadow:0 calc(var(--u)*3) 0 #ff4f8b,0 0 calc(var(--u)*22) rgba(255,178,56,.8)}
 .sub{font-size:calc(var(--u)*16);color:#3fe0d0;letter-spacing:.3em}
 .msg{font-size:calc(var(--u)*15);color:#e9ecf8;line-height:1.7;white-space:pre-line;min-height:1em}
+.rsel{display:flex;gap:calc(var(--u)*7);justify-content:center}
+.rsel[hidden]{display:none}
+.rc{font:inherit;width:calc(var(--u)*128);padding:calc(var(--u)*4) calc(var(--u)*6) calc(var(--u)*7);color:#e9ecf8;background:rgba(27,25,57,.88);
+  border:calc(var(--u)*2.5) solid #38356e;border-radius:calc(var(--u)*8);cursor:pointer;touch-action:manipulation;transition:transform .06s}
+.stage .rc canvas{position:static;inset:auto;width:calc(var(--u)*104);height:calc(var(--u)*104);margin:0 auto;display:block}
+.rc b{display:block;font-size:calc(var(--u)*12);color:#ffd27a;white-space:nowrap}
+.rc .st{display:grid;grid-template-columns:auto 1fr;gap:calc(var(--u)*2.5) calc(var(--u)*5);align-items:center;font-size:calc(var(--u)*9);margin-top:calc(var(--u)*4);text-align:left}
+.rc .st em{display:block;height:calc(var(--u)*4);border-radius:calc(var(--u)*2);background:#2b2d63;overflow:hidden;font-style:normal}
+.rc .st em i{display:block;height:100%;background:#3fe0d0}
+.rc.sel{border-color:#ffb238;box-shadow:0 0 calc(var(--u)*14) rgba(255,178,56,.7);transform:translateY(calc(var(--u)*-3))}
+.ovl.t{gap:calc(var(--u)*7)}
+.ovl.t .ttl{font-size:calc(var(--u)*34)}
+.ovl.t .sub{font-size:calc(var(--u)*12)}
+.ovl.t .msg{font-size:calc(var(--u)*12);line-height:1.5}
 .ups{display:flex;gap:calc(var(--u)*8);justify-content:center}
 .ups[hidden]{display:none}
 .up{
@@ -167,9 +181,10 @@ h1{white-space:nowrap}
         <div class="lf"><div class="hp" id="hp" aria-label="残り耐久"></div><div class="nm" id="nm"></div><div class="cg" id="cg" hidden><b id="cgB"></b></div></div>
         <div class="sc"><span id="score">0</span><small id="dist">0m</small></div>
       </div>
-      <div class="ovl" id="ovl">
+      <div class="ovl t" id="ovl">
         <div class="ttl" id="ovT">LUNAR STRIKER</div>
         <div class="sub" id="ovS">月面機動ロボ</div>
+        <div class="rsel" id="rsel"></div>
         <div class="msg" id="ovM"></div>
         <div class="ups" id="ups" hidden>
           <button class="up" type="button" data-i="0"><b>装甲強化</b><span>最大HP+1<br>全回復</span></button>
@@ -256,10 +271,34 @@ function bgmStart(){
     var g=AC.createGain(); g.gain.value=0.55; bgmSrc.connect(g); g.connect(master); bgmSrc.start();
   }catch(_){bgmSrc=null}
 }
+/* BGM：曲ファイルを1つの<audio>で流し替える（iOSは最初のタップで許可された要素を使い回す）。読めないときは合成BGMへ戻す */
+var TRK={run:'audio/bgm-run.m4a',boss:'audio/bgm-boss.m4a',space:'audio/bgm-space.m4a',fort:'audio/bgm-fort.m4a'},STRK=['run','run','fort','space','fort'];
+var bgmEl=null,bgmNow='',bgmWant='space',bgmGain=null,bgmFail=false,bgmV=0;
+function bgmPlay(){if(!bgmEl||bgmFail)return;try{var p=bgmEl.play();if(p&&p.catch)p.catch(function(){})}catch(_){}}
+function bgmVol(){if(!bgmEl)return;if(bgmGain)bgmGain.gain.value=bgmV*0.85;else{try{bgmEl.volume=bgmV*0.5}catch(_){}}}
+function bgmInit(){
+  if(bgmEl||bgmFail)return;
+  try{
+    bgmEl=new Audio();bgmEl.loop = true;bgmEl.preload='auto';bgmEl.muted=muted;
+    bgmEl.addEventListener('error',function(){bgmFail=true;bgmStart()});
+    if(AC&&location.protocol!=='file:'){                 /* 音量を他の音と同じつまみで扱う（iOSは<audio>の音量を変えられないため） */
+      try{var ms=AC.createMediaElementSource(bgmEl);bgmGain=AC.createGain();bgmGain.gain.value=0;ms.connect(bgmGain);bgmGain.connect(master)}catch(_){bgmGain=null}
+    }
+    bgmNow=bgmWant;bgmEl.src=TRK[bgmNow];bgmV=0;bgmVol();bgmPlay();
+  }catch(_){bgmEl=null;bgmFail=true;bgmStart()}
+}
+function bgmTick(dt){                                        /* 曲の切替：下げる → 差し替える → 上げる */
+  if(!bgmEl||bgmFail)return;
+  if(bgmWant!==bgmNow){
+    bgmV=Math.max(0,bgmV-dt*3);
+    if(bgmV<=0){bgmNow=bgmWant;bgmEl.src=TRK[bgmNow];bgmPlay()}
+  }else if(bgmV<1)bgmV=Math.min(1,bgmV+dt*2);
+  bgmVol();
+}
 function unlock(){
   audioInit();                                          // 失敗時は AC=null＝音無しでもゲームは止めない
   if(AC && AC.state === 'suspended' && !paused){ AC.resume(); }
-  bgmStart();
+  bgmInit();
 }
 function tone(type,f0,f1,dur,vol,delay){
   if(!AC||muted)return;
@@ -301,6 +340,7 @@ function vib(){try{if(navigator.vibrate)navigator.vibrate(14)}catch(_){}}
 function setMute(m){
   muted=m; LS.set('mute',m?'1':'0');
   if(master)master.gain.value=m?0:0.6;
+  if(bgmEl)bgmEl.muted=m;
   muteBtn.textContent=m?'音 OFF':'音 ON'; muteBtn.setAttribute('aria-pressed',m?'true':'false');
 }
 setMute(muted);
@@ -309,7 +349,7 @@ muteBtn.addEventListener('pointerdown',function(e){e.preventDefault();unlock();v
 var keys={left:false,right:false,up:false,down:false,a:false,b:false};
 var prev={up:false,a:false,b:false,down:false};
 function clearKeys(){for(var k in keys)keys[k]=false}
-var mode='title', paused=false, time=0, overT=0, clearT=0, upSel=1;
+var mode='title', paused=false, time=0, overT=0, clearT=0, upSel=1, endStep=0;
 
 /* 十字キー：1枚の面を指でなぞれる（斜め入力あり） */
 var dpad=$('dpad'),dpId=null,dpMask=-1;
@@ -322,7 +362,9 @@ function dpSet(e){
 function dpOff(e){if(e.pointerId!==dpId)return;dpId=null;if(mode!=='title')keys.left=keys.right=keys.up=keys.down=false}
 dpad.addEventListener('pointerdown',function(e){
   e.preventDefault();unlock();vib();
-  if(mode==='clear'){var rc=dpad.getBoundingClientRect();moveUp(e.clientX<rc.left+rc.width/2?-1:1);return}
+  var rc=dpad.getBoundingClientRect(),dl=e.clientX<rc.left+rc.width/2?-1:1;
+  if(mode==='clear'){if(endStep)return;moveUp(dl);return}
+  if(mode==='title'){setType((TYPE+dl+4)%4);sfx.change();return}
   if(mode!=='play')return;
   dpId=e.pointerId;try{dpad.setPointerCapture(e.pointerId)}catch(_){}
   dpSet(e);
@@ -362,7 +404,8 @@ window.addEventListener('keydown',function(e){
   var k=MAP[e.code]; if(!k)return;
   e.preventDefault();
   if(mode==='play')keys[k]=true;
-  else if(mode==='clear'&&(k==='left'||k==='right')){if(!e.repeat)moveUp(k==='left'?-1:1)}
+  else if(mode==='clear'&&(k==='left'||k==='right')){if(!e.repeat&&!endStep)moveUp(k==='left'?-1:1)}
+  else if(mode==='title'&&(k==='left'||k==='right')){if(!e.repeat){setType((TYPE+(k==='left'?3:1))%4);sfx.change()}}
   else if((k==='a'||k==='up')&&!e.repeat)pressGo();
 });
 window.addEventListener('keyup',function(e){var k=MAP[e.code]; if(k&&mode!=='title')keys[k]=false});
@@ -381,17 +424,22 @@ function setPause(p){
   paused=p; clearKeys();
   if(p)showOvl('PAUSE','一時停止中','STARTで再開','つづける'); else el.ovl.hidden=true;
   if(AC){ if(p)AC.suspend(); else AC.resume(); }
+  if(bgmEl&&!bgmFail){ if(p)bgmEl.pause(); else bgmPlay(); }
 }
 function togglePause(){setPause(!paused)}
 document.addEventListener('visibilitychange',function(){
-  if(document.hidden){ if(mode==='play')setPause(true); else if(AC)AC.suspend(); }
-  else if(!paused&&AC)AC.resume();
+  if(document.hidden){ if(mode==='play')setPause(true); else{ if(AC)AC.suspend(); if(bgmEl)bgmEl.pause(); } }
+  else if(!paused){ if(AC)AC.resume(); bgmPlay(); }
 });
 function showOvl(t,s,m,b){el.ovT.textContent=t;el.ovS.textContent=s;el.ovM.textContent=m;el.go.textContent=b;el.ovl.hidden=false}
 function pressGo(){
   unlock();
   if(paused){setPause(false);return}
-  if(mode==='clear'){pickUp(upSel);return}
+  if(mode==='clear'){
+    if(clearT<0.8)return;
+    if(endStep){endStep=0;clearT=0.5;showOvl('NEXT LOOP','強化を1つ選べ',(loopN+2)+'周目：敵の耐久が上がる','');el.go.hidden=true;upsEl.hidden=false;markUp();return}
+    pickUp(upSel);return;
+  }
   if(mode==='title'||(mode==='over'&&overT>0.8))startGame();
 }
 el.go.addEventListener('pointerdown',function(e){e.preventDefault();vib();pressGo()});
@@ -842,6 +890,7 @@ function setType(t){
   $('cg').hidden=false;lastLv=-1;
   R.atk=null;R.chg=0;R.chgFull=false;R.beamT=0;R.dashT=0;R.shootT=0;
   funReset();if(R.hp>mhp())R.hp=mhp();
+  rcards.forEach(function(b,i){b.classList.toggle('sel',i===t)});
 }
 /* ロボCのファンネル：機体の後ろを漂い、ホーミング弾はここから出る */
 var funnels=[{x:0,y:0,a:0,fl:0},{x:0,y:0,a:0,fl:0},{x:0,y:0,a:0,fl:0},{x:0,y:0,a:0,fl:0}],FOFF=[[-29,-98],[-45,-70],[-14,-122],[-61,-104]],funI=0;
@@ -872,6 +921,18 @@ function drawFunnels(g){
     g.fillStyle='#7af0ff';g.fillRect(2,-1.5,7,3);
     g.restore();
   }
+}
+var rselEl=$('rsel'),rcards=[],IDLE={torso:2,head:0,shF:-18,elF:-62,shB:8,elB:-18,hF:-7,kF:9,hB:8,kB:7};
+function buildCards(){
+  TYPES.forEach(function(T,i){
+    var b=document.createElement('button'),c=document.createElement('canvas'),g,st=STAT[i];
+    b.type='button';b.className='rc';c.width=c.height=220;b.appendChild(c);
+    b.insertAdjacentHTML('beforeend','<b>'+T.n+'</b><div class="st"><span>耐久</span><em><i style="width:'+((5+st.hp)/6*100)+'%"></i></em><span>速さ</span><em><i style="width:'+(st.run/1.12*100)+'%"></i></em><span>跳躍</span><em><i style="width:'+(st.jmp/1.07*100)+'%"></i></em></div>');
+    g=c.getContext('2d');g.scale(1.55,1.55);
+    drawRobot(g,{x:i===3?44:58,y:132,dir:1,ang:0,hipY:-75.7,P:IDLE,type:i,burn:false,fl:false},false,1);
+    b.addEventListener('pointerdown',function(e){e.preventDefault();unlock();vib();if(mode==='title'){setType(i);sfx.change()}});
+    rselEl.appendChild(b);rcards.push(b);
+  });
 }
 function nextType(){
   if(paused||mode==='over'||R.moon)return;
@@ -953,6 +1014,8 @@ var STG=[
 ];
 var BOSSN=['GUNSHIP','CRAB TANK','FORTRESS CORE','METEOR GOLEM','DARK EMPEROR'];
 var plats=[];
+var ST={k:0,h:0,t:0},TOT={k:0,h:0,t:0},slomo=0,fadeT=0;
+function mmss(t){var m=Math.floor(t/60),c=Math.floor(t%60);return m+':'+(c<10?'0':'')+c}
 var stage=0,loopN=0,stageX0=150,tdist=0,pw=0,pwMin=1,maxHp=5,chgMul=1,bannerT=0,bannerTxt='';
 var LYB={stars:LY.stars,moon:LY.moon,rock:LY.rock,floor:LY.floor};
 function tintLayer(Lr,col,a){
@@ -1106,7 +1169,7 @@ function galaxy(){R.beamT=BEAM;R.shootT=BEAM;R.atk=null;sfx.beam();shake(6,BEAM)
 function hitBoss(d){
   if(!boss||boss.dead>0||boss.intro>0||boss.inv>0)return;
   boss.hp-=d;boss.flash=0.07;
-  if(boss.hp<=0){boss.dead=boss.kind===4?2.8:1.5;pts+=2000*(boss.kind+1);warnT=0;boss.lz=null;boss.f=null;if(boss.kind===4){boss.y=Math.min(boss.y,GROUND-82);boss.hh=50}}
+  if(boss.hp<=0){boss.dead=boss.kind===4?2.8:1.5;pts+=2000*(boss.kind+1);warnT=0;boss.lz=null;boss.f=null;slomo=1.0;flashT=.22;if(boss.kind===4){boss.y=Math.min(boss.y,GROUND-82);boss.hh=50}}
 }
 function impact(x,y){booms.push({x:x,y:y,t:0,max:.22,s:.55});puff(x,y,6,'#fff6d0',230,false);sfx.smash();shake(4.5,.16);freeze=Math.max(freeze,0.02)}
 
@@ -1123,6 +1186,13 @@ function addIcicle(lx){ents.push({k:'ice',tg:true,x:lx,y:-40,vy:300,lx:lx,t:0,hp
 function addVent(x){ents.push({k:'vent',ng:true,x:x,y:GROUND,t:Math.random()*2.6,hp:1,hw:15,top:0,bot:0,flash:0})}
 function addGate(x){ents.push({k:'gate',ng:true,x:x,y:GROUND,t:Math.random()*2.2,hp:1,hw:9,top:0,bot:0,flash:0})}
 function addFloatChip(x,y){ents.push({k:'chip',item:true,fl:true,x:x,y:y,vx:0,vy:0,t:0,hp:1,hw:9,top:-9,bot:9,flash:0})}
+/* 面ごとの専用ザコ：スウーパー(2)／ボマー(3)／ローラー(4)／スナイパー(5)、中ボス：エリート */
+function addSwoop(x){ents.push({k:'swoop',tg:true,x:x,y:150,by:150,vx:-95,st:0,dvx:0,dvy:0,t:0,hp:3*hm(),hw:16,top:-12,bot:12,flash:0})}
+function addBomber(x){ents.push({k:'bomber',tg:true,x:x,y:142,by:142,vx:-62,t:0,hp:4*hm(),hw:22,top:-12,bot:12,flash:0,cd:rnd(.4,1)})}
+function addRoller(x){ents.push({k:'roller',tg:true,x:x,y:GROUND-17,vx:-150,vy:-300,rot:0,t:0,hp:5*hm(),hw:17,top:-17,bot:17,flash:0})}
+function addSniper(x,y){ents.push({k:'sniper',tg:true,x:x,y:y,by:y,vx:-24,t:0,hp:3*hm(),hw:17,top:-13,bot:13,flash:0,cd:rnd(1.6,2.4),ax:0,ay:0,fire:0})}
+var elite=null;
+function addElite(x){var h=(150+stage*40)*hm();elite={k:'elite',tg:true,x:x,y:GROUND,vx:-30,t:0,hp:h,mx:h,hw:30,top:-176,bot:0,flash:0,cd:1.4,n:0};ents.push(elite)}
 function addChip(x,y){ents.push({k:'chip',item:true,x:x,y:y,vx:rnd(-90,90),vy:rnd(-320,-160),t:0,hp:1,hw:9,top:-9,bot:9,flash:0})}
 function lob(x,y,tx,T){var g=900;addShot(x,y,(tx-x)/T,(GROUND-y)/T-g*T/2,g)}
 function gainChip(){
@@ -1141,6 +1211,10 @@ function pattern(x){
   if(stage===2||stage===4)pool.push('vt','vt');
   if(stage===4)pool.push('gt','gt');
   if(stage===3)pool.push('pf','pf','pf');
+  if(stage===1||loopN>0)pool.push('sw','sw');
+  if(stage===2||loopN>0)pool.push('bm','bm','pf');
+  if(stage===3||loopN>0)pool.push('ro','ro');
+  if(stage===4||loopN>0)pool.push('sn','sn','bm','pm','pm');
   var c=pool[Math.random()*pool.length|0];
   if(c==='d'){var n=1+(Math.random()*Math.min(3,1+lv)|0),by=hs[Math.random()*hs.length|0];for(i=0;i<n;i++)addDrone(x+i*48,by,i)}
   else if(c==='w'){addWalker(x+20);if(lv>3)addDrone(x+90,212,1)}
@@ -1150,6 +1224,15 @@ function pattern(x){
   else if(c==='h'){addHopper(x);if(lv>3)addHopper(x+60)}
   else if(c==='vt'){addVent(x);if(lv>4)addVent(x+70);if(lv>2)addDrone(x+30,188,0)}
   else if(c==='gt'){addGate(x+20);if(lv>5)addDrone(x+110,249,0)}
+  else if(c==='sw'){addSwoop(x);if(lv>3)addSwoop(x+70)}
+  else if(c==='bm'){addBomber(x+20);if(lv>5)addDrone(x+80,249,0)}
+  else if(c==='ro'){addRoller(x);if(lv>4)addRoller(x+90)}
+  else if(c==='sn'){addSniper(x+10,170+Math.random()*50);if(lv>6)addSniper(x+70,150)}
+  else if(c==='pm'){                                          /* 左右に動く足場：上に回復かチップ */
+    plats.push({x0:x,x1:x+100,y:GROUND-92,a:1,mv:{c:x,amp:56,sp:1.3,ph:Math.random()*6}});
+    if(Math.random()<.3)addCap(x+50,GROUND-130);else{addFloatChip(x+30,GROUND-126);addFloatChip(x+70,GROUND-126)}
+    addHopper(x+170);
+  }
   else if(c==='pf'){                                          /* 道中の浮遊足場：上にチップ */
     var hi=Math.random()<.4;plats.push({x0:x,x1:x+110,y:GROUND-(hi?150:84),a:1});
     for(i=0;i<3;i++)addFloatChip(x+25+i*30,GROUND-(hi?150:84)-34);
@@ -1171,8 +1254,30 @@ function makeBoss(){
   plats=[{x0:camX+118,x1:camX+232,y:GROUND-80,a:0},{x0:camX+266,x1:camX+380,y:GROUND-150,a:0}];
   warnT=2.4;sfx.warn();
 }
+/* 道中の山場：ボスまでの距離の 22% で編隊、50% で中ボス、72% で挟み撃ち、88% でその面の専用ザコのラッシュ */
+var EVS=[[.22,'vf'],[.5,'el'],[.72,'pc'],[.88,'ru']],evI=0;
+function runEvent(c){
+  var x=camX+W+70,i,e;
+  if(c==='vf'){banner('ENEMY FORMATION',1.4);[[0,212],[42,188],[42,236],[84,164],[84,260]].forEach(function(q,i){addDrone(x+q[0],q[1],i)})}
+  else if(c==='el'){banner('MID BOSS',1.6);sfx.warn();addElite(x+40)}
+  else if(c==='pc'){
+    banner('BEHIND !',1.4);tone('square',500,500,0.1,0.12);tone('square',500,500,0.1,0.12,0.16);
+    addDrone(x,249,0);addDrone(x+46,212,1);addDrone(x+92,249,2);
+    for(i=0;i<2;i++){addDrone(camX-30-i*50,i?212:249,i+3);e=ents[ents.length-1];e.vx=118;e.cd=null}
+  }else{
+    banner('RUSH',1.2);
+    if(stage===1){addSwoop(x);addSwoop(x+70);addSwoop(x+140)}
+    else if(stage===2){addBomber(x);addBomber(x+90);addTurret(x+60)}
+    else if(stage===3){addRoller(x);addRoller(x+80);addRoller(x+160)}
+    else if(stage===4){addSniper(x,160);addSniper(x+60,210);addShield(x+110)}
+    else{addWalker(x+10);addDrone(x+60,249,0);addDrone(x+100,212,1);addDrone(x+140,249,2)}
+  }
+}
 function spawn(dt){
   if(!boss&&dist>=nextBoss)makeBoss();
+  if(elite&&ents.indexOf(elite)<0)elite=null;
+  if(!boss&&nextBoss>=100&&evI<EVS.length&&dist>=nextBoss*EVS[evI][0]){runEvent(EVS[evI++][1]);nextSpawn=Math.max(nextSpawn,camX+W+340)}
+  if(elite&&!boss)nextSpawn=Math.max(nextSpawn,camX+W+240);     /* 中ボス戦の間はザコを足さない */
   if(!boss){
     while(camX+W+80>nextSpawn){pattern(nextSpawn);nextSpawn+=rnd(230,380)-lvl()*14}
   }else nextSpawn=camX+W+260;
@@ -1182,19 +1287,28 @@ function spawn(dt){
 
 /* ステージクリア → 強化を1つ選んで次の面へ */
 function stageClear(){
-  var i,last=stage===STG.length-1;
+  var i,last=stage===STG.length-1,rk=ST.h===0?'S':ST.h<=1?'A':ST.h<=3?'B':'C',bonus={S:3000,A:1500,B:500,C:0}[rk]+Math.max(0,Math.floor((150-ST.t)*10)),msg;
   mode='clear';clearT=0;clearKeys();upSel=1;plats=[];
   for(i=ents.length-1;i>=0;i--)if(!ents[i].item)ents.splice(i,1);
-  showOvl(last?'MISSION COMPLETE':'STAGE '+(stage+1)+' CLEAR',last?'皇帝機 撃破 ― 月に静寂が戻った':'強化を1つ選べ',last?'SCORE '+score()+'\n強化を選んで '+(loopN+2)+'周目へ':'SCORE '+score(),'');
-  el.go.hidden=true;upsEl.hidden=false;markUp();sfx.start();
+  pts+=bonus;TOT.k+=ST.k;TOT.h+=ST.h;TOT.t+=ST.t;
+  msg='撃破 '+ST.k+'　被弾 '+ST.h+'　TIME '+mmss(ST.t)+'\nRANK '+rk+'　BONUS +'+bonus+'　SCORE '+score();
+  if(last){                                                  /* エンディング：戦績を見せてから周回の強化へ */
+    endStep=1;
+    showOvl('MISSION COMPLETE','皇帝機 撃破 ― 月に静寂が戻った',msg+'\n通算  撃破 '+TOT.k+'　被弾 '+TOT.h+'　TIME '+mmss(TOT.t),(loopN+2)+'周目へ');
+    el.go.hidden=false;upsEl.hidden=true;
+  }else{
+    endStep=0;showOvl('STAGE '+(stage+1)+' CLEAR','強化を1つ選べ',msg,'');
+    el.go.hidden=true;upsEl.hidden=false;markUp();
+  }
+  sfx.start();
 }
 function pickUp(i){
-  if(mode!=='clear'||clearT<0.8)return;
+  if(mode!=='clear'||clearT<0.8||endStep)return;
   if(i===0){maxHp=Math.min(8,maxHp+1);R.hp=mhp()}else if(i===1)pwMin=Math.min(3,pwMin+1);else chgMul+=0.35;
   upsEl.hidden=true;el.go.hidden=false;el.ovl.hidden=true;
   tdist+=dist;stage++;if(stage>=STG.length){stage=0;loopN++}
-  setStageLook();dist=0;stageX0=R.x;nextBoss=STG[stage].boss;nextSpawn=camX+W+220;metT=5;
-  R.hp=Math.min(mhp(),R.hp+1);R.inv=1.5;mode='play';
+  setStageLook();dist=0;stageX0=R.x;nextBoss=STG[stage].boss;nextSpawn=camX+W+220;metT=5;evI=0;elite=null;
+  R.hp=Math.min(mhp(),R.hp+1);R.inv=1.5;mode='play';ST.k=ST.h=ST.t=0;fadeT=1;
   banner(STG[stage].n+(loopN?'  ('+(loopN+1)+'周目)':''),2.6);sfx.change();
 }
 
@@ -1207,16 +1321,17 @@ function hurt(fromX){
   if(mode!=='play'||R.inv>0||R.dashT>0||R.moon||R.rushT>0)return;
   pw=Math.max(0,pw-5);
   R.atk=null;R.beamT=0;R.chg=0;R.chgFull=false;
-  R.hp--;R.inv=1.3;R.hurtT=0.24;R.vy=-300;R.ground=false;R.jumps=1;R.spinT=0;R.crouch=false;
+  ST.h++;R.hp--;R.inv=1.3;R.hurtT=0.24;R.vy=-300;R.ground=false;R.jumps=1;R.spinT=0;R.crouch=false;
   R.dir=fromX>=R.x?1:-1;
   shake(7,.28);flashT=.18;sfx.hurt();puff(R.x,R.y-40,8,'#ff4f8b',180,false);
   if(R.hp<=0)gameOver();
 }
 function kill(e){
   if(e.k==='ice'){puff(e.x,e.y,10,'#eefcff',220,false);booms.push({x:e.x,y:e.y,t:0,max:.25,s:.6});pts+=80;addChip(e.x,e.y);noise(0.1,0.2,5000,1200);return}
-  var big=e.k==='walker'||e.k==='shield',s=big?1.5:1,sc={drone:100,meteor:150,walker:300,spike:50,shield:300,hopper:150,turret:250}[e.k]||0;
-  var cy=big?e.y-60:e.k==='spike'?e.y-14:e.k==='turret'?e.y-44:e.k==='hopper'?e.y-20:e.y,i,n={walker:3,shield:3,hopper:2,turret:2}[e.k]||1;
-  boom(e.x,cy,s);pts+=sc;freeze=Math.max(freeze,0.012);
+  var el=e.k==='elite',big=e.k==='walker'||e.k==='shield',s=el?2.4:big?1.5:1,sc={drone:100,meteor:150,walker:300,spike:50,shield:300,hopper:150,turret:250,swoop:200,bomber:250,roller:150,sniper:250,elite:1500}[e.k]||0;
+  var cy=el?e.y-90:big?e.y-60:e.k==='spike'?e.y-14:e.k==='turret'?e.y-44:e.k==='hopper'?e.y-20:e.y,i,n={walker:3,shield:3,hopper:2,turret:2,swoop:2,bomber:2,sniper:2,elite:9}[e.k]||1;
+  if(el){boom(e.x-20,e.y-140,1.6,true);boom(e.x+16,e.y-40,1.6,true);shake(10,.45);addCap(e.x,GROUND-60);banner('MID BOSS DOWN',1.4);elite=null}
+  boom(e.x,cy,s);pts+=sc;freeze=Math.max(freeze,0.012);ST.k++;
   for(i=0;i<n;i++)addChip(e.x,cy);
   if(e.k!=='meteor'&&e.k!=='spike'&&R.hp<mhp()&&Math.random()<0.09)addCap(e.x,Math.min(cy,GROUND-50));
 }
@@ -1229,8 +1344,9 @@ function startGame(){
   R.spinT=0;R.shootT=0;R.shootCD=0;R.shootCD2=0;R.recoil=0;R.landT=0;R.crouch=false;R.hp=5;R.inv=1;R.hurtT=0;R.rushT=0;
   R.atk=null;R.chg=0;R.chgFull=false;R.spCD=0;R.beamT=0;R.moon=false;prev.up=prev.a=prev.b=false;R.jbuf=0;R.coy=0;R.ab=null;R.abT=0;
   plats=[];R.plat=null;R.dropT=0;stage=0;loopN=0;tdist=0;stageX0=150;pw=0;pwMin=1;maxHp=5;chgMul=1;R.hp=mhp();setStageLook();upsEl.hidden=true;el.go.hidden=false;
-  camX=0;pts=0;dist=0;nextSpawn=W+160;nextBoss=STG[0].boss;metT=5;banner(STG[0].n,2.4);warnT=0;flashT=0;freeze=0;overT=0;
+  evI=0;elite=null;camX=0;pts=0;dist=0;nextSpawn=W+160;nextBoss=STG[0].boss;metT=5;banner(STG[0].n,2.4);warnT=0;flashT=0;freeze=0;overT=0;
   mode='play';paused=false;el.ovl.hidden=true;roboHide=false;lastScore=lastDist=-1;
+  rselEl.hidden=true;el.ovl.classList.remove('t');endStep=0;ST.k=ST.h=ST.t=0;TOT.k=TOT.h=TOT.t=0;slomo=0;fadeT=1;
   sfx.start();
 }
 function gameOver(){
@@ -1239,7 +1355,7 @@ function gameOver(){
   roboHide=true;
   var sc=score(),nb=sc>best;
   if(nb){best=sc;LS.set('best',best)}
-  el.ovM.textContent='SCORE '+sc+'　（'+(loopN?(loopN+1)+'周目 ':'')+'STAGE '+(stage+1)+'・'+Math.floor(tdist+dist)+'m）\n'+(nb?'★ ベスト更新！':'BEST '+best);
+  el.ovM.textContent='SCORE '+sc+'　（'+(loopN?(loopN+1)+'周目 ':'')+'STAGE '+(stage+1)+'・'+Math.floor(tdist+dist)+'m）\n撃破 '+(TOT.k+ST.k)+'　TIME '+mmss(TOT.t+ST.t)+'\n'+(nb?'★ ベスト更新！':'BEST '+best);
 }
 
 /* ================= 更新 ================= */
@@ -1556,13 +1672,18 @@ function update(dt){
   if(mode==='title')runDemo(dt);
   if(mode==='over')overT+=dt; else updateRobot(dt);
   if(mode!=='over')updateFunnels(dt);
-  if(mode==='clear')clearT+=dt;
+  if(mode==='clear'){clearT+=dt;if(endStep&&Math.random()<dt*4)boom(camX+rnd(60,W-60),rnd(60,230),rnd(.8,1.6),true)}   /* エンディングの祝砲 */
+  bgmWant=mode==='title'?'space':(boss&&boss.dead<=0)?'boss':STRK[stage];
   if(bannerT>0)bannerT-=dt;
-  for(var pq=plats.length-1;pq>=0;pq--){if(plats[pq].a<1)plats[pq].a=Math.min(1,plats[pq].a+dt/1.2);if(plats[pq].x1<camX-60)plats.splice(pq,1)}
+  for(var pq=plats.length-1;pq>=0;pq--){
+    var pm=plats[pq].mv;if(pm){var pnx=pm.c+Math.sin(time*pm.sp+pm.ph)*pm.amp,pdx=pnx-plats[pq].x0;plats[pq].x0+=pdx;plats[pq].x1+=pdx;if(R.plat===plats[pq]&&R.ground&&mode!=='over')R.x+=pdx}
+    if(plats[pq].a<1)plats[pq].a=Math.min(1,plats[pq].a+dt/1.2);if(plats[pq].x1<camX-60)plats.splice(pq,1)
+  }
 
   var tx=R.x-(R.dir>0?210:270);
   if(tx>camX&&!boss){var nc=camX+(tx-camX)*(1-Math.exp(-dt*7));bgX+=nc-camX;camX=nc}
-  if(mode==='play'){dist=Math.max(dist,(R.x-stageX0)/20);spawn(dt)}
+  if(mode==='play'){dist=Math.max(dist,(R.x-stageX0)/20);spawn(dt);ST.t+=dt}
+  if(fadeT>0)fadeT-=dt*1.5;
   if(boss)updateBoss(dt);
 
   var i,j,e,b,dead;
@@ -1645,6 +1766,40 @@ function update(dt){
       if(vp>2.0&&Math.random()<.5)part(1,e.x+rnd(-8,8),GROUND-rnd(10,140),rnd(-40,40),-rnd(100,300),.3,2,'#ffb238',0);
     }else if(e.k==='gate'){                                   /* レーザーゲート：消えている間に通る */
       e.top=(e.t%2.2)>1.2?-340:0;
+    }else if(e.k==='swoop'){                                  /* 巡航 → 急降下 → 上昇 → 離脱 */
+      if(e.st===0||e.st===3){
+        e.x+=e.vx*dt;e.y=e.by+Math.sin(e.t*4)*10;
+        if(e.st===0&&mode==='play'&&Math.abs(e.x-R.x)<190&&e.x<camX+W-20){var sdx=R.x-e.x,sdy=(R.y-34)-e.y,sdl=Math.sqrt(sdx*sdx+sdy*sdy)||1;e.st=1;e.dvx=sdx/sdl*430;e.dvy=sdy/sdl*430;tone('sawtooth',900,300,0.25,0.08)}
+      }else if(e.st===1){e.x+=e.dvx*dt;e.y+=e.dvy*dt;if(e.y>=GROUND-30||e.dvy<=0)e.st=2}
+      else{e.x+=(e.dvx*.4-50)*dt;e.y-=250*dt;if(e.y<=e.by){e.st=3;e.t=0;e.by=e.y}}
+    }else if(e.k==='bomber'){
+      e.x+=e.vx*dt;e.y=e.by+Math.sin(e.t*2.4)*7;
+      if(mode==='play'){e.cd-=dt;if(e.cd<=0&&Math.abs(e.x-R.x)<80&&e.x<camX+W-10){addShot(e.x,e.y+16,rnd(-18,18),50,650);e.cd=1.15;tone('square',420,200,0.1,0.07)}}
+    }else if(e.k==='roller'){
+      e.x+=e.vx*dt;e.vy+=900*dt;e.y+=e.vy*dt;e.rot-=dt*7;
+      if(e.y>=GROUND-17){e.y=GROUND-17;e.vy=-rnd(230,400);puff(e.x,GROUND-2,3,'#e0b080',90,true)}
+    }else if(e.k==='sniper'){                                 /* 狙う（赤い線）→ 止めて → 撃つ */
+      e.x+=e.vx*dt;e.y=e.by+Math.sin(e.t*2)*8;if(e.fire>0)e.fire-=dt;
+      if(mode==='play'&&e.x<camX+W-10){
+        e.cd-=dt;
+        if(e.cd<1.0&&e.cd>0.3){e.ax=R.x;e.ay=R.y-34}
+        if(e.cd<=0){
+          e.cd=2.6;e.fire=.2;noise(0.15,0.25,5000,600);tone('square',1500,400,0.12,0.1);
+          var qx=e.ax-e.x,qy=e.ay-e.y,ql=Math.sqrt(qx*qx+qy*qy)||1,rx=R.x-e.x,ry=(R.y-34)-e.y;
+          if(vul&&Math.abs(rx*qy-ry*qx)/ql<13&&(rx*qx+ry*qy)>0){hurt(e.x);vul=false}
+        }
+      }
+    }else if(e.k==='elite'){                                  /* 中ボス：間合いを保って 3way／3回に1回は衝撃波 */
+      if(e.x-R.x>230)e.x+=e.vx*dt;else if(e.x-R.x<140&&e.x<camX+W-60)e.x-=e.vx*dt*.7;
+      if(mode==='play'&&e.x<camX+W-20){
+        e.cd-=dt;
+        if(e.cd<=0){
+          e.n++;
+          if(e.n%3===0){addWave(e.x-44,-320);shake(6,.25);sfx.boom(1)}
+          else{aim(e.x-52,GROUND-126,200,-.2);aim(e.x-52,GROUND-126,200,0);aim(e.x-52,GROUND-126,200,.2);tone('square',300,180,0.12,0.1)}
+          e.cd=e.hp<e.mx*.5?1.15:1.7;
+        }
+      }
     }else if(e.k==='shield'){
       e.x+=e.vx*dt;if(e.shf>0)e.shf-=dt;
     }else if(e.k==='hopper'){
@@ -1668,6 +1823,7 @@ function update(dt){
       if(mode!=='over'&&hitP(e,pb)){R.hp=Math.min(mhp(),R.hp+1);pts+=50;sfx.pick();puff(e.x,e.y,10,'#3fe0d0',200,false);rm=true}
     }
     if(!rm&&e.x<camX-110)rm=true;
+    if(!rm&&e.k==='drone'&&e.vx>0&&e.x>camX+W+130)rm=true;       /* 背後から来たドローンは右へ抜ける */
     if(!rm&&!e.item&&vul&&hitP(e,pb)){hurt(e.x);vul=false;if(e.k==='shot')rm=true}
     if(rm)ents.splice(i,1);
   }
@@ -1899,6 +2055,62 @@ function drawGate(g,e){
   }else if(warn&&Math.floor(time*14)%2){g.fillStyle='rgba(255,79,139,.5)';g.fillRect(e.x-1,46,2,GROUND-58)}
   g.globalCompositeOperation='source-over';
 }
+function drawSwoop(g,e){
+  var f=Math.sin(e.t*20)*9,hit=e.flash>0,dv=e.st===1;
+  g.save();g.translate(e.x,e.y);if(dv)g.rotate(e.dvx<0?-.7:.7);
+  g.lineWidth=1.5;g.strokeStyle=INK;g.lineJoin='round';
+  path(g,[[-3,-3],[14,-16-f],[30,-6-f*.5],[13,3]],true);fsk(g,hit?'#fff':'#8fd8f4');
+  path(g,[[3,-3],[-14,-16-f],[-30,-6-f*.5],[-13,3]],true);fsk(g,hit?'#fff':'#8fd8f4');
+  path(g,[[-15,0],[-4,-9],[9,-7],[13,2],[4,10],[-7,8]],true);fsk(g,hit?'#fff':'#3f72b0');
+  path(g,[[-15,0],[-24,4],[-12,6]],true);fsk(g,'#eefcff');
+  g.beginPath();g.arc(-6,-1,3.6,0,TAU);fsk(g,'#ff4f8b');
+  g.restore();
+}
+function drawBomber(g,e){
+  var hit=e.flash>0,bl=e.cd<.35;
+  g.save();g.translate(e.x,e.y);
+  if(!LOW){g.globalCompositeOperation='lighter';spr(g,'fire',0,14,12+Math.sin(e.t*30)*2,.7);g.globalCompositeOperation='source-over'}
+  g.lineWidth=1.6;g.strokeStyle=INK;g.lineJoin='round';
+  g.beginPath();g.arc(0,-4,11,Math.PI,0);g.closePath();fsk(g,hit?'#fff':'#ffb0c8');
+  g.beginPath();g.ellipse(0,0,24,9,0,0,TAU);fsk(g,hit?'#fff':'#7a2f66');
+  g.beginPath();g.ellipse(0,3,24,6,0,0,Math.PI);g.fillStyle='rgba(18,15,43,.35)';g.fill();
+  g.fillStyle='#ffd24a';g.fillRect(-16,-2,4,3);g.fillRect(-2,-2,4,3);g.fillRect(12,-2,4,3);
+  rr(g,-6,6,12,7,3);fsk(g,bl?'#ff4f8b':'#2b2d63');
+  g.restore();
+}
+function drawRoller(g,e){
+  var hit=e.flash>0;
+  g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(e.x,GROUND+5,16,3.5,0,0,TAU);g.fill();
+  g.save();g.translate(e.x,e.y);g.rotate(e.rot);g.lineWidth=1.6;g.strokeStyle=INK;g.lineJoin='round';
+  path(g,[[-17,-4],[-9,-16],[6,-17],[17,-6],[15,9],[3,17],[-11,14]],true);fsk(g,hit?'#fff':'#a8704c');
+  path(g,[[6,-17],[17,-6],[15,9],[3,17],[2,0]],true);g.fillStyle='rgba(0,0,0,.3)';g.fill();
+  g.strokeStyle='#ffb238';g.lineWidth=1.6;path(g,[[-9,-6],[-1,1],[-7,10]]);g.stroke();
+  g.restore();
+}
+function drawSniper(g,e){
+  var hit=e.flash>0,aim2=e.cd<1.0||e.fire>0,qx=e.ax-e.x,qy=e.ay-e.y,ql=Math.sqrt(qx*qx+qy*qy)||1,an=aim2?Math.atan2(qy,qx):Math.PI;
+  if(aim2){                                                  /* 予告線 → 発射 */
+    g.globalCompositeOperation='lighter';
+    if(e.fire>0){g.strokeStyle='rgba(255,79,139,.6)';g.lineWidth=9;g.beginPath();g.moveTo(e.x,e.y);g.lineTo(e.x+qx/ql*760,e.y+qy/ql*760);g.stroke();
+      g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.moveTo(e.x,e.y);g.lineTo(e.x+qx/ql*760,e.y+qy/ql*760);g.stroke()}
+    else{g.strokeStyle='rgba(255,79,139,'+(e.cd<.3?.9:.4).toFixed(1)+')';g.lineWidth=e.cd<.3?2:1;g.beginPath();g.moveTo(e.x,e.y);g.lineTo(e.x+qx/ql*760,e.y+qy/ql*760);g.stroke()}
+    g.globalCompositeOperation='source-over';
+  }
+  g.save();g.translate(e.x,e.y);g.lineWidth=1.5;g.strokeStyle=INK;g.lineJoin='round';
+  g.save();g.rotate(an);rr(g,6,-3,26,6,2);fsk(g,'#2b2d63');rr(g,28,-4.5,7,9,2);fsk(g,'#ff4f8b');g.restore();
+  path(g,[[-14,-6],[-4,-13],[10,-10],[14,2],[4,12],[-10,9]],true);fsk(g,hit?'#fff':'#3a6470');
+  path(g,[[10,-10],[14,2],[4,12],[2,0]],true);g.fillStyle='rgba(0,0,0,.28)';g.fill();
+  g.beginPath();g.arc(-3,-1,4.5,0,TAU);fsk(g,e.cd<.3||e.fire>0?'#fff':'#ff4f8b');
+  g.restore();
+}
+function drawElite(g,e){
+  g.save();g.translate(e.x,e.y);g.scale(1.5,1.5);g.translate(-e.x,-e.y);drawWalker(g,e);g.restore();
+  g.save();g.translate(e.x,e.y);g.lineWidth=1.8;g.strokeStyle=INK;g.lineJoin='round';
+  path(g,[[-24,-178],[-30,-200],[-16,-184],[-6,-204],[2,-184],[14,-198],[12,-178]],true);fsk(g,'#ffd24a');
+  rr(g,18,-150,26,12,4);fsk(g,'#2b2d63');rr(g,-62,-134,16,12,3);fsk(g,'#ffd24a');
+  g.fillStyle='rgba(18,15,43,.8)';rr(g,-32,-218,64,7,3);g.fill();g.fillStyle='#ff4f8b';rr(g,-31,-217,Math.max(4,62*e.hp/e.mx),5,2);g.fill();
+  g.restore();
+}
 function drawPlats(g){
   var i,p,w,y,gr;
   for(i=0;i<plats.length;i++){
@@ -2058,6 +2270,8 @@ function drawBg(){
     else if(e.k==='meteor')drawMeteor(g,e);else if(e.k==='cap')drawCap(g,e);
     else if(e.k==='shield')drawShieldE(g,e);else if(e.k==='hopper')drawHopper(g,e);else if(e.k==='turret')drawTurret(g,e);
     else if(e.k==='wave')drawWave(g,e);else if(e.k==='chip')drawChip(g,e);
+    else if(e.k==='swoop')drawSwoop(g,e);else if(e.k==='bomber')drawBomber(g,e);else if(e.k==='roller')drawRoller(g,e);
+    else if(e.k==='sniper')drawSniper(g,e);else if(e.k==='elite')drawElite(g,e);
     else if(e.k==='ice')drawIcicle(g,e);else if(e.k==='vent')drawVent(g,e);else if(e.k==='gate')drawGate(g,e);
   }
   if(boss)drawBoss(g,boss);
@@ -2196,6 +2410,7 @@ function drawFg(){
     g.fillStyle='rgba(18,15,43,.8)';rr(g,W/2-122,36,244,12,4);g.fill();
     g.fillStyle='#ff4f8b';rr(g,W/2-120,38,Math.max(6,240*boss.hp/boss.max),8,3);g.fill();
   }
+  if(fadeT>0){g.fillStyle='rgba(4,2,13,'+Math.min(1,fadeT).toFixed(2)+')';g.fillRect(0,0,W,H)}   /* 面の始まりの暗転明け */
   if(warnT>0&&Math.floor(time*6)%2===0){
     g.font='900 34px ui-monospace,Menlo,Consolas,monospace';g.textAlign='center';
     g.fillStyle='rgba(255,79,139,.25)';g.fillRect(0,116,W,58);
@@ -2227,6 +2442,8 @@ var last=0,slowT=0,fms=16;
 function loop(ts){
   var raw=(ts-last)/1000||0.016,dt=Math.min(0.05,raw);last=ts;
   if(!paused){
+    bgmTick(Math.min(0.1,raw));
+    if(slomo>0){slomo-=raw;dt*=0.3}                           /* ボス撃破のスロー */
     if(freeze>0)freeze-=dt;
     else if(dt>0.021){update(dt/2);update(dt/2)}             /* コマ落ちしてもゲームの速さは落とさない */
     else update(dt);
@@ -2239,19 +2456,20 @@ function loop(ts){
   render();
   requestAnimationFrame(loop);
 }
-fit();setType(TYPE);
-el.ovM.textContent='SELECTでロボを選んで START\n全5ステージ・ボスを倒して機体を強化せよ';
+buildCards();fit();setType(TYPE);
+el.ovM.textContent='十字キー左右／SELECT で機体を選んで START';
 el.score.textContent='BEST '+best;lastScore=0;lastDist=0;el.dist.textContent='';
 render();
 requestAnimationFrame(loop);
 /* 検証用フック（自動テストから状態を読む／無敵化してボスを早出しする） */
 window.__game={
   state:function(){return {mode:mode,paused:paused,hp:R.hp,dist:dist,pts:pts,x:R.x,camX:camX,ents:ents.map(function(e){return e.k}).join(','),boss:boss?Math.round(boss.hp):null,parts:parts.length,stage:stage,loop:loopN,pw:pw,lv:plv(),maxHp:maxHp,score:score()}},
-  stage:function(n){stage=n;setStageLook();dist=0;stageX0=R.x;nextBoss=STG[n].boss},
-  pow:function(n){pw=n},killBoss:function(){hitBoss(1e9)},hurtBoss:function(f){if(boss)hitBoss(boss.max*f)},add:function(k){({shield:addShield,hopper:addHopper,turret:addTurret,vent:addVent,gate:addGate,ice:addIcicle})[k](camX+(arguments[1]||W-140))},
+  stage:function(n){stage=n;setStageLook();dist=0;stageX0=R.x;nextBoss=STG[n].boss;evI=0},
+  ev:function(c){runEvent(c)},movePlat:function(){plats.push({x0:R.x+40,x1:R.x+140,y:GROUND-92,a:1,mv:{c:R.x+40,amp:56,sp:1.3,ph:0}})},
+  pow:function(n){pw=n},killBoss:function(){hitBoss(1e9)},hurtBoss:function(f){if(boss)hitBoss(boss.max*f)},add:function(k){({shield:addShield,hopper:addHopper,turret:addTurret,vent:addVent,gate:addGate,ice:addIcicle,swoop:addSwoop,bomber:addBomber,roller:addRoller,sniper:function(x){addSniper(x,180)},elite:addElite})[k](camX+(arguments[1]||W-140))},
   plats:function(){return plats.map(function(p){return [Math.round(p.x0-camX),Math.round(p.x1-camX),p.y]})},robo:function(){return {x:Math.round(R.x-camX),y:Math.round(R.y),ground:R.ground,plat:!!R.plat,intro:boss?boss.intro:null,bx:boss?Math.round(boss.x-camX):null}},
   cheat:function(bossAt,inv,hp){nextBoss=bossAt;R.inv=inv;if(hp)R.hp=hp},
-  hold:function(t){freeze=t},scale:function(){return {S:S,LOW:LOW,fms:Math.round(fms)}},
+  hold:function(t){freeze=t},bgm:function(){return {now:bgmNow,want:bgmWant,fail:bgmFail,v:+bgmV.toFixed(2),paused:bgmEl?bgmEl.paused:null,routed:!!bgmGain}},stats:function(){return {ST:ST,TOT:TOT,endStep:endStep}},scale:function(){return {S:S,LOW:LOW,fms:Math.round(fms)}},
   type:function(){return TYPE},atk:function(){return R.atk?R.atk.k:(R.moon?'moon':R.beamT>0?'beam':'')}
 };
 })();
