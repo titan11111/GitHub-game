@@ -210,6 +210,10 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
 .quit{background:transparent;color:var(--usu);font-size:13px;text-decoration:underline;padding:12px 10px;min-height:48px;flex-shrink:0;touch-action:manipulation}
 .rescue{background:#b7392a;color:#fff5df;border:1px solid #d4a843;border-radius:3px;padding:5px 9px;font-size:12px;line-height:1.2;min-width:94px}
 .rescue:disabled{opacity:.43;cursor:default}
+.ctrl{display:flex;gap:8px;width:100%;justify-content:center;flex-shrink:0}
+.ctrl button{background:var(--mokkan);color:var(--sumi);border:1px solid var(--usu);border-radius:3px;padding:8px 0;font-size:13px;font-weight:700;flex:1;max-width:108px;min-height:44px;touch-action:manipulation}
+.ctrl button.mid{border-color:var(--kin);color:var(--shu3)}
+.ctrl button:disabled{opacity:.35;cursor:default}
 
 #result{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:5;
   background:
@@ -262,6 +266,7 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
 .card .ghost{background:transparent;color:#5c4f3c;border:1px solid #9d8158;border-radius:2px;padding:12px 14px;
   font-family:"Yuji Syuku",serif;font-weight:400;font-size:15px;letter-spacing:.10em}
 .card .ghost:active,.card .ghost.is-pressed{background:rgba(183,57,42,.10)}
+.title h1 small{display:block;font-size:.48em;color:var(--kin);margin-top:2px;letter-spacing:.12em}
 @media (prefers-reduced-motion: reduce){ .hanko:active{transform:none} .garan{transform:none!important} }
 @media (max-height: 640px){
   .ring{width:min(62vw,250px)}
@@ -270,6 +275,11 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
   .note{font-size:11px}
 }
 </style>
+    <meta property="og:title" content="干支けし ときどき猫">
+    <meta property="og:description" content="交点で4駒を回転。3分で何枚消せるか競うタイムアタック。">
+    <meta property="og:url" content="https://titan11111.github.io/262-eto-keshi/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
 </head>
 <body>
 <div id="app">
@@ -279,7 +289,7 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
       <div class="title">
         <div class="tcol">
           <h1>干支けし</h1>
-          <p>猫は残る。</p>
+          <p>猫は残る。まわして、そろえる。</p>
         </div>
         <i class="rakkan" aria-hidden="true">猫</i>
       </div>
@@ -300,7 +310,8 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
       <p class="arrow">↘ 子 → 丑 → 寅 で消える</p>
       <p>② <strong>同じ干支3つ</strong>、または<strong>十二支の順に3つ</strong>で消えます。逆順も、戌→亥→子のような一周も有効です。</p>
       <p>③ 自分の干支が消えると、隣の猫も一緒に消えて高得点。手詰まりなら「猫けし」で盤面の猫をまとめて消せます（1匹50点）。<strong>1ゲーム2回まで</strong>。</p>
-      <p>④ 制限時間は<strong>3分</strong>。時間内に<strong>何枚消せるか</strong>を競います。</p>
+      <p>④ <strong>◇の交点</strong>を押すと4駒が浮いて回転。もう一度軸を押すか「収める」で戻します。</p>
+      <p>⑤ 制限時間は<strong>3分</strong>。時間内に<strong>何枚消せるか</strong>を競います。</p>
       <button class="hanko" id="btnHow">干支を選ぶ</button>
     </div>
   </section>
@@ -320,8 +331,13 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
       <button class="box snd" id="btnSnd" aria-label="BGMと効果音のオンオフ">🔔</button>
     </div>
     <div id="wrap"><div class="garan" id="garan"><canvas id="cv"></canvas></div></div>
+    <div class="ctrl">
+      <button type="button" id="bL" disabled aria-label="左にまわす">⟲ 左</button>
+      <button type="button" id="bOK" class="mid" disabled>収める</button>
+      <button type="button" id="bR" disabled aria-label="右にまわす">右 ⟳</button>
+    </div>
     <div class="foot">
-      <p class="rule">縦横斜めに交換。3つそろえて消す。<b id="ruleMe">寅</b>の隣の猫も消える。</p>
+      <p class="rule">縦横斜めに交換。◇で4駒を回転。3つそろえて消す。<b id="ruleMe">寅</b>の隣の猫も消える。</p>
       <button class="rescue" id="btnRescue" disabled>猫けし<br><span id="vRescue">あと2回</span></button>
       <button class="quit" id="btnQuit">やめる</button>
     </div>
@@ -369,12 +385,29 @@ const $ = id => document.getElementById(id);
 const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ---------- storage ----------
-const BEST_KEY = 'tg.262.best-cleared';   // 3分で消した枚数。旧 etokeshi_best（点数）とは別指標なので別キー
-function loadBest(){ try{ return +localStorage.getItem(BEST_KEY) || 0 }catch(e){ return 0 } }
+const BEST_KEY = 'tg.262.best-cleared';
+function loadBest(){
+  try{
+    const v = localStorage.getItem(BEST_KEY) || localStorage.getItem('tg.305.best-cleared');
+    return v ? +v : 0;
+  }catch(e){ return 0 }
+}
 function saveBest(v){ try{ localStorage.setItem(BEST_KEY, v) }catch(e){} }
-function loadMe(){ try{ const v = localStorage.getItem('etokeshi_me'); return v === null ? null : +v }catch(e){ return null } }
+function loadMe(){
+  try{
+    const v = localStorage.getItem('etokeshi_me');
+    if(v !== null) return +v;
+    const alt = localStorage.getItem('tg.305.me');
+    return alt === null ? null : +alt;
+  }catch(e){ return null }
+}
 function saveMe(v){ try{ localStorage.setItem('etokeshi_me', v) }catch(e){} }
-function loadMute(){ try{ return localStorage.getItem('tg.262.mute') === '1' }catch(e){ return false } }
+function loadMute(){
+  try{
+    if(localStorage.getItem('tg.262.mute') === '1') return true;
+    return localStorage.getItem('tg.305.mute') === '1';
+  }catch(e){ return false }
+}
 function saveMute(v){ try{ localStorage.setItem('tg.262.mute', v ? '1' : '0') }catch(e){} }
 
 // ---------- sound ----------
@@ -512,7 +545,10 @@ const sfx = {
   tick: () => tone(1180, 1180, .05, 'square', .09),
   nya: () => { tone(900, 520, .22, 'sine', .14); setTimeout(()=>tone(700, 1000, .12, 'sine', .08), 90) },
   bad: () => tone(200, 150, .12, 'square', .05),
-  swap: () => tone(360, 420, .05, 'sine', .05)
+  swap: () => tone(360, 420, .05, 'sine', .05),
+  lift: () => tone(300, 600, .12, 'sine', .08),
+  drop: () => tone(500, 220, .12, 'sine', .08),
+  turn: d => tone(d > 0 ? 440 : 520, d > 0 ? 520 : 440, .08, 'sine', .06)
 };
 function buzz(ms){ if(!muted && navigator.vibrate) try{ navigator.vibrate(ms) }catch(e){} }
 function refreshSnd(){ $('btnSnd').textContent = muted ? '🔇' : '🔔'; $('btnSnd').classList.toggle('off', muted) }
@@ -593,6 +629,9 @@ bindTap($('btnHow'), () => show('select'));
 bindTap($('btnQuit'), () => { running = false; refreshBestTitle(); show('title'); syncBgmVol(); });
 bindTap($('btnAgain'), () => { $('result').classList.remove('on'); startGame() });
 bindTap($('btnReselect'), () => { $('result').classList.remove('on'); show('select') });
+bindTap($('bL'), () => rotate(-1));
+bindTap($('bR'), () => rotate(1));
+bindTap($('bOK'), () => commit());
 
 // ---------- game state ----------
 const cv = $('cv'), ctx = cv.getContext('2d'), garan = $('garan');
@@ -602,6 +641,7 @@ let score = 0, timeLeft = TIME, cleared = 0, cats = 0, rescues = 2, stuck = fals
 const HINT_SEC = 30;
 let idle = 0, hintCells = [];
 let uid = 0, shake = 0, flash = 0, hs = 0, bg = null;
+let axis = null, lifted = false, lift = 0, ang = 0, orig = [], pick = null;
 
 function pickKinds(){
   const others = ETO.map((_, i) => i).filter(i => i !== my);
@@ -702,6 +742,45 @@ function findHint(){
   return [];
 }
 
+// ---------- 軸の回転（交点の4駒） ----------
+function groupCells(){ const {R, C} = axis; return [[R-1,C-1],[R-1,C],[R,C],[R,C-1]] }
+function inGroup(t){ return axis && lift > .01 && (t.r === axis.R-1 || t.r === axis.R) && (t.c === axis.C-1 || t.c === axis.C) }
+function setButtons(){
+  const on = lifted && !busy && timeLeft > 0;
+  ['bL','bOK','bR'].forEach(id => { const el = $(id); if(el) el.disabled = !on });
+}
+
+function doLift(R, C){
+  if(busy || stuck || timeLeft <= 0) return;
+  axis = { R, C }; lifted = true; ang = 0; pick = null; sel = null;
+  orig = groupCells().map(([r, c]) => grid[r][c]);
+  sfx.lift(); setButtons(); hud();
+}
+function rotate(dir){
+  if(!lifted || busy) return;
+  const cells = groupCells(), ts = cells.map(([r,c]) => grid[r][c]);
+  cells.forEach(([r, c], i) => {
+    const t = ts[(i - dir + 4) % 4];
+    grid[r][c] = t; t.r = r; t.c = c; t.x = c; t.y = r;
+  });
+  ang -= dir * Math.PI / 2;
+  pick = null;
+  sfx.turn(dir);
+}
+async function commit(){
+  if(!lifted || busy) return;
+  lifted = false; busy = true; setButtons(); sfx.drop();
+  await waitSettle();
+  const changed = axis && groupCells().some(([r, c], i) => grid[r][c] !== orig[i]);
+  pick = null; idle = 0; hintCells = [];
+  if(changed){
+    stuck = false; hud();
+    const m = findMatches();
+    if(m.size) await resolveMatches(m);
+  }
+  axis = null; busy = false; setButtons(); hud();
+}
+
 function shuffle(){
   for(let tries = 0; tries < 60; tries++){
     const ks = tiles.filter(t => !t.dying).map(t => t.k);
@@ -719,7 +798,10 @@ function shuffle(){
 
 // ---------- animation ----------
 let lastT = performance.now(), settleWaiters = [];
-function settled(){ return tiles.every(t => !t.dying && Math.abs(t.x - t.c) < .001 && Math.abs(t.y - t.r) < .001) }
+function settled(){
+  return Math.abs(ang) < .001 && lift < .01 &&
+    tiles.every(t => !t.dying && Math.abs(t.x - t.c) < .001 && Math.abs(t.y - t.r) < .001);
+}
 function waitSettle(){ return new Promise(res => settleWaiters.push(res)) }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -727,6 +809,11 @@ function step(now){
   const raw = Math.min(.05, (now - lastT) / 1000); lastT = now;
   let dt = raw;
   if(hs > 0){ hs -= raw; dt = 0 }          // ヒットストップ＝盤だけ一瞬止める
+
+  const liftTarget = lifted ? 1 : 0;
+  lift += (liftTarget - lift) * Math.min(1, dt * 16);
+  if(Math.abs(liftTarget - lift) < .005) lift = liftTarget;
+  ang -= Math.sign(ang) * Math.min(Math.abs(ang), dt * 11);
 
   for(const t of tiles){
     if(t.dying){
@@ -767,7 +854,7 @@ function step(now){
     if(timeLeft <= 0){ timeLeft = 0; if(!busy) endGame() }
   }
   // 迷っている時間を数える：手を動かせる状態で HINT_SEC 秒止まったらキラキラで教える
-  if(running && !busy && !stuck && timeLeft > 0 && !$('result').classList.contains('on')){
+  if(running && !busy && !stuck && !lifted && timeLeft > 0 && !$('result').classList.contains('on')){
     idle += raw;
     if(idle >= HINT_SEC && !hintCells.length) hintCells = findHint();
   }
@@ -903,7 +990,44 @@ function draw(now){
   }
 
   const pulse = .5 + .5*Math.sin(now/260);
-  for(const t of tiles) drawTile(t, pulse);
+  const rest = [], group = [];
+  for(const t of tiles) (inGroup(t) && !t.dying ? group : rest).push(t);
+  for(const t of rest) drawTile(t, pulse, 0);
+
+  if(!busy){
+    ctx.fillStyle = 'rgba(212,168,67,.38)';
+    for(let r = 1; r < ROWS; r++) for(let c = 1; c < COLS; c++){
+      if(axis && axis.R === r && axis.C === c && lift > .01) continue;
+      const x = c*cs, y = r*cs, d = cs*.1;
+      ctx.beginPath(); ctx.moveTo(x, y-d); ctx.lineTo(x+d, y); ctx.lineTo(x, y+d); ctx.lineTo(x-d, y); ctx.fill();
+    }
+  }
+
+  if(axis && lift > .01){
+    const ax = axis.C*cs, ay = axis.R*cs, L = lift;
+    ctx.save();
+    ctx.fillStyle = `rgba(0,0,0,${.42*L})`;
+    rr(ax - cs - 2 + 5*L, ay - cs - 2 + 7*L, cs*2 + 4, cs*2 + 4, cs*.2); ctx.fill();
+    ctx.translate(ax, ay - 5*L); ctx.scale(1 + .07*L, 1 + .07*L); ctx.rotate(ang);
+    ctx.strokeStyle = `rgba(212,168,67,${.88*L})`; ctx.lineWidth = 3;
+    rr(-cs - 2, -cs - 2, cs*2 + 4, cs*2 + 4, cs*.2); ctx.stroke();
+    ctx.translate(-ax, -ay);
+    for(const t of group) drawTile(t, pulse, L);
+    ctx.restore();
+    ctx.save(); ctx.translate(ax, ay - 5*L);
+    const ar = cs*.22*(.55 + .45*L);
+    ctx.beginPath(); ctx.arc(0, 0, ar, 0, TAU);
+    ctx.fillStyle = '#d4a843'; ctx.shadowColor = 'rgba(212,168,67,.85)'; ctx.shadowBlur = lifted ? 8 + 6*pulse : 3; ctx.fill();
+    ctx.shadowBlur = 0; ctx.lineWidth = 2; ctx.strokeStyle = '#8e2a1e'; ctx.stroke();
+    ctx.fillStyle = '#2b2520'; ctx.font = `${ar*1.1}px "Yuji Syuku",serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('軸', 0, ar*.04);
+    if(lifted){
+      ctx.strokeStyle = `rgba(246,241,230,${.35 + .28*pulse})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, cs*1.22, -Math.PI*.15, Math.PI*.15); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, cs*1.22, Math.PI*.85, Math.PI*1.15); ctx.stroke();
+    }
+    ctx.restore();
+  }
 
   if(hintCells.length){
     const k = RM ? .6 : .5 + .5*Math.sin(now/200);
@@ -959,10 +1083,11 @@ function draw(now){
   ctx.globalAlpha = 1;
 }
 
-function drawTile(t, pulse){
+function drawTile(t, pulse, liftL){
   const cx = (t.x+.5)*cs, cy = (t.y+.5)*cs, R = cs*.46;
   if(cy < -cs) return;
   ctx.save(); ctx.translate(cx, cy);
+  if(liftL) ctx.rotate(-ang);
   const s = Math.max(0, t.s);
   ctx.scale(s * (1 + t.sq*.20), s * (1 - t.sq*.24));
   if(t.rot) ctx.rotate(t.rot);
@@ -1016,7 +1141,7 @@ function drawTile(t, pulse){
     ctx.beginPath(); ctx.arc(0, 0, R*1.3, 0, TAU);
     ctx.fillStyle = `rgba(255,248,224,${t.fl*.85})`; ctx.fill();
   }
-  if(sel && sel.r === t.r && sel.c === t.c && !t.dying){
+  if((liftL && pick && pick.r === t.r && pick.c === t.c) || (!liftL && !lifted && sel && sel.r === t.r && sel.c === t.c && !t.dying)){
     ctx.lineWidth = 3; ctx.strokeStyle = '#f2e9d6';
     rr(-R-4, -R-4, R*2+8, R*2+8, 3); ctx.stroke();
   }
@@ -1030,13 +1155,15 @@ function hud(){
   $('vCleared').textContent = cleared; $('vCats').textContent = cats;
   $('hudTime').classList.toggle('low', timeLeft <= 30);
   $('vRescue').textContent = `あと${rescues}回`;
-  $('btnRescue').disabled = !stuck || rescues <= 0 || busy || timeLeft <= 0;
+  $('btnRescue').disabled = !stuck || rescues <= 0 || busy || lifted || timeLeft <= 0;
+  setButtons();
 }
 
 // ---------- flow ----------
 function startGame(){
   unlock();
   pickKinds(); score = 0; timeLeft = TIME; cleared = 0; cats = 0; rescues = 2; stuck = false; busy = false; sel = null; ended = false;
+  axis = null; lifted = false; lift = 0; ang = 0; orig = []; pick = null;
   idle = 0; hintCells = [];
   parts = []; floats = []; waves = []; beams = []; shake = 0; flash = 0; hs = 0;
   $('vMe').textContent = ETO[my][0] + '・' + ETO[my][2];
@@ -1049,7 +1176,7 @@ function startGame(){
 }
 
 async function trySwap(a, b){
-  if(busy || timeLeft <= 0) return;
+  if(busy || lifted || timeLeft <= 0) return;
   busy = true; sel = null;
   swapGrid(a, b); sfx.swap();
   await waitSettle();
@@ -1198,39 +1325,75 @@ function cellAt(e){
   return bestD <= (cs * CELL_HIT) ** 2 ? best : null;
 }
 
-function endPress(e){
-  if(!press || (e && press.id != null && e.pointerId !== press.id)) return;
-  const p = press; press = null;
-  if(sel && Math.max(Math.abs(sel.r - p.r), Math.abs(sel.c - p.c)) === 1){ trySwap(sel, p); sel = null; return }
-  if(sel && sel.r === p.r && sel.c === p.c) sel = null;
-  else sel = { r: p.r, c: p.c };
-  buzz(8);
+function cellPos(e){
+  const b = cv.getBoundingClientRect();
+  return { x: (e.clientX - b.left) / cs, y: (e.clientY - b.top) / cs };
+}
+function nearestAxis(p){
+  const C = Math.min(COLS - 1, Math.max(1, Math.round(p.x))), R = Math.min(ROWS - 1, Math.max(1, Math.round(p.y)));
+  return { R, C, d: Math.hypot(p.x - C, p.y - R) };
 }
 
 cv.addEventListener('pointerdown', e => {
   if(e.button !== 0 && e.pointerType === 'mouse') return;
   unlock();
-  if(busy || stuck) return;
-  const p = cellAt(e); if(!p) return;
-  if(sel && Math.max(Math.abs(sel.r - p.r), Math.abs(sel.c - p.c)) === 1){
-    trySwap(sel, p); sel = null; press = null;
-    try{ cv.setPointerCapture(e.pointerId) }catch(err){}
+  if(busy || stuck || timeLeft <= 0) return;
+  try{ cv.setPointerCapture(e.pointerId) }catch(err){}
+  if(lifted){
+    const p = cellPos(e);
+    const d = Math.hypot(p.x - axis.C, p.y - axis.R);
+    const dx = p.x - axis.C, dy = p.y - axis.R;
+    press = { onAxis: d < .4, a0: d > .35 ? Math.atan2(dy, dx) : null, rotated: false, id: e.pointerId, p };
     return;
   }
-  press = { ...p, x: e.clientX, y: e.clientY, id: e.pointerId };
-  try{ cv.setPointerCapture(e.pointerId) }catch(err){}
+  const p = cellPos(e);
+  const n = nearestAxis(p);
+  if(n.d < .3){ sel = null; doLift(n.R, n.C); press = { justLifted: true, a0: null, rotated: false, id: e.pointerId }; return }
+  const cell = cellAt(e);
+  if(!cell) return;
+  if(sel && Math.max(Math.abs(sel.r - cell.r), Math.abs(sel.c - cell.c)) === 1){
+    trySwap(sel, cell); sel = null; press = null; return;
+  }
+  press = { ...cell, x: e.clientX, y: e.clientY, id: e.pointerId };
 });
 cv.addEventListener('pointermove', e => {
   if(!press || busy || e.pointerId !== press.id) return;
-  const dx = e.clientX - press.x, dy = e.clientY - press.y;
-  if(Math.hypot(dx, dy) < cs * SWIPE_MIN) return;
-  const b = { r: press.r + (Math.abs(dy) > cs*SWIPE_MIN ? Math.sign(dy) : 0),
-    c: press.c + (Math.abs(dx) > cs*SWIPE_MIN ? Math.sign(dx) : 0) };
-  const a = { r: press.r, c: press.c }; press = null;
-  if(b.r >= 0 && b.r < ROWS && b.c >= 0 && b.c < COLS) trySwap(a, b);
+  if(!lifted && press.r != null){
+    const dx = e.clientX - press.x, dy = e.clientY - press.y;
+    if(Math.hypot(dx, dy) < cs * SWIPE_MIN) return;
+    const b = { r: press.r + (Math.abs(dy) > cs*SWIPE_MIN ? Math.sign(dy) : 0),
+      c: press.c + (Math.abs(dx) > cs*SWIPE_MIN ? Math.sign(dx) : 0) };
+    const a = { r: press.r, c: press.c }; press = null;
+    if(b.r >= 0 && b.r < ROWS && b.c >= 0 && b.c < COLS) trySwap(a, b);
+    return;
+  }
+  if(!lifted) return;
+  const p = cellPos(e), dx = p.x - axis.C, dy = p.y - axis.R;
+  if(Math.hypot(dx, dy) < .35) return;
+  const a = Math.atan2(dy, dx);
+  if(press.a0 === null){ press.a0 = a; return }
+  let d = a - press.a0;
+  while(d > Math.PI) d -= Math.PI*2;
+  while(d < -Math.PI) d += Math.PI*2;
+  if(d > .75){ rotate(1); press.a0 = a; press.rotated = true }
+  else if(d < -.75){ rotate(-1); press.a0 = a; press.rotated = true }
 });
-cv.addEventListener('pointerup', endPress);
-cv.addEventListener('pointercancel', endPress);
+cv.addEventListener('pointerup', e => {
+  if(!press || e.pointerId !== press.id) return;
+  const pr = press; press = null;
+  if(pr.r != null && !lifted){
+    if(sel && Math.max(Math.abs(sel.r - pr.r), Math.abs(sel.c - pr.c)) === 1){ trySwap(sel, pr); sel = null; return }
+    if(sel && sel.r === pr.r && sel.c === pr.c) sel = null;
+    else sel = { r: pr.r, c: pr.c };
+    buzz(8);
+    return;
+  }
+  if(!lifted || pr.rotated || pr.justLifted) return;
+  if(pr.onAxis){ commit(); return }
+  const n = nearestAxis(cellPos(e));
+  if(n.d < .3 && axis && (n.R !== axis.R || n.C !== axis.C)) commit().then(() => doLift(n.R, n.C));
+});
+cv.addEventListener('pointercancel', e => { if(press && e.pointerId === press.id) press = null });
 
 requestAnimationFrame(step);
 })();
