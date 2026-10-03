@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+.tmp-chrome*
+
+# Local company work logs
+.company/secretary/todos/
+node_modules
+
+# 独立GitHubリポ（Pages正本は子リポのみ。親ではサブモジュール化しない）
+305-eto-keshi2/
