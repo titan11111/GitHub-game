@@ -411,7 +411,8 @@ muteBtn.addEventListener('pointerdown',function(e){e.preventDefault();e.stopProp
 
 var keys={left:false,right:false,up:false,down:false,a:false,b:false};
 var prev={up:false,a:false,b:false,down:false};
-function clearKeys(){for(var k in keys)keys[k]=false}
+var tapq={};                                                 /* 1フレームより短い押下も取りこぼさないための記録 */
+function clearKeys(){for(var k in keys)keys[k]=false;tapq={}}
 var mode='open', paused=false, time=0, overT=0, clearT=0, upSel=1, endStep=0;
 
 /* 十字キー：1枚の面を指でなぞれる（斜め入力あり） */
@@ -443,7 +444,7 @@ btns.forEach(function(b){
   b.addEventListener('pointerdown',function(e){
     e.preventDefault(); unlock(); vib(); tick(k==='a'); b.classList.add('on');
     if(mode!=='play'){pressGo();return}
-    if(!paused)keys[k]=true;
+    if(!paused){keys[k]=true;tapq[k]=true}
     try{b.setPointerCapture(e.pointerId)}catch(_){}
   });
   var up=function(){ b.classList.remove('on'); if(mode!=='title')keys[k]=false };
@@ -468,7 +469,7 @@ window.addEventListener('keydown',function(e){
   if(e.code==='Enter'){e.preventDefault();if(!e.repeat){if(mode==='play'&&!paused)setPause(true);else pressGo()}return}
   var k=MAP[e.code]; if(!k)return;
   e.preventDefault();
-  if(mode==='play')keys[k]=true;
+  if(mode==='play'){keys[k]=true;if(!e.repeat)tapq[k]=true}
   else if(mode==='clear'&&(k==='left'||k==='right')){if(!e.repeat&&!endStep)moveUp(k==='left'?-1:1)}
   else if(mode==='title'&&(k==='left'||k==='right')){if(!e.repeat){setType((TYPE+(k==='left'?3:1))%4);sfx.change()}}
   else if((k==='a'||k==='up')&&!e.repeat)pressGo();
@@ -484,6 +485,7 @@ document.addEventListener('touchmove',function(e){e.preventDefault()},{passive:f
 document.addEventListener('gesturestart',function(e){e.preventDefault()});
 
 function setPause(p){
+  if(p&&mode==='play')bankIn(0);                              /* 止めた時点までのチップを貯金へ（中断・タブを閉じても失わない） */
   if(mode!=='play')p=false;
   if(p===paused)return;
   paused=p; clearKeys();
@@ -944,18 +946,18 @@ var meteorStreak={t:2,x:0,y:0,life:0};
 /* ================= ロボ（robot-action.html の機構をそのまま使用） ================= */
 var R={x:150,y:GROUND,vx:0,vy:0,dir:1,ground:true,jumps:0,dashT:0,dashCD:0,airDashed:false,
   spinT:0,shootT:0,shootCD:0,shootCD2:0,recoil:0,landT:0,phase:0,crouch:false,ghostT:0,air:0,hp:5,inv:0,hurtT:0,dustT:0,
-  atk:null,chg:0,chgFull:false,spCD:0,beamT:0,moon:false,moonT:0,moonId:0,moonBoss:false};
+  atk:null,pcT:0,pcN:0,fgT:0,chg:0,chgFull:false,spCD:0,beamT:0,moon:false,moonT:0,moonId:0,moonBoss:false};
 var RK=0.8;                                                 /* 主人公の大きさ */
 var SPIN=0.42, CHG=0.75, MOON=0.8, BEAM=0.95;
 /* ロボ3機：SELECTで切り替え */
 var TYPES=[
   {cls:'',  n:'TYPE-A ストライカー',a:'ショット',  b:'ダッシュ ／ ため：ブーストラッシュ'},
-  {cls:'tB',n:'TYPE-B クラッシャー',a:'パンチ',    b:'キック ／ ため：ムーンサルト'},
+  {cls:'tB',n:'TYPE-B クラッシャー',a:'パンチ（連打で4連）',b:'キック ／ ため：ムーンサルト'},
   {cls:'tC',n:'TYPE-C アーセナル',  a:'ホーミング',b:'2連弾 ／ ため：ギャラクシー砲'},
   {cls:'tD',n:'TYPE-D セイバー',    a:'斬撃（弾を跳ね返す）',b:'ダッシュ斬り ／ ため：月光斬'}
 ];
 /* 機体別の個性：HPの増減・走る速さ・ジャンプ力 */
-var STAT=[{hp:0,run:1,jmp:1.2,atk:3},{hp:1,run:.95,jmp:1.44,atk:4},{hp:-1,run:.8,jmp:1.15,atk:5},{hp:0,run:1.25,jmp:1.26,atk:4}],waveId=0;
+var STAT=[{hp:0,run:1,jmp:1.02,atk:3},{hp:1,run:.95,jmp:1.224,atk:4},{hp:-1,run:.8,jmp:.978,atk:5},{hp:0,run:1.25,jmp:1.071,atk:4}],waveId=0;
 /* ---------- 格納庫：集めたチップを持ち帰り、機体ごとの恒久強化と装備に使う ---------- */
 function parseJ(k,d){try{var v=JSON.parse(LS.get(k,''));return v&&typeof v==='object'?v:d}catch(_){return d}}
 var bank=+LS.get('bank',0)||0,UPG=parseJ('up',[[0,0,0],[0,0,0],[0,0,0],[0,0,0]]),EQO=parseJ('eqo',[]),EQ=LS.get('eq','')||'';
@@ -1105,10 +1107,26 @@ function targetPose(){
     T.elF=-6; T.shF=-90-T.torso-T.elF-9*R.recoil; T.torso-=3*R.recoil; T.head=-T.torso*0.6;
   }
   if(R.atk&&!R.moon){                                     /* ロボBの格闘 */
-    var a=R.atk,w=a.t<(a.k==='p'?PWU:0.08);
+    var a=R.atk,w=a.t<(a.k==='p'?a.wu:0.08);
     if(a.k==='s'){                                         /* ロボDの斬撃：頭上から前下へ振り抜く */
       var su=Math.min(1,a.t/0.2);su=su*su*(3-2*su);
       T.torso+=R.ground?-8+22*su:4;T.elF=-6;T.shF=-178+158*su-T.torso;T.shB=40;T.elB=-90;T.head=-4;
+    }else if(a.k==='p'&&a.c===3){
+      if(w){                                               /* アッパーの溜め：沈み込み、拳を腰の下へ */
+        T.torso=30;T.head=-14;T.shF=30;T.elF=-96;T.shB=-30;T.elB=-90;
+        if(R.ground&&!R.crouch){T.hF=-50;T.kF=84;T.hB=-10;T.kB=74}
+      }else{                                               /* 伸び上がって真上へ突き上げる */
+        T.torso=-14;T.head=-20;T.elF=-16;T.shF=-168-T.torso;T.shB=56;T.elB=-96;
+        T.hF=-30;T.kF=62;T.hB=20;T.kB=8;
+      }
+    }else if(a.k==='p'&&a.c===1){
+      if(w){                                               /* 左：右を引き戻しつつ、奥の拳を引く */
+        T.torso=R.crouch?14:6;T.head=0;T.shF=40;T.elF=-120;T.shB=50;T.elB=-136;
+        if(R.ground&&!R.crouch){T.hF=-24;T.kF=28;T.hB=30;T.kB=10}
+      }else{                                               /* 奥の拳（左）を突き出す */
+        T.torso=R.crouch?22:(R.ground?16:6);T.head=-8;T.elB=-2;T.shB=(R.ground?-90:-64)-T.torso+2;T.shF=54;T.elF=-124;
+        if(R.ground&&!R.crouch){T.hF=-40;T.kF=36;T.hB=34;T.kB=10}
+      }
     }else if(a.k==='p'){
       if(w){                                               /* 振りかぶり：上体を引き、拳を肩の後ろへ */
         T.torso=R.crouch?4:-16;T.head=8;T.shF=58;T.elF=-138;T.shB=-58;T.elB=-70;
@@ -1289,29 +1307,39 @@ function fire(kind){
 }
 function melee(k){
   var mlv=plv();
-  R.atk={k:k,t:0,dur:k==='p'?0.34:k==='s'?0.26:0.34,hit:[],boss:false,go:k!=='p'};R.spinT=0;
-  if(k==='p'){tone('triangle',180,120,0.1,0.1);return}              /* パンチは振りかぶってから（punchGo で発動） */
+  var c=k==='p'&&R.pcT>0?R.pcN:0;                           /* 連打コンボの段：0右 → 1左 → 2右 → 3アッパー */
+  R.atk={k:k,t:0,dur:k==='p'?PDUR[c]:k==='s'?0.26:0.34,hit:[],boss:false,go:k!=='p',c:c,wu:PWUS[c]};R.spinT=0;
+  if(k==='p'){tone('triangle',180+c*40,120+c*30,c===3?0.12:0.08,0.1);return}              /* パンチは振りかぶってから（punchGo で発動） */
   sfx.swing();
   if((k==='k'&&mlv>=3)||(k==='s'&&mlv>=2))bullets.push({k:3,x:R.x+R.dir*46,y:R.y-(R.crouch?45:R.ground?74:61),vx:R.dir*640,vy:0,d:3+1.5*(mlv-1),life:mlv>=3?.4:.27});
 }
-var PWU=0.11;                                                /* パンチの振りかぶり時間 */
-function punchGo(){                                           /* 踏み込む瞬間：元いた場所に炎の残像を残し、拳圧を飛ばす */
-  var mlv=plv(),i;R.atk.go=true;sfx.swing();noise(0.14,0.22,1800,300);
-  ghosts.push({x:R.x,y:R.y,dir:R.dir,ang:0,hipY:hipY,type:TYPE,life:0.42,max:0.42,fire:true,
+var PWUS=[0.11,0.06,0.06,0.1],PDUR=[0.3,0.26,0.26,0.5],PDMG=[1,.7,.7,1.2];   /* 段ごとの振りかぶり・長さ・威力 */
+function fireGhost(l){                                        /* 炎の幻影：今の姿勢をその場に焼き付ける */
+  ghosts.push({x:R.x,y:R.y,dir:R.dir,ang:0,hipY:hipY,type:TYPE,life:l,max:l,fire:true,
     P:{torso:P.torso,head:P.head,shF:P.shF,elF:P.elF,shB:P.shB,elB:P.elB,hF:P.hF,kF:P.kF,hB:P.hB,kB:P.kB,sw:P.sw}});
+}
+function punchGo(){                                           /* 踏み込む瞬間：元いた場所に炎の残像を残し、拳圧を飛ばす */
+  var mlv=plv(),i,c=R.atk.c,up=c===3;R.atk.go=true;R.fgT=0.05;sfx.swing();noise(up?0.2:0.14,up?0.3:0.22,1800,300);
+  fireGhost(0.42);
   for(i=0;i<(LOW?5:10);i++)part(1,R.x+rnd(-10,10),R.y-rnd(4,80),rnd(-30,30)-R.dir*40,-rnd(60,220),rnd(.25,.5),rnd(1.6,3),i%2?'#ffb238':'#ff6a2a',-300);
-  bullets.push({k:3,x:R.x+R.dir*46,y:R.y-(R.crouch?45:R.ground?74:61),vx:R.dir*640,vy:0,d:4+1.5*(mlv-1),life:mlv>=3?.4:.27});
+  if(up){                                                     /* アッパー：跳び上がり、炎の柱を噴き上げる */
+    if(R.ground&&!R.crouch){R.vy=-460;R.ground=false;R.plat=null;R.jumps=1}
+    for(i=0;i<(LOW?6:12);i++)part(1,R.x+R.dir*rnd(14,40),R.y-rnd(20,90),R.dir*rnd(0,60),-rnd(260,520),rnd(.3,.55),rnd(2,3.6),i%2?'#fff6d0':'#ff8a2a',-200);
+    shake(4,0.14);tone('sawtooth',160,620,0.2,0.1);
+    bullets.push({k:3,x:R.x+R.dir*40,y:R.y-(R.crouch?60:96),vx:R.dir*420,vy:-420,d:3+1.5*(mlv-1),life:mlv>=3?.4:.27});
+  }else bullets.push({k:3,x:R.x+R.dir*46,y:R.y-(R.crouch?45:R.ground?74:61),vx:R.dir*640,vy:0,d:(c?3:4)+1.5*(mlv-1),life:mlv>=3?.4:.27});
 }
 function meleeBox(){
   var a=R.atk;if(!a||R.moon)return null;
-  var w0=a.k==='p'?PWU+.01:a.k==='s'?.04:.08,w1=a.k==='p'?PWU+.15:a.k==='s'?.19:.24;
+  var w0=a.k==='p'?a.wu+.01:a.k==='s'?.04:.08,w1=a.k==='p'?a.wu+(a.c===3?.2:.15):a.k==='s'?.19:.24;
   if(a.t<w0||a.t>w1)return null;
   var y0,y1,rg,lv=plv();
   if(a.k==='s'){rg=100;if(R.crouch){y0=-74;y1=2}else if(!R.ground){y0=-126;y1=10}else{y0=-140;y1=-6}}
+  else if(a.k==='p'&&a.c===3){rg=74;y0=-150;y1=-40}
   else if(a.k==='p'){rg=84;if(R.crouch){y0=-80;y1=-34}else if(!R.ground){y0=-108;y1=-46}else{y0=-118;y1=-68}}
   else{rg=96;if(R.crouch){y0=-48;y1=2}else if(!R.ground){y0=-76;y1=0}else{y0=-106;y1=-36}}
   var xa=R.x+R.dir*2,xb=R.x+R.dir*(rg*.88+8*(lv-1));
-  return {x0:Math.min(xa,xb),x1:Math.max(xa,xb),y0:R.y+y0*RK,y1:R.y+y1*RK,d:(a.k==='p'?8:a.k==='s'?6:10)*(1+.5*(lv-1))};
+  return {x0:Math.min(xa,xb),x1:Math.max(xa,xb),y0:R.y+y0*RK,y1:R.y+y1*RK,d:(a.k==='p'?8*PDMG[a.c]:a.k==='s'?6:10)*(1+.5*(lv-1))};
 }
 function moonsault(){
   R.moon=true;R.moonT=0;R.moonId++;R.moonBoss=false;R.ground=false;R.jumps=2;R.vy=-700;R.crouch=false;R.atk=null;R.spinT=0;R.dashT=0;
@@ -1570,14 +1598,17 @@ function gameOver(){
 
 /* ================= 更新 ================= */
 function updateRobot(dt){
-  var upHit=keys.up&&!prev.up, upOff=!keys.up&&prev.up, aHit=keys.a&&!prev.a, bHit=keys.b&&!prev.b, downHit=keys.down&&!prev.down;
+  var upHit=(keys.up&&!prev.up)||!!tapq.up, upOff=!keys.up&&prev.up, aHit=(keys.a&&!prev.a)||!!tapq.a, bHit=(keys.b&&!prev.b)||!!tapq.b, downHit=(keys.down&&!prev.down)||!!tapq.down;tapq={};
   prev.up=keys.up;prev.a=keys.a;prev.b=keys.b;prev.down=keys.down;
   if(R.dropT>0)R.dropT-=dt;
 
   R.dashCD-=dt;R.shootCD-=dt;R.shootCD2-=dt;R.shootT-=dt;R.landT-=dt;R.inv-=dt;R.hurtT-=dt;R.spCD-=dt;
   R.recoil=Math.max(0,R.recoil-dt*9);
   if(R.spinT>0)R.spinT-=dt;
-  if(R.atk){R.atk.t+=dt;if(!R.atk.go&&R.atk.t>=PWU)punchGo();if(R.atk.t>=R.atk.dur)R.atk=null}
+  if(R.pcT>0){R.pcT-=dt;if(R.pcT<=0)R.pcN=0}
+  if(R.atk){R.atk.t+=dt;if(!R.atk.go&&R.atk.t>=R.atk.wu)punchGo();
+    if(R.atk.k==='p'&&R.atk.go&&(R.atk.c||R.pcT>0)&&R.atk.t<R.atk.wu+0.16&&(R.fgT-=dt)<=0){R.fgT=LOW?0.09:0.05;fireGhost(0.3)}   /* コンボ中は炎の幻影を出し続ける */
+    if(R.atk.t>=R.atk.dur){if(R.atk.k==='p'){R.pcN=(R.atk.c+1)%4;R.pcT=R.pcN?0.3:0}R.atk=null}}
   if(R.abT>0){R.abT-=dt;if(R.abT<=0)R.ab=null}
   var busy=R.hurtT>0||R.beamT>0||R.moon||R.rushT>0;
 
@@ -1612,7 +1643,7 @@ function updateRobot(dt){
     var tv=R.crouch?0:move*RUN*STAT[TYPE].run*runMul;
     if(stage===1&&R.ground&&!R.plat&&!R.crouch)R.vx+=(tv-R.vx)*(1-Math.exp(-dt*9));else R.vx=tv;   /* STAGE 2 は氷で滑る */
     if(R.atk&&R.ground){
-      if(R.atk.k==='p')R.vx=R.crouch?0:R.dir*(R.atk.t<PWU?-46:R.atk.t<PWU+0.085?540:0);   /* 引いて → 前へ滑る（約45px） */
+      if(R.atk.k==='p')R.vx=R.crouch?0:R.dir*(R.atk.t<R.atk.wu?(R.atk.c?-20:-46):R.atk.t<R.atk.wu+0.085?(R.atk.c===3?300:540):0);   /* 引いて → 前へ滑る（約45px） */
       else R.vx=R.crouch?0:R.dir*(R.atk.t<0.1?170:0);
     }
     if((TYPE===0||TYPE===3)&&bHit&&R.dashCD<=0&&(R.ground||!R.airDashed)){
@@ -1660,7 +1691,7 @@ function updateRobot(dt){
   }
   if(!busy&&R.dashT<=0){
     if(TYPE===0){if(keys.a&&R.shootCD<=0&&R.spinT<=0)fire(0)}
-    else if(TYPE===1){if(aHit){R.ab='p';R.abT=.16}else if(bHit){R.ab='k';R.abT=.16}if(R.ab&&!R.atk){melee(R.ab);R.ab=null}}
+    else if(TYPE===1){if(aHit){R.ab='p';R.abT=.24}else if(bHit){R.ab='k';R.abT=.16}if(R.ab&&!R.atk){melee(R.ab);R.ab=null}}
     else if(TYPE===3){if(aHit){R.ab='s';R.abT=.16}if(R.ab&&!R.atk){melee(R.ab);R.ab=null}}
     else{
       if(keys.a&&R.shootCD<=0&&R.spinT<=0)fire(1);
@@ -2971,7 +3002,7 @@ window.__game={
   plats:function(){return plats.map(function(p){return [Math.round(p.x0-camX),Math.round(p.x1-camX),p.y]})},robo:function(){return {x:Math.round(R.x-camX),y:Math.round(R.y),ground:R.ground,plat:!!R.plat,intro:boss?boss.intro:null,bx:boss?Math.round(boss.x-camX):null}},
   cheat:function(bossAt,inv,hp){nextBoss=bossAt;R.inv=inv;if(hp)R.hp=hp},
   hold:function(t){freeze=t},cp:function(){return cp},die:function(){R.inv=0;R.hp=1;hurt(R.x+10)},bank:function(n){if(n!==undefined){bank=n;LS.set('bank',n)}return {bank:bank,up:UPG,eqo:EQO,eq:EQ,runChip:runChip,combo:combo,offer:offer.map(function(i){return RUPS[i].n}),bar:!!R.bar,mhp:mhp(),fmul:fmul()}},hang:function(o){hangShow(o)},view:function(){return {W:Math.round(W),VH:Math.round(VH),OY:Math.round(OY),cw:bg.width,ch:bg.height}},skipOpen:function(){openSkip()},story:function(){return {mode:mode,openT:+openT.toFixed(1),endT:+endT.toFixed(1),len:+endingLen().toFixed(1)}},setOpen:function(t){openT=t},setEnd:function(t){endT=t},bgm:function(){return {now:bgmNow,want:bgmWant,fail:bgmFail,v:+bgmV.toFixed(2),paused:bgmEl?bgmEl.paused:null,routed:!!bgmGain}},stats:function(){return {ST:ST,TOT:TOT,endStep:endStep}},scale:function(){return {S:S,LOW:LOW,fms:Math.round(fms)}},
-  type:function(){return TYPE},atk:function(){return R.atk?R.atk.k:(R.moon?'moon':R.beamT>0?'beam':'')}
+  type:function(){return TYPE},pc:function(){return R.atk&&R.atk.k==='p'?R.atk.c:-1},ghosts:function(){return ghosts.filter(function(g){return g.fire}).length},atk:function(){return R.atk?R.atk.k:(R.moon?'moon':R.beamT>0?'beam':'')}
 };
 })();
 </script>
