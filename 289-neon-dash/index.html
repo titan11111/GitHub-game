@@ -1082,7 +1082,7 @@ function fire(kind){
 function melee(k){
   var mlv=plv();
   R.atk={k:k,t:0,dur:k==='p'?0.24:k==='s'?0.26:0.34,hit:[],boss:false};R.spinT=0;sfx.swing();
-  if((k==='p'&&mlv>=3)||(k==='k'&&mlv>=4)||(k==='s'&&mlv>=3))bullets.push({k:3,x:R.x+R.dir*46,y:R.y-(R.crouch?45:R.ground?74:61),vx:R.dir*640,vy:0,d:3,life:.27});   /* Lv3：拳圧が飛ぶ */
+  if(k==='p'||(k==='k'&&mlv>=3)||(k==='s'&&mlv>=2))bullets.push({k:3,x:R.x+R.dir*46,y:R.y-(R.crouch?45:R.ground?74:61),vx:R.dir*640,vy:0,d:3+1.5*(mlv-1),life:mlv>=3?.4:.27});   /* パンチは常に拳圧が飛ぶ */
 }
 function meleeBox(){
   var a=R.atk;if(!a||R.moon)return null;
@@ -1090,10 +1090,10 @@ function meleeBox(){
   if(a.t<w0||a.t>w1)return null;
   var y0,y1,rg,lv=plv();
   if(a.k==='s'){rg=100;if(R.crouch){y0=-74;y1=2}else if(!R.ground){y0=-126;y1=10}else{y0=-140;y1=-6}}
-  else if(a.k==='p'){rg=64;if(R.crouch){y0=-80;y1=-34}else if(!R.ground){y0=-108;y1=-46}else{y0=-118;y1=-68}}
-  else{rg=78;if(R.crouch){y0=-48;y1=2}else if(!R.ground){y0=-76;y1=0}else{y0=-106;y1=-36}}
+  else if(a.k==='p'){rg=84;if(R.crouch){y0=-80;y1=-34}else if(!R.ground){y0=-108;y1=-46}else{y0=-118;y1=-68}}
+  else{rg=96;if(R.crouch){y0=-48;y1=2}else if(!R.ground){y0=-76;y1=0}else{y0=-106;y1=-36}}
   var xa=R.x+R.dir*2,xb=R.x+R.dir*(rg*.88+8*(lv-1));
-  return {x0:Math.min(xa,xb),x1:Math.max(xa,xb),y0:R.y+y0*RK,y1:R.y+y1*RK,d:(a.k==='p'?4:a.k==='s'?5:6)*(1+.5*(lv-1))};
+  return {x0:Math.min(xa,xb),x1:Math.max(xa,xb),y0:R.y+y0*RK,y1:R.y+y1*RK,d:(a.k==='p'?6:a.k==='s'?6:10)*(1+.5*(lv-1))};
 }
 function moonsault(){
   R.moon=true;R.moonT=0;R.moonId++;R.moonBoss=false;R.ground=false;R.jumps=2;R.vy=-700;R.crouch=false;R.atk=null;R.spinT=0;R.dashT=0;
@@ -1159,12 +1159,12 @@ function pattern(x){
 }
 var BHOME=[[W-110,176],[W-118,GROUND-96],[W-120,168],[W-130,160],[W-118,GROUND-82]],INTRO=3.4;
 function makeBoss(){
-  var k=stage,h=[60,95,130,150,210][k]*hm(),hx=camX+BHOME[k][0],hy=BHOME[k][1];
+  var k=stage,h=[280,380,420,560,760][k]*hm(),hx=camX+BHOME[k][0],hy=BHOME[k][1];
   if(k===1)boss={kind:1,hp:h,max:h,t:0,flash:0,dead:0,hw:76,hh:58,st:'idle',stT:1.2,hop:0};
-  else if(k===3)boss={kind:3,hp:h,max:h,t:0,flash:0,dead:0,hw:58,hh:50,stT:1.4,f:null,swT:7,swD:0};
-  else if(k===4)boss={kind:4,hp:h,max:h,t:0,flash:0,dead:0,hw:36,hh:78,st:'idle',stT:1.4,hop:0,ph:1,lz:null,swT:6,swD:0,fcd:1.5,fi:0,v2:0,inv:0};
-  else if(k===2)boss={kind:2,hp:h,max:h,t:0,flash:0,dead:0,hw:44,hh:44,stT:1.4,lz:null,swT:6,swD:0};
-  else boss={kind:0,hp:h,max:h,t:0,cd:1.2,mcd:3.5,flash:0,dead:0,hw:70,hh:26,swT:5,swD:0};
+  else if(k===3)boss={kind:3,hp:h,max:h,t:0,flash:0,dead:0,hw:58,hh:50,stT:1.4,f:null,swT:4.5,swD:0};
+  else if(k===4)boss={kind:4,hp:h,max:h,t:0,flash:0,dead:0,hw:36,hh:78,st:'idle',stT:1.4,hop:0,ph:1,lz:null,swT:4,swD:0,fcd:1.5,fi:0,v2:0,inv:0};
+  else if(k===2)boss={kind:2,hp:h,max:h,t:0,flash:0,dead:0,hw:44,hh:44,stT:1.4,lz:null,swT:4,swD:0};
+  else boss={kind:0,hp:h,max:h,t:0,cd:1.2,mcd:3.5,flash:0,dead:0,hw:70,hh:26,swT:3.5,swD:0};
   for(var vq=ents.length-1;vq>=0;vq--)if(ents[vq].k==='vent'||ents[vq].k==='gate')ents.splice(vq,1);
   boss.hx=hx;boss.x=hx+300;boss.y=hy;boss.intro=INTRO;
   /* 画面を固定し、攻撃を避けるための足場を2つ出す */
@@ -1321,7 +1321,7 @@ function updateRobot(dt){
         if(e.k==='shot'){ents.splice(q,1);continue}
         e.hp-=6+3*(mlv-1);e.flash=.08;if(e.hp<=0){kill(e);ents.splice(q,1)}
       }
-      if(boss&&Math.abs(boss.x-sx)<150&&boss.y>GROUND-150)hitBoss(6);
+      if(boss&&Math.abs(boss.x-sx)<150&&boss.y>GROUND-150)hitBoss(18+5*(mlv-1));
     }
     R.ground=true;R.vy=0;R.jumps=0;R.airDashed=false;R.spinT=0;
   }
@@ -1373,11 +1373,11 @@ function specialHits(dt){
       var dx=e.x-cx,dy=e.y+(e.top+e.bot)/2-cy;
       if(dx*dx+dy*dy<(66+e.hw)*(66+e.hw)){
         if(e.k==='shot'){ents.splice(i,1);continue}
-        e.mh=R.moonId;e.hp-=8;e.flash=.08;impact(e.x,e.y+(e.top+e.bot)/2);
+        e.mh=R.moonId;e.hp-=14;e.flash=.08;impact(e.x,e.y+(e.top+e.bot)/2);
         if(e.hp<=0){kill(e);ents.splice(i,1)}
       }
     }
-    if(boss&&boss.dead<=0&&!R.moonBoss&&Math.abs(boss.x-cx)<66+boss.hw&&Math.abs(boss.y-cy)<66+boss.hh){R.moonBoss=true;hitBoss(10);impact(boss.x-R.dir*40,boss.y)}
+    if(boss&&boss.dead<=0&&!R.moonBoss&&Math.abs(boss.x-cx)<66+boss.hw&&Math.abs(boss.y-cy)<66+boss.hh){R.moonBoss=true;hitBoss(30+8*(plv()-1));impact(boss.x-R.dir*40,boss.y)}
   }
   if(R.beamT>0&&R.beamT<BEAM-0.06){
     var m=muzzle(),by=m[1],blv=plv(),bh=26+6*(blv-1),bd=45*(1+.4*(blv-1));
@@ -1389,7 +1389,7 @@ function specialHits(dt){
         if(e.hp<=0){kill(e);ents.splice(i,1)}
       }
     }
-    if(boss&&boss.dead<=0&&(boss.x-m[0])*R.dir>-20&&Math.abs(boss.y-by)<bh+boss.hh)hitBoss(bd*dt);
+    if(boss&&boss.dead<=0&&(boss.x-m[0])*R.dir>-20&&Math.abs(boss.y-by)<bh+boss.hh)hitBoss(bd*1.3*dt);
   }
   if(R.rushT>0){
     for(i=ents.length-1;i>=0;i--){
@@ -1401,7 +1401,7 @@ function specialHits(dt){
         if(e.hp<=0){kill(e);ents.splice(i,1)}
       }
     }
-    if(boss&&boss.dead<=0&&R.rushBoss!==R.rushId&&Math.abs(boss.x-R.x)<boss.hw+34&&Math.abs(boss.y-(R.y-44))<boss.hh+44){R.rushBoss=R.rushId;hitBoss(8+2*(plv()-1));impact(boss.x-R.dir*40,R.y-44)}
+    if(boss&&boss.dead<=0&&R.rushBoss!==R.rushId&&Math.abs(boss.x-R.x)<boss.hw+34&&Math.abs(boss.y-(R.y-44))<boss.hh+44){R.rushBoss=R.rushId;hitBoss(24+6*(plv()-1));impact(boss.x-R.dir*40,R.y-44)}
   }
 }
 
@@ -1426,7 +1426,7 @@ function updateBoss(dt){
   if(b.kind===4){bossEmperor(b,dt);return}
   if(b.kind===2){bossCore(b,dt);return}
   var tx=camX+W-110,ty=176+Math.sin(b.t*1.15)*72,rate=5;
-  if(b.swD>0){b.swD-=dt;tx=R.x+128;ty=GROUND-98;rate=3.2;if(b.swD<=0)b.swT=rnd(5,7)}   /* 突進：格闘が届く間合いまで降りてくる */
+  if(b.swD>0){b.swD-=dt;tx=R.x+128;ty=GROUND-98;rate=3.2;if(b.swD<=0)b.swT=rnd(3.2,4.6)}   /* 突進：格闘が届く間合いまで降りてくる */
   else if(mode==='play'){b.swT-=dt;if(b.swT<=0){b.swD=1.8;tone('sawtooth',500,120,0.4,0.14)}}
   b.x+=(tx-b.x)*(1-Math.exp(-dt*rate));b.y+=(ty-b.y)*(1-Math.exp(-dt*4));
   if(mode!=='play')return;
@@ -1457,7 +1457,7 @@ function bossCrab(b,dt){
 /* STAGE 3 ボス：要塞コア。回る盾が弾を防ぐ／高低2種の掃射レーザー／全方位弾／増援 */
 function bossCore(b,dt){
   var i,a,tx=camX+W-120,ty=168+Math.sin(b.t*1.2)*46,rate=5;
-  if(b.swD>0){b.swD-=dt;tx=R.x+122;ty=GROUND-96;rate=3;if(b.swD<=0)b.swT=rnd(6,8)}
+  if(b.swD>0){b.swD-=dt;tx=R.x+122;ty=GROUND-96;rate=3;if(b.swD<=0)b.swT=rnd(4,5.5)}
   else if(mode==='play'&&!b.lz){b.swT-=dt;if(b.swT<=0){b.swD=1.8;tone('sawtooth',500,120,0.4,0.14)}}
   b.x+=(tx-b.x)*(1-Math.exp(-dt*rate));b.y+=(ty-b.y)*(1-Math.exp(-dt*4));
   if(b.lz){
@@ -1477,7 +1477,7 @@ function bossCore(b,dt){
 /* STAGE 4 ボス：岩の巨人。拳の叩きつけ（左右に衝撃波）／岩投げ／隕石 */
 function bossGolem(b,dt){
   var i,tx=camX+W-130,ty=160+Math.sin(b.t*1.3)*22,rate=4,f=b.f;
-  if(b.swD>0){b.swD-=dt;tx=R.x+124;ty=GROUND-96;rate=3;if(b.swD<=0)b.swT=rnd(6,8)}
+  if(b.swD>0){b.swD-=dt;tx=R.x+124;ty=GROUND-96;rate=3;if(b.swD<=0)b.swT=rnd(4,5.5)}
   else if(mode==='play'&&!f){b.swT-=dt;if(b.swT<=0){b.swD=1.8;tone('sawtooth',500,120,0.4,0.14)}}
   b.x+=(tx-b.x)*(1-Math.exp(-dt*rate));b.y+=(ty-b.y)*(1-Math.exp(-dt*4));
   if(f){
@@ -1533,7 +1533,7 @@ function bossEmperor(b,dt){
     return;
   }
   var tx=camX+W-125,ty=150+Math.sin(b.t*1.3)*50,rate=5;
-  if(b.swD>0){b.swD-=dt;tx=R.x+122;ty=GROUND-96;rate=3;if(b.swD<=0)b.swT=rnd(6,8)}
+  if(b.swD>0){b.swD-=dt;tx=R.x+122;ty=GROUND-96;rate=3;if(b.swD<=0)b.swT=rnd(4,5.5)}
   else if(mode==='play'&&!b.lz){b.swT-=dt;if(b.swT<=0){b.swD=1.8;tone('sawtooth',500,120,0.4,0.14)}}
   b.x+=(tx-b.x)*(1-Math.exp(-dt*rate));b.y+=(ty-b.y)*(1-Math.exp(-dt*4));
   if(b.lz){
@@ -1591,7 +1591,7 @@ function update(dt){
           if(e.hp<=0){kill(e);ents.splice(j,1)}else sfx.hit();
         }
       }
-      if(boss&&boss.dead<=0&&!b.bh&&Math.abs(b.x-boss.x)<boss.hw+26&&Math.abs(b.y-boss.y)<boss.hh+74){b.bh=true;hitBoss(b.d+2);impact(boss.x-40,boss.y)}
+      if(boss&&boss.dead<=0&&!b.bh&&Math.abs(b.x-boss.x)<boss.hw+26&&Math.abs(b.y-boss.y)<boss.hh+74){b.bh=true;hitBoss(b.d*2.5);impact(boss.x-40,boss.y)}
       if(dead)bullets.splice(i,1);
       continue;
     }
