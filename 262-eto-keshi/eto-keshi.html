@@ -180,19 +180,7 @@ button.is-pressed{transform:scale(.92);opacity:.88}
 .hud .v{font-size:18px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
 .hud .me{flex:1.1;border:2px solid var(--shu)}
 .hud .me .v{font-size:16px}
-.hud .timer{flex:1.35;border:2px solid var(--shu);padding:5px 6px 4px}
-.hud .timer .lb{font-size:9px;letter-spacing:.06em}
-.hud .timer .limit{font-family:"Yuji Syuku",serif;color:var(--shu);font-weight:400}
-.hud .timer .v{font-size:clamp(22px,6.5vw,28px);font-family:"Zen Maru Gothic",sans-serif;letter-spacing:.04em;line-height:1.05;margin:1px 0 3px}
-.hud .timer-track{height:5px;border-radius:2px;background:rgba(43,37,32,.12);overflow:hidden;border:1px solid rgba(43,37,32,.08)}
-.hud .timer-fill{display:block;height:100%;width:100%;border-radius:1px;background:linear-gradient(90deg,var(--rokusho),#4a9a82);transition:width .35s linear, background .25s}
-.hud .timer.warn .timer-fill{background:linear-gradient(90deg,#c8963c,var(--kin))}
-.hud .timer.low .v{color:var(--shu)}
-.hud .timer.low .timer-fill{background:linear-gradient(90deg,var(--shu2),var(--shu))}
-.hud .timer.critical .v{color:#8e2419;animation:timePulse .85s ease-in-out infinite}
-.hud .timer.critical .timer-fill{background:var(--shu);animation:barPulse .85s ease-in-out infinite}
-@keyframes timePulse{50%{transform:scale(1.04)}}
-@keyframes barPulse{50%{opacity:.72}}
+.hud .low .v{color:var(--shu)}
 .hud .snd{flex:0 0 48px;min-width:48px;min-height:48px;display:flex;align-items:center;justify-content:center;font-size:20px;padding:0;touch-action:manipulation}
 .hud .snd.off{opacity:.45}
 
@@ -222,10 +210,6 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
 .quit{background:transparent;color:var(--usu);font-size:13px;text-decoration:underline;padding:12px 10px;min-height:48px;flex-shrink:0;touch-action:manipulation}
 .rescue{background:#b7392a;color:#fff5df;border:1px solid #d4a843;border-radius:3px;padding:5px 9px;font-size:12px;line-height:1.2;min-width:94px}
 .rescue:disabled{opacity:.43;cursor:default}
-.ctrl{display:flex;gap:8px;width:100%;justify-content:center;flex-shrink:0}
-.ctrl button{background:var(--mokkan);color:var(--sumi);border:1px solid var(--usu);border-radius:3px;padding:8px 0;font-size:13px;font-weight:700;flex:1;max-width:108px;min-height:44px;touch-action:manipulation}
-.ctrl button.mid{border-color:var(--kin);color:var(--shu3)}
-.ctrl button:disabled{opacity:.35;cursor:default}
 
 #result{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:5;
   background:
@@ -278,11 +262,7 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
 .card .ghost{background:transparent;color:#5c4f3c;border:1px solid #9d8158;border-radius:2px;padding:12px 14px;
   font-family:"Yuji Syuku",serif;font-weight:400;font-size:15px;letter-spacing:.10em}
 .card .ghost:active,.card .ghost.is-pressed{background:rgba(183,57,42,.10)}
-.title h1 small{display:block;font-size:.48em;color:var(--kin);margin-top:2px;letter-spacing:.12em}
-@media (prefers-reduced-motion: reduce){
-  .hanko:active{transform:none} .garan{transform:none!important}
-  .hud .timer.critical .v,.hud .timer.critical .timer-fill{animation:none}
-}
+@media (prefers-reduced-motion: reduce){ .hanko:active{transform:none} .garan{transform:none!important} }
 @media (max-height: 640px){
   .ring{width:min(62vw,250px)}
   .sel h2{font-size:22px}
@@ -290,11 +270,6 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
   .note{font-size:11px}
 }
 </style>
-    <meta property="og:title" content="干支けし ときどき猫">
-    <meta property="og:description" content="交点で4駒を回転。3分で何枚消せるか競うタイムアタック。">
-    <meta property="og:url" content="https://titan11111.github.io/262-eto-keshi/">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary">
 </head>
 <body>
 <div id="app">
@@ -304,7 +279,7 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
       <div class="title">
         <div class="tcol">
           <h1>干支けし</h1>
-          <p>猫は残る。まわして、そろえる。</p>
+          <p>猫は残る。</p>
         </div>
         <i class="rakkan" aria-hidden="true">猫</i>
       </div>
@@ -316,7 +291,7 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
   <section class="screen how" id="how">
     <div class="card">
       <h2>遊びかた</h2>
-      <p>① 干支をひとつ選びます。盤には<strong>十二支すべて</strong>の駒が出ます（猫だけは例外）。駒を<strong>縦・横・斜め</strong>に入れ替えて、3つを一列にそろえましょう。</p>
+      <p>① 干支をひとつ選びます。盤面の駒を<strong>縦・横・斜め</strong>に入れ替えて、3つを一列にそろえましょう。</p>
       <div class="diagram" aria-label="子、丑、寅を斜めにそろえる例">
         <span class="pick">子</span><span>卯</span><span>申</span>
         <span>午</span><span class="pick">丑</span><span>亥</span>
@@ -325,8 +300,7 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
       <p class="arrow">↘ 子 → 丑 → 寅 で消える</p>
       <p>② <strong>同じ干支3つ</strong>、または<strong>十二支の順に3つ</strong>で消えます。逆順も、戌→亥→子のような一周も有効です。</p>
       <p>③ 自分の干支が消えると、隣の猫も一緒に消えて高得点。手詰まりなら「猫けし」で盤面の猫をまとめて消せます（1匹50点）。<strong>1ゲーム2回まで</strong>。</p>
-      <p>④ <strong>◇の交点</strong>を押すと4駒が浮いて回転。もう一度軸を押すか「収める」で戻します。</p>
-      <p>⑤ 制限時間は<strong>3分</strong>。時間内に<strong>何枚消せるか</strong>を競います。</p>
+      <p>④ 制限時間は<strong>3分</strong>。時間内に<strong>何枚消せるか</strong>を競います。</p>
       <button class="hanko" id="btnHow">干支を選ぶ</button>
     </div>
   </section>
@@ -339,24 +313,15 @@ canvas{display:block;border-radius:2px;touch-action:none;box-shadow:inset 0 0 0 
 
   <section class="screen" id="game">
     <div class="hud">
-      <div class="box timer" id="hudTime" role="timer" aria-live="polite" aria-atomic="true">
-        <div class="lb">残り時間 <span class="limit">3分</span></div>
-        <div class="v" id="vTime">3:00</div>
-        <div class="timer-track" aria-hidden="true"><span class="timer-fill" id="timeBar"></span></div>
-      </div>
+      <div class="box" id="hudTime"><div class="lb">のこり</div><div class="v" id="vTime">3:00</div></div>
       <div class="box"><div class="lb">消した</div><div class="v" id="vCleared">0</div></div>
       <div class="box"><div class="lb">猫</div><div class="v" id="vCats">0</div></div>
       <div class="box me"><div class="lb">あなた</div><div class="v" id="vMe">🐯寅</div></div>
       <button class="box snd" id="btnSnd" aria-label="BGMと効果音のオンオフ">🔔</button>
     </div>
     <div id="wrap"><div class="garan" id="garan"><canvas id="cv"></canvas></div></div>
-    <div class="ctrl">
-      <button type="button" id="bL" disabled aria-label="左にまわす">⟲ 左</button>
-      <button type="button" id="bOK" class="mid" disabled>収める</button>
-      <button type="button" id="bR" disabled aria-label="右にまわす">右 ⟳</button>
-    </div>
     <div class="foot">
-      <p class="rule">縦横斜めに交換。◇で4駒を回転。3つそろえて消す。<b id="ruleMe">寅</b>の隣の猫も消える。</p>
+      <p class="rule">縦横斜めに交換。3つそろえて消す。<b id="ruleMe">寅</b>の隣の猫も消える。</p>
       <button class="rescue" id="btnRescue" disabled>猫けし<br><span id="vRescue">あと2回</span></button>
       <button class="quit" id="btnQuit">やめる</button>
     </div>
@@ -393,8 +358,7 @@ const ETO = [
   ['午','🐴','うま','#b93c2c'], ['未','🐑','ひつじ','#cdbf9a'], ['申','🐵','さる','#a86234'],
   ['酉','🐔','とり','#b23a5e'], ['戌','🐶','いぬ','#4e6fa3'], ['亥','🐗','い','#5a6b3a']
 ];
-const COLS = 9, ROWS = 12, CAT = -1, TIME = 180, CAT_RATE = 0.09;
-const ETO_COUNT = 12; // 1ゲームで出現する干支は常に12種すべて（猫は別確率）
+const COLS = 9, ROWS = 12, CAT = -1, TIME = 180, CAT_RATE = 0.09, KINDS = 12;
 const RANK = [600, 450, 300, 150];   // 消した枚数のしきい値（神域／達人／一人前／端数）
 // 根拠（WebKit 390×844・3分の自動プレイ実測）: 即断ボット=294手/1380枚、1.2秒考えるボット=104手/450枚。1手あたり約4.3枚
 const ETO_SPR = bakeEtoSprites(160);
@@ -405,29 +369,12 @@ const $ = id => document.getElementById(id);
 const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ---------- storage ----------
-const BEST_KEY = 'tg.262.best-cleared';
-function loadBest(){
-  try{
-    const v = localStorage.getItem(BEST_KEY) || localStorage.getItem('tg.305.best-cleared');
-    return v ? +v : 0;
-  }catch(e){ return 0 }
-}
+const BEST_KEY = 'tg.262.best-cleared';   // 3分で消した枚数。旧 etokeshi_best（点数）とは別指標なので別キー
+function loadBest(){ try{ return +localStorage.getItem(BEST_KEY) || 0 }catch(e){ return 0 } }
 function saveBest(v){ try{ localStorage.setItem(BEST_KEY, v) }catch(e){} }
-function loadMe(){
-  try{
-    const v = localStorage.getItem('etokeshi_me');
-    if(v !== null) return +v;
-    const alt = localStorage.getItem('tg.305.me');
-    return alt === null ? null : +alt;
-  }catch(e){ return null }
-}
+function loadMe(){ try{ const v = localStorage.getItem('etokeshi_me'); return v === null ? null : +v }catch(e){ return null } }
 function saveMe(v){ try{ localStorage.setItem('etokeshi_me', v) }catch(e){} }
-function loadMute(){
-  try{
-    if(localStorage.getItem('tg.262.mute') === '1') return true;
-    return localStorage.getItem('tg.305.mute') === '1';
-  }catch(e){ return false }
-}
+function loadMute(){ try{ return localStorage.getItem('tg.262.mute') === '1' }catch(e){ return false } }
 function saveMute(v){ try{ localStorage.setItem('tg.262.mute', v ? '1' : '0') }catch(e){} }
 
 // ---------- sound ----------
@@ -565,10 +512,7 @@ const sfx = {
   tick: () => tone(1180, 1180, .05, 'square', .09),
   nya: () => { tone(900, 520, .22, 'sine', .14); setTimeout(()=>tone(700, 1000, .12, 'sine', .08), 90) },
   bad: () => tone(200, 150, .12, 'square', .05),
-  swap: () => tone(360, 420, .05, 'sine', .05),
-  lift: () => tone(300, 600, .12, 'sine', .08),
-  drop: () => tone(500, 220, .12, 'sine', .08),
-  turn: d => tone(d > 0 ? 440 : 520, d > 0 ? 520 : 440, .08, 'sine', .06)
+  swap: () => tone(360, 420, .05, 'sine', .05)
 };
 function buzz(ms){ if(!muted && navigator.vibrate) try{ navigator.vibrate(ms) }catch(e){} }
 function refreshSnd(){ $('btnSnd').textContent = muted ? '🔇' : '🔔'; $('btnSnd').classList.toggle('off', muted) }
@@ -649,125 +593,43 @@ bindTap($('btnHow'), () => show('select'));
 bindTap($('btnQuit'), () => { running = false; refreshBestTitle(); show('title'); syncBgmVol(); });
 bindTap($('btnAgain'), () => { $('result').classList.remove('on'); startGame() });
 bindTap($('btnReselect'), () => { $('result').classList.remove('on'); show('select') });
-bindTap($('bL'), () => rotate(-1));
-bindTap($('bR'), () => rotate(1));
-bindTap($('bOK'), () => commit());
 
 // ---------- game state ----------
 const cv = $('cv'), ctx = cv.getContext('2d'), garan = $('garan');
-let my = loadMe() ?? 2, kinds = [], spawnBag = [], etoSeen = new Uint8Array(ETO_COUNT), grid = [], tiles = [], parts = [], floats = [], waves = [], beams = [];
+let my = loadMe() ?? 2, kinds = [], grid = [], tiles = [], parts = [], floats = [], waves = [], beams = [];
 let score = 0, timeLeft = TIME, cleared = 0, cats = 0, rescues = 2, stuck = false, busy = false, sel = null, running = false, ended = false, cs = 48, dpr = 1;
 // 迷ったら光らせる：最後に消してからの経過秒。HINT_SEC で光り出す
 const HINT_SEC = 30;
 let idle = 0, hintCells = [];
 let uid = 0, shake = 0, flash = 0, hs = 0, bg = null;
-let axis = null, lifted = false, lift = 0, ang = 0, orig = [], pick = null;
 
-function resetKinds(){ kinds = ETO.map((_, i) => i) }
-function resetEtoSeen(){ etoSeen.fill(0) }
-function noteKind(k){ if(k >= 0 && k < ETO_COUNT) etoSeen[k] = 1 }
-function scanBoardKinds(){
-  for(let r = 0; r < ROWS; r++) for(let c = 0; c < COLS; c++){
-    const t = grid[r][c]; if(t) noteKind(t.k);
-  }
+function pickKinds(){
+  const others = ETO.map((_, i) => i).filter(i => i !== my);
+  for(let i = others.length - 1; i > 0; i--){ const j = Math.random()*(i+1)|0; [others[i], others[j]] = [others[j], others[i]] }
+  kinds = [my, ...others.slice(0, KINDS - 1)];
 }
-
-// 補充は袋方式。未登場の干支は優先して出す（1ゲームで見えない種を防ぐ）
-function refillSpawnBag(per = 3){
-  spawnBag = [];
-  for(let k = 0; k < ETO_COUNT; k++) for(let i = 0; i < per; i++) spawnBag.push(k);
-  for(let i = spawnBag.length - 1; i > 0; i--){
-    const j = Math.random() * (i + 1) | 0;
-    [spawnBag[i], spawnBag[j]] = [spawnBag[j], spawnBag[i]];
-  }
-}
-function previewEtoKind(){
-  const missing = [];
-  for(let k = 0; k < ETO_COUNT; k++) if(!etoSeen[k]) missing.push(k);
-  if(missing.length) return missing[Math.random() * missing.length | 0];
-  if(!spawnBag.length) refillSpawnBag();
-  return spawnBag[Math.random() * spawnBag.length | 0];
-}
-function consumeEtoKind(k){
-  if(!isEtoK(k)) return;
-  let i = spawnBag.indexOf(k);
-  if(i < 0 && !spawnBag.length) refillSpawnBag();
-  i = spawnBag.indexOf(k);
-  if(i >= 0) spawnBag.splice(i, 1);
-  else if(spawnBag.length) spawnBag.pop();
-  noteKind(k);
-}
-/** 袋から取るのは配置が決まったときだけ（リトライで袋が減らない・未登場が潰れない） */
-function pickKindForCell(r, c){
-  for(let guard = 0; guard < 80; guard++){
-    const k = Math.random() < CAT_RATE ? CAT : previewEtoKind();
-    if(k === CAT || !cellRejected(r, c, k)){
-      if(isEtoK(k)) consumeEtoKind(k);
-      return k;
-    }
-  }
-  const k = Math.random() < CAT_RATE ? CAT : previewEtoKind();
-  if(isEtoK(k) && !cellRejected(r, c, k)) consumeEtoKind(k);
-  return k;
-}
-
-function cellRejected(r, c, k){
-  if(k === CAT) return false;
-  return wouldTripleAt(r, c, k);
-}
+function randKind(){ return Math.random() < CAT_RATE ? CAT : kinds[Math.random()*kinds.length|0] }
 function newTile(k, r, c, startY){
   const t = { k, r, c, x: c, y: startY ?? r, s: 1, dying: false, age: 0, fl: 0, rot: 0, sq: 0, fall: false, id: uid++ };
   tiles.push(t); return t;
 }
 
 function makeBoard(){
-  tiles = [];
-  const coords = [];
-  for(let r = 0; r < ROWS; r++) for(let c = 0; c < COLS; c++) coords.push({ r, c });
-  for(let i = coords.length - 1; i > 0; i--){
-    const j = Math.random() * (i + 1) | 0;
-    [coords[i], coords[j]] = [coords[j], coords[i]];
-  }
-  const anchor = coords.slice(0, ETO_COUNT);
-  const rest = coords.slice(ETO_COUNT);
-
-  let built = false;
-  for(let attempt = 0; attempt < 80 && !built; attempt++){
-    grid = [];
-    for(let r = 0; r < ROWS; r++) grid.push(new Array(COLS).fill(null));
-    tiles = [];
-    const order = ETO.map((_, i) => i);
-    for(let i = order.length - 1; i > 0; i--){
-      const j = Math.random() * (i + 1) | 0;
-      [order[i], order[j]] = [order[j], order[i]];
-    }
-    let fail = false;
-    for(let i = 0; i < ETO_COUNT; i++){
-      const { r, c } = anchor[i], k = order[i];
-      if(cellRejected(r, c, k)){ fail = true; break; }
-      grid[r][c] = newTile(k, r, c, r - ROWS - 1);
-    }
-    if(fail) continue;
-    refillSpawnBag(4);
-    for(const { r, c } of rest){
-      const k = pickKindForCell(r, c);
-      grid[r][c] = newTile(k, r, c, r - ROWS - 1);
-    }
-    if(findMatches().size === 0 && hasMoves()) built = true;
-  }
-
-  if(!built){
-    tiles = []; grid = [];
-    refillSpawnBag();
-    for(let r = 0; r < ROWS; r++){
-      grid.push([]);
-      for(let c = 0; c < COLS; c++){
-        const k = pickKindForCell(r, c);
-        grid[r].push(newTile(k, r, c, r - ROWS - 1));
-      }
+  tiles = []; grid = [];
+  for(let r = 0; r < ROWS; r++){
+    grid.push([]);
+    for(let c = 0; c < COLS; c++){
+      let k, guard = 0;
+      do{
+        k = randKind(); guard++;
+      }while(k !== CAT && guard < 30 && (
+        wouldTripleAt(r, c, k) ||
+        (c >= 2 && grid[r][c-1].k === k && grid[r][c-2].k === k) ||
+        (r >= 2 && grid[r-1][c].k === k && grid[r-2][c].k === k)
+      ));
+      grid[r].push(newTile(k, r, c, r - ROWS - 1));
     }
   }
-  scanBoardKinds();
   if(!hasMoves()) shuffle();
 }
 
@@ -783,19 +645,10 @@ function trioMatch(a, b, c){
 }
 function wouldTripleAt(r, c, k){
   if(k === CAT) return false;
-  for(const [dr, dc] of [[0,1],[1,0],[1,1],[1,-1]]){
-    for(let o = -2; o <= 0; o++){
-      const vals = [];
-      for(let i = 0; i < 3; i++){
-        const t = o + i;
-        const rr = r + t * dr, cc = c + t * dc;
-        if(rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS){ vals = null; break; }
-        const v = t === 0 ? k : grid[rr][cc]?.k;
-        if(v === undefined || v === null){ vals = null; break; }
-        vals.push(v);
-      }
-      if(vals && vals.length === 3 && isEtoK(vals[0]) && isEtoK(vals[1]) && isEtoK(vals[2]) && trioMatch(vals[0], vals[1], vals[2])) return true;
-    }
+  for(const [dr,dc] of [[0,1],[1,0],[1,1],[1,-1]]){
+    const a = grid[r-2*dr]?.[c-2*dc]?.k;
+    const b = grid[r-dr]?.[c-dc]?.k;
+    if(a !== undefined && b !== undefined && trioMatch(a,b,k)) return true;
   }
   return false;
 }
@@ -849,69 +702,24 @@ function findHint(){
   return [];
 }
 
-// ---------- 軸の回転（交点の4駒） ----------
-function groupCells(){ const {R, C} = axis; return [[R-1,C-1],[R-1,C],[R,C],[R,C-1]] }
-function inGroup(t){ return axis && lift > .01 && (t.r === axis.R-1 || t.r === axis.R) && (t.c === axis.C-1 || t.c === axis.C) }
-function setButtons(){
-  const on = lifted && !busy && timeLeft > 0;
-  ['bL','bOK','bR'].forEach(id => { const el = $(id); if(el) el.disabled = !on });
-}
-
-function doLift(R, C){
-  if(busy || stuck || timeLeft <= 0) return;
-  axis = { R, C }; lifted = true; ang = 0; pick = null; sel = null;
-  orig = groupCells().map(([r, c]) => grid[r][c]);
-  sfx.lift(); setButtons(); hud();
-}
-function rotate(dir){
-  if(!lifted || busy) return;
-  const cells = groupCells(), ts = cells.map(([r,c]) => grid[r][c]);
-  cells.forEach(([r, c], i) => {
-    const t = ts[(i - dir + 4) % 4];
-    grid[r][c] = t; t.r = r; t.c = c; t.x = c; t.y = r;
-  });
-  ang -= dir * Math.PI / 2;
-  pick = null;
-  sfx.turn(dir);
-}
-async function commit(){
-  if(!lifted || busy) return;
-  lifted = false; busy = true; setButtons(); sfx.drop();
-  await waitSettle();
-  const changed = axis && groupCells().some(([r, c], i) => grid[r][c] !== orig[i]);
-  pick = null; idle = 0; hintCells = [];
-  if(changed){
-    stuck = false; hud();
-    const m = findMatches();
-    if(m.size) await resolveMatches(m);
-  }
-  axis = null; busy = false; setButtons(); hud();
-}
-
 function shuffle(){
   for(let tries = 0; tries < 60; tries++){
     const ks = tiles.filter(t => !t.dying).map(t => t.k);
     for(let i = ks.length - 1; i > 0; i--){ const j = Math.random()*(i+1)|0; [ks[i], ks[j]] = [ks[j], ks[i]] }
     let n = 0;
     for(let r = 0; r < ROWS; r++) for(let c = 0; c < COLS; c++) grid[r][c].k = ks[n++];
-    if(findMatches().size === 0 && hasMoves()){
-      scanBoardKinds();
-      return true;
-    }
+    if(findMatches().size === 0 && hasMoves()) return true;
   }
   // 猫が多すぎて詰んだら、猫に少しどいてもらう
   const catTiles = tiles.filter(t => t.k === CAT);
-  catTiles.slice(0, 4).forEach(t => { t.k = pickKindForCell(t.r, t.c) });
+  catTiles.slice(0, 4).forEach(t => t.k = kinds[Math.random()*kinds.length|0]);
   floatText('猫がどいてくれた', COLS/2, ROWS/2, '#f1e8d4');
   return shuffle();
 }
 
 // ---------- animation ----------
 let lastT = performance.now(), settleWaiters = [];
-function settled(){
-  return Math.abs(ang) < .001 && lift < .01 &&
-    tiles.every(t => !t.dying && Math.abs(t.x - t.c) < .001 && Math.abs(t.y - t.r) < .001);
-}
+function settled(){ return tiles.every(t => !t.dying && Math.abs(t.x - t.c) < .001 && Math.abs(t.y - t.r) < .001) }
 function waitSettle(){ return new Promise(res => settleWaiters.push(res)) }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -919,11 +727,6 @@ function step(now){
   const raw = Math.min(.05, (now - lastT) / 1000); lastT = now;
   let dt = raw;
   if(hs > 0){ hs -= raw; dt = 0 }          // ヒットストップ＝盤だけ一瞬止める
-
-  const liftTarget = lifted ? 1 : 0;
-  lift += (liftTarget - lift) * Math.min(1, dt * 16);
-  if(Math.abs(liftTarget - lift) < .005) lift = liftTarget;
-  ang -= Math.sign(ang) * Math.min(Math.abs(ang), dt * 11);
 
   for(const t of tiles){
     if(t.dying){
@@ -964,7 +767,7 @@ function step(now){
     if(timeLeft <= 0){ timeLeft = 0; if(!busy) endGame() }
   }
   // 迷っている時間を数える：手を動かせる状態で HINT_SEC 秒止まったらキラキラで教える
-  if(running && !busy && !stuck && !lifted && timeLeft > 0 && !$('result').classList.contains('on')){
+  if(running && !busy && !stuck && timeLeft > 0 && !$('result').classList.contains('on')){
     idle += raw;
     if(idle >= HINT_SEC && !hintCells.length) hintCells = findHint();
   }
@@ -1100,44 +903,7 @@ function draw(now){
   }
 
   const pulse = .5 + .5*Math.sin(now/260);
-  const rest = [], group = [];
-  for(const t of tiles) (inGroup(t) && !t.dying ? group : rest).push(t);
-  for(const t of rest) drawTile(t, pulse, 0);
-
-  if(!busy){
-    ctx.fillStyle = 'rgba(212,168,67,.38)';
-    for(let r = 1; r < ROWS; r++) for(let c = 1; c < COLS; c++){
-      if(axis && axis.R === r && axis.C === c && lift > .01) continue;
-      const x = c*cs, y = r*cs, d = cs*.1;
-      ctx.beginPath(); ctx.moveTo(x, y-d); ctx.lineTo(x+d, y); ctx.lineTo(x, y+d); ctx.lineTo(x-d, y); ctx.fill();
-    }
-  }
-
-  if(axis && lift > .01){
-    const ax = axis.C*cs, ay = axis.R*cs, L = lift;
-    ctx.save();
-    ctx.fillStyle = `rgba(0,0,0,${.42*L})`;
-    rr(ax - cs - 2 + 5*L, ay - cs - 2 + 7*L, cs*2 + 4, cs*2 + 4, cs*.2); ctx.fill();
-    ctx.translate(ax, ay - 5*L); ctx.scale(1 + .07*L, 1 + .07*L); ctx.rotate(ang);
-    ctx.strokeStyle = `rgba(212,168,67,${.88*L})`; ctx.lineWidth = 3;
-    rr(-cs - 2, -cs - 2, cs*2 + 4, cs*2 + 4, cs*.2); ctx.stroke();
-    ctx.translate(-ax, -ay);
-    for(const t of group) drawTile(t, pulse, L);
-    ctx.restore();
-    ctx.save(); ctx.translate(ax, ay - 5*L);
-    const ar = cs*.22*(.55 + .45*L);
-    ctx.beginPath(); ctx.arc(0, 0, ar, 0, TAU);
-    ctx.fillStyle = '#d4a843'; ctx.shadowColor = 'rgba(212,168,67,.85)'; ctx.shadowBlur = lifted ? 8 + 6*pulse : 3; ctx.fill();
-    ctx.shadowBlur = 0; ctx.lineWidth = 2; ctx.strokeStyle = '#8e2a1e'; ctx.stroke();
-    ctx.fillStyle = '#2b2520'; ctx.font = `${ar*1.1}px "Yuji Syuku",serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('軸', 0, ar*.04);
-    if(lifted){
-      ctx.strokeStyle = `rgba(246,241,230,${.35 + .28*pulse})`; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0, 0, cs*1.22, -Math.PI*.15, Math.PI*.15); ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, 0, cs*1.22, Math.PI*.85, Math.PI*1.15); ctx.stroke();
-    }
-    ctx.restore();
-  }
+  for(const t of tiles) drawTile(t, pulse);
 
   if(hintCells.length){
     const k = RM ? .6 : .5 + .5*Math.sin(now/200);
@@ -1193,11 +959,10 @@ function draw(now){
   ctx.globalAlpha = 1;
 }
 
-function drawTile(t, pulse, liftL){
+function drawTile(t, pulse){
   const cx = (t.x+.5)*cs, cy = (t.y+.5)*cs, R = cs*.46;
   if(cy < -cs) return;
   ctx.save(); ctx.translate(cx, cy);
-  if(liftL) ctx.rotate(-ang);
   const s = Math.max(0, t.s);
   ctx.scale(s * (1 + t.sq*.20), s * (1 - t.sq*.24));
   if(t.rot) ctx.rotate(t.rot);
@@ -1251,7 +1016,7 @@ function drawTile(t, pulse, liftL){
     ctx.beginPath(); ctx.arc(0, 0, R*1.3, 0, TAU);
     ctx.fillStyle = `rgba(255,248,224,${t.fl*.85})`; ctx.fill();
   }
-  if((liftL && pick && pick.r === t.r && pick.c === t.c) || (!liftL && !lifted && sel && sel.r === t.r && sel.c === t.c && !t.dying)){
+  if(sel && sel.r === t.r && sel.c === t.c && !t.dying){
     ctx.lineWidth = 3; ctx.strokeStyle = '#f2e9d6';
     rr(-R-4, -R-4, R*2+8, R*2+8, 3); ctx.stroke();
   }
@@ -1259,30 +1024,19 @@ function drawTile(t, pulse, liftL){
 }
 
 // ---------- HUD ----------
-function formatTime(sec){
-  const s = Math.max(0, Math.ceil(sec));
-  return (s/60|0) + ':' + String(s%60).padStart(2, '0');
-}
 function hud(){
   const s = Math.max(0, Math.ceil(timeLeft));
-  const tEl = $('hudTime'), bar = $('timeBar');
-  $('vTime').textContent = formatTime(timeLeft);
-  if(bar) bar.style.width = (Math.max(0, timeLeft) / TIME * 100).toFixed(2) + '%';
-  tEl.classList.toggle('warn', timeLeft <= 60 && timeLeft > 30);
-  tEl.classList.toggle('low', timeLeft <= 30 && timeLeft > 10);
-  tEl.classList.toggle('critical', timeLeft <= 10 && timeLeft > 0);
-  tEl.setAttribute('aria-label', `残り時間 ${formatTime(timeLeft)}、3分制限`);
+  $('vTime').textContent = (s/60|0) + ':' + String(s%60).padStart(2, '0');
   $('vCleared').textContent = cleared; $('vCats').textContent = cats;
+  $('hudTime').classList.toggle('low', timeLeft <= 30);
   $('vRescue').textContent = `あと${rescues}回`;
-  $('btnRescue').disabled = !stuck || rescues <= 0 || busy || lifted || timeLeft <= 0;
-  setButtons();
+  $('btnRescue').disabled = !stuck || rescues <= 0 || busy || timeLeft <= 0;
 }
 
 // ---------- flow ----------
 function startGame(){
   unlock();
-  resetKinds(); resetEtoSeen(); refillSpawnBag(); score = 0; timeLeft = TIME; cleared = 0; cats = 0; rescues = 2; stuck = false; busy = false; sel = null; ended = false;
-  axis = null; lifted = false; lift = 0; ang = 0; orig = []; pick = null;
+  pickKinds(); score = 0; timeLeft = TIME; cleared = 0; cats = 0; rescues = 2; stuck = false; busy = false; sel = null; ended = false;
   idle = 0; hintCells = [];
   parts = []; floats = []; waves = []; beams = []; shake = 0; flash = 0; hs = 0;
   $('vMe').textContent = ETO[my][0] + '・' + ETO[my][2];
@@ -1295,7 +1049,7 @@ function startGame(){
 }
 
 async function trySwap(a, b){
-  if(busy || lifted || timeLeft <= 0) return;
+  if(busy || timeLeft <= 0) return;
   busy = true; sel = null;
   swapGrid(a, b); sfx.swap();
   await waitSettle();
@@ -1405,10 +1159,7 @@ function gravity(){
       const t = grid[r][c];
       if(t){ grid[r][c] = null; grid[w][c] = t; t.r = w; w--; }
     }
-    for(let r = w; r >= 0; r--){
-      const k = pickKindForCell(r, c);
-      grid[r][c] = newTile(k, r, c, r - (w + 1));
-    }
+    for(let r = w; r >= 0; r--) grid[r][c] = newTile(randKind(), r, c, r - (w + 1));
   }
 }
 
@@ -1447,75 +1198,39 @@ function cellAt(e){
   return bestD <= (cs * CELL_HIT) ** 2 ? best : null;
 }
 
-function cellPos(e){
-  const b = cv.getBoundingClientRect();
-  return { x: (e.clientX - b.left) / cs, y: (e.clientY - b.top) / cs };
-}
-function nearestAxis(p){
-  const C = Math.min(COLS - 1, Math.max(1, Math.round(p.x))), R = Math.min(ROWS - 1, Math.max(1, Math.round(p.y)));
-  return { R, C, d: Math.hypot(p.x - C, p.y - R) };
+function endPress(e){
+  if(!press || (e && press.id != null && e.pointerId !== press.id)) return;
+  const p = press; press = null;
+  if(sel && Math.max(Math.abs(sel.r - p.r), Math.abs(sel.c - p.c)) === 1){ trySwap(sel, p); sel = null; return }
+  if(sel && sel.r === p.r && sel.c === p.c) sel = null;
+  else sel = { r: p.r, c: p.c };
+  buzz(8);
 }
 
 cv.addEventListener('pointerdown', e => {
   if(e.button !== 0 && e.pointerType === 'mouse') return;
   unlock();
-  if(busy || stuck || timeLeft <= 0) return;
-  try{ cv.setPointerCapture(e.pointerId) }catch(err){}
-  if(lifted){
-    const p = cellPos(e);
-    const d = Math.hypot(p.x - axis.C, p.y - axis.R);
-    const dx = p.x - axis.C, dy = p.y - axis.R;
-    press = { onAxis: d < .4, a0: d > .35 ? Math.atan2(dy, dx) : null, rotated: false, id: e.pointerId, p };
+  if(busy || stuck) return;
+  const p = cellAt(e); if(!p) return;
+  if(sel && Math.max(Math.abs(sel.r - p.r), Math.abs(sel.c - p.c)) === 1){
+    trySwap(sel, p); sel = null; press = null;
+    try{ cv.setPointerCapture(e.pointerId) }catch(err){}
     return;
   }
-  const p = cellPos(e);
-  const n = nearestAxis(p);
-  if(n.d < .3){ sel = null; doLift(n.R, n.C); press = { justLifted: true, a0: null, rotated: false, id: e.pointerId }; return }
-  const cell = cellAt(e);
-  if(!cell) return;
-  if(sel && Math.max(Math.abs(sel.r - cell.r), Math.abs(sel.c - cell.c)) === 1){
-    trySwap(sel, cell); sel = null; press = null; return;
-  }
-  press = { ...cell, x: e.clientX, y: e.clientY, id: e.pointerId };
+  press = { ...p, x: e.clientX, y: e.clientY, id: e.pointerId };
+  try{ cv.setPointerCapture(e.pointerId) }catch(err){}
 });
 cv.addEventListener('pointermove', e => {
   if(!press || busy || e.pointerId !== press.id) return;
-  if(!lifted && press.r != null){
-    const dx = e.clientX - press.x, dy = e.clientY - press.y;
-    if(Math.hypot(dx, dy) < cs * SWIPE_MIN) return;
-    const b = { r: press.r + (Math.abs(dy) > cs*SWIPE_MIN ? Math.sign(dy) : 0),
-      c: press.c + (Math.abs(dx) > cs*SWIPE_MIN ? Math.sign(dx) : 0) };
-    const a = { r: press.r, c: press.c }; press = null;
-    if(b.r >= 0 && b.r < ROWS && b.c >= 0 && b.c < COLS) trySwap(a, b);
-    return;
-  }
-  if(!lifted) return;
-  const p = cellPos(e), dx = p.x - axis.C, dy = p.y - axis.R;
-  if(Math.hypot(dx, dy) < .35) return;
-  const a = Math.atan2(dy, dx);
-  if(press.a0 === null){ press.a0 = a; return }
-  let d = a - press.a0;
-  while(d > Math.PI) d -= Math.PI*2;
-  while(d < -Math.PI) d += Math.PI*2;
-  if(d > .75){ rotate(1); press.a0 = a; press.rotated = true }
-  else if(d < -.75){ rotate(-1); press.a0 = a; press.rotated = true }
+  const dx = e.clientX - press.x, dy = e.clientY - press.y;
+  if(Math.hypot(dx, dy) < cs * SWIPE_MIN) return;
+  const b = { r: press.r + (Math.abs(dy) > cs*SWIPE_MIN ? Math.sign(dy) : 0),
+    c: press.c + (Math.abs(dx) > cs*SWIPE_MIN ? Math.sign(dx) : 0) };
+  const a = { r: press.r, c: press.c }; press = null;
+  if(b.r >= 0 && b.r < ROWS && b.c >= 0 && b.c < COLS) trySwap(a, b);
 });
-cv.addEventListener('pointerup', e => {
-  if(!press || e.pointerId !== press.id) return;
-  const pr = press; press = null;
-  if(pr.r != null && !lifted){
-    if(sel && Math.max(Math.abs(sel.r - pr.r), Math.abs(sel.c - pr.c)) === 1){ trySwap(sel, pr); sel = null; return }
-    if(sel && sel.r === pr.r && sel.c === pr.c) sel = null;
-    else sel = { r: pr.r, c: pr.c };
-    buzz(8);
-    return;
-  }
-  if(!lifted || pr.rotated || pr.justLifted) return;
-  if(pr.onAxis){ commit(); return }
-  const n = nearestAxis(cellPos(e));
-  if(n.d < .3 && axis && (n.R !== axis.R || n.C !== axis.C)) commit().then(() => doLift(n.R, n.C));
-});
-cv.addEventListener('pointercancel', e => { if(press && e.pointerId === press.id) press = null });
+cv.addEventListener('pointerup', endPress);
+cv.addEventListener('pointercancel', endPress);
 
 requestAnimationFrame(step);
 })();
