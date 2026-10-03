@@ -681,22 +681,35 @@ function refillSpawnBag(per = 3){
     [spawnBag[i], spawnBag[j]] = [spawnBag[j], spawnBag[i]];
   }
 }
-function drawEtoFromBag(){
+function previewEtoKind(){
   const missing = [];
   for(let k = 0; k < ETO_COUNT; k++) if(!etoSeen[k]) missing.push(k);
-  if(missing.length){
-    const k = missing[Math.random() * missing.length | 0];
-    const i = spawnBag.indexOf(k);
-    if(i >= 0) spawnBag.splice(i, 1);
-    noteKind(k);
-    return k;
-  }
+  if(missing.length) return missing[Math.random() * missing.length | 0];
   if(!spawnBag.length) refillSpawnBag();
-  const k = spawnBag.pop();
+  return spawnBag[Math.random() * spawnBag.length | 0];
+}
+function consumeEtoKind(k){
+  if(!isEtoK(k)) return;
+  let i = spawnBag.indexOf(k);
+  if(i < 0 && !spawnBag.length) refillSpawnBag();
+  i = spawnBag.indexOf(k);
+  if(i >= 0) spawnBag.splice(i, 1);
+  else if(spawnBag.length) spawnBag.pop();
   noteKind(k);
+}
+/** 袋から取るのは配置が決まったときだけ（リトライで袋が減らない・未登場が潰れない） */
+function pickKindForCell(r, c){
+  for(let guard = 0; guard < 80; guard++){
+    const k = Math.random() < CAT_RATE ? CAT : previewEtoKind();
+    if(k === CAT || !cellRejected(r, c, k)){
+      if(isEtoK(k)) consumeEtoKind(k);
+      return k;
+    }
+  }
+  const k = Math.random() < CAT_RATE ? CAT : previewEtoKind();
+  if(isEtoK(k) && !cellRejected(r, c, k)) consumeEtoKind(k);
   return k;
 }
-function randKind(){ return Math.random() < CAT_RATE ? CAT : drawEtoFromBag() }
 
 function cellRejected(r, c, k){
   if(k === CAT) return false;
@@ -737,10 +750,7 @@ function makeBoard(){
     if(fail) continue;
     refillSpawnBag(4);
     for(const { r, c } of rest){
-      let k, guard = 0;
-      do{
-        k = randKind(); guard++;
-      }while(k !== CAT && guard < 40 && cellRejected(r, c, k));
+      const k = pickKindForCell(r, c);
       grid[r][c] = newTile(k, r, c, r - ROWS - 1);
     }
     if(findMatches().size === 0 && hasMoves()) built = true;
@@ -752,10 +762,7 @@ function makeBoard(){
     for(let r = 0; r < ROWS; r++){
       grid.push([]);
       for(let c = 0; c < COLS; c++){
-        let k, guard = 0;
-        do{
-          k = randKind(); guard++;
-        }while(k !== CAT && guard < 30 && cellRejected(r, c, k));
+        const k = pickKindForCell(r, c);
         grid[r].push(newTile(k, r, c, r - ROWS - 1));
       }
     }
@@ -894,7 +901,7 @@ function shuffle(){
   }
   // 猫が多すぎて詰んだら、猫に少しどいてもらう
   const catTiles = tiles.filter(t => t.k === CAT);
-  catTiles.slice(0, 4).forEach(t => { t.k = drawEtoFromBag() });
+  catTiles.slice(0, 4).forEach(t => { t.k = pickKindForCell(t.r, t.c) });
   floatText('猫がどいてくれた', COLS/2, ROWS/2, '#f1e8d4');
   return shuffle();
 }
@@ -1399,10 +1406,7 @@ function gravity(){
       if(t){ grid[r][c] = null; grid[w][c] = t; t.r = w; w--; }
     }
     for(let r = w; r >= 0; r--){
-      let k, guard = 0;
-      do{
-        k = randKind(); guard++;
-      }while(k !== CAT && guard < 40 && cellRejected(r, c, k));
+      const k = pickKindForCell(r, c);
       grid[r][c] = newTile(k, r, c, r - (w + 1));
     }
   }
