@@ -968,6 +968,7 @@ var cp=0,rsBtn=$('rsBtn');                                    /* 再開地点：
 var runChip=0,banked=0,chipAcc=0,rateMul=1,chipMul=1,runMul=1,combo=0,comboT=0,hangOpen=false;
 function up(k){return (UPG[TYPE]&&UPG[TYPE][k])||0}
 function fmul(){return 1+0.1*up(0)}
+var EQN=['','bar','mag','tj','rep'],EQL={bar:'バリア',mag:'マグネット',tj:'3段ジャンプ',rep:'リペア'};   /* 画面上部に出す装備名 */
 function bankIn(extra){var g=runChip-banked+(extra||0);banked=runChip;if(g>0){bank+=g;LS.set('bank',bank)}return g}
 function mhp(){return maxHp+STAT[TYPE].hp+(up(1)>=1?1:0)+(up(1)>=3?1:0)}
 var TYPE=Math.max(0,Math.min(3,+LS.get('robo',0)||0));
@@ -1033,7 +1034,7 @@ function hangRender(){
   h+='<div class="hcap">装備（1つだけ付けられる。全機体共通）</div><div class="heq">';
   EQS.forEach(function(q){
     var own=EQO.indexOf(q.id)>=0,on=EQ===q.id;
-    h+='<button data-a="eq" data-id="'+q.id+'" class="'+(on?'on':own?'ok':bank>=q.c?'ok':'no')+'"><em>'+(on?'装備中':own?'所持':q.c+' チップ')+'</em>'+q.n+'<small>'+q.d+'</small></button>';
+    h+='<button data-a="eq" data-id="'+q.id+'" class="'+(on?'on':own?'ok':bank>=q.c?'ok':'no')+'"><em>'+(on?'装備中':own?'タップで装備':q.c+' チップ')+'</em>'+q.n+'<small>'+q.d+'</small></button>';
   });
   hangEl.innerHTML=h+'</div>';
 }
@@ -1049,7 +1050,7 @@ hangEl.addEventListener('pointerdown',function(e){
     else tone('square',160,120,0.1,0.1);
   }else if(a==='eq'){
     q=EQS.filter(function(x){return x.id===t.getAttribute('data-id')})[0];
-    if(EQO.indexOf(q.id)>=0){if(mode==='play'&&q.id==='bar'&&EQ!=='bar'){tone('square',160,120,0.1,0.1)}else{EQ=EQ===q.id?'':q.id;LS.set('eq',EQ);sfx.change()}}   /* バリアは面の途中で付け直しても張り直さない */
+    if(EQO.indexOf(q.id)>=0){if(mode==='play'&&q.id==='bar'&&EQ!=='bar'){tone('square',160,120,0.1,0.1)}else{EQ=q.id;LS.set('eq',EQ);sfx.change()}}       /* 所持品をタップ＝付ける（もう一度押しても外れない） */   /* バリアは面の途中で付け直しても張り直さない */
     else if(bank>=q.c){bank-=q.c;EQO.push(q.id);EQ=q.id;LS.set('bank',bank);LS.set('eqo',JSON.stringify(EQO));LS.set('eq',EQ);sfx.pick()}
     else tone('square',160,120,0.1,0.1);
   }
@@ -1658,7 +1659,8 @@ function updateRobot(dt){
   if(R.coy>0)R.coy-=dt;
   if(R.jbuf>0&&!busy){
     if(R.ground||R.coy>0){R.vy=-640*STAT[TYPE].jmp;R.ground=false;R.plat=null;R.jumps=1;R.dashT=0;R.crouch=false;R.jbuf=0;R.coy=0;puff(R.x,R.y-2,5,'#c9bdf8',110,true);sfx.jump()}
-    else if(upHit&&R.jumps<(EQ==='tj'?3:2)){R.vy=-560*STAT[TYPE].jmp;R.jumps++;R.spinT=SPIN;R.atk=null;R.dashT=0;R.jbuf=0;booms.push({x:R.x,y:R.y-4,t:0,max:.3,s:0});puff(R.x,R.y-6,4,'#ffb238',90,false);sfx.jump2()}
+    else if(upHit&&R.jumps<(EQ==='tj'?3:2)){R.vy=-560*STAT[TYPE].jmp;R.jumps++;R.spinT=SPIN;R.atk=null;R.dashT=0;R.jbuf=0;booms.push({x:R.x,y:R.y-4,t:0,max:.3,s:0});puff(R.x,R.y-6,4,'#ffb238',90,false);sfx.jump2();
+      if(R.jumps===3){booms.push({x:R.x,y:R.y-4,t:0,max:.4,s:.5});puff(R.x,R.y-6,8,'#3ee6d0',160,false);tone('square',900,1500,0.12,0.08)}}   /* 3段目は水色の輪と高い音で分かるようにする */
   }
   if(upOff&&R.vy<-240&&!R.moon)R.vy=-240;
 
@@ -2944,10 +2946,10 @@ function render(){
   if(shakeT>0){var m=shakeMag*(shakeT/shakeDur);shx=(Math.random()*2-1)*m;shy=(Math.random()*2-1)*m}else{shx=shy=0;shakeMag=0}
   drawBg();drawRobotLayer(bc);drawFg();
 
-  var sc=score(),dm=Math.floor(dist)+stage*10000+loopN*100000,i,hk=R.hp+mhp()*10,lk=TYPE*10+plv();
+  var sc=score(),dm=Math.floor(dist)+stage*10000+loopN*100000,i,hk=R.hp+mhp()*10,lk=TYPE*10+plv()+EQN.indexOf(EQ)*100;
   if(sc!==lastScore){lastScore=sc;el.score.textContent=mode==='title'?'BEST '+best:String(sc)}
   if(dm!==lastDist){lastDist=dm;el.dist.textContent=mode==='title'?'':'STAGE '+(stage+1)+'　'+Math.floor(dist)+'m'}
-  if(lk!==lastLv){lastLv=lk;nmEl.textContent=TYPES[TYPE].n+'　POW '+(plv()>=4?'MAX':'Lv'+plv())}
+  if(lk!==lastLv){lastLv=lk;nmEl.textContent=TYPES[TYPE].n+'　POW '+(plv()>=4?'MAX':'Lv'+plv())+(EQ?'　装備:'+EQL[EQ]:'')}
   if(hk!==lastHp){lastHp=hk;var s='';for(i=0;i<mhp();i++)s+='<i'+(i<R.hp?' class="on"':'')+'></i>';el.hp.innerHTML=s}
   var hv=mode==='title'||mode==='over'||paused;if(hgBtn.hidden===hv)hgBtn.hidden=!hv;
   var rv=mode==='over';if(rsBtn.hidden===rv)rsBtn.hidden=!rv;
