@@ -507,7 +507,7 @@ function pressGo(){
   if(mode==='ending'){if(endT>1.5)endingDone();return}
   if(mode==='clear'){
     if(clearT<0.8)return;
-    if(endStep){endStep=0;clearT=0.5;showOvl('NEXT LOOP','強化を1つ選べ',(loopN+2)+'周目：敵の耐久が上がる','');el.go.hidden=true;upsEl.hidden=false;markUp();return}
+    if(endStep){endStep=0;clearT=0.5;showOvl('NEXT LOOP','強化を1つ選べ',(loopN+2)+'周目：敵の耐久が上がる'+(loopN===0?'／皇帝機の先に真の敵':''),'');el.go.hidden=true;upsEl.hidden=false;markUp();return}
     pickUp(upSel);return;
   }
   if(mode==='title')startGame();
@@ -1159,7 +1159,7 @@ var STG=[
   {n:'STAGE 4  小惑星帯',boss:500},
   {n:'STAGE 5  敵旗艦',boss:550}
 ];
-var BOSSN=['GUNSHIP','CRAB TANK','FORTRESS CORE','METEOR GOLEM','DARK EMPEROR'];
+var BOSSN=['GUNSHIP','CRAB TANK','FORTRESS CORE','METEOR GOLEM','DARK EMPEROR','ECLIPSE'];
 var HINTS=[[4,'十字キー ↑ ジャンプ（空中でもう1回）／↓ しゃがむ'],[26,'A 攻撃　　B 特殊（長押しでため技）'],[62,'SELECT で機体チェンジ'],[104,'チップを集めるとパワーアップ。持ち帰れば格納庫で強化できる']],hintI=0,hintT=0,hintTxt='',tutDone=LS.get('tut','0')==='1';
 var plats=[],SKYTOP=['#03020b','#03030d','#0a0306','#070509','#0c1c24'];
 var ST={k:0,h:0,t:0},TOT={k:0,h:0,t:0},slomo=0,fadeT=0;
@@ -1179,7 +1179,13 @@ function setStageLook(){                                     /* 面ごとの背�
   else if(stage===3){LY.stars=tintLayer(b.stars,'#e09a2a',.32);LY.moon=paintGiant();LY.rock=paintAsteroids();LY.floor=tintLayer(b.floor,'#d8a060',.5)}
   else if(stage===4){LY.stars=paintHull(b.stars);LY.moon=null;LY.rock=paintFortress(FORT.ship);LY.floor=paintDeck(FORT.ship);LY.ceil=paintCeil()}
   else{LY.stars=b.stars;LY.moon=b.moon;LY.rock=b.rock;LY.floor=b.floor}
+  if(loopN>0){                                               /* 2周目以降：周回ごとの色（赤い月 → 翠 → 紫）を全ての層に重ねる */
+    var lc=LOOPC[(loopN-1)%LOOPC.length];
+    ['stars','moon','rock','floor','ceil'].forEach(function(k){if(LY[k])LY[k]=tintLayer(LY[k],lc,k==='stars'?.55:k==='moon'?.6:.4)});
+  }
 }
+var LOOPC=['#ff2038','#20e0a0','#a050ff'],AURA={drone:1,walker:1,shield:1,hopper:1,turret:1,swoop:1,bomber:1,roller:1,sniper:1,elite:1,mine:1};
+var trueEnd=false,trueSeen=LS.get('true','0')==='1';
 function grav(){return stage===3?G*.62:G}                    /* STAGE 4 は低重力 */
 function plv(){return Math.max(pwMin,pw>=45?4:pw>=20?3:pw>=7?2:1)}
 function hm(){return 1+0.5*loopN}
@@ -1353,7 +1359,7 @@ function galaxy(){R.beamT=BEAM;R.shootT=BEAM;R.atk=null;sfx.beam();shake(6,BEAM)
 function hitBoss(d){
   if(!boss||boss.dead>0||boss.intro>0||boss.inv>0)return;
   boss.hp-=d*fmul();boss.flash=0.07;
-  if(boss.hp<=0){boss.dead=boss.kind===4?2.8:1.5;pts+=2000*(boss.kind+1);warnT=0;boss.lz=null;boss.f=null;slomo=1.0;flashT=.22;if(boss.kind===4){boss.y=Math.min(boss.y,GROUND-82*BS);boss.hh=50*BS}}
+  if(boss.hp<=0){boss.dead=boss.kind===5?3.4:boss.kind===4?2.8:1.5;pts+=2000*(boss.kind+1);warnT=0;boss.lz=null;boss.f=null;slomo=1.0;flashT=.22;if(boss.kind===4){boss.y=Math.min(boss.y,GROUND-82*BS);boss.hh=50*BS}}
 }
 function impact(x,y){booms.push({x:x,y:y,t:0,max:.22,s:.55});puff(x,y,6,'#fff6d0',230,false);sfx.smash();shake(4.5,.16);freeze=Math.max(freeze,0.012)}
 
@@ -1441,14 +1447,15 @@ function pattern(x){
   else{addTurret(x+10);if(lv>5)addHopper(x+80)}
 }
 var BS=1.2;                                                  /* ボスの大きさ */
-var BOFF=[116,128,124,136,118],BHY=[176,GROUND-96*BS,168,160,GROUND-82*BS],INTRO=3.4;
-function makeBoss(){
-  cp=0.96;
-  var k=stage,h=[157,213,235,314,426][k]*hm(),hx=camX+W-BOFF[k],hy=BHY[k];
+var BOFF=[116,128,124,136,118,124],BHY=[176,GROUND-96*BS,168,160,GROUND-82*BS,150],INTRO=3.4;
+function makeBoss(kk){
+  var k=kk!==undefined?kk:(cp>=0.99&&stage===4&&loopN>0?5:stage),h=[157,213,235,314,426,260][k]*hm(),hx=camX+W-BOFF[k],hy=BHY[k];
+  cp=k===5?0.99:0.96;
   if(k===1)boss={kind:1,hp:h,max:h,t:0,flash:0,dead:0,hw:76,hh:58,st:'idle',stT:1.2,hop:0};
   else if(k===3)boss={kind:3,hp:h,max:h,t:0,flash:0,dead:0,hw:58,hh:50,stT:1.4,f:null,swT:4.5,swD:0};
   else if(k===4)boss={kind:4,hp:h,max:h,t:0,flash:0,dead:0,hw:36,hh:78,st:'idle',stT:1.4,hop:0,ph:1,lz:null,swT:4,swD:0,fcd:1.5,fi:0,v2:0,inv:0};
   else if(k===2)boss={kind:2,hp:h,max:h,t:0,flash:0,dead:0,hw:44,hh:44,stT:1.4,lz:null,swT:4,swD:0};
+  else if(k===5)boss={kind:5,hp:h,max:h,t:0,flash:0,dead:0,hw:46,hh:46,stT:1.6,lz:null,lzq:0,swT:4.5,swD:0,ph:1,inv:0,eb:0,ebN:0,ebT:0};
   else boss={kind:0,hp:h,max:h,t:0,cd:1.2,mcd:3.5,flash:0,dead:0,hw:70,hh:26,swT:3.5,swD:0};
   boss.hw*=BS;boss.hh*=BS;boss.actT=6.5;boss.cl=0;boss.bm=0;boss.bd=0;boss.gn=0;boss.gd=0;
   for(var vq=ents.length-1;vq>=0;vq--)if(ents[vq].k==='vent'||ents[vq].k==='gate')ents.splice(vq,1);
@@ -1498,6 +1505,7 @@ function stageClear(){
   msg='撃破 '+ST.k+'　被弾 '+ST.h+'　TIME '+mmss(ST.t)+'\nRANK '+rk+'　BONUS +'+bonus+'　SCORE '+score()+'\nチップ +'+got+'（所持 '+bank+'）';
   if(last){                                                  /* エンディング：戦績を見せてから周回の強化へ */
     endMsg=msg+'\n通算  撃破 '+TOT.k+'　被弾 '+TOT.h+'　TIME '+mmss(TOT.t);
+    trueEnd=loopN>0;if(trueEnd&&!trueSeen){trueSeen=true;LS.set('true','1')}
     mode='ending';endT=0;el.ovl.hidden=true;hudEl.hidden=true;upsEl.hidden=true;bullets.length=0;
   }else{
     endStep=0;showOvl('STAGE '+(stage+1)+' CLEAR','強化を1つ選べ',msg,'');
@@ -1585,7 +1593,7 @@ function continueGame(){                                      /* 同じ面の再
   for(evI=0;evI<EVS.length&&EVS[evI][0]<=cp;evI++);
   nextSpawn=W+200;metT=5;warnT=0;flashT=0;freeze=0;overT=0;slomo=0;fadeT=1;ST.h=0;
   mode='play';paused=false;el.ovl.hidden=true;roboHide=false;lastScore=lastDist=-1;hangShow(false);
-  banner(cp>=0.9?'ボス手前から再開':cp>=0.5?'中ボス撃破後から再開':STG[stage].n+' の最初から再開',2.4);sfx.start();
+  banner(cp>=0.99?'真の敵の手前から再開':cp>=0.9?'ボス手前から再開':cp>=0.5?'中ボス撃破後から再開':STG[stage].n+' の最初から再開',2.4);sfx.start();
 }
 function gameOver(){
   mode='over';overT=0;clearKeys();
@@ -1780,13 +1788,16 @@ function updateBoss(dt){
   if(b.dead>0){
     b.dead-=dt;if(b.kind!==1&&b.kind!==4)b.y+=40*dt;b.x+=20*dt;
     if(Math.random()<dt*14)boom(b.x+rnd(-60,60),b.y+rnd(-24,24),rnd(.8,1.5));
-    if(b.dead<=0){boom(b.x,b.y,3);boom(b.x-40,b.y+10,2,true);boom(b.x+40,b.y-10,2,true);shake(12,.6);freeze=.06;for(var ci=0;ci<8;ci++)addChip(b.x+rnd(-40,40),b.y);boss=null;stageClear()}
+    if(b.dead<=0){boom(b.x,b.y,3);boom(b.x-40,b.y+10,2,true);boom(b.x+40,b.y-10,2,true);shake(12,.6);freeze=.06;for(var ci=0;ci<8;ci++)addChip(b.x+rnd(-40,40),b.y);
+      if(b.kind===4&&loopN>0){boss=null;trueBoss();return}       /* 2周目以降：皇帝機の先に真の敵 */
+      boss=null;stageClear()}
     return;
   }
   if(b.kind===1){bossCrab(b,dt);return}
   if(b.kind===3){bossGolem(b,dt);return}
   if(b.kind===4){bossEmperor(b,dt);return}
   if(b.kind===2){bossCore(b,dt);return}
+  if(b.kind===5){bossEclipse(b,dt);return}
   var tx=camX+W-116,ty=176+Math.sin(b.t*1.15)*72,rate=5;
   if(b.bm>0){                                              /* 新アクション：絨毯爆撃（上空を左へ横切りながら爆弾を落とす） */
     b.bm-=dt;tx=camX+W-116-(1-b.bm/2.0)*(W-250);ty=78;rate=9;b.bd-=dt;
@@ -1850,6 +1861,43 @@ function bossCore(b,dt){
   else if(r<.82){for(i=0;i<10;i++){a=i/10*TAU+b.t;addShot(b.x,b.y,Math.cos(a)*165,Math.sin(a)*165)}b.stT=1.7;tone('square',300,180,0.12,0.1)}
   else{addDrone(b.x-40,188,0);addDrone(b.x-40,249,1);b.stT=2.4}
   if(b.hp<b.max*.4)b.stT*=.7;
+}
+
+/* 真の最終ボス：月蝕機 ECLIPSE（2周目以降、皇帝機を倒した直後に現れる）
+   掃射レーザー／光環弾／隕石／追尾機雷／月蝕の落雷（左から右へ順に落ちる）。体力半分で TOTAL ECLIPSE */
+function trueBoss(){
+  for(var i=ents.length-1;i>=0;i--)if(!ents[i].item)ents.splice(i,1);
+  bullets.length=0;makeBoss(5);R.hp=Math.min(mhp(),R.hp+2);lastHp=-1;
+  banner('月の影が、まだ動いている',2.6);flashT=.3;shake(9,.8);tone('sawtooth',90,60,1.4,0.18);
+}
+function bossEclipse(b,dt){
+  var i,a,n,r,p2=b.ph===2,tx=camX+W-124,ty=150+Math.sin(b.t*1.1)*52,rate=4.5;
+  if(b.inv>0)b.inv-=dt;
+  if(!p2&&b.hp<b.max*.5){                                    /* 体力半分：皆既月蝕 */
+    b.ph=2;p2=true;b.inv=1.8;b.stT=2.2;b.lz=null;b.lzq=0;b.swD=0;b.eb=0;banner('TOTAL ECLIPSE',1.6);shake(10,.6);flashT=.2;tone('sawtooth',120,900,0.9,0.16);
+    for(i=0;i<(LOW?8:16);i++)part(1,b.x+rnd(-40,40),b.y+rnd(-40,40),rnd(-260,260),rnd(-260,260),rnd(.4,.8),rnd(2,4),i%2?'#ff4f8b':'#fff6d0',0);
+  }
+  if(b.swD>0){b.swD-=dt;tx=R.x+128;ty=GROUND-100;rate=3;if(b.swD<=0)b.swT=rnd(4,5.5)}   /* 降下：格闘が届く高さまで降りてくる */
+  else if(mode==='play'&&!b.lz&&!(b.eb>0)){b.swT-=dt;if(b.swT<=0){b.swD=1.8;tone('sawtooth',500,120,0.4,0.14)}}
+  b.x+=(tx-b.x)*(1-Math.exp(-dt*rate));b.y+=(ty-b.y)*(1-Math.exp(-dt*4));
+  if(b.lz){
+    b.lz.t+=dt;
+    if(b.lz.t>=0.85&&!b.lz.on){b.lz.on=true;shake(5,.3);noise(0.3,0.3,4000,400)}
+    if(b.lz.t>1.15){var ly=b.lz.y;b.lz=null;if(b.lzq>0){b.lzq--;b.lz={y:ly>GROUND-50?GROUND-70:GROUND-24,t:.2,on:false};tone('square',900,900,0.6,0.06)}}
+  }
+  if(b.eb>0&&mode==='play'){                                 /* 月蝕の落雷：左から右へ、間をあけて順に */
+    b.ebT-=dt;
+    if(b.ebT<=0){addBolt(camX+36+(b.ebN-b.eb)*((W-176)/(b.ebN-1)));b.eb--;b.ebT=.3;if(b.eb<=0)b.stT=1.6}
+  }
+  if(mode!=='play')return;
+  b.actT-=dt;b.stT-=dt;if(b.stT>0||b.swD>0||b.lz||b.eb>0||b.inv>0)return;
+  r=Math.random();if(b.actT<=0)r=.99;
+  if(r<.26){b.lz={y:Math.random()<.5?GROUND-70:GROUND-24,t:0,on:false};b.lzq=p2?1:0;b.stT=p2?3.3:2.1;tone('square',900,900,0.6,0.06)}
+  else if(r<.5){n=p2?14:10;for(i=0;i<n;i++){a=i/n*TAU+b.t;addShot(b.x,b.y,Math.cos(a)*158,Math.sin(a)*158)}if(p2)aim(b.x-30,b.y,210,0);b.stT=1.8;tone('square',300,180,0.12,0.1)}
+  else if(r<.7){addMeteor(R.x+rnd(-60,60));addMeteor(R.x+rnd(120,240));if(p2)addMeteor(R.x+rnd(-200,-90));b.stT=2.0;tone('triangle',200,90,0.3,0.1)}
+  else if(r<.85){for(i=0;i<(p2?3:2);i++)addMine(b.x-30,b.y+(i-1)*46);b.stT=2.3;tone('triangle',300,900,0.3,0.1)}
+  else{b.eb=b.ebN=p2?6:5;b.ebT=.25;b.actT=rnd(9,12);banner('ECLIPSE',1.0);tone('sawtooth',900,200,0.5,0.12)}
+  if(p2)b.stT*=.75;
 }
 
 /* STAGE 4 ボス：岩の巨人。拳の叩きつけ（左右に衝撃波）／岩投げ／隕石 */
@@ -2133,7 +2181,7 @@ function update(dt){
   meteorStreak.t-=dt;
   if(meteorStreak.t<=0){meteorStreak.t=rnd(2.5,7);meteorStreak.life=.6;meteorStreak.x=rnd(120,620);meteorStreak.y=rnd(10,120)}
   if(meteorStreak.life>0)meteorStreak.life-=dt;
-  if(mode==='over'&&overT>0.9&&el.ovl.hidden)showOvl('GAME OVER','機体大破',el.ovM.textContent,cp>=0.9?'ボス手前から':cp>=0.5?'中ボス後から':'この面の最初から');
+  if(mode==='over'&&overT>0.9&&el.ovl.hidden)showOvl('GAME OVER','機体大破',el.ovM.textContent,cp>=0.99?'真の敵の手前から':cp>=0.9?'ボス手前から':cp>=0.5?'中ボス後から':'この面の最初から');
 }
 
 /* ================= 描画 ================= */
@@ -2578,6 +2626,33 @@ function drawBolt(g,e){
   }else if(e.t<0.9&&Math.floor(time*16)%2){g.fillStyle='rgba(200,120,255,.45)';g.fillRect(e.x-1,0,2,GROUND)}
   g.globalCompositeOperation='source-over';
 }
+function drawBossEclipse(g,b){                                /* 黒い月の本体・燃える光環・周回する4枚の刃・こちらを見る赤い目 */
+  var hit=b.flash>0,p2=b.ph===2,i,a,t=b.t,R0=42,n=LOW?6:10,dx=R.x-b.x,dy=(R.y-50)-b.y,dl=Math.sqrt(dx*dx+dy*dy)||1,ex=dx/dl*9,ey=dy/dl*7;
+  g.save();g.translate(b.x,b.y);if(b.dead>0)g.rotate(Math.sin(t*30)*.06);
+  if(b.inv>0&&Math.sin(t*40)>0)g.globalAlpha=.55;
+  g.globalCompositeOperation='lighter';
+  spr(g,p2?'pink':'fire',0,0,R0*2.4,.55);
+  for(i=0;i<n;i++){a=i/n*TAU+t*.7;spr(g,i%2?'amber':(p2?'white':'fire'),Math.cos(a)*(R0+3),Math.sin(a)*(R0+3),15+Math.sin(t*5+i)*4,.85)}
+  g.globalCompositeOperation='source-over';
+  g.lineWidth=1.8;g.strokeStyle=INK;g.lineJoin='round';
+  for(i=0;i<4;i++){                                          /* 刃の翼 */
+    a=t*(p2?1.7:.9)+i*TAU/4;g.save();g.rotate(a);g.translate(R0+24,0);
+    path(g,[[-14,-6],[24,0],[-14,6],[-5,0]],true);fsk(g,hit?'#fff':(p2?'#ff4f8b':'#8a4fc8'));
+    path(g,[[-9,-2],[14,0],[-9,2]],true);g.fillStyle='rgba(255,255,255,.55)';g.fill();g.restore();
+  }
+  g.beginPath();g.arc(0,0,R0,0,TAU);fsk(g,hit?'#fff':'#0b0616');
+  g.fillStyle='rgba(140,100,200,.22)';
+  g.beginPath();g.arc(-16,-18,9,0,TAU);g.fill();g.beginPath();g.arc(18,16,12,0,TAU);g.fill();g.beginPath();g.arc(20,-22,5,0,TAU);g.fill();g.beginPath();g.arc(-22,20,6,0,TAU);g.fill();
+  g.beginPath();g.arc(0,0,R0-2.5,-2.5,-.5);g.strokeStyle=p2?'#ffd6e6':'#ffb238';g.lineWidth=2.6;g.stroke();
+  g.strokeStyle=INK;g.lineWidth=1.8;
+  path(g,[[-30,26],[-12,34],[12,34],[30,26],[20,42],[-20,42]],true);fsk(g,hit?'#fff':'#3a2466');   /* 下部の装甲 */
+  g.fillStyle=p2?'#ff4f8b':'#ffb238';g.fillRect(-9,36,5,3);g.fillRect(-1,36,5,3);g.fillRect(7,36,5,3);
+  g.beginPath();g.ellipse(ex*.4,ey*.4-2,19,9+Math.sin(t*3)*2,0,0,TAU);fsk(g,'#1a0508');            /* 目 */
+  g.beginPath();g.ellipse(ex,ey-2,8,7,0,0,TAU);g.fillStyle=p2?'#fff':'#ff2a4a';g.fill();
+  g.beginPath();g.ellipse(ex,ey-2,2.2,6,0,0,TAU);g.fillStyle='#1a0508';g.fill();
+  g.globalCompositeOperation='lighter';spr(g,'pink',ex,ey-2,p2?26:18,.7);g.globalCompositeOperation='source-over';
+  g.globalAlpha=1;g.restore();
+}
 function drawBoss(g,b){                                       /* ボスは1.2倍で描く（地上型は足元、空中型は中心を基準に拡大） */
   if(b.kind===3){drawBossRaw(g,b);return}
   var gnd=b.kind===1||(b.kind===4&&b.ph===1),y0=b.y,py=gnd?GROUND:b.y;
@@ -2591,6 +2666,7 @@ function drawBossRaw(g,b){
   if(b.kind===3){drawBossGolem(g,b);return}
   if(b.kind===4){drawBossEmp(g,b);return}
   if(b.kind===2){drawBossCore(g,b);return}
+  if(b.kind===5){drawBossEclipse(g,b);return}
   var hit=b.flash>0,gr,fl=Math.sin(b.t*50);
   g.save();g.translate(b.x,b.y);g.rotate(Math.sin(b.t*1.15+.8)*.05+(b.dead>0?.25:0));
   g.globalCompositeOperation='lighter';
@@ -2640,6 +2716,9 @@ function drawBg(){
   if(plats.length)drawPlats(g);
   for(i=0;i<ents.length;i++){
     e=ents[i];
+    if(loopN>0&&AURA[e.k]){                                  /* 2周目以降の敵は赤い気をまとう */
+      g.globalCompositeOperation='lighter';spr(g,'pink',e.x,e.y+(e.top+e.bot)/2,Math.max(e.hw,(e.bot-e.top)/2)*1.9,.42+.12*Math.sin(time*9+i));g.globalCompositeOperation='source-over';
+    }
     if(e.k==='drone')drawDrone(g,e);else if(e.k==='walker')drawWalker(g,e);else if(e.k==='spike')drawSpike(g,e);
     else if(e.k==='meteor')drawMeteor(g,e);else if(e.k==='cap')drawCap(g,e);
     else if(e.k==='shield')drawShieldE(g,e);else if(e.k==='hopper')drawHopper(g,e);else if(e.k==='turret')drawTurret(g,e);
@@ -2904,17 +2983,20 @@ function drawOpening(g){
 }
 function openSkip(){if(mode!=='open')return;mode='title';el.ovl.hidden=false;hudEl.hidden=false;fadeT=1}
 function credits(){
-  return [['LUNAR STRIKER',1],['',0],['― MISSION COMPLETE ―',1],['',0],['PILOT　'+TYPES[TYPE].n,0],['撃破 '+TOT.k+'　被弾 '+TOT.h,0],['TIME '+mmss(TOT.t)+'　SCORE '+score(),0],['',0],
-    ['MUSIC',1],['Neon Rush ／ Dark Action Theme',0],['Moon Drift Signal ／ Neon Circuitry',0],['',0],['PRODUCED BY　TITANS',0],['',0],['THANK YOU FOR PLAYING',1]];
+  return [['LUNAR STRIKER',1],['',0],[trueEnd?'― TRUE END ―':'― MISSION COMPLETE ―',1],['',0],['PILOT　'+TYPES[TYPE].n,0],['撃破 '+TOT.k+'　被弾 '+TOT.h,0],['TIME '+mmss(TOT.t)+'　SCORE '+score(),0],['',0],
+    ['MUSIC',1],['Neon Rush ／ Dark Action Theme',0],['Moon Drift Signal ／ Neon Circuitry',0],['',0],['PRODUCED BY　TITANS',0],['',0],[trueEnd?'月は、もう欠けない。':'THANK YOU FOR PLAYING',1]];
 }
 function drawEnding(g){
   var o=openLayers(),t=endT,i,a,cr,off,y,rise=Math.min(1,t/9);
   rise=rise*rise*(3-2*rise);
   var W0=storyT(g);
   tile(g,LYB.stars,t*3,0);
+  if(trueEnd){                                               /* 真エンド：地球の向こうから朝日。空が金色に明ける */
+    g.save();g.beginPath();g.rect(0,0,W,H);g.clip();g.globalCompositeOperation='lighter';spr(g,'amber',430,250-rise*150,170+rise*90,.35+.4*rise);spr(g,'white',430,250-rise*150,60+rise*40,.6*rise);g.restore();
+  }
   g.drawImage(o.earth.c,318,236-rise*150,340,340);            /* 地平線から昇る地球 */
   tile(g,LYB.rock,60,170);tile(g,LYB.floor,0,336);
-  if(t<CRED_AT+0.8)standRobot(g,196,340,1.25,TYPE);
+  if(t<CRED_AT+0.8){if(trueEnd){for(i=0;i<4;i++)if(i!==TYPE)standRobot(g,70+i*40,340,.8,i)}standRobot(g,trueEnd?250:196,340,1.25,TYPE)}
   if(t>CRED_AT){
     a=Math.min(1,(t-CRED_AT)/.8);
     for(i=0;i<4;i++)standRobot(g,90+i*62,340,.9,i);
@@ -2930,7 +3012,7 @@ function drawEnding(g){
     g.globalAlpha=1;
   }
   bars(g,t>1.5?'START で次へ':'');
-  if(t<CRED_AT)typeText(g,['皇帝機は沈黙し、月に静寂が戻った。','青い星が、地平線から昇る。'],t-1.6,364);
+  if(t<CRED_AT)typeText(g,trueEnd?['月を蝕んでいた影は、光に溶けた。','四機は並び、本当の夜明けを見た。']:['皇帝機は沈黙し、月に静寂が戻った。','青い星が、地平線から昇る。'],t-1.6,364);
   if(t<1.4){g.fillStyle='rgba(255,255,255,'+(1-t/1.4).toFixed(2)+')';g.fillRect(0,0,W,H)}
   W=W0;
 }
@@ -2938,7 +3020,8 @@ function endingLen(){return CRED_AT+((credits().length-1)*27+210)/36+5}
 function endingDone(){
   if(mode!=='ending')return;
   mode='clear';clearT=0.5;endStep=1;hudEl.hidden=false;fadeT=1;
-  showOvl('MISSION COMPLETE','皇帝機 撃破 ― 月に静寂が戻った',endMsg,(loopN+2)+'周目へ');el.go.hidden=false;upsEl.hidden=true;
+  if(trueEnd)showOvl('TRUE END','月蝕機 撃破 ― 本当の夜明け',endMsg,(loopN+2)+'周目へ');
+  else showOvl('MISSION COMPLETE','皇帝機 撃破 ― だが、月の影がまだ動いている',endMsg,'2周目へ（真の敵が待つ）');el.go.hidden=false;upsEl.hidden=true;
 }
 function render(){
   if(mode==='open'){drawOpening(bc);return}
@@ -2947,7 +3030,7 @@ function render(){
   drawBg();drawRobotLayer(bc);drawFg();
 
   var sc=score(),dm=Math.floor(dist)+stage*10000+loopN*100000,i,hk=R.hp+mhp()*10,lk=TYPE*10+plv()+EQN.indexOf(EQ)*100;
-  if(sc!==lastScore){lastScore=sc;el.score.textContent=mode==='title'?'BEST '+best:String(sc)}
+  if(sc!==lastScore){lastScore=sc;el.score.textContent=mode==='title'?(trueSeen?'★ ':'')+'BEST '+best:String(sc)}
   if(dm!==lastDist){lastDist=dm;el.dist.textContent=mode==='title'?'':'STAGE '+(stage+1)+'　'+Math.floor(dist)+'m'}
   if(lk!==lastLv){lastLv=lk;nmEl.textContent=TYPES[TYPE].n+'　POW '+(plv()>=4?'MAX':'Lv'+plv())+(EQ?'　装備:'+EQL[EQ]:'')}
   if(hk!==lastHp){lastHp=hk;var s='';for(i=0;i<mhp();i++)s+='<i'+(i<R.hp?' class="on"':'')+'></i>';el.hp.innerHTML=s}
@@ -2998,6 +3081,7 @@ requestAnimationFrame(loop);
 /* 検証用フック（自動テストから状態を読む／無敵化してボスを早出しする） */
 window.__game={
   state:function(){return {mode:mode,paused:paused,hp:R.hp,dist:dist,pts:pts,x:R.x,camX:camX,ents:ents.map(function(e){return e.k}).join(','),boss:boss?Math.round(boss.hp):null,parts:parts.length,stage:stage,loop:loopN,pw:pw,lv:plv(),maxHp:maxHp,score:score()}},
+  loop:function(n){loopN=n;setStageLook()},tb:function(){trueBoss()},bk:function(){return boss?{kind:boss.kind,ph:boss.ph||1,hp:Math.round(boss.hp),max:Math.round(boss.max)}:null},trueEnd:function(){return {t:trueEnd,seen:trueSeen}},
   stage:function(n){stage=n;setStageLook();dist=0;stageX0=R.x;nextBoss=STG[n].boss;evI=0},
   ev:function(c){runEvent(c)},movePlat:function(){plats.push({x0:R.x+40,x1:R.x+140,y:GROUND-92,a:1,mv:{c:R.x+40,amp:56,sp:1.3,ph:0}})},
   pow:function(n){pw=n},killBoss:function(){hitBoss(1e9)},bossAct:function(){if(!boss)return null;boss.actT=0;boss.stT=0;if(boss.kind===4&&boss.ph===2){empBolts();boss.stT=1.9}return {kind:boss.kind,st:boss.st,hw:Math.round(boss.hw),hh:Math.round(boss.hh),y:Math.round(boss.y)}},hurtBoss:function(f){if(boss)hitBoss(boss.max*f)},add:function(k){({shield:addShield,hopper:addHopper,turret:addTurret,vent:addVent,gate:addGate,ice:addIcicle,swoop:addSwoop,bomber:addBomber,roller:addRoller,sniper:function(x){addSniper(x,180)},elite:addElite})[k](camX+(arguments[1]||W-140))},
