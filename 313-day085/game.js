@@ -337,143 +337,231 @@ function shadow(x, y, w) {
   c.beginPath(); c.ellipse(x, y, w, w * 0.22, 0, 0, 7); c.fill();
 }
 
-// 巨大忍者・影丸
-const SUIT = '#1c2238', SUIT_RIM = '#5a6fa8', STEEL = '#7d8798', SCARF = '#d0202c';
-function bladeAngle() {
+// 巨大忍者・影丸（7.4頭身。頭40／胴100／脚148＋足）
+const SUIT = '#1c2238', SUIT_D = '#121628', SUIT_RIM = '#5a6fa8', STEEL = '#7d8798', SCARF = '#d0202c';
+const WRAP = '#3a4258', WRAP_D = '#2a3044', SKIN = '#d9b48c';
+const THIGH = 72, SHIN = 66, UARM = 54, FARM = 50;
+
+// 刀の構え：H＝鍔の位置（肩の中心からの角度）、B＝刀身の角度。0＝真下、π/2＝前、π＝真上
+const REST_POSE = [0.95, 2.1];          // 中段：鍔はみぞおちの前、切先は相手の喉
+const SWING = {
+  1: [[2.9, 3.7], [1.15, 0.55]],        // 袈裟斬り：頭上から前下へ
+  2: [[0.45, -0.3], [2.6, 3.2]],        // 逆袈裟：腰の後ろから斬り上げ
+  3: [[3.3, 4.1], [1.0, 0.35]],         // 兜割り：背中まで振りかぶって叩きつける
+};
+function swordPose() {
   const a = pl.atk;
-  const REST = 2.25;
-  if (!a) return REST;
-  const f = a.t / a.dur;
-  const [s, e] = a.stage === 1 ? [3.7, 0.55] : a.stage === 2 ? [0.35, 3.35] : [4.0, 0.3];
-  const w0 = 0.28, w1 = a.stage === 3 ? 0.48 : 0.42;
-  if (f < w0) return lerp(REST, s, ease(f / w0));
-  if (f < w1) return lerp(s, e, ease((f - w0) / (w1 - w0)));
-  if (f < 0.8) return e;
-  return lerp(e, REST, (f - 0.8) / 0.2);
+  if (!a) return REST_POSE;
+  const [k0, k1] = SWING[a.stage];
+  const f = a.t / a.dur, w0 = 0.28, w1 = a.stage === 3 ? 0.48 : 0.42;
+  const mix = (p, q, t) => [lerp(p[0], q[0], t), lerp(p[1], q[1], t)];
+  if (f < w0) return mix(REST_POSE, k0, ease(f / w0));
+  if (f < w1) return mix(k0, k1, ease((f - w0) / (w1 - w0)));
+  if (f < 0.8) return k1;
+  return mix(k1, REST_POSE, (f - 0.8) / 0.2);
 }
+
+// 筋肉の張りを付けた肢（bulge＝後ろ側のふくらみ：ふくらはぎ・太もも裏）
+function limb(x, y, a, len, w0, w1, fill, bulge = 0, rim = null) {
+  c.save(); c.translate(x, y); c.rotate(-a);
+  c.beginPath();
+  c.moveTo(w0 / 2, 0);
+  c.arc(0, 0, w0 / 2, 0, Math.PI, true);
+  c.quadraticCurveTo(-w0 / 2 - bulge, len * 0.42, -w1 / 2, len);
+  c.arc(0, len, w1 / 2, Math.PI, 0, true);
+  c.quadraticCurveTo(w0 / 2 + bulge * 0.25, len * 0.45, w0 / 2, 0);
+  c.closePath();
+  c.fillStyle = fill; c.fill(); c.stroke();
+  if (rim) { c.strokeStyle = rim; c.lineWidth = 2; c.beginPath(); c.moveTo(w0 / 2 - 3, 3); c.quadraticCurveTo(w0 / 2 - 2, len * 0.45, w1 / 2 - 3, len - 3); c.stroke(); }
+  c.restore();
+  return [x + Math.sin(a) * len, y + Math.cos(a) * len];
+}
+
+// 脚：裁着袴（太ももは緩く、脛は脚絆で締める）＋足袋＋草鞋
+function drawLeg(hx, hy, tA, sA, near) {
+  const pants = near ? SUIT : SUIT_D, wrap = near ? WRAP : WRAP_D, rim = near ? SUIT_RIM : null;
+  const [kx, ky] = limb(hx, hy, tA, THIGH, 38, 27, pants, 5, rim);
+  // 脛（脚絆）＋ふくらはぎ
+  const [ax, ay] = limb(kx, ky, sA, SHIN, 26, 14, wrap, 8, near ? '#7d89b0' : null);
+  c.save(); c.translate(kx, ky); c.rotate(-sA);
+  c.strokeStyle = near ? 'rgba(10,12,24,.55)' : 'rgba(0,0,0,.4)'; c.lineWidth = 1.5;
+  for (let i = 0; i < 6; i++) { const y = 12 + i * 8.5, w = 12 - i * 1.1; c.beginPath(); c.moveTo(-w, y); c.lineTo(w, y + 5); c.stroke(); }
+  c.restore();
+  c.strokeStyle = OUT; c.lineWidth = 3;
+  // 膝
+  c.fillStyle = near ? '#2a3256' : '#191d33';
+  c.beginPath(); c.ellipse(kx + 2, ky, 11, 9, -sA, 0, 7); c.fill(); c.stroke();
+  // 足（足袋＋草鞋）。浮いた足はつま先が下がる
+  c.save(); c.translate(ax, ay); c.rotate(clamp(-sA * 0.5, -0.5, 0.35));
+  c.fillStyle = '#8a6a3e'; c.fillRect(-12, 2, 40, 5); c.strokeRect(-12, 2, 40, 5);
+  c.fillStyle = near ? '#2b2f3e' : '#1d2030';
+  c.beginPath(); c.moveTo(-11, 3); c.lineTo(-10, -10); c.quadraticCurveTo(4, -14, 14, -6);
+  c.lineTo(26, -2); c.quadraticCurveTo(29, 1, 26, 3); c.closePath(); c.fill(); c.stroke();
+  c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(20, -3); c.lineTo(19, 3); c.stroke();              // 足袋の股
+  c.strokeStyle = '#c8a870'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(-6, -6); c.lineTo(10, 2); c.moveTo(4, -9); c.lineTo(-4, 2); c.stroke();  // 草鞋の紐
+  c.restore();
+  c.strokeStyle = OUT; c.lineWidth = 3;
+}
+
+function fist(x, y, ang) {
+  c.save(); c.translate(x, y); c.rotate(-ang);
+  c.fillStyle = '#20232e'; c.beginPath(); c.roundRect(-8, -7, 16, 15, 4); c.fill(); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(-5, -5, 9, 3);
+  c.restore();
+}
+function drawArm(sx, sy, tx, ty, near) {
+  const [ua, fa] = ik(sx, sy, tx, ty, UARM, FARM, -1);
+  const [ex, ey] = limb(sx, sy, ua, UARM, 26, 21, near ? SUIT : SUIT_D, 3, near ? SUIT_RIM : null);
+  limb(ex, ey, fa, FARM, 21, 15, near ? SUIT : SUIT_D, 2);
+  // 手甲
+  c.save(); c.translate(ex, ey); c.rotate(-fa);
+  c.fillStyle = near ? STEEL : '#535a68';
+  c.beginPath(); c.moveTo(-10, 14); c.lineTo(10, 14); c.lineTo(8, FARM - 4); c.lineTo(-8, FARM - 4); c.closePath(); c.fill(); c.stroke();
+  if (near) { c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(4, 16, 3, FARM - 22); }
+  c.restore();
+  return fa;
+}
+
 function drawNinja(sx, sy, s, face, lift) {
   const moving = pl.moving && !pl.atk;
   const ph = pl.walk;
   const a = pl.atk;
-  let bob = moving ? Math.abs(Math.sin(ph)) * -5 : Math.sin(T * 2.2) * 1.5;
+  const bob = moving ? Math.abs(Math.sin(ph)) * -5 : Math.sin(T * 2.2) * 1.5;
   let crouch = 0;
-  if (a && a.stage === 3) { const f = a.t / a.dur; crouch = f < 0.28 ? f / 0.28 * -18 : f < 0.7 ? 16 : lerp(16, 0, (f - 0.7) / 0.3); }
+  if (a && a.stage === 3) { const f = a.t / a.dur; crouch = f < 0.28 ? (f / 0.28) * -12 : f < 0.7 ? 18 : lerp(18, 0, (f - 0.7) / 0.3); }
   if (pl.dead) crouch = 30;
+  // 脚の角度（太もも, 脛）。手前＝前足、奥＝後ろ足
   let tF, sF, tB, sB;
   if (moving) {
-    tF = Math.sin(ph) * 0.55; sF = tF - Math.max(0, Math.sin(ph + 1.3)) * 0.8;
-    tB = -Math.sin(ph) * 0.55; sB = tB - Math.max(0, -Math.sin(ph + 1.3)) * 0.8;
+    tF = Math.sin(ph) * 0.5; sF = tF - Math.max(0, Math.sin(ph + 1.3)) * 0.9;
+    tB = -Math.sin(ph) * 0.5; sB = tB - Math.max(0, -Math.sin(ph + 1.3)) * 0.9;
   } else {
-    const wide = 0.32 + crouch * 0.012;
-    tF = wide; sF = wide * 0.15 - crouch * 0.01; tB = -wide; sB = -wide * 0.4;
+    const k = Math.max(0, crouch) * 0.012;
+    tF = 0.42 + k; sF = 0.02 - k;          // 前足：膝を軽く曲げて踏み出す
+    tB = -0.34 - k * 0.5; sB = -0.2;       // 後ろ足：伸ばして地面を押す
   }
-  if (lift) { tF = 0.5; sF = -0.4; tB = -0.2; sB = -0.9; }
-  const legH = (t, sh) => 66 * Math.cos(t) + 64 * Math.cos(sh);
-  const hipY = -Math.max(legH(tF, sF), legH(tB, sB)) + bob + Math.max(0, crouch) * 0.6;
-  const lean = a ? (a.stage === 3 ? 0.25 : 0.12) : moving ? 0.08 : 0.02;
+  if (lift) { tF = 0.55; sF = -0.35; tB = -0.15; sB = -0.85; }
+  const legH = (t, sh) => THIGH * Math.cos(t) + SHIN * Math.cos(sh) + 4;
+  const hipY = -Math.max(legH(tF, sF), legH(tB, sB)) + bob + Math.max(0, crouch) * 0.5;
+  const lean = a ? (a.stage === 3 ? 0.22 : 0.1) : moving ? 0.08 : 0.04;
+  const cl = Math.cos(lean), sl = Math.sin(lean);
+  const P = (x, y) => [x * cl - y * sl, hipY + x * sl + y * cl];   // 胴の座標 → 足元基準
 
   c.save(); c.translate(sx, sy - lift); c.scale(s * face, s);
-  c.lineJoin = 'round'; c.lineWidth = 3; c.strokeStyle = OUT;
+  c.lineJoin = 'round'; c.lineCap = 'round'; c.lineWidth = 3; c.strokeStyle = OUT;
 
-  const shX = Math.sin(lean) * 92, shY = hipY - Math.cos(lean) * 92;
-  const neckX = shX + 4, neckY = shY - 6;
+  const [nx, ny] = P(0, -104);
   // 襟巻き（後ろへたなびく）
   const spd = pl.moving ? 1.6 : 0.6;
   for (let k = 0; k < 2; k++) {
-    c.beginPath(); c.moveTo(neckX - 6, neckY + 4 + k * 6);
+    c.beginPath(); c.moveTo(nx - 6, ny + 4 + k * 6);
     for (let i = 1; i <= 9; i++) {
-      c.lineTo(neckX - 6 - i * 15 * spd * (0.8 + k * 0.15), neckY + 6 + k * 8 + i * (3 - spd) + Math.sin(T * 9 + i * 0.8 + k) * i * 1.3);
+      c.lineTo(nx - 6 - i * 15 * spd * (0.8 + k * 0.15), ny + 6 + k * 8 + i * (3 - spd) + Math.sin(T * 9 + i * 0.8 + k) * i * 1.3);
     }
     c.lineWidth = 12 - k * 3; c.strokeStyle = OUT; c.stroke();
     c.lineWidth = 7 - k * 2; c.strokeStyle = k ? '#9a1018' : SCARF; c.stroke();
   }
   c.lineWidth = 3; c.strokeStyle = OUT;
 
-  // 奥の脚
-  let [kx, ky] = seg(-12, hipY, tB, 66, 30, 24, '#151a2c');
-  let [fx2, fy2] = seg(kx, ky, sB, 64, 24, 18, '#151a2c');
-  c.fillStyle = '#2b2b30'; c.fillRect(fx2 - 10, fy2 - 6, 30, 10); c.strokeRect(fx2 - 10, fy2 - 6, 30, 10);
-
-  // 刀の角度と手の位置
-  const B = bladeAngle();
-  const H = B * 0.62 + 0.25;
-  const hx = shX + Math.sin(H) * 80, hy = shY + 8 + Math.cos(H) * 80;
-  // 奥の腕（両手持ち or 投擲）
-  let tx = hx - Math.sin(B) * 18, ty = hy - Math.cos(B) * 18;
+  // 肩（3/4の向き：奥の肩は内側・少し高い）
+  const [sbx, sby] = P(-20, -96), [sfx, sfy] = P(16, -94);
+  const scx = (sbx + sfx) / 2, scy = (sby + sfy) / 2 + 6;
+  // 刀：鍔の位置と刀身の向き
+  const [H, B] = swordPose();
+  const tx = scx + Math.sin(H) * 72, ty = scy + Math.cos(H) * 72;
+  const dx = Math.sin(B), dy = Math.cos(B);
+  const hfx = tx - dx * 12, hfy = ty - dy * 12;     // 右手：鍔の際
+  let hbx = tx - dx * 40, hby = ty - dy * 40;       // 左手：柄頭の側
+  let twoHand = true;
   if (pl.throwT > 0) {
     const f = 1 - pl.throwT / 0.26;
-    tx = lerp(shX - 50, shX + 115, ease(f)); ty = lerp(shY - 60, shY - 10, f);
+    hbx = lerp(sbx - 50, sbx + 110, ease(f)); hby = lerp(sby - 50, sby - 6, f); twoHand = false;
   }
-  const [ua2, fa2] = ik(shX - 12, shY + 8, tx, ty, 52, 50, -1);
-  let [ex2, ey2] = seg(shX - 12, shY + 8, ua2, 52, 24, 20, '#151a2c');
-  seg(ex2, ey2, fa2, 50, 20, 18, '#151a2c');
 
-  // 脚（手前）
-  [kx, ky] = seg(12, hipY, tF, 66, 32, 26, SUIT, SUIT_RIM);
-  c.fillStyle = STEEL; c.save(); c.translate(kx, ky); c.rotate(-sF); c.fillRect(-12, 4, 24, 30); c.strokeRect(-12, 4, 24, 30); c.restore();
-  [fx2, fy2] = seg(kx, ky, sF, 64, 26, 20, SUIT, SUIT_RIM);
-  c.fillStyle = '#3a3a42'; c.fillRect(fx2 - 10, fy2 - 6, 32, 11); c.strokeRect(fx2 - 10, fy2 - 6, 32, 11);
+  // 奥の脚・奥の腕
+  drawLeg(-9, hipY, tB, sB, false);
+  const faB = drawArm(sbx, sby, hbx, hby, false);
+  // 手前の脚
+  drawLeg(9, hipY, tF, sF, true);
 
-  // 胴
-  seg(shX, shY, -lean, 92, 80, 54, SUIT, SUIT_RIM);
-  c.save(); c.translate(shX, shY); c.rotate(lean);
-  // 鎖帷子の網目
-  c.strokeStyle = 'rgba(120,140,190,.25)'; c.lineWidth = 1;
-  for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(-26 + i * 9, 10); c.lineTo(-30 + i * 9, 60); c.stroke(); }
-  c.strokeStyle = OUT; c.lineWidth = 3;
-  // 襟の合わせ
-  c.fillStyle = '#2d3554'; c.beginPath(); c.moveTo(-22, 0); c.lineTo(4, 54); c.lineTo(14, 54); c.lineTo(-8, 0); c.fill();
-  // 帯
-  c.fillStyle = '#7a1420'; c.fillRect(-28, 70, 56, 13); c.strokeRect(-28, 70, 56, 13);
-  c.fillStyle = '#d8b04a'; c.fillRect(-4, 72, 8, 9);
-  // 草摺
-  c.fillStyle = '#39415a';
-  for (let i = -1; i <= 1; i++) { c.fillRect(i * 19 - 9, 84, 18, 22); c.strokeRect(i * 19 - 9, 84, 18, 22); }
+  // 胴（胸板と腰のくびれ）
+  c.save(); c.translate(0, hipY); c.rotate(lean);
+  c.beginPath();
+  c.moveTo(-25, 4); c.lineTo(-22, -26);
+  c.quadraticCurveTo(-33, -60, -30, -94); c.quadraticCurveTo(-18, -106, -6, -105);
+  c.lineTo(12, -106); c.quadraticCurveTo(28, -104, 30, -92);
+  c.quadraticCurveTo(36, -70, 24, -28); c.lineTo(27, 4); c.closePath();
+  c.fillStyle = SUIT; c.fill(); c.stroke();
+  // 影（奥側）と縁の光（手前側）
+  c.save(); c.clip();
+  c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(-36, -110, 22, 120);
+  c.strokeStyle = SUIT_RIM; c.lineWidth = 3; c.beginPath(); c.moveTo(29, -88); c.quadraticCurveTo(33, -66, 23, -30); c.stroke();
+  // 鎖帷子（襟の合わせから覗く）
+  c.fillStyle = '#4a5268'; c.beginPath(); c.moveTo(-6, -104); c.lineTo(12, -104); c.lineTo(6, -72); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(160,170,200,.45)'; c.lineWidth = 1;
+  for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(-4 + i * 2, -100 + i * 7); c.lineTo(10 - i * 2, -100 + i * 7); c.stroke(); }
+  // 襟（右前で交差）と上着の皺
+  c.strokeStyle = '#3a4570'; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(-14, -104); c.quadraticCurveTo(2, -80, 16, -34); c.stroke();
+  c.beginPath(); c.moveTo(16, -105); c.lineTo(6, -72); c.stroke();
+  c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1.5;
+  for (const [x0, y0, x1, y1] of [[-18, -60, -8, -40], [20, -66, 12, -48], [-12, -36, 0, -28]]) { c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
   c.restore();
-  // 肩当て
-  c.fillStyle = STEEL; c.beginPath(); c.ellipse(shX + 14, shY + 10, 22, 14, -0.3, 0, 7); c.fill(); c.stroke();
-  c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(shX + 4, shY + 2, 16, 3);
+  c.strokeStyle = OUT; c.lineWidth = 3;
+  // 帯と結び目
+  c.fillStyle = '#7a1420'; c.beginPath(); c.moveTo(-24, -26); c.lineTo(25, -28); c.lineTo(26, -12); c.lineTo(-24, -10); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#5a0e18'; c.beginPath(); c.moveTo(-24, -20); c.lineTo(-34, -6); c.lineTo(-26, -4); c.closePath(); c.fill(); c.stroke();
+  // 上着の裾
+  c.fillStyle = SUIT_D; c.beginPath(); c.moveTo(-25, -10); c.lineTo(-28, 10); c.lineTo(-4, 8); c.lineTo(0, -10); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = SUIT; c.beginPath(); c.moveTo(0, -10); c.lineTo(4, 10); c.lineTo(29, 8); c.lineTo(26, -12); c.closePath(); c.fill(); c.stroke();
 
-  // 頭
-  const hdX = shX + 8 + Math.sin(lean) * 10, hdY = shY - 30;
-  c.fillStyle = SUIT; c.beginPath(); c.arc(hdX, hdY, 26, 0, 7); c.fill(); c.stroke();
-  c.fillStyle = '#0d1020'; c.beginPath(); c.moveTo(hdX - 20, hdY + 10); c.lineTo(hdX - 42, hdY + 30); c.lineTo(hdX - 14, hdY + 22); c.fill();
-  // 目元
-  c.fillStyle = '#d9b48c'; c.fillRect(hdX - 4, hdY - 4, 28, 11); c.strokeRect(hdX - 4, hdY - 4, 28, 11);
-  const glow = 0.6 + Math.sin(T * 6) * 0.2;
-  c.fillStyle = `rgba(255,245,170,${glow})`; c.fillRect(hdX + 8, hdY - 1, 12, 4);
-  c.fillStyle = '#000'; c.fillRect(hdX + 15, hdY - 1, 4, 4);
+  // 頭（頭巾）：首の上、肩幅の約4割
+  const hx = 9, hy = -128;
+  c.fillStyle = SUIT_D; c.fillRect(-2, -112, 18, 10);                         // 首
+  c.fillStyle = SUIT; c.beginPath(); c.ellipse(hx, hy, 17, 21, 0.08, 0, 7); c.fill(); c.stroke();
+  c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(hx - 7, hy + 2, 9, 17, 0.08, 0, 7); c.fill();
+  // 頭巾の結び目と垂れ
+  c.fillStyle = SUIT_D; c.beginPath(); c.moveTo(hx - 15, hy - 4); c.lineTo(hx - 30, hy + 4 + Math.sin(T * 7) * 2); c.lineTo(hx - 26, hy + 12); c.lineTo(hx - 14, hy + 6); c.closePath(); c.fill(); c.stroke();
+  // 目元（顔の前寄り）
+  c.fillStyle = SKIN; c.beginPath(); c.roundRect(hx + 1, hy - 8, 17, 9, 3); c.fill(); c.stroke();
+  c.fillStyle = '#f4ead8'; c.fillRect(hx + 9, hy - 5, 6, 3);
+  c.fillStyle = '#111'; c.fillRect(hx + 12, hy - 5, 3, 3);
+  c.fillStyle = '#3a2a1e'; c.fillRect(hx + 7, hy - 9, 10, 2);               // 眉
   // 鉢金
-  c.fillStyle = STEEL; c.fillRect(hdX - 12, hdY - 20, 34, 10); c.strokeRect(hdX - 12, hdY - 20, 34, 10);
-  c.fillStyle = '#e0e6f0'; c.fillRect(hdX - 8, hdY - 18, 26, 2);
-  c.fillStyle = '#1a1a1a'; c.font = 'bold 8px serif'; c.fillText('忍', hdX + 1, hdY - 11);
+  c.fillStyle = STEEL; c.beginPath(); c.moveTo(hx - 8, hy - 18); c.lineTo(hx + 16, hy - 16); c.lineTo(hx + 16, hy - 10); c.lineTo(hx - 8, hy - 12); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#e0e6f0'; c.fillRect(hx - 4, hy - 16, 16, 1.5);
+  c.restore();
+  // 手前の肩当て
+  c.fillStyle = STEEL; c.beginPath(); c.ellipse(sfx + 2, sfy + 6, 15, 11, -0.4 + lean, 0, 7); c.fill(); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(sfx - 6, sfy + 1, 12, 2.5);
 
-  // 手前の腕
-  const [ua, fa] = ik(shX + 12, shY + 10, hx, hy, 52, 50, -1);
-  let [ex, ey] = seg(shX + 12, shY + 10, ua, 52, 28, 24, SUIT, SUIT_RIM);
-  c.fillStyle = STEEL; c.save(); c.translate(ex, ey); c.rotate(-fa); c.fillRect(-11, 6, 22, 32); c.strokeRect(-11, 6, 22, 32); c.restore();
-  seg(ex, ey, fa, 50, 24, 20, SUIT, SUIT_RIM);
-
-  // 斬撃の残光
+  // 斬撃の残光（鍔から刃先まで）
+  if (pl.atk && pl.atk.track) { pl.trail.push({ x: tx, y: ty, b: B }); if (pl.trail.length > 7) pl.trail.shift(); }
+  else if (pl.trail.length) pl.trail.shift();
   if (pl.trail.length > 1) {
     for (let i = 1; i < pl.trail.length; i++) {
       const p0 = pl.trail[i - 1], p1 = pl.trail[i];
-      const al = (i / pl.trail.length) * 0.75;
-      c.fillStyle = `rgba(200,240,255,${al})`;
+      c.fillStyle = `rgba(200,240,255,${(i / pl.trail.length) * 0.75})`;
       c.beginPath();
       c.moveTo(p0.x + Math.sin(p0.b) * 70, p0.y + Math.cos(p0.b) * 70);
-      c.lineTo(p0.x + Math.sin(p0.b) * 250, p0.y + Math.cos(p0.b) * 250);
-      c.lineTo(p1.x + Math.sin(p1.b) * 250, p1.y + Math.cos(p1.b) * 250);
+      c.lineTo(p0.x + Math.sin(p0.b) * 240, p0.y + Math.cos(p0.b) * 240);
+      c.lineTo(p1.x + Math.sin(p1.b) * 240, p1.y + Math.cos(p1.b) * 240);
       c.lineTo(p1.x + Math.sin(p1.b) * 70, p1.y + Math.cos(p1.b) * 70);
       c.fill();
     }
   }
-  drawMasamune(hx, hy, B);
+  // 刀 → 左手（柄頭側） → 手前の腕 → 右手（鍔の際）
+  drawMasamune(tx, ty, B);
+  if (twoHand) fist(hbx, hby, B); else fist(hbx, hby, faB);
+  drawArm(sfx, sfy, hfx, hfy, true);
+  fist(hfx, hfy, B);
   c.restore();
-  return { hx, hy, B };
 }
+// 原点＝鍔。柄は後ろへ50、刀身は前へ232
 function drawMasamune(hx, hy, B) {
-  c.save(); c.translate(hx, hy); c.rotate(-B);
+  c.save(); c.translate(hx, hy); c.rotate(-B); c.translate(0, -8);
   // 柄
   c.fillStyle = '#1a0e10'; c.fillRect(-6, -44, 12, 50); c.strokeRect(-6, -44, 12, 50);
   c.fillStyle = '#d8c8a0';
@@ -1117,9 +1205,6 @@ function update(dt) {
 
   updatePlayer(dt);
   // 攻撃の軌跡（ローカル座標で記録）
-  if (pl.atk && pl.atk.track) { const B = bladeAngle(), H = B * 0.62 + 0.25; const lean = pl.atk.stage === 3 ? 0.25 : 0.12; const hipY = -126; const shX = Math.sin(lean) * 92, shY = hipY - Math.cos(lean) * 92; pl.trail.push({ x: shX + Math.sin(H) * 80, y: shY + 8 + Math.cos(H) * 80, b: B }); if (pl.trail.length > 7) pl.trail.shift(); }
-  else if (pl.trail.length) pl.trail.shift();
-
   // カメラ
   const target = pl.x - 150;
   cam = clamp(Math.max(cam, Math.min(target, camLock)), camMin, STAGE_END - VW);
