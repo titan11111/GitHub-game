@@ -17,8 +17,11 @@ const MAP = {
 
 export function createPanel({ canvas, logicalW, logicalH, onAutoPause }) {
   installFcIosTouchGuard();
+  const latch = {};
   const { K } = initFcIosController({
     buttons: { 'fc-btn-select': ['KeyC'], 'fc-btn-start': ['Enter'] },
+    // 1フレーム未満の短い押下も「押した」として拾う
+    onChange(keys) { for (const n in MAP) if (MAP[n].some((c) => keys[c])) latch[n] = true; },
   });
   // ゲーム側のキーでページがスクロールしないように
   document.addEventListener('keydown', (e) => {
@@ -27,14 +30,19 @@ export function createPanel({ canvas, logicalW, logicalH, onAutoPause }) {
 
   const prev = {};
   const now = {};
+  const hits = {};
   const held = (n) => MAP[n].some((c) => K[c]);
   function poll() {
-    for (const n in MAP) { prev[n] = now[n]; now[n] = held(n); }
+    for (const n in MAP) {
+      prev[n] = now[n]; now[n] = held(n);
+      hits[n] = (now[n] && !prev[n]) || (latch[n] && !prev[n]);
+      latch[n] = false;
+    }
   }
   const panel = {
     poll,
     held: (n) => !!now[n],
-    hit: (n) => !!now[n] && !prev[n],
+    hit: (n) => !!hits[n],
     muted: store.get('mute', '0') === '1',
     setMute(m) {
       panel.muted = m;
