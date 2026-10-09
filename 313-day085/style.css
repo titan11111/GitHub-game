@@ -1,0 +1,61 @@
+/* 313 巨忍 影丸 — 上75%ゲーム／下25%ファミコン操作盤 */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#120a14;overflow:hidden;overscroll-behavior:none}
+body{
+  touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",system-ui,sans-serif;
+  color:#f4e6c8;
+}
+canvas{touch-action:none;display:block}
+
+#game-shell{
+  display:flex;flex-direction:column;
+  height:100vh;height:100dvh;width:100%;
+  padding-top:env(safe-area-inset-top,0px);
+}
+#game-stage{
+  position:relative;flex:0 0 75%;height:75%;min-height:0;
+  display:grid;place-items:center;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%,#2a1420,#0a0508 75%);
+}
+#screen-wrap{position:relative;width:100%;height:100%;display:grid;place-items:center}
+#screen{width:360px;height:400px;background:#000;box-shadow:0 0 0 2px #000,0 0 24px rgba(0,0,0,.6)}
+
+#mute-btn{
+  position:absolute;top:6px;right:max(6px,env(safe-area-inset-right,6px));
+  width:48px;height:48px;border-radius:12px;border:2px solid rgba(255,230,180,.35);
+  background:rgba(10,4,8,.55);color:#fff;font-size:22px;line-height:1;
+  touch-action:manipulation;z-index:5;
+}
+#mute-btn:active{transform:scale(.92)}
+#mute-btn[aria-pressed="true"]{border-color:#e83800;opacity:.85}
+
+/* 共通操作盤の上書き（この作品だけ） */
+#control-deck{padding-bottom:max(8px,env(safe-area-inset-bottom,8px))}
+.fc-deck-center{gap:4px}
+.fc-sysbtn{
+  height:48px;min-height:48px;width:clamp(60px,16vw,76px);
+  background:none;box-shadow:none;display:grid;place-items:center;
+}
+.fc-sysbtn .pill{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  width:100%;height:34px;border-radius:999px;
+  background:linear-gradient(180deg,var(--fc-sys),var(--fc-sys-lo));
+  box-shadow:0 3px 0 #111,inset 0 1px 0 rgba(255,255,255,.18);
+  font-family:monospace;font-size:7px;letter-spacing:.06em;color:#bbb;pointer-events:none;
+  transition:transform .08s,box-shadow .08s;
+}
+.fc-sysbtn .pill b{font-size:12px;font-weight:800;letter-spacing:0;color:#fff;
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",sans-serif}
+.fc-sysbtn:active,.fc-sysbtn.pressed{transform:none;box-shadow:none}
+.fc-sysbtn.pressed .pill{transform:translateY(3px);box-shadow:0 0 0 #111,inset 0 2px 4px rgba(0,0,0,.5)}
+#fc-btn-select .pill b{color:#ffcf6a}
+
+.fc-abbtn::after{
+  content:attr(data-cap);position:absolute;left:50%;transform:translateX(-50%);
+  font-size:12px;font-weight:800;white-space:nowrap;color:#1a1a1a;pointer-events:none;
+}
+.fc-abbtn-a::after{top:calc(100% + 6px)}
+.fc-abbtn-b::after{bottom:calc(100% + 6px)}
+.fc-abbtn.pressed{filter:brightness(1.25)}

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#120a14">
+<title>巨忍 影丸 ─ KYODAI NINJA KAGEMARU</title>
+<link rel="stylesheet" href="fc-ios-controller.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-shell">
+  <div id="game-stage">
+    <div id="screen-wrap">
+      <canvas id="screen" data-logical-width="360" data-logical-height="400" aria-label="ゲーム画面"></canvas>
+    </div>
+    <button type="button" id="mute-btn" aria-label="音を消す" aria-pressed="false">🔊</button>
+  </div>
+  <section class="fc-control-deck" id="control-deck" aria-label="操作盤">
+    <div class="fc-deck-left">
+      <div class="fc-dpad-wrap" id="fc-dpad-wrap" aria-label="十字キー">
+        <div class="fc-dpad" id="fc-dpad" data-up="0" data-down="0" data-left="0" data-right="0">
+          <div class="fc-dpad-v"></div>
+          <div class="fc-dpad-h"></div>
+          <div class="fc-dpad-c"></div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-deck-center">
+      <button type="button" class="fc-sysbtn" id="fc-btn-select" aria-label="忍術（SELECT）"><span class="pill"><b>忍術</b>SELECT</span></button>
+      <button type="button" class="fc-sysbtn" id="fc-btn-start" aria-label="ポーズ（START）"><span class="pill"><b>ポーズ</b>START</span></button>
+    </div>
+    <div class="fc-deck-right">
+      <div class="fc-ab">
+        <button type="button" class="fc-abbtn fc-abbtn-b" id="fc-btn-b" data-cap="手裏剣" aria-label="手裏剣（B）"><i>B</i></button>
+        <button type="button" class="fc-abbtn fc-abbtn-a" id="fc-btn-a" data-cap="斬る" aria-label="斬る（A）"><i>A</i></button>
+      </div>
+    </div>
+  </section>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
