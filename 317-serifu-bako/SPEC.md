@@ -1,4 +1,4 @@
-# SPEC.md — 317-day089 セリフ箱RPG Slash Order Tale
+# SPEC.md — 317-serifu-bako セリフ箱RPG Slash Order Tale
 
 ## 概要
 - タイトル画面 → セリフ落とし → スラッシュ → 物語RPG（家→駅→解決→エンディング）のシンプルRPG

@@ -1,4 +1,9 @@
-# LEARNINGS.md — 317-day089
+# LEARNINGS.md — 317-serifu-bako
+
+## 2026-10-11 フォルダ改名（317-day089 → 317-serifu-bako）
+- 日付の仮名をタイトル「セリフ箱RPG」のローマ字に置換。番号317は変更なし
+- 未公開（GitHubに `317-day089` リポジトリ無し）のため旧URLは存在せず、リダイレクト不要
+- `localStorage` キーは `tg.317.*` のままで、改名による保存データ消失なし
 
 ## 2026-10-11 新規作成（セリフ箱RPG）
 - 構成：タイトル→DROP（落下6個をタップ回収）→SLASH（なぞり順）→STORY（6拍・4幕）→ED3分岐。単体index.html＋SPEC.mdのみ追加
