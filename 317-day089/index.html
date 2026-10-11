@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>セリフ箱RPG | Slash Order Tale</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;touch-action:none}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;background:#0b0e1a;color:#fff;font-family:system-ui,-apple-system,"Hiragino Sans",sans-serif}
+#bg{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+#hud{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top));z-index:30;pointer-events:none}
+#hud .ttl{font-size:12px;opacity:.85;letter-spacing:.08em}
+#hud .row{display:flex;gap:8px;pointer-events:auto}
+.icon-btn{min-width:48px;min-height:48px;width:48px;height:48px;border-radius:12px;border:1px solid #4a5578;background:rgba(10,14,30,.72);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .08s ease,background .08s ease}
+.icon-btn:active,.icon-btn.is-pressed{transform:scale(.92);background:rgba(120,150,255,.35)}
+.screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:flex-end;z-index:20;padding:76px 14px calc(18px + env(safe-area-inset-bottom));pointer-events:none}
+.screen.on{display:flex}
+.panel{pointer-events:auto;width:min(560px,100%);background:rgba(8,12,26,.82);border:1px solid #3a4670;border-radius:16px;padding:14px;backdrop-filter:blur(4px)}
+h1{font-size:26px;margin:6px 0 2px;letter-spacing:.06em;text-align:center}
+.sub{font-size:13px;opacity:.9;text-align:center;margin:0 0 10px;line-height:1.7}
+.game-btn{display:block;width:100%;min-height:56px;margin:8px 0 0;border-radius:14px;border:1px solid #5a6ea8;background:linear-gradient(180deg,#33477e,#1d2a52);color:#fff;font-size:17px;font-weight:700;letter-spacing:.05em;cursor:pointer;transition:transform .08s ease,opacity .08s ease,filter .08s ease;touch-action:manipulation}
+.game-btn:active,.game-btn.is-pressed{transform:scale(.92);opacity:.88}
+.game-btn:disabled{opacity:.4;pointer-events:none}
+.game-btn.ghost{background:rgba(255,255,255,.08);font-weight:400;font-size:14px;min-height:48px}
+#titleBg{position:fixed;inset:0;z-index:10;background:url("Gemini_Generated_Image_ci7a5gci7a5gci7a.jpeg") center/cover no-repeat;opacity:.35;display:none}
+#titleBg.on{display:block}
+#dropField{position:fixed;inset:0;z-index:15;pointer-events:none}
+.serif{position:absolute;left:0;top:0;max-width:62vw;padding:10px 12px;border-radius:12px;background:linear-gradient(180deg,#fff8e1,#ffe9b0);color:#232232;font-size:14px;font-weight:700;line-height:1.4;border:2px solid #7a5b17;box-shadow:0 4px 14px rgba(0,0,0,.45);pointer-events:auto;cursor:pointer;transition:transform .08s ease}
+.serif:active{transform:scale(.92)}
+#serifBox{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:52px;margin:8px 0;padding:8px;border:2px dashed #6f7fb8;border-radius:12px;background:rgba(255,255,255,.05)}
+.chip{padding:8px 10px;border-radius:10px;background:#ffe9b0;color:#232232;font-size:12px;font-weight:700;border:2px solid #7a5b17;max-width:46%}
+#slashField{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.slash{position:relative;padding:12px 10px 12px 40px;border-radius:12px;background:linear-gradient(180deg,#fff8e1,#ffe9b0);color:#232232;font-size:13px;font-weight:700;border:2px solid #7a5b17;min-height:56px}
+.slash .ord{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:#232232;color:#ffe27a;font-size:13px;display:flex;align-items:center;justify-content:center}
+.slash.hit{outline:3px solid #ff5d5d}
+#slashPad{pointer-events:auto;width:min(560px,100%);height:26vh;min-height:150px;border-radius:14px;border:1px solid #3a4670;background:rgba(255,255,255,.04);margin-top:8px;position:relative;overflow:hidden}
+#slashPad .hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;opacity:.7;pointer-events:none;text-align:center;padding:0 16px}
+#slashFx{position:fixed;inset:0;z-index:40;pointer-events:none}
+.slashline{position:absolute;height:4px;background:linear-gradient(90deg,#fff,#ffd24d,#ff5d5d);border-radius:2px;box-shadow:0 0 12px #ffd24d;pointer-events:none}
+#storyScene{font-size:12px;letter-spacing:.2em;color:#8fd0ff;text-align:center;margin:0 0 4px}
+#storySpk{font-size:15px;font-weight:800;color:#ffe27a;text-align:center;margin:0 0 6px}
+#storyTxt{font-size:17px;line-height:1.9;min-height:96px;text-align:left}
+#storyProg{font-size:12px;opacity:.8;text-align:center;margin-top:6px}
+#endTitle{font-size:22px;text-align:center;margin:4px 0}
+#endTxt{font-size:15px;line-height:1.9}
+#pauseModal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);padding:20px}
+#pauseModal.on{display:flex}
+.meter{height:8px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:8px}
+.meter>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7affd4,#ffd24d)}
+.hintline{font-size:12px;opacity:.8;text-align:center;margin:6px 0 0;line-height:1.6}
+@media (max-height:600px){.sub{display:none}#storyTxt{min-height:64px;font-size:15px}#slashPad{min-height:110px}}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="ttl">317 セリフ箱RPG</div>
+  <div class="row">
+    <button type="button" class="icon-btn" id="muteBtn" aria-label="ミュート切替">🔊</button>
+    <button type="button" class="icon-btn" id="pauseBtn" aria-label="ポーズ">⏸</button>
+  </div>
+</div>
+<canvas id="bg"></canvas>
+<div id="titleBg"></div>
+
+<!-- TITLE -->
+<section class="screen on" id="scr-title">
+  <div class="panel">
+    <h1>セリフ箱RPG</h1>
+    <p class="sub">セリフを箱に落として、斬った順に物語が進むRPG<br>家で目覚める → 駅で異変 → 解決 → エンディング</p>
+    <button type="button" class="game-btn" id="startBtn">はじめる</button>
+    <p class="hintline">操作：タップで回収・なぞって斬る・つぎへで読む<br>音が出ます（右上で消音可）</p>
+  </div>
+</section>
+
+<!-- DROP -->
+<section class="screen" id="scr-drop">
+  <div class="panel">
+    <p class="sub" style="margin:0">落ちてくるセリフをタップして箱へ！ <b id="dropCount">0/6</b></p>
+    <div id="serifBox" aria-label="セリフ箱"></div>
+    <button type="button" class="game-btn" id="toSlashBtn" disabled>箱が満タン→斬るへ</button>
+  </div>
+</section>
+<div id="dropField"></div>
+
+<!-- SLASH -->
+<section class="screen" id="scr-slash">
+  <div class="panel">
+    <p class="sub" style="margin:0">下の板を指／マウスでなぞって斬れ！斬った順が物語の順番になる</p>
+    <div id="slashField"></div>
+    <div id="slashPad"><div class="hint">ここをなぞるか、上の札を直接なぞってもOK（<span id="slashCount">0/6</span>）</div></div>
+    <button type="button" class="game-btn" id="toStoryBtn" disabled>この順で物語へ</button>
+    <button type="button" class="game-btn ghost" id="shuffleBtn">おまかせ（ランダム）</button>
+  </div>
+</section>
+<div id="slashFx"></div>
+
+<!-- STORY -->
+<section class="screen" id="scr-story">
+  <div class="panel">
+    <p id="storyScene">第一幕・家</p>
+    <p id="storySpk">主人公</p>
+    <p id="storyTxt"></p>
+    <div class="meter"><i id="storyMeter"></i></div>
+    <p id="storyProg">1/6</p>
+    <button type="button" class="game-btn" id="nextBeatBtn">つぎへ ▶</button>
+  </div>
+</section>
+
+<!-- ENDING -->
+<section class="screen" id="scr-end">
+  <div class="panel">
+    <p id="storyScene">エンディング</p>
+    <p id="endTitle"></p>
+    <p id="endTxt"></p>
+    <p class="hintline" id="endStat"></p>
+    <button type="button" class="game-btn" id="againBtn">もう一度あそぶ</button>
+    <button type="button" class="game-btn ghost" id="backTitleBtn">タイトルへ</button>
+  </div>
+</section>
+
+<div id="pauseModal"><div class="panel" style="pointer-events:auto">
+  <p class="sub" style="margin:0 0 6px"><b>一時停止中</b></p>
+  <button type="button" class="game-btn" id="resumeBtn">つづける</button>
+  <button type="button" class="game-btn ghost" id="restartBtn">はじめから</button>
+</div></div>
+
+<audio id="bgm" src="Hard_Target_Lock.mp3" loop preload="none"></audio>
+
+<script>
+'use strict';
+/* ===== 0. 小物 ===== */
+const $=id=>document.getElementById(id);
+const store={
+  get(k,d){try{const v=localStorage.getItem('tg.317.'+k);return v==null?d:JSON.parse(v)}catch(_){return d}},
+  set(k,v){try{localStorage.setItem('tg.317.'+k,JSON.stringify(v))}catch(_){}}
+};
+/* ===== 1. 打感・二重タップ防止（game-touch-ux） ===== */
+let lastTap=0;
+document.addEventListener('touchstart',e=>{const n=Date.now();if(n-lastTap<300)e.preventDefault();lastTap=n},{passive:false});
+let lastEnd=0;
+document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastEnd<=300)e.preventDefault();lastEnd=n},{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault());
+document.addEventListener('contextmenu',e=>e.preventDefault());
+function bindTap(el,fn){
+  if(!el)return;
+  el.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    el.classList.add('is-pressed');
+    if(navigator.vibrate)try{navigator.vibrate(12)}catch(_){}
+    unlockAudio();
+    try{fn(e)}finally{setTimeout(()=>el.classList.remove('is-pressed'),90)}
+  });
+  el.addEventListener('pointerup',()=>el.classList.remove('is-pressed'));
+  el.addEventListener('pointercancel',()=>el.classList.remove('is-pressed'));
+}
+/* ===== 2. 音声（unlock＋BGM1要素＋短SE） ===== */
+let AC=null,muted=store.get('muted',false),bgmOn=false;
+function getAC(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(_){AC=null}}return AC}
+function unlockAudio(){
+  const c=getAC();if(!c)return;
+  if(c.state==='suspended')c.resume();
+  if(!bgmOn&&!muted){const a=$('bgm');a.volume=.5;a.play().then(()=>{bgmOn=true}).catch(()=>{})}
+}
+document.addEventListener('pointerdown',unlockAudio,{once:false});
+document.addEventListener('keydown',unlockAudio);
+function beep(f,d){
+  if(muted)return;const c=getAC();if(!c||c.state==='suspended')return;
+  try{
+    const o=c.createOscillator(),g=c.createGain();
+    o.type='square';o.frequency.value=f||440;
+    g.gain.setValueAtTime(.07,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+(d||.07));
+    o.connect(g).connect(c.destination);o.start();o.stop(c.currentTime+(d||.07));
+  }catch(_){}
+}
+function refreshMute(){
+  $('muteBtn').textContent=muted?'🔇':'🔊';
+  const a=$('bgm');
+  if(muted){a.pause();bgmOn=false}else{if(state.phase!=='title'){a.play().then(()=>{bgmOn=true}).catch(()=>{})}}
+  store.set('muted',muted);
+}
+/* ===== 3. 画面遷移・ポーズ ===== */
+const state={phase:'title',paused:false,serifs:[],order:[],beats:[],beat:0,scene:0,walk:0};
+const SCREENS=['scr-title','scr-drop','scr-slash','scr-story','scr-end'];
+function show(id){
+  SCREENS.forEach(s=>$(s).classList.toggle('on',s===id));
+  $('dropField').style.display=(id==='scr-drop')?'block':'none';
+  $('titleBg').classList.toggle('on',id==='scr-title');
+  state.phase=id.replace('scr-','');
+}
+function setPaused(p){
+  state.paused=p;
+  $('pauseModal').classList.toggle('on',p);
+  $('pauseBtn').textContent=p?'▶':'⏸';
+}
+/* ===== 4. 疑似3D回廊（Canvas） ===== */
+const cv=$('bg'),cx=cv.getContext('2d');
+function fitBG(){
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=innerWidth*dpr;cv.height=innerHeight*dpr;
+  cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';
+  cx.setTransform(dpr,0,0,dpr,0,0);
+}
+addEventListener('resize',fitBG);addEventListener('orientationchange',fitBG);fitBG();
+const SCENES=[
+  {sky:['#2b3a6e','#0b0e1a'],road:'#3d4a7a',acc:'#ffd24d',label:'家・朝'},
+  {sky:['#5a2f6e','#141126'],road:'#4a3a7a',acc:'#8fd0ff',label:'駅・夕'},
+  {sky:['#6e2f2f','#160f14'],road:'#6e3a4a',acc:'#ff5d5d',label:'異変'},
+  {sky:['#1f5a4a','#0a1418'],road:'#2f6e5a',acc:'#7affd4',label:'解決・光'}
+];
+function drawBG(){
+  const W=innerWidth,H=innerHeight,t=state.walk;
+  const sc=SCENES[Math.min(state.scene,3)];
+  const g=cx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,sc.sky[0]);g.addColorStop(.55,sc.sky[1]);g.addColorStop(.551,'#05060c');g.addColorStop(1,'#05060c');
+  cx.fillStyle=g;cx.fillRect(0,0,W,H);
+  const hy=H*.55;
+  cx.fillStyle=sc.acc;cx.globalAlpha=.9;
+  cx.beginPath();cx.arc(W/2,hy-40,26,0,7);cx.fill();cx.globalAlpha=1;
+  cx.fillStyle='#05060c';
+  const rx0=W*.12,rx1=W*.88;
+  cx.beginPath();cx.moveTo(W/2-24,hy);cx.lineTo(W/2+24,hy);cx.lineTo(rx1,H);cx.lineTo(rx0,H);cx.closePath();
+  cx.fillStyle='#10142a';cx.fill();
+  cx.strokeStyle=sc.road;cx.lineWidth=3;cx.stroke();
+  cx.strokeStyle=sc.acc;cx.lineWidth=2;cx.setLineDash([14,18]);
+  cx.lineDashOffset=-(t*160)%32;
+  cx.beginPath();cx.moveTo(W/2,hy);cx.lineTo(W/2,H);cx.stroke();
+  cx.setLineDash([]);
+  for(let i=0;i<7;i++){
+    const p=((i/7)+((t*.6)%(1/7)*7)/7)%1;
+    const y=hy+Math.pow(p,2.1)*(H-hy);
+    const w=6+p*(W*.10),h=10+p*60;
+    const xo=(W*.30)*(1-p)+8;
+    cx.fillStyle=i%2?sc.road:'#232a4e';
+    cx.fillRect(W/2-xo-w,y,w,h);
+    cx.fillRect(W/2+xo,y,w,h);
+    cx.fillStyle=sc.acc;cx.globalAlpha=.25+p*.5;
+    cx.fillRect(W/2-xo-w,y,w,3);cx.fillRect(W/2+xo,y,w,3);
+    cx.globalAlpha=1;
+  }
+  cx.fillStyle='rgba(255,255,255,.75)';cx.font='12px system-ui';cx.textAlign='left';
+  cx.fillText('317 | '+sc.label,10,22);
+}
+/* ===== 5. セリフプール ===== */
+const POOL=[
+'今朝の味噌汁、濃すぎた','終電が雲の上を走ってた','駅の鳩が切符を切ってた',
+'財布の中に手紙が増えてる','昨日助けた猫が恩返しに来た','エレベーターが5階を拒否した',
+'傘が勝手に開いて空を指した','自販機がお釣りに秘密をくれた','影が一歩遅れてついてきた',
+'月がやけに近くて眩しかった','靴ひもがほどけて冒険が始まった','冷蔵庫が唸って予言を告げた',
+'信号が青で泳げと言った','カバンが急に重くて夢が詰まってた','風が名前を呼んで追いかけてきた',
+'時計が3分だけ未来を喋った','交差点で宇宙人が道を聞いてきた','ポケットに駅の鍵が入ってた'];
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;const t=a[i];a[i]=a[j];a[j]=t}return a}
+/* ===== 6. DROP：落下ブロックをタップ回収 ===== */
+let drops=[],dropRAF=0,dropRunning=false;
+function startDrop(){
+  show('scr-drop');
+  $('serifBox').innerHTML='';$('dropCount').textContent='0/6';$('toSlashBtn').disabled=true;
+  state.serifs=shuffle(POOL).slice(0,6);state.order=[];
+  const f=$('dropField');f.innerHTML='';drops=[];
+  state.serifs.forEach((txt,i)=>{
+    const d=document.createElement('div');
+    d.className='serif';d.textContent=txt;
+    d.style.left=(4+Math.random()*58)+'vw';
+    f.appendChild(d);
+    const rec={el:d,txt:txt,y:-60-Math.random()*220,sp:70+Math.random()*60+tier(),got:false};
+    try{d.setPointerCapture&&0}catch(_){}
+    d.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();capture(rec)});
+    drops.push(rec);
+  });
+  dropRunning=true;
+}
+function tier(){return 0}
+function capture(rec){
+  if(state.phase!=='drop'||rec.got||state.paused)return;
+  rec.got=true;rec.el.remove();beep(660,.07);
+  if(navigator.vibrate)try{navigator.vibrate(15)}catch(_){}
+  const c=document.createElement('div');c.className='chip';c.textContent=rec.txt;
+  $('serifBox').appendChild(c);
+  const n=$('serifBox').children.length;
+  $('dropCount').textContent=n+'/6';
+  if(n>=6){dropRunning=false;$('toSlashBtn').disabled=false;beep(880,.12)}
+}
+function stepDrop(dt){
+  if(!dropRunning||state.paused||state.phase!=='drop')return;
+  const H=innerHeight;
+  drops.forEach(r=>{
+    if(r.got)return;
+    r.y+=r.sp*dt;
+    if(r.y>H*.62){r.y=-80;r.el.style.left=(4+Math.random()*58)+'vw'}
+    r.el.style.transform='translateY('+r.y+'px)';
+  });
+}
+/* ===== 7. SLASH：なぞり順で斬順決定 ===== */
+let slashOrder=[],stroking=false,lastPt=null;
+function startSlash(){
+  show('scr-slash');
+  const sf=$('slashField');sf.innerHTML='';
+  slashOrder=[];$('slashCount').textContent='0/6';$('toStoryBtn').disabled=true;
+  const boxed=[];
+  Array.prototype.forEach.call($('serifBox').children,ch=>boxed.push(ch.textContent));
+  const src=boxed.length?boxed:state.serifs;
+  src.forEach(txt=>{
+    const d=document.createElement('div');d.className='slash';d.dataset.txt=txt;
+    d.innerHTML='<span class="ord">・</span><span></span>';
+    d.lastChild.textContent=txt;sf.appendChild(d);
+  });
+}
+function slashRects(){
+  return Array.prototype.map.call(document.querySelectorAll('#slashField .slash'),el=>{
+    const r=el.getBoundingClientRect();return{el:el,x:r.left,y:r.top,w:r.width,h:r.height,txt:el.dataset.txt};
+  });
+}
+function slashAt(px,py,rects){
+  rects=rects||slashRects();
+  rects.forEach(rc=>{
+    if(slashOrder.indexOf(rc.txt)>=0)return;
+    if(px>=rc.x-14&&px<=rc.x+rc.w+14&&py>=rc.y-14&&py<=rc.y+rc.h+14){
+      slashOrder.push(rc.txt);
+      rc.el.classList.add('hit');
+      rc.el.querySelector('.ord').textContent=slashOrder.length;
+      beep(300+slashOrder.length*130,.08);
+      if(navigator.vibrate)try{navigator.vibrate(20)}catch(_){}
+      fxLine(rc);
+      $('slashCount').textContent=slashOrder.length+'/6';
+      if(slashOrder.length>=6){$('toStoryBtn').disabled=false;beep(990,.15)}
+    }
+  });
+}
+function fxLine(rc){
+  const r=rc.el.getBoundingClientRect();
+  const s=document.createElement('div');s.className='slashline';
+  const len=Math.max(r.width+40,80);
+  s.style.width=len+'px';s.style.left=(r.left-20)+'px';s.style.top=(r.top+r.height/2)+'px';
+  s.style.transform='rotate(-12deg)';
+  $('slashFx').appendChild(s);
+  setTimeout(()=>s.remove(),450);
+}
+function bindSlash(){
+  const pad=$('slashPad'),fx=$('slashFx');
+  const pt=e=>({x:e.clientX,y:e.clientY});
+  const down=e=>{if(state.phase!=='slash'||state.paused)return;stroking=true;lastPt=pt(e);slashAt(lastPt.x,lastPt.y);e.preventDefault()};
+  const move=e=>{
+    if(!stroking||state.phase!=='slash'||state.paused)return;
+    e.preventDefault();
+    const p=pt(e),rects=slashRects();
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const x=lastPt.x+(p.x-lastPt.x)*i/steps,y=lastPt.y+(p.y-lastPt.y)*i/steps;
+      slashAt(x,y,rects);
+    }
+    lastPt=p;
+  };
+  const up=()=>{stroking=false;lastPt=null};
+  [pad,document.getElementById('slashField')].forEach(el=>{
+    el.addEventListener('pointerdown',e=>{try{el.setPointerCapture(e.pointerId)}catch(_){}down(e)});
+    el.addEventListener('pointermove',move);
+    el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+  });
+}
+/* ===== 8. STORY：6拍を4幕で ===== */
+const BEATS=[
+{sc:0,scene:'第一幕・家で目覚める',spk:'主人公（寝ぼけ眼）',pre:'目覚ましより先に呟いた。'},
+{sc:0,scene:'第一幕・家を出る',spk:'母（玄関で）',pre:'見送りながら言った。'},
+{sc:1,scene:'第二幕・駅で異変',spk:'駅員（放送で）',pre:'ざらつく声で告げた。'},
+{sc:2,scene:'第三幕・問題発生',spk:'異変そのもの',pre:'目の前で起きた。'},
+{sc:3,scene:'終幕・問題解決',spk:'仲間（駆けつける）',pre:'肩を叩いて言った。'},
+{sc:3,scene:'エンディング',spk:'ナレーション',pre:'こうして今日は終わった。'}];
+function startStory(order){
+  const ord=(order&&order.length===6)?order:shuffle(state.serifs);
+  state.order=ord;
+  state.beats=BEATS.map((b,i)=>({scene:b.scene,spk:b.spk,txt:'「'+ord[i]+'」 '+b.pre}));
+  state.beat=0;state.scene=0;
+  show('scr-story');renderBeat();beep(520,.1);
+}
+function renderBeat(){
+  const b=state.beats[state.beat];
+  state.scene=BEATS[state.beat].sc;
+  $('storyScene').textContent=b.scene;
+  $('storySpk').textContent=b.spk;
+  $('storyTxt').textContent=b.txt;
+  $('storyProg').textContent=(state.beat+1)+'/6';
+  $('storyMeter').style.width=((state.beat+1)/6*100)+'%';
+  $('nextBeatBtn').textContent=state.beat>=5?'エンディングへ ▶':'つぎへ ▶';
+}
+function nextBeat(){
+  if(state.paused)return;beep(700,.06);
+  if(state.beat>=5){showEnding();return}
+  state.beat++;state.walk+=.6;renderBeat();
+}
+const ENDS=[
+{t:'ハッピーエンド 🌅',x:'駅の異変は収まり、終電は定刻に戻った。セリフたちは箱の中で仲良く眠っている。明日もきっと変な一日になる。'},
+{t:'不思議エンド 🌙',x:'解決したはずなのに、ポケットの駅の鍵だけが増えていた。物語は終わったが、箱の中ではまだ何かがざわついている。'},
+{t:'爆笑エンド 🤣',x:'全員が違う話をしていたのに、なぜか全部つながって大団円。駅員も鳩も拍手している。意味は不明だが大成功だ。'}];
+function showEnding(){
+  show('scr-end');
+  let h=0;state.order.join('').split('').forEach(c=>{h+=c.charCodeAt(0)});
+  const e=ENDS[h%3];
+  $('endTitle').textContent=e.t;$('endTxt').textContent=e.x;
+  const plays=store.get('plays',0)+1;
+  let seen=store.get('endings',[]);
+  const key=e.t;if(seen.indexOf(key)<0)seen.push(key);
+  store.set('plays',plays);store.set('endings',seen);
+  $('endStat').textContent='あそんだ回数 '+plays+' ・ 見たED '+seen.length+'/3';
+  beep(880,.2);
+}
+/* ===== 9. 配線 ===== */
+bindTap($('startBtn'),()=>{beep(520,.08);startDrop()});
+bindTap($('toSlashBtn'),()=>{startSlash()});
+bindTap($('toStoryBtn'),()=>{startStory(slashOrder)});
+bindTap($('shuffleBtn'),()=>{slashOrder=shuffle(state.serifs.length?state.serifs:POOL.slice(0,6));
+  const els=document.querySelectorAll('#slashField .slash');
+  els.forEach(el=>{el.classList.remove('hit');el.querySelector('.ord').textContent='・'});
+  slashOrder.forEach((txt,i)=>{
+    for(let k=0;k<els.length;k++){if(els[k].dataset.txt===txt){els[k].classList.add('hit');els[k].querySelector('.ord').textContent=i+1;break}}
+  });
+  slashOrder=[];const names=[];
+  els.forEach(el=>{if(el.classList.contains('hit'))names.push(el.dataset.txt)});
+  slashOrder=names;$('slashCount').textContent='6/6';$('toStoryBtn').disabled=false;beep(990,.12)});
+bindTap($('nextBeatBtn'),nextBeat);
+bindTap($('againBtn'),()=>{setPaused(false);startDrop()});
+bindTap($('backTitleBtn'),()=>{setPaused(false);show('scr-title')});
+bindTap($('pauseBtn'),()=>setPaused(!state.paused));
+bindTap($('resumeBtn'),()=>setPaused(false));
+bindTap($('restartBtn'),()=>{setPaused(false);show('scr-title')});
+bindTap($('muteBtn'),()=>{muted=!muted;refreshMute();beep(600,.06)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.phase!=='title')setPaused(true)});
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'||e.code==='Enter'){
+    if(state.phase==='story'&&!state.paused){e.preventDefault();nextBeat()}
+  }
+  if(e.code==='KeyM'){muted=!muted;refreshMute()}
+});
+bindSlash();refreshMute();show('scr-title');
+/* ===== 10. 主ループ ===== */
+let last=performance.now();
+function loop(now){
+  const dt=Math.min((now-last)/1000,.05);last=now;
+  if(!state.paused){
+    state.walk+=dt*(state.phase==='story'?.5:.12);
+    stepDrop(dt);
+  }
+  drawBG();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
