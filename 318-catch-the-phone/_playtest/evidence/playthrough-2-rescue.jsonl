@@ -1,0 +1,11 @@
+{"stage":1,"name":"白凪総合病院","state":"clear","time":14.7,"limit":27,"overdue":false,"catches":1,"perfect":1,"broken":0,"caught":0,"hits":3,"events":3,"stuck":0,"calls":310,"wall":14.4,"stuckAt":[],"timedOut":false}
+{"stage":2,"name":"夕方の中央駅","state":"clear","time":27.5,"limit":29,"overdue":false,"catches":1,"perfect":1,"broken":3,"caught":0,"hits":6,"events":6,"stuck":0,"calls":163,"wall":27.3,"stuckAt":[],"timedOut":false}
+{"stage":3,"name":"終電、車内","state":"clear","time":7.1,"limit":24,"overdue":false,"catches":0,"perfect":0,"broken":1,"caught":0,"hits":1,"events":1,"stuck":0,"calls":281,"wall":6.9,"stuckAt":[],"timedOut":false}
+{"stage":4,"name":"おまつり商店街","state":"clear","time":15.6,"limit":28,"overdue":false,"catches":0,"perfect":0,"broken":2,"caught":0,"hits":3,"events":3,"stuck":0,"calls":215,"wall":15.4,"stuckAt":[],"timedOut":false}
+{"stage":5,"name":"百貨店 本館","state":"clear","time":18.1,"limit":30,"overdue":false,"catches":0,"perfect":0,"broken":1,"caught":0,"hits":3,"events":3,"stuck":0,"calls":157,"wall":18,"stuckAt":[],"timedOut":false}
+{"stage":6,"name":"本社フロア","state":"clear","time":35.9,"limit":27,"overdue":true,"catches":3,"perfect":3,"broken":1,"caught":0,"hits":5,"events":5,"stuck":3,"calls":167,"wall":35.7,"stuckAt":[[0.7,-50.8],[1.3,-50.8],[0.9,-50.8]],"timedOut":false}
+{"stage":7,"name":"国際空港 出発ロビー","state":"clear","time":26.4,"limit":30,"overdue":false,"catches":2,"perfect":2,"broken":2,"caught":0,"hits":6,"events":6,"stuck":0,"calls":252,"wall":26.2,"stuckAt":[],"timedOut":false}
+{"stage":8,"name":"中央公園","state":"clear","time":25.8,"limit":30,"overdue":false,"catches":4,"perfect":4,"broken":3,"caught":0,"hits":7,"events":7,"stuck":0,"calls":152,"wall":25.6,"stuckAt":[],"timedOut":false}
+{"stage":9,"name":"ドーム ライブ会場","state":"clear","time":20.8,"limit":28,"overdue":false,"catches":2,"perfect":2,"broken":0,"caught":0,"hits":5,"events":5,"stuck":0,"calls":176,"wall":20.6,"stuckAt":[],"timedOut":false}
+{"stage":10,"name":"取引先 大海商事 本社","state":"clear","time":13.4,"limit":26,"overdue":false,"catches":2,"perfect":2,"broken":1,"caught":0,"hits":3,"events":3,"stuck":0,"calls":133,"wall":13.3,"stuckAt":[],"timedOut":false}
+ERRORS []

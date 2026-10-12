@@ -40,7 +40,7 @@ body{margin:0;overflow:hidden;font-family:"Hiragino Kaku Gothic ProN","Meiryo",s
 
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
 
-#overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.8);color:#fff;text-align:center;padding:20px;box-sizing:border-box}
+#overlay{z-index:4;position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.8);color:#fff;text-align:center;padding:20px;box-sizing:border-box}
 
 #overlay h1{font-size:42px;margin:0 0 12px}
 
@@ -51,14 +51,14 @@ body{margin:0;overflow:hidden;font-family:"Hiragino Kaku Gothic ProN","Meiryo",s
 #overlay button{font-size:20px;padding:12px 34px;margin-top:18px;border:none;border-radius:30px;background:#ff3b8d;color:#fff;cursor:pointer;font-weight:bold}
 
 
-*{box-sizing:border-box;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none}html,body{width:100%;height:100%;overscroll-behavior:none;background:#10191c}canvas{display:block}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}#hud{top:max(22px,env(safe-area-inset-top));left:max(26px,env(safe-area-inset-left));font-size:13px;line-height:1.5;padding:18px 23px;width:310px;background:linear-gradient(100deg,#0b151cdd,#0b151c00);border-left:2px solid #d4b382}#hud strong{font-size:23px;font-weight:500;letter-spacing:.08em}.eyebrow{color:#d6ba8c;font-size:10px;letter-spacing:.24em;margin-bottom:12px}.mission{font-size:11px;color:#c1d0d0;max-width:265px;margin:8px 0}.metrics{display:flex;gap:25px;align-items:center;margin:13px 0}.metrics b{font-size:36px;font-weight:400;font-family:Georgia,serif}.metrics small{font:11px sans-serif;margin-left:6px}.metrics span{font-size:12px}#stamina{width:220px;height:3px;border-radius:0;background:#ffffff25}#staminaFill{background:#d6ba8c}.danger{color:#ff866d}#minilog{top:auto;bottom:145px;right:25px;font-size:12px;width:min(380px,48vw);color:#e7dccb;line-height:1.9}#overlay{align-items:flex-start;background:linear-gradient(90deg,#071016ee 0%,#071016c9 35%,#07101610 80%);padding:clamp(24px,6vw,90px);text-align:left}#overlay.title{justify-content:center}.title-copy{max-width:670px}#overlay h1{font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:clamp(40px,6.3vw,88px);font-weight:600;line-height:1.18;letter-spacing:.03em;margin:22px 0;color:#f3ead9}#overlay h1 span{color:#d6ba8c}.tagline{font-size:18px;line-height:1.85;letter-spacing:.1em;color:#d5e1df}.title-rule{font-size:12px;color:#9eadad;margin-top:25px}#overlay button{font:15px "Yu Gothic",sans-serif;background:#ddc297;color:#162226;border:1px solid #e3cfaa;border-radius:0;min-height:48px;padding:13px 32px;min-width:190px;letter-spacing:.1em;text-align:left}#overlay button:hover{background:#f4dfb9}#overlay button span{margin-left:80px}.title-controls{font-size:11px;line-height:1.9;color:#9caeae;margin:18px 0}.chapter-list{font-size:11px;letter-spacing:.08em;color:#d6ba8c;margin-top:25px}#overlay.brief,#overlay.result,#overlay.pause{align-items:center;justify-content:center;background:#09141bc9;backdrop-filter:blur(5px);text-align:center}.panel{width:min(650px,100%)}#overlay .panel h1{font-size:clamp(28px,5vw,48px)}.panel p{line-height:1.9;font-size:14px;color:#ccd6d4}.objective{padding:18px;border-top:1px solid #d5ba8355;border-bottom:1px solid #d5ba8355}.hint{font-size:12px!important}.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:25px 0}.result-grid div{font-size:12px;color:#9fb2b3}.result-grid strong{display:block;font-family:Georgia,serif;color:#e2c89e;font-size:28px;margin-bottom:4px}#overlay button.secondary{background:transparent;color:#ccdad9;border-color:#6f8284;margin-left:10px}#qte{bottom:26%;width:min(480px,85vw);font-size:23px;text-shadow:0 2px 12px #000;background:#0b151deb;border:1px solid #ccad7555;padding:18px 25px;font-weight:500}#qte small{font-size:10px;color:#dfc394;letter-spacing:.25em}#qte span{font-size:11px;color:#c1d3d0}#bar{height:22px;border:1px solid #bdc8c4;border-radius:0;background:#382e2b}#graze{background:#9b7439}#perfect{background:#7fb79b}#cursor{width:3px}.bubble{border-radius:3px;font-size:12px;background:#142930ee;color:#e3e9df;border-left:2px solid #cbb389;padding:6px 10px}.bubble.angry{background:#572c2dee}.bubble.sys{font-size:15px;background:#e2cba1;color:#14282b}#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 55% 45%,transparent 30%,#030b0f88 100%)}#distance{position:fixed;top:0;left:0;right:0;height:3px;background:#ffffff13;pointer-events:none}#distanceFill{height:100%;width:0;background:#d8bb89}#feedback{position:fixed;left:50%;top:22%;transform:translateX(-50%);color:#f1dfc0;opacity:0;transition:opacity .18s;text-shadow:0 2px 8px black;font-size:14px;pointer-events:none;white-space:nowrap}#feedback.show{opacity:1}#controls{position:fixed;left:max(22px,env(safe-area-inset-left));right:max(22px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none}#controls button{pointer-events:auto;width:54px;height:48px;color:#d9e4e0;border:1px solid #b7c5bc60;background:#13262bc4;font-size:20px;border-radius:4px}#controls button.active{background:#bfac84;color:#10252a}.pad{text-align:center}.pad div{display:flex;gap:5px;margin:5px 0}.actions{display:flex;gap:13px;align-items:flex-end}#controls #rescue{width:85px;height:85px;border-radius:50%;border-color:#d8bd90;color:#e2caa2;font-size:17px}#controls #run{width:65px;height:65px;border-radius:50%;font-size:14px}#pauseBtn,#soundBtn{position:fixed;right:22px;top:max(22px,env(safe-area-inset-top));z-index:2;background:#112229ab;color:#d6e0d9;border:1px solid #afc2bd55;height:38px;min-width:44px}#soundBtn{right:77px;font-size:11px}body:has(#overlay[style*="flex"]) #controls,body:has(#overlay[style*="flex"]) #pauseBtn{visibility:hidden}@media(max-width:600px){#hud{padding:11px 14px;width:255px;left:12px;top:15px}#hud strong{font-size:18px}.metrics{margin:5px 0}.metrics b{font-size:28px}.mission{font-size:10px}#minilog{bottom:165px;right:12px;width:65vw;font-size:10px}#overlay{padding:25px}#overlay h1{font-size:47px}.tagline{font-size:14px}.title-controls{font-size:10px}#feedback{top:35%;font-size:11px}#qte{bottom:31%;font-size:18px;padding:12px}#controls{left:12px;right:12px}#overlay button.secondary{margin-left:0}.panel p{font-size:12px}.result-grid{margin:10px 0;gap:10px}#soundBtn{top:auto;bottom:5px;right:48%;height:25px}#pauseBtn{top:15px;right:12px}}@media(max-height:580px){#overlay h1{font-size:35px;margin:12px 0}.title-copy{max-width:550px}.tagline{font-size:13px}.title-rule,.chapter-list{margin-top:10px}.title-controls{margin:8px 0}#overlay button{margin-top:10px}.metrics b{font-size:27px}#hud{top:12px;padding:10px 14px}.mission{margin:4px 0}.panel p{margin:9px 0}.objective{padding:9px}.result-grid{margin:10px 0}}
+*{box-sizing:border-box;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}html,body{width:100%;height:100%;overscroll-behavior:none;overflow:hidden;position:fixed;inset:0;background:#10191c}canvas{display:block}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}#hud{top:max(22px,env(safe-area-inset-top));left:max(26px,env(safe-area-inset-left));font-size:13px;line-height:1.5;padding:18px 23px;width:310px;background:linear-gradient(100deg,#0b151cdd,#0b151c00);border-left:2px solid #d4b382}#hud strong{font-size:23px;font-weight:500;letter-spacing:.08em}.eyebrow{color:#d6ba8c;font-size:10px;letter-spacing:.24em;margin-bottom:12px}.mission{font-size:11px;color:#c1d0d0;max-width:265px;margin:8px 0}.metrics{display:flex;gap:25px;align-items:center;margin:13px 0}.metrics b{font-size:36px;font-weight:400;font-family:Georgia,serif}.metrics small{font:11px sans-serif;margin-left:6px}.metrics span{font-size:12px}#stamina{width:220px;height:3px;border-radius:0;background:#ffffff25}#staminaFill{background:#d6ba8c}.danger{color:#ff866d}#minilog{top:auto;bottom:145px;right:25px;font-size:12px;width:min(380px,48vw);color:#e7dccb;line-height:1.9}#overlay{align-items:flex-start;background:linear-gradient(90deg,#071016ee 0%,#071016c9 35%,#07101610 80%);padding:clamp(24px,6vw,90px);text-align:left}#overlay.title{justify-content:center}.title-copy{max-width:670px}#overlay h1{font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:clamp(40px,6.3vw,88px);font-weight:600;line-height:1.18;letter-spacing:.03em;margin:22px 0;color:#f3ead9}#overlay h1 span{color:#d6ba8c}.tagline{font-size:18px;line-height:1.85;letter-spacing:.1em;color:#d5e1df}.title-rule{font-size:12px;color:#9eadad;margin-top:25px}#overlay button{font:15px "Yu Gothic",sans-serif;background:#ddc297;color:#162226;border:1px solid #e3cfaa;border-radius:0;min-height:48px;padding:13px 32px;min-width:190px;letter-spacing:.1em;text-align:left}#overlay button:hover{background:#f4dfb9}#overlay button span{margin-left:80px}.title-controls{font-size:11px;line-height:1.9;color:#9caeae;margin:18px 0}.chapter-list{font-size:11px;letter-spacing:.08em;color:#d6ba8c;margin-top:25px}#overlay.brief,#overlay.result,#overlay.pause{align-items:center;justify-content:center;background:#09141bc9;backdrop-filter:blur(5px);text-align:center}.panel{width:min(650px,100%)}#overlay .panel h1{font-size:clamp(28px,5vw,48px)}.panel p{line-height:1.9;font-size:14px;color:#ccd6d4}.objective{padding:18px;border-top:1px solid #d5ba8355;border-bottom:1px solid #d5ba8355}.hint{font-size:12px!important}.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:25px 0}.result-grid div{font-size:12px;color:#9fb2b3}.result-grid strong{display:block;font-family:Georgia,serif;color:#e2c89e;font-size:28px;margin-bottom:4px}#overlay button.secondary{background:transparent;color:#ccdad9;border-color:#6f8284;margin-left:10px}#qte{bottom:26%;width:min(480px,85vw);font-size:23px;text-shadow:0 2px 12px #000;background:#0b151deb;border:1px solid #ccad7555;padding:18px 25px;font-weight:500}#qte small{font-size:10px;color:#dfc394;letter-spacing:.25em}#qte span{font-size:11px;color:#c1d3d0}#bar{height:22px;border:1px solid #bdc8c4;border-radius:0;background:#382e2b}#graze{background:#9b7439}#perfect{background:#7fb79b}#cursor{width:3px}.bubble{border-radius:3px;font-size:12px;background:#142930ee;color:#e3e9df;border-left:2px solid #cbb389;padding:6px 10px}.bubble.angry{background:#572c2dee}.bubble.sys{font-size:15px;background:#e2cba1;color:#14282b}#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 55% 45%,transparent 30%,#030b0f88 100%)}#distance{position:fixed;top:0;left:0;right:0;height:3px;background:#ffffff13;pointer-events:none}#distanceFill{height:100%;width:0;background:#d8bb89}#feedback{position:fixed;left:50%;top:22%;transform:translateX(-50%);color:#f1dfc0;opacity:0;transition:opacity .18s;text-shadow:0 2px 8px black;font-size:14px;pointer-events:none;white-space:nowrap}#feedback.show{opacity:1}#controls{position:fixed;left:max(22px,env(safe-area-inset-left));right:max(22px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none}#controls button{pointer-events:auto;width:54px;height:48px;color:#d9e4e0;border:1px solid #b7c5bc60;background:#13262bc4;font-size:20px;border-radius:4px}#controls button.active{background:#bfac84;color:#10252a}.pad{text-align:center}.pad div{display:flex;gap:5px;margin:5px 0}.actions{display:flex;gap:13px;align-items:flex-end}#controls #rescue{width:85px;height:85px;border-radius:50%;border-color:#d8bd90;color:#e2caa2;font-size:17px}#controls #run{width:65px;height:65px;border-radius:50%;font-size:14px}#pauseBtn,#soundBtn{position:fixed;right:22px;top:max(22px,env(safe-area-inset-top));z-index:5;background:#112229ab;color:#d6e0d9;border:1px solid #afc2bd55;height:38px;min-width:44px}#soundBtn{right:77px;font-size:11px}body:has(#overlay[style*="flex"]) #controls,body:has(#overlay[style*="flex"]) #pauseBtn{visibility:hidden}@media(max-width:600px){#hud{padding:11px 14px;width:255px;left:12px;top:15px}#hud strong{font-size:18px}.metrics{margin:5px 0}.metrics b{font-size:28px}.mission{font-size:10px}#minilog{bottom:165px;right:12px;width:65vw;font-size:10px}#overlay{padding:25px}#overlay h1{font-size:47px}.tagline{font-size:14px}.title-controls{font-size:10px}#feedback{top:35%;font-size:11px}#qte{bottom:31%;font-size:18px;padding:12px}#controls{left:12px;right:12px}#overlay button.secondary{margin-left:0}.panel p{font-size:12px}.result-grid{margin:10px 0;gap:10px}#soundBtn{top:auto;bottom:5px;right:48%;height:25px}#pauseBtn{top:15px;right:12px}}@media(max-height:580px){#overlay h1{font-size:35px;margin:12px 0}.title-copy{max-width:550px}.tagline{font-size:13px}.title-rule,.chapter-list{margin-top:10px}.title-controls{margin:8px 0}#overlay button{margin-top:10px}.metrics b{font-size:27px}#hud{top:12px;padding:10px 14px}.mission{margin:4px 0}.panel p{margin:9px 0}.objective{padding:9px}.result-grid{margin:10px 0}}
 #contactHint{font-size:12px;line-height:1.7;color:#d8bd90;text-align:center;padding:10px;background:#10242ad9;border:1px solid #d8bd9060;pointer-events:none}#contactHint small{font-size:10px}#qte{bottom:auto;top:22%;font-size:17px;padding:10px 18px;pointer-events:none;background:#0b151dc9}@media(max-width:600px){#qte{top:27%;width:82vw;font-size:14px}}
 #pursuit{font-size:17px;letter-spacing:.06em;color:#e7d6b4;border-top:1px solid #d2c39d55;padding-top:6px}#pursuit.alert{color:#ffb09e}#hidePanel{position:fixed;inset:0;background:#061316cf;display:none;align-items:center;justify-content:center;flex-direction:column;color:#e7e4d8;z-index:3;backdrop-filter:blur(4px);font-size:18px;text-align:center}#hidePanel small{font-size:12px;line-height:1.8;color:#b8c9c5}#leaveRoom{margin-top:24px;padding:12px 24px;color:#f0e3c9;background:#27413c;border:1px solid #adc6b9}#doorHint{position:fixed;bottom:145px;left:50%;transform:translateX(-50%);background:#203833dc;color:#f3dfb7;padding:8px 16px;font-size:12px;pointer-events:none;white-space:nowrap}
 </style>
 
 </head>
 
-<body><div id="hidePanel"><strong id="hideStatus"></strong><p><small>廊下から姿を隠しています。<br>制限時間は進みます。<br>各待避室は1回だけ利用できます。</small></p><button id="leaveRoom">廊下へ戻る（E）</button></div><div id="doorHint" hidden></div>
+<body><div id="overlay"></div><div id="doorHint" hidden></div>
 
 <div id="hud"></div>
 
@@ -71,7 +71,7 @@ body{margin:0;overflow:hidden;font-family:"Hiragino Kaku Gothic ProN","Meiryo",s
 <div id="flash"></div>
 
 <div id="vignette"></div><div id="distance"><div id="distanceFill"></div></div><div id="feedback" role="status"></div><button id="pauseBtn" aria-label="一時停止">Ⅱ</button><button id="soundBtn">音 ON</button>
-<div id="controls"><div class="pad"><button data-code="ArrowUp" aria-label="前進">↑</button><div><button data-code="ArrowLeft" aria-label="左">←</button><button data-code="ArrowDown" aria-label="後退">↓</button><button data-code="ArrowRight" aria-label="右">→</button></div></div><div class="actions"><button id="run" data-code="ShiftLeft">走る</button><div id="contactHint">スマホへ移動<br><small>触れてキャッチ</small></div></div></div><div id="overlay"></div>
+<div id="controls"><div class="pad"><button data-code="ArrowUp" aria-label="前進">↑</button><div><button data-code="ArrowLeft" aria-label="左">←</button><button data-code="ArrowDown" aria-label="後退">↓</button><button data-code="ArrowRight" aria-label="右">→</button></div></div><div class="actions"><button id="run" data-code="ShiftLeft">走る</button><div id="contactHint">スマホへ移動<br><small>触れてキャッチ</small></div></div></div><div id="hidePanel"><strong id="hideStatus"></strong><p><small>廊下から姿を隠しています。<br>制限時間は進みます。<br>各待避室は1回だけ利用できます。</small></p><button id="leaveRoom">廊下へ戻る（E）</button></div>
 
 
 
@@ -86,9 +86,16 @@ import * as THREE from 'three';
 // ===== ステージ（スマホ率：電車のみ実測、他は推定） =====
 
 const STAGES=[
-{name:'白凪総合病院',kind:'hospital',subtitle:'消毒液の匂い。午後の診察を待つ人たち。',mission:'受付終了までに、突き当たりの会計窓口へ。',rate:.72,count:22,len:65,w:10,limit:27,sky:0x697b79,floor:0xc1cbc4,wall:0xe4e3d8,pillars:false,weights:{granny:4,mom:3,salary:2,student:1,doctor:2,nurse:2}},
-{name:'夕方の中央駅',kind:'station',subtitle:'足音と発車メロディが、人の波に溶ける。',mission:'発車時刻までに、3番線の改札へ。',rate:.75,count:32,len:80,w:13,limit:29,sky:0x18212a,floor:0x747679,wall:0x697782,pillars:true,tactile:true,weights:{salary:4,student:3,tourist:2,mom:1,worker:1}},
-{name:'終電、車内',kind:'train',subtitle:'流れる街灯。つり革がわずかに揺れている。',mission:'降車までに、前方車両のドアへ。',rate:.85,count:16,len:47,w:5.8,limit:24,sky:0x101820,floor:0x535d63,wall:0x89989c,pillars:false,weights:{salary:4,student:3,mom:1,tourist:1}}
+{name:'白凪総合病院',short:'病院',goal:'会計 →',goalLabel:'会計 / CASHIER',kind:'hospital',subtitle:'消毒液の匂い。午後の診察を待つ人たち。',mission:'受付終了までに、突き当たりの会計窓口へ。',rate:.72,count:22,len:65,w:10,limit:27,sky:0x697b79,floor:0xc1cbc4,wall:0xe4e3d8,pillars:false,weights:{granny:4,mom:3,salary:2,student:1,doctor:2,nurse:2}},
+{name:'夕方の中央駅',short:'駅',goal:'3番線 →',goalLabel:'3番線 / PLATFORM 3',kind:'station',subtitle:'足音と発車メロディが、人の波に溶ける。',mission:'発車時刻までに、3番線の改札へ。',rate:.75,count:32,len:80,w:13,limit:29,sky:0x18212a,floor:0x747679,wall:0x697782,pillars:true,tactile:true,weights:{salary:4,student:3,tourist:2,mom:1,worker:1}},
+{name:'終電、車内',short:'電車内',goal:'降車ドア →',goalLabel:'出口 / EXIT',kind:'train',subtitle:'流れる街灯。つり革がわずかに揺れている。',mission:'降車までに、前方車両のドアへ。',rate:.85,count:16,len:47,w:5.8,limit:24,sky:0x101820,floor:0x535d63,wall:0x89989c,pillars:false,weights:{salary:4,student:3,mom:1,tourist:1}},
+{name:'おまつり商店街',short:'商店街',goal:'広場 →',goalLabel:'駅前広場 / PLAZA',kind:'shopping',subtitle:'のぼりが揺れる夕方。店先から人が飛び出してくる。',mission:'店じまいの前に、通りの先の駅前広場へ。',rate:.78,count:28,len:72,w:9,limit:28,sky:0xc99a6a,floor:0x8e8a84,wall:0xb09a7e,cross:.6,amb:{c:0xffe7cc,g:0x4a3b30,i:1.7,sun:.9},weights:{mom:4,granny:2,student:3,salary:2,worker:2,tourist:1,clerk:2}},
+{name:'百貨店 本館',short:'デパート',goal:'催事場 →',goalLabel:'催事場 / EVENT',kind:'department',subtitle:'香水とBGM。島什器が通路を切り分けている。',mission:'閉店の放送までに、最上階の催事場へ。',rate:.74,count:26,len:70,w:11,limit:30,sky:0x6a5a56,floor:0xd9cfbd,wall:0xe6dccb,amb:{c:0xfff0dc,g:0x7a6a5a,i:1.9,sun:1.0},weights:{mom:4,granny:3,student:3,salary:1,clerk:3,tourist:1}},
+{name:'本社フロア',short:'会社',goal:'応接室 →',goalLabel:'応接室 / MEETING',kind:'office',subtitle:'キーボードの音。誰もがスマホを机の近くに置いている。',mission:'来客の到着までに、フロア奥の応接室へ。',rate:.9,count:24,len:64,w:12,limit:27,sky:0x6a7a84,floor:0x9aa3a8,wall:0xdfe3e2,amb:{c:0xeaf2f6,g:0x7a8288,i:1.8,sun:.9},weights:{salary:7,student:1,clerk:2,mom:1}},
+{name:'国際空港 出発ロビー',short:'空港',goal:'搭乗口 →',goalLabel:'搭乗口 / GATE',kind:'airport',subtitle:'アナウンスと車輪の音。旅の荷物が通路に広がる。',mission:'搭乗締め切りまでに、奥の搭乗口へ。',rate:.8,count:34,len:84,w:14,limit:30,sky:0x8fb3d4,floor:0xc9ced2,wall:0xe8edf0,amb:{c:0xeaf3ff,g:0x6f7880,i:1.8,sun:1.1},weights:{tourist:5,salary:3,student:2,mom:2,clerk:1,granny:1}},
+{name:'中央公園',short:'公園',goal:'出口 →',goalLabel:'公園出口 / EXIT',kind:'park',open:true,plain:true,subtitle:'木漏れ日と鳩。池のほとりを散歩する人たち。',mission:'日没までに、公園の出口へ。池に落とさないこと。',rate:.7,count:26,len:78,w:18,limit:30,sky:0x9fd0ee,fog:[40,130],floor:0x5f9a52,wall:0x7a8a5a,amb:{c:0xdff0ff,g:0x4d7a3d,i:1.6,sun:1.5},weights:{mom:3,granny:3,student:3,salary:1,worker:1,tourist:1}},
+{name:'ドーム ライブ会場',short:'ライブ',goal:'ゲート →',goalLabel:'入場ゲート / GATE',kind:'concert',stand:.5,subtitle:'開演前の熱気。人の波が一斉に動きを止める。',mission:'開演までに、入場ゲートまで抜けよう。',rate:.6,count:42,len:62,w:12,limit:28,sky:0x140f24,floor:0x2f2b3a,wall:0x1b1630,amb:{c:0xb9a6ff,g:0x3a2f5a,i:2.6,sun:.7},weights:{fan:6,student:2,streamer:2,salary:1,mom:1}},
+{name:'取引先 大海商事 本社',short:'取引先',goal:'応接フロア →',goalLabel:'役員応接 / EXECUTIVE',kind:'lobby',gloss:[.22,.12],pillars:true,subtitle:'磨かれた床。ここでは、スマホ一台が商談を壊す。',mission:'商談の開始までに、奥の応接フロアへ。',rate:.72,count:20,len:70,w:12,limit:26,sky:0x26303c,floor:0xcfc6b2,wall:0xe8e1d0,amb:{c:0xfff3dc,g:0x8a7e68,i:1.8,sun:1.0},weights:{exec:3,salary:4,clerk:3,tourist:1}}
 ];
 
 // ===== キャラクター =====
@@ -152,6 +159,9 @@ hit:'あっ携帯が！配信中なんやけど！？',broken:'配信落ちた�
 chase:['みんな見てる？今こいつ追ってまーす！','逃げても切り抜かれるよ〜！','コメ欄「草」で埋まっとる！'],giveup:'…これは切り抜き確定っすね',caught:'顔出しNGとかないっすよね？'},
 
 };
+TYPES.exec={...TYPES.salary,short:'神崎',name:'取引先 役員 神崎(58)',h:1.74,speed:5.4,body:[0x15171c,0x20242c],legs:[0x15171c],hair:[0xcfcfcf,0x2a2a2a],acc:'bag',repair:98000,hit:'…失礼。私の端末ですが',broken:'これは機密端末です。弁償はお願いしますよ',safe:'…結構。お急ぎでしょう',thanks:'助かった。礼を言います',chase:['お待ちなさい！','君、名刺を！'],giveup:'…今日の商談は延期だな',caught:'御社へ正式に連絡します'};
+TYPES.clerk={...TYPES.mom,short:'さくら',name:'店員 さくら(25)',h:1.58,speed:7.8,body:[0xe8f0ea,0xf2ddd0,0xc8d8f0],legs:[0x2d3a5a],acc:'none',repair:32000,hit:'あっ、私のスマホが！',broken:'お客様対応用なんですけど！？',safe:'セーフ…気をつけてくださいね',thanks:'ありがとうございます！',chase:['お客様〜！','待ってくださーい！'],giveup:'店長に怒られる…',caught:'お会計、お願いします！'};
+TYPES.fan={...TYPES.student,short:'ミサ',name:'ファン ミサ(22)',h:1.62,speed:8.4,body:[0xff5fa8,0x6b2bd8,0x20c0ff,0xffd23a],legs:[0x20202c,0x2d3a5a],acc:'tote',repair:41000,hit:'ちょっ、チケットが入ってるのに！',broken:'電子チケット入ってたのに！！',safe:'よかった…開演前に事故るとこだった',thanks:'神！ありがとう！',chase:['私のチケット〜！','待ってぇ！'],giveup:'開演に間に合わない…',caught:'一生推してやる…覚えてて！'};
 
 const PLAYER_T={h:1.76,body:[0x25364b],legs:[0x25364b],skin:0xe8bfa3,hair:[0x191719],acc:'salaryHero'};
 
@@ -163,7 +173,7 @@ const renderer=new THREE.WebGLRenderer({antialias:true});
 
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 
-renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
 
 document.body.appendChild(renderer.domElement);
 
@@ -194,7 +204,7 @@ const qteEl=$('qte'),qteText=$('qteText'),perfectEl=$('perfect'),grazeEl=$('graz
 
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 
-const std=c=>new THREE.MeshStandardMaterial({color:c,roughness:.65});
+const std=c=>new THREE.MeshLambertMaterial({color:c});
 
 const lerpAngle=(a,b,t)=>{let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return a+d*t;};
 
@@ -234,6 +244,20 @@ eye:new THREE.BoxGeometry(.035,.035,.02)};
 
 const black=std(0x111111);
 
+// Rigid parts inside each joint are merged by material, so a person costs ~20 draws instead of ~33.
+function mergeLimbs(root,keep){
+const groups=[root];root.traverse(o=>{if(o!==root&&o.isGroup)groups.push(o);});
+for(const grp of groups){
+const batches=new Map();
+for(const o of[...grp.children]){
+if(!o.isMesh||keep.has(o)||Array.isArray(o.material))continue;
+o.updateMatrix();const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();geo.applyMatrix4(o.matrix);
+let b=batches.get(o.material);if(!b){b={p:[],n:[]};batches.set(o.material,b);}
+b.p.push(...geo.attributes.position.array);b.n.push(...geo.attributes.normal.array);geo.dispose();grp.remove(o);
+}
+for(const [m,b] of batches){const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(b.p,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(b.n,3));geo.computeBoundingSphere();const mesh=new THREE.Mesh(geo,m);mesh.castShadow=true;grp.add(mesh);}
+}
+}
 function makePerson(t){
 
 const g=new THREE.Group();
@@ -293,6 +317,8 @@ if(t.acc==='backpack')mk(new THREE.BoxGeometry(.4,.48,.22),std(0x2d4a2d),0,1.12,
 if(t.acc==='helmet'){const hm=mk(G.hair,std(0xffd21a),0,.17,0,head);hm.scale.setScalar(1.15);}
 
 if(t.acc==='bent'){torso.rotation.x=.25;head.position.z=.1;}
+
+mergeLimbs(g,new Set([torso,thumb]));
 
 const rage=new THREE.Sprite(rageMat);rage.scale.set(.6,.6,1);rage.position.y=2.1;rage.visible=false;g.add(rage);
 
@@ -387,18 +413,18 @@ stageIndex=i;S=STAGES[i];$('hidePanel').style.display='none';$('doorHint').hidde
 
 world=new THREE.Group();scene.add(world);
 
-scene.background=new THREE.Color(S.sky);scene.fog=new THREE.Fog(S.sky,16,68);
-props=[];solids=[];seated=[];hideDoors=[];player.hidden=null;player.hideCooldown=0;player.mesh.visible=true;ambient.color.setHex(S.kind==='hospital'?0xf4f1e6:0xb9d2ef);ambient.intensity=S.kind==='hospital'?1.9:1.5;ambient.groundColor.setHex(S.kind==='hospital'?0x929b8d:0x252b30);sun.intensity=S.kind==='train'?.7:1.1;
+scene.background=new THREE.Color(S.sky);scene.fog=new THREE.Fog(S.sky,...(S.fog||[16,68]));
+props=[];solids=[];seated=[];hideDoors=[];player.hidden=null;player.hideCooldown=0;player.mesh.visible=true;const A=S.amb||(S.kind==='hospital'?{c:0xf4f1e6,g:0x929b8d,i:2.5,sun:1.1}:{c:0xb9d2ef,g:0x252b30,i:1.5,sun:S.kind==='train'?.7:1.1});ambient.color.setHex(A.c);ambient.intensity=A.i;ambient.groundColor.setHex(A.g);sun.intensity=A.sun;
 
 const L=S.len+25,cz=(-S.len-5)/2;
 
 const tex=tileTex(S.floor);tex.repeat.set(S.w/2,L/2);
 
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(S.w,L),new THREE.MeshStandardMaterial({map:tex,roughness:S.kind==='hospital'?.36:.9,metalness:S.kind==='hospital'?.08:0}));
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(S.w,L),(S.gloss||S.kind==='hospital')?new THREE.MeshStandardMaterial({map:tex,roughness:S.gloss?S.gloss[0]:.36,metalness:S.gloss?S.gloss[1]:.08}):new THREE.MeshLambertMaterial(S.plain?{color:S.floor}:{map:tex}));
 
 floor.rotation.x=-Math.PI/2;floor.position.z=cz;floor.receiveShadow=true;world.add(floor);
 
-for(const s of[-1,1]){const wall=new THREE.Mesh(new THREE.BoxGeometry(.5,4,L),std(S.wall));wall.position.set(s*(S.w/2+.25),2,cz);wall.receiveShadow=true;world.add(wall);}
+for(const s of[-1,1]){const wall=new THREE.Mesh(new THREE.BoxGeometry(.5,S.open?.9:4,L),std(S.wall));wall.position.set(s*(S.w/2+.25),S.open?.45:2,cz);wall.receiveShadow=true;world.add(wall);}
 
 if(S.tactile){const t=new THREE.Mesh(new THREE.PlaneGeometry(.35,L),new THREE.MeshStandardMaterial({color:0xf2c200}));t.rotation.x=-Math.PI/2;t.position.set(S.w/2-1.3,.01,cz);world.add(t);}
 
@@ -414,9 +440,9 @@ const glow=new THREE.Mesh(new THREE.PlaneGeometry(S.w,2),new THREE.MeshBasicMate
 
 glow.rotation.x=-Math.PI/2;glow.position.set(0,.02,-S.len);world.add(glow);
 
-const gs=textSprite(S.kind==='hospital'?'会計 →':S.kind==='train'?'降車ドア →':'3番線 →','#183e3b');gs.position.set(0,5,-S.len);world.add(gs);
+const gs=textSprite(S.goal,'#183e3b');gs.position.set(0,5,-S.len);world.add(gs);
 
-decorateStage();
+decorateStage();bakeStatic();
 
 const keys=Object.keys(S.weights),tot=keys.reduce((a,k)=>a+S.weights[k],0);
 
@@ -424,7 +450,7 @@ const pickType=()=>{let r=Math.random()*tot;for(const k of keys){if((r-=S.weight
 
 for(let k=0;k<S.count;k++){
 
-const T=TYPES[S.kind==='hospital'&&k>=3&&k<7?(k%2?'doctor':'nurse'):pickType()],parts=makePerson(T);
+const T=TYPES[S.kind==='hospital'&&k>=3&&k<7?(k%2?'doctor':'nurse'):pickType()],parts=makePerson(T);addLod(parts);
 
 const n={T,parts,mesh:parts.g,phone:null,hasPhone:T.alwaysPhone||Math.random()<S.rate,target:new THREE.Vector3(),
 
@@ -449,11 +475,22 @@ player.mesh.position.set(0,0,4);player.mesh.rotation.y=Math.PI;player.dir.set(0,
 player.stun=0;player.slow=0;player.stamina=1;
 
 camera.position.set(0,3.05,10.5);camera.lookAt(0,1.1,-3);
+camera.far=(S.fog?S.fog[1]:68)+8;camera.updateProjectionMatrix();updateLOD();
 
 }
 
 
 
+// Far LOD: the whole body in rest pose as ONE vertex-coloured mesh. Beyond LOD_DIST the detailed rig is hidden (1 draw instead of ~20).
+let LOD_DIST=19;const LOD_MAT=new THREE.MeshLambertMaterial({vertexColors:true});
+function addLod(P){
+const g=P.g;g.updateMatrixWorld(true);const detail=new THREE.Group();for(const c of[...g.children])if(!c.isSprite)detail.add(c);g.add(detail);g.updateMatrixWorld(true);
+const inv=g.matrixWorld.clone().invert(),pos=[],nor=[],col=[];
+detail.traverse(o=>{if(!o.isMesh||Array.isArray(o.material)||!o.material.color)return;const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();geo.applyMatrix4(inv.clone().multiply(o.matrixWorld));const c=o.material.color,n=geo.attributes.position.count;for(let i=0;i<n;i++)col.push(c.r,c.g,c.b);pos.push(...geo.attributes.position.array);nor.push(...geo.attributes.normal.array);geo.dispose();});
+const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));geo.computeBoundingSphere();
+const lod=new THREE.Mesh(geo,LOD_MAT);lod.visible=false;g.add(lod);P.detail=detail;P.lod=lod;
+}
+function updateLOD(){const cp=camera.position,L2=LOD_DIST*LOD_DIST;for(const n of npcs){if(!n.parts.lod)continue;const dx=n.mesh.position.x-cp.x,dz=n.mesh.position.z-cp.z,far=dx*dx+dz*dz>L2;if(far!==n.far){n.far=far;n.parts.detail.visible=!far;n.parts.lod.visible=far;}}}
 // ===== NPC =====
 
 function newTarget(n){
@@ -463,11 +500,14 @@ const p=n.mesh.position;
 n.standing=n.state==='phone'?Math.random()<.55:Math.random()<.15;
 
 n.target.set(THREE.MathUtils.clamp(p.x+(Math.random()-.5)*12,-S.w/2+1,S.w/2-1),0,THREE.MathUtils.clamp(p.z+(Math.random()-.5)*16,-S.len-8,-4));
+if(S.cross&&n.state==='walk'&&Math.random()<S.cross){n.target.x=-Math.sign(p.x||1)*(S.w/2-1.2);n.target.z=p.z+(Math.random()-.5)*3;n.speed=1.6+Math.random()*.8;n.standing=false;}
+if(S.stand&&Math.random()<S.stand)n.standing=true;
 
 n.timer=3+Math.random()*5;
 
 n.speed=n.state==='phone'?.5+Math.random()*.6:1.1+Math.random()*.7;
 
+if(S.cross&&n.state==='walk'&&Math.random()<S.cross)n.speed=1.6+Math.random()*.8;
 if(n.T===TYPES.granny)n.speed*=.6;
 
 }
@@ -685,12 +725,14 @@ const m=.6-d;p.x+=dx/d*m*.7;p.z+=dz/d*m*.7;pp.x-=dx/d*m*.3;pp.z-=dz/d*m*.3;
 
 // ===== スマホ吹っ飛びイベント =====
 
+function inPond(v){return !!S.ponds&&S.ponds.some(pd=>v.x>pd.x0&&v.x<pd.x1&&v.z>pd.z0&&v.z<pd.z1);}
 function startEvent(n){
 const ph=n.phone;world.attach(ph);ph.scale.setScalar(1.4);
 n.phone=null;n.hasPhone=false;n.state='shock';setPose(n);
 // Only the world and phone slow down; the player's movement stays responsive.
 const dir=player.dir.clone().setY(0).normalize();const side=new THREE.Vector3(-dir.z,0,dir.x);
 const vel=dir.multiplyScalar(3.2).addScaledVector(side,(Math.random()-.5)*1.1);vel.y=4.2;
+if(S.ponds)for(const pd of S.ponds){const cx=(pd.x0+pd.x1)/2,cz=(pd.z0+pd.z1)/2;if(Math.abs(ph.position.z-cz)<11)vel.x+=THREE.MathUtils.clamp((cx-ph.position.x)*.55,-3.2,3.2);}
 event={npc:n,phone:ph,vel,real:0,age:0,resolved:false,landed:false,caught:false,broken:false};timeScale=.25;stats.hits++;
 const points=[];for(let t=0;t<1;t+=.03){const v=ph.position.clone().addScaledVector(vel,t);v.y-=5*t*t;if(v.y<.1)break;v.x=THREE.MathUtils.clamp(v.x,S.kind==='train'?-1.15:-S.w/2+.6,S.kind==='train'?1.15:S.w/2-.6);points.push(v);}
 const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineDashedMaterial({color:0xf0d39a,dashSize:.18,gapSize:.12}));line.computeLineDistances();world.add(line);event.trajectory=line;
@@ -725,7 +767,8 @@ function finishOutcome(E,r){
 
 const n=E.npc,ph=E.phone,pp=player.mesh.position;
 
-if(r==='miss')E.broken=Math.random()<.5;
+if(r==='miss')E.broken=inPond(ph.position)||Math.random()<.5;
+if(r==='miss'&&inPond(ph.position)){say(ph.position.clone(),'ぽちゃん💦','sys',1.8);E.drowned=true;}
 
 if(E.broken){
 
@@ -819,7 +862,7 @@ function exitHide(){if(!player.hidden)return;const d=player.hidden.door;player.m
 $('leaveRoom').onclick=exitHide;
 function updateHUD(){
 const pp=player.mesh.position,ch=npcs.filter(n=>n.state==='angry').length,left=overdue?stats.time-S.limit:Math.max(0,S.limit-stats.time);
-hud.innerHTML=`<div class="eyebrow">CHAPTER 0${stageIndex+1} / 03</div><strong>${S.name}</strong><div class="mission">${S.mission}</div><div class="metrics"><b class="${overdue||left<8?'danger':''}">${overdue?'+':''}${left.toFixed(1)}<small>${overdue?'秒 超過':'秒'}</small></b><span>残り ${Math.max(0,Math.ceil(S.len+pp.z))} m<br>救出 ${stats.catches}　完全 ${stats.perfect}</span></div><div id="stamina"><div id="staminaFill" style="width:${player.stamina*100}%"></div></div><div id="pursuit" class="${ch?'alert':''}">追跡中 ${ch}人${player.hidden?' ／ 捜索中':''}</div><div class="mission">怒りそう ${npcs.filter(n=>n.state==='fuming').length}人　破損 ${stats.broken}台</div>`;
+hud.innerHTML=`<div class="eyebrow">CHAPTER ${String(stageIndex+1).padStart(2,'0')} / ${String(STAGES.length).padStart(2,'0')}</div><strong>${S.name}</strong><div class="mission">${S.mission}</div><div class="metrics"><b class="${overdue||left<8?'danger':''}">${overdue?'+':''}${left.toFixed(1)}<small>${overdue?'秒 超過':'秒'}</small></b><span>残り ${Math.max(0,Math.ceil(S.len+pp.z))} m<br>救出 ${stats.catches}　完全 ${stats.perfect}</span></div><div id="stamina"><div id="staminaFill" style="width:${player.stamina*100}%"></div></div><div id="pursuit" class="${ch?'alert':''}">追跡中 ${ch}人${player.hidden?' ／ 捜索中':''}</div><div class="mission">怒りそう ${npcs.filter(n=>n.state==='fuming').length}人　破損 ${stats.broken}台</div>`;
 if(player.hidden)$('hideStatus').textContent='隠れている… '+player.hidden.left.toFixed(1)+'秒 ／ 捜索 '+ch+'人';
 const near=S.kind==='hospital'&&!player.hidden&&!event&&hideDoors.find(d=>!d.used&&Math.abs(pp.z-d.z)<2.2);$('doorHint').hidden=!near;if(near)$('doorHint').textContent=(near.side<0?'← 左':'右 →')+'の待避室へ寄ると隠れる（4秒）';
 $('distanceFill').style.width=Math.max(0,Math.min(100,(-pp.z/S.len)*100))+'%';
@@ -849,10 +892,10 @@ sun.position.set(pp.x+12,30,pp.z+12);sun.target.position.copy(pp);
 function rankOf(s){return s.perfect>=5&&s.broken===0?'S / 街の救世主':s.catches>=3&&s.broken===0?'A / 急いでも、優しい人':s.broken===0?'B / 無事に到着':s.damage<80000?'C / ちょっと待って！':'D / 今日の話題の人';}
 function showTitle(){
 state='title';paused=false;buildStage(0);player.mesh.position.z=1;overlay.className='title';
-overlay.innerHTML=`<div class="title-copy"><div class="eyebrow">A SMALL DISASTER, A BIG DECISION.</div><h1>キャッチ・<br>ザ・スマホ<span>！</span></h1><p class="tagline">急いでいる。<br>でも、その一台は見捨てられない。</p><div class="title-rule">避けて間に合うか、飛び込んで助けるか。</div><button id="go">街へ出る <span>→</span></button><div class="title-controls">移動 WASD / 矢印　走る SHIFT<br>救出：飛ぶスマホに触れる　中断 ESC<br>スマホ：左の十字キー ＋ 右のボタン</div><div class="chapter-list">01 病院　 →　 02 駅　 →　 03 電車内</div></div>`;
-overlay.style.display='flex';$('go').onclick=()=>{unlockAudio();total={time:0,catches:0,broken:0,damage:0,caught:0,perfect:0};briefStage(0);};
+overlay.innerHTML=`<div class="title-copy"><div class="eyebrow">A SMALL DISASTER, A BIG DECISION.</div><h1>キャッチ・<br>ザ・スマホ<span>！</span></h1><p class="tagline">急いでいる。<br>でも、その一台は見捨てられない。</p><div class="title-rule">避けて間に合うか、飛び込んで助けるか。</div><button id="goTitle">街へ出る <span>→</span></button><div class="title-controls">移動 WASD / 矢印　走る SHIFT<br>救出：飛ぶスマホに触れる　中断 ESC<br>スマホ：左の十字キー ＋ 右のボタン</div><div class="chapter-list">${STAGES.map((st,k)=>String(k+1).padStart(2,'0')+' '+st.short).join('　→　')}</div></div>`;
+overlay.style.display='flex';$('goTitle').onclick=()=>{unlockAudio();total={time:0,catches:0,broken:0,damage:0,caught:0,perfect:0};briefStage(0);};
 }
-function briefStage(i){state='brief';buildStage(i);overlay.className='brief';overlay.innerHTML=`<div class="panel"><div class="eyebrow">CHAPTER 0${i+1}</div><h1>${S.name}</h1><p>${S.subtitle}</p><p class="objective">${S.mission}<br>目標 ${S.limit}秒。超過しても続行できます。<br>救出するほど評価が上がる。<br>全部は助けなくていい。残り時間を見て選ぼう。</p><p class="hint">スマホを持つ人に接触すると救出チャンス。<br>空中をゆっくり飛ぶスマホへ移動。<br>主人公が近づいて触れると、自動でキャッチ。</p><button id="go">向かう →</button></div>`;overlay.style.display='flex';$('go').onclick=()=>startStage(i);}
+function briefStage(i){state='brief';buildStage(i);overlay.className='brief';overlay.innerHTML=`<div class="panel"><div class="eyebrow">CHAPTER ${String(i+1).padStart(2,'0')} / ${String(STAGES.length).padStart(2,'0')}</div><h1>${S.name}</h1><p>${S.subtitle}</p><p class="objective">${S.mission}<br>目標 ${S.limit}秒。超過しても続行できます。<br>救出するほど評価が上がる。<br>全部は助けなくていい。残り時間を見て選ぼう。</p><p class="hint">スマホを持つ人に接触すると救出チャンス。<br>空中をゆっくり飛ぶスマホへ移動。<br>主人公が近づいて触れると、自動でキャッチ。</p><button id="goBrief">向かう →</button></div>`;overlay.style.display='flex';$('goBrief').onclick=()=>startStage(i);}
 function startStage(i){
 buildStage(i);stats={time:0,catches:0,perfect:0,broken:0,damage:0,caught:0,hits:0};stageElapsed=0;overdue=false;dive=0;paused=false;clearInputs();
 logs=[];minilog.innerHTML='';qteEl.style.display='none';overlay.style.display='none';state='play';feedback(S.mission);tone(440,.12,.04);
@@ -861,23 +904,23 @@ function stageClear(failed=false){
 if(state!=='play')return;if(player.hidden)exitHide();state=failed?'failed':'clear';qteEl.style.display='none';clearInputs();
 const last=stageIndex===STAGES.length-1;if(!failed)for(const k in total)total[k]+=stats[k];const result=last&&!failed?total:stats;
 let best=0;const score=Math.max(0,Math.round(result.perfect*1000+result.catches*250-result.broken*450-result.caught*200+(failed?0:1000)-result.time*4-Math.max(0,stats.time-S.limit)*30));
-try{best=Number(localStorage.getItem('catch-phone-best')||0);if(last&&!failed&&score>best){localStorage.setItem('catch-phone-best',score);best=score;}}catch{}
-overlay.className='result';overlay.innerHTML=`<div class="panel"><div class="eyebrow">${failed?'TIME UP':last?'JOURNEY COMPLETE':'CHAPTER COMPLETE'}</div><h1>${failed?'間に合わなかった。':last?'急いだ。助けた。<br>なんとか、着いた。':(overdue?'遅れた。でも、着いた。':'間に合った。')}</h1><p>${failed?'次は、走る場所と助ける瞬間を選ぼう。':rankOf(result)}</p><div class="result-grid"><div><strong>${result.catches}</strong>救出 / 完全 ${result.perfect}</div><div><strong>${result.broken}</strong>破損</div><div><strong>${result.time.toFixed(1)}s</strong>所要時間</div><div><strong>¥${result.damage.toLocaleString()}</strong>修理・迷惑料</div></div><p>評価 ${score.toLocaleString()}　${last&&!failed?'最高 '+best.toLocaleString():''}</p><button id="go">${failed?'この場面をやり直す':last?'もう一度、街へ':'次の場面へ →'}</button><button class="secondary" id="home">タイトルへ</button></div>`;overlay.style.display='flex';$('go').onclick=()=>failed?startStage(stageIndex):last?showTitle():briefStage(stageIndex+1);$('home').onclick=showTitle;
+try{best=Number(localStorage.getItem('tg.318.best')||localStorage.getItem('catch-phone-best')||0);if(last&&!failed&&score>best){localStorage.setItem('tg.318.best',score);best=score;}}catch{}
+overlay.className='result';overlay.innerHTML=`<div class="panel"><div class="eyebrow">${failed?'TIME UP':last?'JOURNEY COMPLETE':'CHAPTER COMPLETE'}</div><h1>${failed?'間に合わなかった。':last?'急いだ。助けた。<br>なんとか、着いた。':(overdue?'遅れた。でも、着いた。':'間に合った。')}</h1><p>${failed?'次は、走る場所と助ける瞬間を選ぼう。':rankOf(result)}</p><div class="result-grid"><div><strong>${result.catches}</strong>救出 / 完全 ${result.perfect}</div><div><strong>${result.broken}</strong>破損</div><div><strong>${result.time.toFixed(1)}s</strong>所要時間</div><div><strong>¥${result.damage.toLocaleString()}</strong>修理・迷惑料</div></div><p>評価 ${score.toLocaleString()}　${last&&!failed?'最高 '+best.toLocaleString():''}</p><button id="goResult">${failed?'この場面をやり直す':last?'もう一度、街へ':'次の場面へ →'}</button><button class="secondary" id="homeResult">タイトルへ</button></div>`;overlay.style.display='flex';$('goResult').onclick=()=>failed?startStage(stageIndex):last?showTitle():briefStage(stageIndex+1);$('homeResult').onclick=showTitle;
 }
 
 // Environment craftsmanship: fixtures, signage, visible depth, and place-specific motion.
-let props=[],solids=[],seated=[],hideDoors=[];let audioContext=null,muted=false;
+let props=[],solids=[],seated=[],hideDoors=[];let audioContext=null,muted=(()=>{try{return localStorage.getItem('tg.318.muted')==='1';}catch{return false;}})();
 let impactBuffers={},impactLoading=false,voiceAt=-10,voiceCount=0;
 function unlockAudio(){if(!audioContext){const Audio=window.AudioContext||window.webkitAudioContext;if(Audio)audioContext=new Audio();}if(audioContext?.state==='suspended')audioContext.resume();if(audioContext&&!impactLoading){impactLoading=true;for(const k of['f','m'])fetch('audio/impact-'+k+'.wav').then(r=>r.arrayBuffer()).then(a=>audioContext.decodeAudioData(a)).then(b=>impactBuffers[k]=b).catch(()=>{});}}
 function impactCry(n){const female=n.T===TYPES.mom||n.T===TYPES.student||n.T===TYPES.granny||n.T.role==='nurse';sayN(n,female?'きゃー！':'うわー！','',1.5);if(!audioContext||muted||audioContext.currentTime-voiceAt<.5)return;const b=impactBuffers[female?'f':'m'];if(!b)return;voiceAt=audioContext.currentTime;voiceCount++;const src=audioContext.createBufferSource(),gain=audioContext.createGain();src.buffer=b;gain.gain.value=.7;src.connect(gain);gain.connect(audioContext.destination);src.start();}
 function tone(freq,duration=.08,volume=.03,type='sine'){if(!audioContext||muted)return;const o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+duration);o.connect(g);g.connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+duration);}
 function feedback(t){$('feedback').textContent=t;$('feedback').classList.add('show');feedbackTimer=2.8;}
 function clearInputs(){for(const k in keys)keys[k]=false;heldPointers.clear();document.querySelectorAll('#controls button').forEach(b=>b.classList.remove('active'));}
-function togglePause(){if(state!=='play')return;paused=!paused;clearInputs();$('hidePanel').style.display=!paused&&player.hidden?'flex':'none';if(paused){overlay.className='pause';overlay.innerHTML='<div class="panel"><div class="eyebrow">TAKE A BREATH</div><h1>ひと息、つこう。</h1><button id="resume">続ける →</button><button class="secondary" id="home">タイトルへ</button></div>';overlay.style.display='flex';$('resume').onclick=togglePause;$('home').onclick=showTitle;}else overlay.style.display='none';}
-$('pauseBtn').onclick=togglePause;$('soundBtn').onclick=()=>{unlockAudio();muted=!muted;$('soundBtn').textContent=muted?'音 OFF':'音 ON';};
+function togglePause(){if(state!=='play')return;paused=!paused;clearInputs();$('hidePanel').style.display=!paused&&player.hidden?'flex':'none';if(paused){overlay.className='pause';overlay.innerHTML='<div class="panel"><div class="eyebrow">TAKE A BREATH</div><h1>ひと息、つこう。</h1><button id="resume">続ける →</button><button class="secondary" id="homePause">タイトルへ</button></div>';overlay.style.display='flex';$('resume').onclick=togglePause;$('homePause').onclick=showTitle;}else overlay.style.display='none';}
+$('soundBtn').textContent=muted?'音 OFF':'音 ON';$('pauseBtn').onclick=togglePause;$('soundBtn').onclick=()=>{unlockAudio();muted=!muted;try{localStorage.setItem('tg.318.muted',muted?'1':'0');}catch{}$('soundBtn').textContent=muted?'音 OFF':'音 ON';};
 for(const el of document.querySelectorAll('[data-code]')){el.addEventListener('pointerdown',e=>{e.preventDefault();unlockAudio();el.setPointerCapture(e.pointerId);heldPointers.set(e.pointerId,el.dataset.code);keys[el.dataset.code]=true;el.classList.add('active');});const release=e=>{heldPointers.delete(e.pointerId);keys[el.dataset.code]=[...heldPointers.values()].includes(el.dataset.code);el.classList.toggle('active',keys[el.dataset.code]);};el.addEventListener('pointerup',release);el.addEventListener('pointercancel',release);el.addEventListener('lostpointercapture',release);}
 
-addEventListener('blur',()=>{clearInputs();if(state==='play'&&!paused)togglePause();});document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInputs();if(state==='play'&&!paused)togglePause();}});document.addEventListener('dblclick',e=>e.preventDefault());document.addEventListener('contextmenu',e=>e.preventDefault());let lastTap=0;document.addEventListener('touchstart',e=>{const now=Date.now();if(now-lastTap<280)e.preventDefault();lastTap=now;},{passive:false});
+addEventListener('blur',()=>{clearInputs();if(state==='play'&&!paused)togglePause();});document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInputs();if(state==='play'&&!paused)togglePause();}});document.addEventListener('dblclick',e=>e.preventDefault());document.addEventListener('contextmenu',e=>e.preventDefault());let lastEnd=0;document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastEnd<300)e.preventDefault();lastEnd=now;},{passive:false});let lastTap=0;document.addEventListener('touchstart',e=>{const now=Date.now();if(now-lastTap<280)e.preventDefault();lastTap=now;},{passive:false});
 function box(w,h,d,c,x,y,z,mat){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat||std(c));m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;world.add(m);return m;}
 function cylinder(r,h,c,x,y,z){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,10),std(c));m.position.set(x,y,z);m.castShadow=true;world.add(m);return m;}
 function label(txt,x,y,z,w=3,h=.55,color='#d6e5df',bg='#183e43',rot=0){const cv=document.createElement('canvas');cv.width=1024;cv.height=128;const ctx=cv.getContext('2d');ctx.fillStyle=bg;ctx.fillRect(0,0,1024,128);ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='500 62px "Hiragino Kaku Gothic ProN",sans-serif';ctx.fillText(txt,512,69,980);const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.y=rot;world.add(m);return m;}
@@ -919,7 +962,7 @@ g.position.set(Math.sin(phase)*2.65,0,z);g.rotation.y=phase===0?-Math.PI/2:Math.
 function buildHospital(end){
 // Distinct zones, light wall panels, continuous protective rails and a route stripe.
 for(const side of[-1,1]){box(.08,1.05,S.len+14,0x9fae9f,side*4.94,.57,(-S.len+4)/2);box(.12,.035,S.len+14,0xc9c7b4,side*4.87,1.12,(-S.len+4)/2);}
-for(const z of[-6,-23,-40,-57]){const light=new THREE.PointLight(0xfff4d9,23,22,2);light.position.set(0,3.75,z);world.add(light);}
+
 for(const [z,text,color] of[[-10,'01  外来受付  /  OUTPATIENT','#496e68'],[-29,'02  診察・検査  /  CLINIC','#526e84'],[-49,'03  お会計  /  CASHIER','#8b7850']]){label(text,0,3.2,z,4.4,.48,'#f7f1df',color);box(S.w,.025,.08,0xb7b9a2,0,.015,z);}
 // A narrow floor stripe leaves the play area legible.
 box(.085,.012,S.len+2,0x688f86,-2.05,.012,(-S.len+4)/2);
@@ -955,12 +998,175 @@ hospitalCart(-27,0);hospitalCart(-46,Math.PI);
 // Cashier zone has a second occupied service desk beside the exit.
 box(2.2,.96,1,0xa4b2a7,-3,.48,end+3);box(2.35,.08,1.2,0xe6dfcd,-3,1,end+3);bench(-3,end+1.3,0,0x607b6e);sitPerson(-3,end+1.3,0,'reception');solids.push({x:-3,z:end+3,w:2.35,d:1.2});label('会計  01',-3,2.2,end+2.5,2,.36,'#f2e5c6','#82734e');
 }
+// Static decoration is merged by material and 16m z-chunk: far fewer draw calls while per-chunk culling stays.
+function matKey(m){if(m.map||m.isMeshPhysicalMaterial)return m.uuid;return[m.type,m.color.getHex(),m.roughness,m.metalness,m.emissive?m.emissive.getHex():0,m.opacity,m.side].join('|');}
+function bakeStatic(){
+const skip=new Set(props.map(p=>p.mesh)),meshes=[],batches=new Map();
+world.updateMatrixWorld(true);for(const o of seated)o.box=new THREE.Box3().setFromObject(o.mesh);
+const walk=o=>{if(skip.has(o)||o.visible===false)return;if(o.isMesh&&!Array.isArray(o.material)&&!o.material.transparent&&o.geometry.attributes.normal)meshes.push(o);for(const c of o.children)walk(c);};walk(world);
+for(const o of meshes){
+const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();geo.applyMatrix4(o.matrixWorld);
+const key=Math.floor(o.matrixWorld.elements[14]/16)+'#'+matKey(o.material);
+let b=batches.get(key);if(!b){b={m:o.material,p:[],n:[],uv:[]};batches.set(key,b);}
+const count=geo.attributes.position.count;b.p.push(...geo.attributes.position.array);b.n.push(...geo.attributes.normal.array);
+if(geo.attributes.uv)b.uv.push(...geo.attributes.uv.array);else for(let j=0;j<count*2;j++)b.uv.push(0);
+geo.dispose();o.parent.remove(o);o.geometry.dispose();
+}
+for(const b of batches.values()){const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(b.p,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(b.n,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(b.uv,2));geo.computeBoundingSphere();const mesh=new THREE.Mesh(geo,b.m);mesh.castShadow=false;mesh.receiveShadow=true;world.add(mesh);}
+}
+// ===== 追加7場面：部品 =====
+const css=h=>'#'+h.toString(16).padStart(6,'0');
+const faceRot=side=>side>0?-Math.PI/2:Math.PI/2;
+function addSolid(x,z,w,d){solids.push({x,z,w,d});}
+// Block that is both visible and collidable.
+function furnish(w,h,d,c,x,y,z){box(w,h,d,c,x,y,z);addSolid(x,z,w,d);}
+function lantern(x,y,z,c=0xe2402f){const m=new THREE.Mesh(new THREE.SphereGeometry(.16,8,6),new THREE.MeshBasicMaterial({color:c}));m.position.set(x,y,z);world.add(m);}
+function tree(x,z,h=3.2,leaf=0x2f6b3a){cylinder(.18,h*.55,0x6b4a2d,x,h*.275,z);for(const [dy,r] of[[.62,1.25],[.85,.95]]){const m=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),std(leaf));m.position.set(x,h*dy+.55,z);m.castShadow=true;world.add(m);}pillars.push({x,z,r:.55});}
+// Moving obstacle: a pushed cart that sweeps across the aisle (solid, collidable, reads as a person at work).
+function makeCart(z,phase,cfg={}){
+const g=new THREE.Group(),steel=std(0x9aa3a0),rubber=std(0x303030),deck=std(cfg.body||0xdde4dc);world.add(g);
+const part=(w,h,d,m,x,y,zz)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,zz);o.castShadow=true;g.add(o);return o;};
+part(1.05,.07,.62,deck,0,.36,0);
+for(const x of[-.42,.42])for(const zz of[-.25,.25]){const wh=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.05,12),rubber);wh.rotation.z=Math.PI/2;wh.position.set(x,.1,zz);g.add(wh);part(.035,.26,.035,steel,x,.23,zz);}
+part(.95,.04,.035,steel,0,1.0,.3);part(.035,.64,.035,steel,-.46,.7,.3);part(.035,.64,.035,steel,.46,.7,.3);
+const cargo=cfg.cargo||'veg';
+if(cargo==='veg'){part(.5,.3,.4,std(0xc7893a),-.22,.55,-.05);part(.45,.26,.4,std(0x4f9a43),.26,.53,-.05);part(.3,.2,.3,std(0xd24a2e),0,.8,-.05);}
+else if(cargo==='cases'){part(.5,.62,.3,std(0x2a6f9d),-.22,.7,-.08);part(.44,.5,.28,std(0xb53a35),.25,.65,-.08);part(.4,.3,.26,std(0x2e2e34),0,1.1,-.08);}
+else if(cargo==='bags'){part(.46,.34,.3,std(0x2e2e34),-.22,.56,-.05);part(.42,.4,.3,std(0x6d5a3c),.22,.6,-.05);part(.5,.2,.3,std(0x3b4a64),0,.86,-.05);}
+else if(cargo==='ice'){part(.7,.5,.5,std(0xf4f1e6),0,.64,-.05);cylinder(.025,1.3,0xb8b8b8,0,1.3,-.05);const cone=new THREE.Mesh(new THREE.ConeGeometry(.78,.3,12),std(0xe96a8a));cone.position.set(0,1.95,-.05);g.add(cone);}
+else{part(.8,.5,.5,std(cfg.body||0x8a8f94),0,.62,-.05);}
+const P=makePerson({...TYPES[cfg.type||'worker'],acc:'none'});P.g.position.set(0,0,.77);P.g.rotation.y=Math.PI;P.armL.rotation.x=P.armR.rotation.x=-.8;P.elbowL.rotation.x=P.elbowR.rotation.x=-.65;g.add(P.g);
+const amp=cfg.amp||(S.w/2-1.9);
+g.position.set(Math.sin(phase)*amp,0,z);const solid={x:g.position.x,z,w:1.65,d:1.15};solids.push(solid);
+props.push({type:'sweeper',mesh:g,parts:P,solid,z,phase,amp,speed:cfg.speed||.3});
+}
+
+// ===== 商店街（幅9・屋根付きアーケード） =====
+function buildShopping(end){
+const names=['八百屋 まるいち','珈琲 みどり','書店 ぶんぶん','和菓子 つばき','スマホ修理 3分','弁当 あおぞら','クリーニング 白雪','電器 サンライズ','花屋 はなまる','魚 正','理容 サカエ','たこ焼き 浪花'];
+const cols=[0xb4432f,0x2f6b4a,0x35507a,0x9a6a2d,0x6b3a6b,0x2d6b6b];
+let k=0;
+for(let z=-3;z>end+4;z-=7){for(const side of[-1,1]){
+const c=cols[k%cols.length],nm=names[k%names.length];k++;const x=side*(S.w/2-.2);
+box(.5,3.3,6.2,0xd8c9a8,x,1.65,z);box(.12,2.2,5.4,0x4a3a2c,x-side*.28,1.15,z);
+box(.9,.1,6.2,c,x-side*.62,2.6,z);box(.1,.7,6.2,c,x-side*1.06,2.3,z);
+label(nm,x-side*.3,3.05,z,3.2,.5,'#fff6dc',css(c),faceRot(side));
+// Goods on the pavement: crates and a sandwich board narrow the lane.
+if(k%2){furnish(.6,.5,1.5,0xb98a4a,x-side*1.15,.25,z+1.4);}else{furnish(.5,.9,.7,0xe8dcc0,x-side*1.2,.45,z+1.6);}
+for(const dz of[-2.2,2.2])lantern(x-side*.9,2.95,z+dz);
+}}
+for(let z=-8;z>end+6;z-=14)label(z%28?'歳末大感謝祭　商店街まつり':'本日 タイムセール 17時から',0,3.55,z,6.4,.6,'#fff4d8','#a8392e');
+for(let z=-6;z>end+2;z-=6)box(S.w,.1,.2,0x3a3a3f,0,4.0,z);
+for(const [z,ph,ty] of[[-18,.4,'worker'],[-44,2.6,'mom']])makeCart(z,ph,{cargo:'veg',type:ty,amp:S.w/2-2.3,speed:.34,body:0xb98a4a});
+plant(S.w/2-1.7,-12);plant(-S.w/2+1.7,-36);
+}
+
+// ===== デパート（幅11・島什器のスラローム） =====
+function buildDepartment(end){
+const zones=[[-9,'婦人服 / LADIES','#7a4a62'],[-27,'紳士服 / MENS','#35507a'],[-45,'化粧品 / BEAUTY','#8b7850'],[-62,'催事場 / EVENT','#2f6b4a']];
+for(const [z,t,c] of zones){label(t,0,3.35,z,4.6,.5,'#f8f1de',c);box(S.w,.03,.1,0xc7b98f,0,.02,z+1);}
+let i=0;
+for(let z=-8;z>end+6;z-=8.5){
+const side=(i++%2?-1:1),x=side*2.3;
+furnish(4.4,.95,1.7,0xcdb99a,x,.48,z);box(4.5,.08,1.8,0xf1e8d6,x,1.0,z);box(4.2,.05,.06,0xb8924a,x,1.2,z-.7);
+// Mannequins and racks on the island.
+for(let j=-1;j<=1;j++){cylinder(.045,1.5,0xb8b8b8,x+j*1.3,1.75,z);const body=new THREE.Mesh(new THREE.CylinderGeometry(.2,.15,.62,10),std([0xb23a48,0x2f4a7a,0xd9c9a0][(j+1+i)%3]));body.position.set(x+j*1.3,1.5,z);world.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),std(0xe9d7c3));head.position.set(x+j*1.3,1.92,z);world.add(head);}
+}
+// Escalator on the left wall (decor): slope, steps, handrails and a lit well.
+const ex=-S.w/2+1.1;box(1.6,.14,9,0x5a5d62,ex,1.5,-14);for(let j=0;j<12;j++)box(1.35,.05,.5,0x8b9096,ex,.45+j*.18,-9.5-j*.75);for(const sx of[-.78,.78])box(.07,.1,9,0x1c1c20,ex+sx,2.1,-14);
+box(1.8,.12,9.4,0x2a2c30,ex,3.7,-14);label('↑ 上りエスカレーター',ex+.9,3.0,-9.5,1.6,.3,'#f1e9d4','#35507a',Math.PI/2);addSolid(ex,-14,1.9,9.4);
+for(const z of[-14,-32,-50])label('SALE　最大50%OFF',S.w/2-.3,2.6,z,2.4,.5,'#fff4d8','#a8392e',-Math.PI/2);
+makeCart(-36,1.4,{cargo:'bags',type:'mom',amp:2.2,speed:.28,body:0xcdb99a});
+for(const z of[-2,-58])plant(S.w/2-1,z);
+}
+
+// ===== 会社（幅12・島型デスク） =====
+function buildOffice(end){
+let r=0;
+for(let z=-8;z>end+7;z-=9){
+const shift=(r++%2)?-1.1:1.1;
+for(const gx of[-3.6,3.6]){const x=gx+shift;
+furnish(3.6,.78,.8,0xd8d2c2,x,.4,z-.5);furnish(3.6,.78,.8,0xd8d2c2,x,.4,z+.5);box(3.6,.35,.04,0x9aa3a8,x,.97,z);
+for(const px of[-1.2,0,1.2]){box(.5,.32,.04,0x2c3036,x+px,1.0,z-.85);box(.5,.32,.04,0x2c3036,x+px,1.0,z+.85);}
+sitPerson(x-1,z-1.35,Math.PI,'reception');if(r%2)sitPerson(x+1,z+1.35,0,'reception');
+}
+}
+// Meeting rooms behind glass on the right wall, copier and water server on the left.
+for(const z of[-16,-38]){box(.1,2.6,5,0xaed0d6,S.w/2-1.2,1.3,z,new THREE.MeshPhysicalMaterial({color:0xaed0d6,transparent:true,opacity:.2,roughness:.1,depthWrite:false}));box(.06,2.6,.06,0x4a5058,S.w/2-1.2,1.3,z-2.5);box(.06,2.6,.06,0x4a5058,S.w/2-1.2,1.3,z+2.5);addSolid(S.w/2-1.2,z,.3,5);label('会議室 '+(z>-20?'A':'B')+'　使用中',S.w/2-1.3,2.85,z,2.2,.3,'#f4f1e5','#4a5058',faceRot(1));}
+for(const z of[-12,-30,-48]){furnish(.9,1.1,.7,0xe3e5e4,-S.w/2+1,.55,z);box(.8,.05,.55,0x3a3f45,-S.w/2+1,1.12,z);label('複合機',-S.w/2+1.2,1.55,z,.7,.2,'#2c3036','#e3e5e4',faceRot(-1));}
+hospitalPanel(['本日の予定','10:30 定例会議','13:00 来客 応接A','17:00 月次〆'],-S.w/2+.3,2.0,-24,1.7,1.15,faceRot(-1));
+for(const z of[-5,-27,-52])plant(-S.w/2+1.3,z);
+makeCart(-23,.8,{cargo:'bags',type:'clerk',amp:3.4,speed:.3,body:0x8a8f94});
+}
+
+// ===== 空港（幅14・広いロビーと荷物） =====
+function buildAirport(end){
+// Check-in islands with signs.
+let k=0;for(const z of[-9,-25,-41]){const lane='ABCDEFGH'[k++];furnish(5.6,1.05,1.1,0xd9dde0,-3.8,.52,z);box(5.7,.07,1.2,0x2c3a4c,-3.8,1.08,z);box(.06,.9,.06,0x8a9096,-3.8,1.55,z);label('CHECK-IN '+lane+'　搭乗手続き',-3.8,3.2,z,3.6,.45,'#e6f0fa','#1d3557');for(let j=0;j<4;j++)box(.5,.35,.04,0x2c3036,-5.5+j*1.15,1.35,z);sitPerson(-3.8,z-1.25,Math.PI,'reception');}
+// Departure board and gate signs.
+for(const z of[-14,-34,-54]){box(4.2,1.3,.12,0x10151c,3.6,3.1,z);label('東京 羽田　NH 0'+(Math.abs(z)*3+11)+'　搭乗中',3.6,3.35,z+.08,3.9,.38,'#ffd35a','#10151c');label('大阪 伊丹　JL 0'+(Math.abs(z)*2+17)+'　遅延',3.6,2.95,z+.08,3.9,.38,'#9ad6ff','#10151c');}
+// Seating rows on the right and big window wall light.
+for(const z of[-5,-21,-37,-53]){bench(5.4,z,-Math.PI/2,0x3c4f6b);occupyBench(5.4,z,-Math.PI/2,.5,true);}
+// Luggage: scattered suitcases are real obstacles.
+const cs=[0x2a6f9d,0xb53a35,0x3f7d4a,0x2e2e34,0xc7893a];let c=0;
+for(const [x,z] of[[0,-12],[1.8,-18],[-1.2,-29],[2.4,-33],[0.4,-46],[-2,-51],[1.4,-58]]){furnish(.55,.8,.34,cs[c++%cs.length],x,.42,z);}
+for(const [z,ph,ty] of[[-16,.5,'tourist'],[-37,2.8,'tourist'],[-52,1.2,'clerk']])makeCart(z,ph,{cargo:'cases',type:ty,amp:S.w/2-2.4,speed:.3,body:0xc7ccd2});
+for(const z of[-6,-30,-48])label('搭乗口 '+(1+Math.floor(-z/12))+' →',0,.03,z,1.4,.3,'#e6f0fa','#1d3557',0).rotation.x=-Math.PI/2;
+for(const z of[-8,-44])plant(-S.w/2+1,z);
+}
+
+// ===== 公園（幅18・屋根なし、池あり） =====
+function buildPark(end){
+// Paved path, grass shoulders, trees and a pond that a thrown phone tends to head for.
+box(5,.03,S.len+20,0xcbb995,0,.02,(-S.len+4)/2);
+for(let z=-6;z>end+4;z-=9){for(const side of[-1,1]){if(Math.abs(z+41)<9&&side<0)continue;tree(side*(S.w/2-1.2),z+(side>0?-3:0),3+((z*7)%3+3)%3*.3);}}
+const pond={x0:-8.2,x1:-2.9,z0:-50,z1:-32};S.ponds=[pond];
+const water=new THREE.Mesh(new THREE.PlaneGeometry(pond.x1-pond.x0,pond.z1-pond.z0),new THREE.MeshStandardMaterial({color:0x2f78a8,roughness:.08,metalness:.3}));water.rotation.x=-Math.PI/2;water.position.set((pond.x0+pond.x1)/2,.05,(pond.z0+pond.z1)/2);world.add(water);
+box(pond.x1-pond.x0+.5,.2,.25,0x8a8f94,(pond.x0+pond.x1)/2,.1,pond.z0-.1);box(pond.x1-pond.x0+.5,.2,.25,0x8a8f94,(pond.x0+pond.x1)/2,.1,pond.z1+.1);box(.25,.2,pond.z1-pond.z0,0x8a8f94,pond.x0-.1,.1,(pond.z0+pond.z1)/2);box(.25,.2,pond.z1-pond.z0,0x8a8f94,pond.x1+.1,.1,(pond.z0+pond.z1)/2);
+addSolid((pond.x0+pond.x1)/2,(pond.z0+pond.z1)/2,pond.x1-pond.x0,pond.z1-pond.z0);
+label('池に注意',pond.x1+.4,1.2,pond.z1+.3,1.5,.3,'#f3efdc','#2f6b4a',0);
+for(const z of[-12,-26,-58]){bench(2.9,z,-Math.PI/2,0x6b4a2d);occupyBench(2.9,z,-Math.PI/2,.4,true);}
+for(const z of[-4,-22,-40,-58]){cylinder(.05,3,0x2c2f33,-2.9,1.5,z);const lamp=new THREE.Mesh(new THREE.SphereGeometry(.2,8,6),new THREE.MeshBasicMaterial({color:0xfff2c0}));lamp.position.set(-2.9,3.1,z);world.add(lamp);}
+makeCart(-20,2.1,{cargo:'ice',type:'clerk',amp:S.w/2-3,speed:.26,body:0xe96a8a});
+label('中央公園　噴水広場 →',0,3.6,-8,5,.5,'#f3efdc','#2f6b4a',0);
+}
+
+// ===== コンサート会場（幅12・満員の通路） =====
+function buildConcert(end){
+// Stage wall with a big screen at the far end.
+box(S.w,5,1,0x14111e,0,2.5,end-3);box(8,3,.2,0x101018,0,3,end-2.4);label('LIVE　TONIGHT',0,3.8,end-2.25,7.2,.9,'#ffffff','#5a1d8a',0);label('開演まで あと わずか',0,2.4,end-2.25,5.5,.5,'#ffd35a','#101018',0);
+// Truss with colored lamps and swaying beams.
+for(let z=-6;z>end+4;z-=9){box(S.w,.2,.2,0x2a2a32,0,3.9,z);for(let j=-2;j<=2;j++){const col=[0xff3a8c,0x3ad0ff,0xffd23a,0x7a4aff,0x3aff9a][(j+2)%5];const lamp=new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),new THREE.MeshBasicMaterial({color:col}));lamp.position.set(j*2.3,3.7,z);world.add(lamp);if(Math.abs(j)%2===0){const pv=new THREE.Group();pv.position.set(j*2.3,3.75,z);const beam=new THREE.Mesh(new THREE.ConeGeometry(.9,3.4,12,1,true),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.1,depthWrite:false,side:THREE.DoubleSide}));beam.position.y=-1.7;pv.add(beam);world.add(pv);props.push({type:'beam',mesh:pv,phase:z+j});}}}
+// Barricade lanes create bottlenecks in the crowd.
+for(const z of[-14,-28,-42]){for(const side of[-1,1]){const w=S.w/2-2.3;furnish(w,.95,.14,0x8a9096,side*(w/2+1.7),.48,z);for(let j=0;j<4;j++)box(.08,1.05,.08,0x4a5058,side*(1.7+j*w/3),.52,z);}label('入場レーン　2列でお進みください',0,2.3,z,3.6,.38,'#f1e9d4','#2c2f36',0);}
+// Merch booths and floor stripes.
+for(const [x,z,t] of[[-4.6,-20,'GOODS'],[4.6,-34,'GOODS'],[-4.6,-50,'DRINK']]){furnish(1.8,1.1,2.4,0x3b2c5a,x,.55,z);box(1.9,.08,2.5,0xf1e8d6,x,1.12,z);label(t,x+(x<0?.95:-.95),1.8,z,1.5,.35,'#ffffff','#7a2bd8',x<0?Math.PI/2:-Math.PI/2);}
+for(const z of[-8,-24,-40,-56])box(S.w,.02,.5,0xff3a8c,0,.015,z);
+}
+
+// ===== 取引先大会社（幅12・吹き抜けのロビー） =====
+function buildLobby(end){
+// Reception desk (staffed) and security gates with narrow lanes.
+furnish(5.4,1.05,1.3,0x4a3a2c,-3.2,.52,-6);box(5.5,.08,1.4,0xe8e0cf,-3.2,1.08,-6);label('総合受付　RECEPTION',-3.2,1.7,-6.7,3.4,.4,'#f1e2b8','#2c2218',0);sitPerson(-3.2,-4.7,0,'reception');
+label('大海商事 株式会社　本社',0,3.6,-12,6,.6,'#f1e2b8','#17202c',0);
+for(let j=0;j<4;j++){const x=-4.5+j*3;furnish(.5,1.05,1.3,0x2c2f36,x,.52,-30);box(.5,.06,1.3,0x74d6a8,x,1.08,-30);}
+label('入館ゲート　IDをタッチ',0,2.5,-30,4,.4,'#d6f2e4','#17202c',0);
+for(const z of[-18,-44,-58]){for(const side of[-1,1])furnish(.7,.9,.7,0x6b6b70,side*(S.w/2-1),.45,z);}
+// Atrium: tall glass, chandelier, art wall, sofa groups.
+for(let z=-8;z>end+6;z-=13){box(.1,3.2,.1,0xd8c18a,-S.w/2+.2,1.8,z);box(.1,3.2,.1,0xd8c18a,S.w/2-.2,1.8,z);}
+for(const z of[-22,-40,-54]){const lamp=new THREE.Mesh(new THREE.SphereGeometry(.34,10,8),new THREE.MeshBasicMaterial({color:0xfff0c8}));lamp.position.set(0,3.5,z);world.add(lamp);}
+hospitalPanel(['ご来訪の皆さまへ','エレベーターは奥へ','ネームプレートを着用ください'],S.w/2-.2,2.1,-48,1.9,1.25,faceRot(1),'#efe6d0','#3a2f22');
+for(const z of[-24,-48]){furnish(1.9,.6,.8,0x2c3a4c,-S.w/2+1.4,.3,z);furnish(1.9,.6,.8,0x2c3a4c,S.w/2-1.4,.3,z);}
+makeCart(-38,1.9,{cargo:'bags',type:'clerk',amp:S.w/2-3,speed:.25,body:0xd8c18a});
+for(const z of[-3,-36,-62])plant(S.w/2-1,z);
+}
+const BUILDERS={shopping:buildShopping,department:buildDepartment,office:buildOffice,airport:buildAirport,park:buildPark,concert:buildConcert,lobby:buildLobby};
 function decorateStage(){
 const end=-S.len,L=S.len+22;
 // Ceiling, skirting, handrails, and physically placed overhead fixtures.
-box(S.w,.15,L,S.kind==='hospital'?0xcdd1cb:0x435151,0,4.15,(-S.len+4)/2);
+if(!S.open)box(S.w,.15,L,S.kind==='hospital'?0xcdd1cb:0x435151,0,4.15,(-S.len+4)/2);
 for(const side of[-1,1]){box(.09,.12,L,0x445956,side*(S.w/2-.27),.15,(-S.len+4)/2);box(.1,.12,L,0x708681,side*(S.w/2-.3),1.05,(-S.len+4)/2);}
-for(let z=1;z>end;z-=7){for(const side of[-1,1]){box(.35,.07,2.4,0,side*S.w*.27,3.99,z,new THREE.MeshBasicMaterial({color:S.kind==='hospital'?0xe1f1dd:0xd4e0ec}));}box(S.w,.08,.16,0x566665,0,3.85,z-2);}
+if(!S.open)for(let z=1;z>end;z-=7){for(const side of[-1,1]){box(.35,.07,2.4,0,side*S.w*.27,3.99,z,new THREE.MeshBasicMaterial({color:S.kind==='hospital'?0xe1f1dd:0xd4e0ec}));}box(S.w,.08,.16,0x566665,0,3.85,z-2);}
 const spot=new THREE.PointLight(S.kind==='hospital'?0xe3f3dc:0xc9dce8,35,24,2);spot.position.set(0,3.5,-10);world.add(spot);props.push({type:'followlight',mesh:spot});
 if(S.kind==='hospital'){
  buildHospital(end);
@@ -968,18 +1174,33 @@ if(S.kind==='hospital'){
 for(let z=-5;z>end;z-=14){for(const side of[-1,1]){box(.12,2.3,7.6,0x31434e,side*(S.w/2-.3),2,z,new THREE.MeshStandardMaterial({color:0x273c4b,roughness:.22,metalness:.65}));bench(side*4.8,z+3,side===1?-Math.PI/2:Math.PI/2,0x5b5c55);occupyBench(side*4.8,z+3,side===1?-Math.PI/2:Math.PI/2,0,true);plant(side*5.8,z-3);}label('3　新幹線 ↑　　出口 EAST →',0,3.5,z,5.3,.56,'#f3e9cb','#263b42');}
 for(let z=-18;z>end;z-=24){box(3.8,.85,.1,0x152b30,0,2.8,z);label('18:42　快速　中央・空港方面',0,2.8,z+.08,3.6,.38,'#e7c779','#14282c');}
 for(const x of[-4,-2,0,2,4]){box(.6,1,.9,0x697c7c,x,.5,end+1);box(.35,.08,.8,0,x,1.02,end+1,new THREE.MeshBasicMaterial({color:0x83c5a6}));}label('きっぷ・ICカード',-4.5,2,-3,2.6,.5);
-}else{
+}else if(S.kind==='train'){
 for(let z=-4;z>end+1;z-=7.5){for(const side of[-1,1]){bench(side*2.02,z,side===1?-Math.PI/2:Math.PI/2,0x455a70);occupyBench(side*2.02,z,side===1?-Math.PI/2:Math.PI/2,-.6,true);occupyBench(side*2.02,z,side===1?-Math.PI/2:Math.PI/2,.6,false);windowPanel(side,z);const pole=cylinder(.035,3.7,0xb9c1be,side*1.35,1.85,z-1.7);for(let j=0;j<3;j++){const xx=side*1.45,zz=z-1+j;const strap=new THREE.Group();strap.position.set(xx,3.6,zz);const rope=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.45,6),std(0xd0d0ba));rope.position.y=-.22;strap.add(rope);const handle=new THREE.Mesh(new THREE.TorusGeometry(.105,.021,6,12),std(0xc9c8b5));handle.position.y=-.52;strap.add(handle);world.add(strap);props.push({type:'strap',mesh:strap,phase:j+z});}}}
 for(let z=-15;z>end;z-=15){box(S.w,.6,.25,0x334d54,0,3.65,z);label('次は 中央駅　NEXT: CHUO',0,3.65,z+.15,3.7,.32,'#bddbb8','#172b32');for(const side of[-1,1]){box(.3,3.3,1.1,0x788d92,side*2.65,1.65,z);box(.31,1.2,.8,0x203743,side*2.64,2,z);}}
 label('優先席　PRIORITY SEAT',0,3.4,-5,2.9,.34,'#e6c3a0','#4d4943');
-}
+}else if(BUILDERS[S.kind])BUILDERS[S.kind](end);
 // Destination reads like a doorway rather than an abstract finish line.
-box(S.w,3.7,.35,0x354f52,0,1.85,end-1);box(2.3,2.8,.38,0x799b91,0,1.4,end-.75);box(1.9,.75,.04,0,0,2,end-.53,new THREE.MeshBasicMaterial({color:0xaed5bd}));label(S.kind==='hospital'?'会計 / CASHIER':S.kind==='train'?'出口 / EXIT':'3番線 / PLATFORM 3',0,3.15,end-.5,3.4,.45);
+box(S.w,3.7,.35,0x354f52,0,1.85,end-1);box(2.3,2.8,.38,0x799b91,0,1.4,end-.75);box(1.9,.75,.04,0,0,2,end-.53,new THREE.MeshBasicMaterial({color:0xaed5bd}));label(S.goalLabel,0,3.15,end-.5,3.4,.45);
 }
-function updateEnvironment(dt){for(const p of props){if(p.type==='medicalCart'){const x=Math.sin(stageElapsed*.3+p.phase)*2.65;p.mesh.position.x=x;p.solid.x=x;p.mesh.rotation.y=Math.cos(stageElapsed*.3+p.phase)>0?-Math.PI/2:Math.PI/2;p.solid.z=p.z;p.parts.legL.rotation.x=Math.sin(stageElapsed*4)*.18;p.parts.legR.rotation.x=-Math.sin(stageElapsed*4)*.18;}if(p.type==='callBoard'){const n=Math.floor(stageElapsed/7);if(n!==p.last){p.last=n;const c=p.mesh.material.map.image,ctx=c.getContext('2d');ctx.fillStyle='#223e3b';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#e3d6a0';ctx.font='500 62px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('内科  '+String(28+n).padStart(3,'0')+'番  診察室へ',512,69,980);p.mesh.material.map.needsUpdate=true;}}if(p.type==='strap')p.mesh.rotation.z=Math.sin(stageElapsed*2+p.phase)*.065;if(p.type==='streak')p.mesh.position.z=p.z+Math.sin(stageElapsed*3+p.z)*1.1;if(p.type==='followlight')p.mesh.position.z=player.mesh.position.z-8;}if(state==='play'&&!paused&&Math.floor(stageElapsed/7)>Math.floor((stageElapsed-dt)/7)){if(S.kind==='hospital'){tone(700,.12,.018);setTimeout(()=>tone(550,.16,.018),180);}else if(S.kind==='train')tone(58,.4,.018,'triangle');else{tone(523,.15,.025);setTimeout(()=>tone(659,.16,.02),150);}}}
+function updateEnvironment(dt){for(const p of props){if(p.type==='medicalCart'){const x=Math.sin(stageElapsed*.3+p.phase)*2.65;p.mesh.position.x=x;p.solid.x=x;p.mesh.rotation.y=Math.cos(stageElapsed*.3+p.phase)>0?-Math.PI/2:Math.PI/2;p.solid.z=p.z;p.parts.legL.rotation.x=Math.sin(stageElapsed*4)*.18;p.parts.legR.rotation.x=-Math.sin(stageElapsed*4)*.18;}if(p.type==='sweeper'){const a=stageElapsed*p.speed+p.phase,x=Math.sin(a)*p.amp;p.mesh.position.x=x;p.solid.x=x;p.mesh.rotation.y=Math.cos(a)>0?-Math.PI/2:Math.PI/2;p.parts.legL.rotation.x=Math.sin(stageElapsed*4)*.18;p.parts.legR.rotation.x=-Math.sin(stageElapsed*4)*.18;}if(p.type==='beam')p.mesh.rotation.z=Math.sin(stageElapsed*.8+p.phase)*.55;if(p.type==='callBoard'){const n=Math.floor(stageElapsed/7);if(n!==p.last){p.last=n;const c=p.mesh.material.map.image,ctx=c.getContext('2d');ctx.fillStyle='#223e3b';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#e3d6a0';ctx.font='500 62px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('内科  '+String(28+n).padStart(3,'0')+'番  診察室へ',512,69,980);p.mesh.material.map.needsUpdate=true;}}if(p.type==='strap')p.mesh.rotation.z=Math.sin(stageElapsed*2+p.phase)*.065;if(p.type==='streak')p.mesh.position.z=p.z+Math.sin(stageElapsed*3+p.z)*1.1;if(p.type==='followlight')p.mesh.position.z=player.mesh.position.z-8;}if(state==='play'&&!paused&&Math.floor(stageElapsed/7)>Math.floor((stageElapsed-dt)/7)){if(S.kind==='hospital'){tone(700,.12,.018);setTimeout(()=>tone(550,.16,.018),180);}else if(S.kind==='train')tone(58,.4,.018,'triangle');else{tone(523,.15,.025);setTimeout(()=>tone(659,.16,.02),150);}}}
 // Inspection interface enabled only with ?test=1, never active in ordinary play.
-if(new URLSearchParams(location.search).has('test'))window.__game={unlock:unlockAudio,chase:(i=0)=>startChase(npcs[i]),hideDoors:()=>hideDoors.map(d=>({...d})),reading:()=>npcs.filter(n=>n.phone&&n.state==='phone').map(n=>{n.mesh.updateMatrixWorld(true);const eye=P=>P.head.localToWorld(new THREE.Vector3(0,.16,.15));const e=eye(n.parts),ph=n.phone.getWorldPosition(new THREE.Vector3()),f=new THREE.Vector3(0,0,1).applyQuaternion(n.parts.head.getWorldQuaternion(new THREE.Quaternion()));return {dot:f.dot(ph.clone().sub(e).normalize()),phone:n.mesh.worldToLocal(ph.clone()).toArray(),head:n.parts.head.rotation.toArray().slice(0,3),thumb:n.parts.handR.userData.thumb.position.y};}),inspect:who=>{if(who==='hospital-cart'){inspection={pos:new THREE.Vector3(1,2.6,-21),target:new THREE.Vector3(0,1,-27)};return;}if(who==='hospital-waiting'){inspection={pos:new THREE.Vector3(1.4,2.1,-12),target:new THREE.Vector3(-3.3,1.1,-19)};return;}if(who==='hospital-cashier'){inspection={pos:new THREE.Vector3(1,2.2,-57),target:new THREE.Vector3(-2,1.15,-63)};return;}if(who==='seats'){inspection={pos:new THREE.Vector3(S.kind==='train'?-.7:0,2.25,1),target:new THREE.Vector3(S.kind==='train'?2:-3,1,-4)};return;}if(who==='reception'){inspection={pos:new THREE.Vector3(-.6,2,-.4),target:new THREE.Vector3(-2.5,1.2,-4.2)};return;}const o=who==='hero'?player.mesh:(npcs.find(n=>n.T.role===who)||(who.startsWith('elder')?(npcs.find(n=>n.T===TYPES.granny)||npcs[0]):npcs[0])).mesh;o.updateMatrixWorld(true);const offset=(who==='hero'||who.endsWith('-front')?new THREE.Vector3(.6,1.7,2.4):new THREE.Vector3(1.1,1.7,-1.9)).applyQuaternion(o.quaternion);inspection={pos:o.position.clone().add(offset),target:o.position.clone().add(new THREE.Vector3(0,1.28,0))};},start:startStage,brief:briefStage,clear:stageClear,title:showTitle,pause:togglePause,hit:()=>{const n=npcs.find(n=>n.hasPhone&&n.state==='phone');if(n){n.mesh.position.copy(player.mesh.position).add(new THREE.Vector3(0,0,-.5));startEvent(n);}},resolve,step:dt=>{if(state==='play'&&!paused){stats.time+=dt;stageElapsed+=dt;updatePlayer(dt);for(const n of npcs)updateNPC(n,dt);updateTimers(dt);if(stats.time>=S.limit)beginOvertime();}},get:()=>({state,paused,stage:stageIndex,stats,total,overdue,hidden:player.hidden?{left:player.hidden.left}:null,voices:voiceCount,voiceReady:Object.keys(impactBuffers),chasing:npcs.filter(n=>n.state==='angry').length,position:player.mesh.position.toArray(),stamina:player.stamina,event:event?{position:event.phone.position.toArray(),real:event.real,resolved:event.resolved}:null,npcs:npcs.map(n=>({x:n.mesh.position.x,z:n.mesh.position.z,state:n.state,role:n.T.role||'visitor',phone:n.hasPhone,speed:Math.min(3.9,n.T.speed*.48*n.rageSpeed)})),seated:seated.map(o=>({role:o.role,x:o.x,z:o.z,seat:o.seat,feet:o.feet,bounds:(()=>{const b=new THREE.Box3().setFromObject(o.mesh);return {min:b.min.toArray(),max:b.max.toArray()};})()})),bagAlongSide:player.parts.handL.children.some(o=>o.userData.role==='briefcase'&&Math.abs(o.rotation.y-Math.PI/2)<.001),hero:PLAYER_T.acc,grips:npcs.filter(n=>n.phone).map(n=>({attached:n.phone.parent===n.parts.handR,emissive:n.phone.userData.scr.material.emissiveIntensity})),props:props.length,hospital:props.filter(o=>o.type==='medicalCart').map(o=>({x:o.mesh.position.x,z:o.mesh.position.z,box:{...o.solid}})),calls:props.filter(o=>o.type==='callBoard').map(o=>o.last),render:renderer.info.render,keys:{...keys}}),position:(x,z)=>{player.mesh.position.set(x,0,z);},rng:fn=>{Math.random=fn;}};
+if(new URLSearchParams(location.search).has('test'))window.__game={shot:()=>{updateCamera(.5);updateLOD();updateEnvironment(0);renderer.render(scene,camera);},view:(x,y,z,tx,ty,tz)=>{inspection={pos:new THREE.Vector3(x,y,z),target:new THREE.Vector3(tx,ty,tz)};},unview:()=>{inspection=null;},unlock:unlockAudio,chase:(i=0)=>startChase(npcs[i]),hideDoors:()=>hideDoors.map(d=>({...d})),reading:()=>npcs.filter(n=>n.phone&&n.state==='phone').map(n=>{n.mesh.updateMatrixWorld(true);const eye=P=>P.head.localToWorld(new THREE.Vector3(0,.16,.15));const e=eye(n.parts),ph=n.phone.getWorldPosition(new THREE.Vector3()),f=new THREE.Vector3(0,0,1).applyQuaternion(n.parts.head.getWorldQuaternion(new THREE.Quaternion()));return {dot:f.dot(ph.clone().sub(e).normalize()),phone:n.mesh.worldToLocal(ph.clone()).toArray(),head:n.parts.head.rotation.toArray().slice(0,3),thumb:n.parts.handR.userData.thumb.position.y};}),inspect:who=>{if(who==='hospital-cart'){inspection={pos:new THREE.Vector3(1,2.6,-21),target:new THREE.Vector3(0,1,-27)};return;}if(who==='hospital-waiting'){inspection={pos:new THREE.Vector3(1.4,2.1,-12),target:new THREE.Vector3(-3.3,1.1,-19)};return;}if(who==='hospital-cashier'){inspection={pos:new THREE.Vector3(1,2.2,-57),target:new THREE.Vector3(-2,1.15,-63)};return;}if(who==='seats'){inspection={pos:new THREE.Vector3(S.kind==='train'?-.7:0,2.25,1),target:new THREE.Vector3(S.kind==='train'?2:-3,1,-4)};return;}if(who==='reception'){inspection={pos:new THREE.Vector3(-.6,2,-.4),target:new THREE.Vector3(-2.5,1.2,-4.2)};return;}const o=who==='hero'?player.mesh:(npcs.find(n=>n.T.role===who)||(who.startsWith('elder')?(npcs.find(n=>n.T===TYPES.granny)||npcs[0]):npcs[0])).mesh;o.updateMatrixWorld(true);const offset=(who==='hero'||who.endsWith('-front')?new THREE.Vector3(.6,1.7,2.4):new THREE.Vector3(1.1,1.7,-1.9)).applyQuaternion(o.quaternion);inspection={pos:o.position.clone().add(offset),target:o.position.clone().add(new THREE.Vector3(0,1.28,0))};},start:startStage,brief:briefStage,clear:stageClear,title:showTitle,pause:togglePause,hit:()=>{const n=npcs.find(n=>n.hasPhone&&n.state==='phone');if(n){n.mesh.position.copy(player.mesh.position).add(new THREE.Vector3(0,0,-.5));startEvent(n);}},resolve,step:dt=>{if(state==='play'&&!paused){stats.time+=dt;stageElapsed+=dt;updatePlayer(dt);for(const n of npcs)updateNPC(n,dt);updateTimers(dt);if(stats.time>=S.limit)beginOvertime();}},get:()=>({state,paused,stage:stageIndex,stats,total,overdue,hidden:player.hidden?{left:player.hidden.left}:null,voices:voiceCount,voiceReady:Object.keys(impactBuffers),chasing:npcs.filter(n=>n.state==='angry').length,position:player.mesh.position.toArray(),stamina:player.stamina,event:event?{position:event.phone.position.toArray(),real:event.real,resolved:event.resolved}:null,npcs:npcs.map(n=>({x:n.mesh.position.x,z:n.mesh.position.z,state:n.state,role:n.T.role||'visitor',phone:n.hasPhone,speed:Math.min(3.9,n.T.speed*.48*n.rageSpeed)})),seated:seated.map(o=>({role:o.role,x:o.x,z:o.z,seat:o.seat,feet:o.feet,bounds:(()=>{const b=o.box;return {min:b.min.toArray(),max:b.max.toArray()};})()})),bagAlongSide:player.parts.handL.children.some(o=>o.userData.role==='briefcase'&&Math.abs(o.rotation.y-Math.PI/2)<.001),hero:PLAYER_T.acc,grips:npcs.filter(n=>n.phone).map(n=>({attached:n.phone.parent===n.parts.handR,emissive:n.phone.userData.scr.material.emissiveIntensity})),props:props.length,hospital:props.filter(o=>o.type==='medicalCart').map(o=>({x:o.mesh.position.x,z:o.mesh.position.z,box:{...o.solid}})),calls:props.filter(o=>o.type==='callBoard').map(o=>o.last),render:renderer.info.render,keys:{...keys},world:{w:S.w,len:S.len,limit:S.limit,kind:S.kind,ponds:S.ponds||null},solids:solids.map(c=>({...c})),pillars:pillars.map(c=>({...c})),sweepers:props.filter(o=>o.type==='sweeper').map(o=>({x:o.mesh.position.x,z:o.mesh.position.z,box:{...o.solid}}))}),position:(x,z)=>{player.mesh.position.set(x,0,z);},rng:fn=>{Math.random=fn;}};
 
+// Adaptive quality: only sustained slow windows (after warm-up) step the resolution down, then drop shadows; sustained fast windows step it back up.
+const PR_CAP=Math.min(devicePixelRatio,1.5);
+let prNow=PR_CAP,adaptAcc=0,adaptN=0,shadowsOn=true,warm=0,slowRuns=0,fastRuns=0;
+function applyPr(){renderer.setPixelRatio(prNow);renderer.setSize(innerWidth,innerHeight);}
+function adaptQuality(dt){
+if(document.hidden||dt>.5)return;if(++warm<45)return;
+adaptAcc+=dt;adaptN++;if(adaptN<30)return;
+const avg=adaptAcc/adaptN;adaptAcc=0;adaptN=0;
+if(avg>.036){slowRuns++;fastRuns=0;}else if(avg<.02){fastRuns++;slowRuns=0;}else{slowRuns=0;fastRuns=0;}
+if(slowRuns>=2){slowRuns=0;
+if(prNow>.55){prNow=Math.max(.5,prNow*.8);applyPr();}
+else if(shadowsOn){shadowsOn=false;renderer.shadowMap.enabled=false;scene.traverse(o=>{if(o.material)for(const m of Array.isArray(o.material)?o.material:[o.material])m.needsUpdate=true;});}
+}else if(fastRuns>=3&&prNow<PR_CAP-.01){fastRuns=0;prNow=Math.min(PR_CAP,prNow*1.25);applyPr();}
+}
+(()=>{try{const gl=renderer.getContext(),ex=gl.getExtension('WEBGL_debug_renderer_info'),name=ex?String(gl.getParameter(ex.UNMASKED_RENDERER_WEBGL)):'';if(/swiftshader|llvmpipe|software|basic render/i.test(name)){prNow=.5;LOD_DIST=9;shadowsOn=false;renderer.shadowMap.enabled=false;renderer.setPixelRatio(prNow);renderer.setSize(innerWidth,innerHeight);}}catch{}})();
 // ===== メインループ =====
 
 const clock=new THREE.Clock();
@@ -988,7 +1209,7 @@ function loop(){
 
 requestAnimationFrame(loop);
 
-const elapsed=Math.min(clock.getDelta(),.25),rdt=elapsed;
+const raw=clock.getDelta();adaptQuality(raw);const elapsed=Math.min(raw,.25),rdt=elapsed;
 if(state==='play'&&!paused){
 const steps=Math.max(1,Math.ceil(elapsed/(1/60))),step=elapsed/steps;
 for(let k=0;k<steps&&state==='play';k++){
@@ -999,7 +1220,7 @@ if(player.mesh.position.z<-S.len&&!event)stageClear();else if(stats.time>=S.limi
 }
 if(state==='play')updateHUD();
 }
-if(!paused){updateCamera(rdt);updateBubbles(rdt);updateEnvironment(rdt);feedbackTimer-=rdt;if(feedbackTimer<=0)$('feedback').classList.remove('show');}renderer.render(scene,camera);
+if(!paused){updateCamera(rdt);updateLOD();updateBubbles(rdt);updateEnvironment(rdt);feedbackTimer-=rdt;if(feedbackTimer<=0)$('feedback').classList.remove('show');}renderer.render(scene,camera);
 
 }
 
