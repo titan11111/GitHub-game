@@ -898,7 +898,7 @@ overlay.style.display='flex';$('goTitle').onclick=()=>{unlockAudio();total={time
 function briefStage(i){state='brief';buildStage(i);overlay.className='brief';overlay.innerHTML=`<div class="panel"><div class="eyebrow">CHAPTER ${String(i+1).padStart(2,'0')} / ${String(STAGES.length).padStart(2,'0')}</div><h1>${S.name}</h1><p>${S.subtitle}</p><p class="objective">${S.mission}<br>目標 ${S.limit}秒。超過しても続行できます。<br>救出するほど評価が上がる。<br>全部は助けなくていい。残り時間を見て選ぼう。</p><p class="hint">スマホを持つ人に接触すると救出チャンス。<br>空中をゆっくり飛ぶスマホへ移動。<br>主人公が近づいて触れると、自動でキャッチ。</p><button id="goBrief">向かう →</button></div>`;overlay.style.display='flex';$('goBrief').onclick=()=>startStage(i);}
 function startStage(i){
 buildStage(i);stats={time:0,catches:0,perfect:0,broken:0,damage:0,caught:0,hits:0};stageElapsed=0;overdue=false;dive=0;paused=false;clearInputs();
-logs=[];minilog.innerHTML='';qteEl.style.display='none';overlay.style.display='none';state='play';feedback(S.mission);tone(440,.12,.04);
+logs=[];minilog.innerHTML='';qteEl.style.display='none';overlay.style.display='none';state='play';feedback(S.mission);tone(440,.12,.04);say(player.mesh,'課長から電話だ。早く帰らないとやばい…','sys',4);
 }
 function stageClear(failed=false){
 if(state!=='play')return;if(player.hidden)exitHide();state=failed?'failed':'clear';qteEl.style.display='none';clearInputs();
