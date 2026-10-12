@@ -1,0 +1,130 @@
+{
+  "checks": [
+    {
+      "name": "タイトルから場面紹介",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "場面紹介から操作開始",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "実キー入力で前進",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "一時停止中は時計停止",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "SPACEの完全救出で破損0",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "かすり25%の破損分岐",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "破損後の追跡発生",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "失敗で50%の破損分岐とQTE解除",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "時間切れ画面",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "時間切れからリトライ",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "場面0の設備を構築",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "場面0の出口到達",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "次の場面紹介へ",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "場面1の設備を構築",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "場面1の出口到達",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "次の場面紹介へ",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "場面2の設備を構築",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "場面2の出口到達",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "最終結果と評価を表示",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "結果からタイトル復帰",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "仮想移動ボタン押下",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "指が外れても入力解除",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "タッチ救出ボタン",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "中断で入力をリセット",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "実行時エラーなし",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "errors": []
+}

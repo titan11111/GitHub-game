@@ -1,0 +1,352 @@
+{
+  "results": [
+    {
+      "stage": 0,
+      "seated": [
+        {
+          "role": "passenger",
+          "x": -3.6,
+          "z": 1.5,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 3.6,
+          "z": -2.65,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -3.6,
+          "z": -14.5,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 3.6,
+          "z": -14.65,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -3.6,
+          "z": -26.5,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 3.6,
+          "z": -26.65,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -3.6,
+          "z": -38.5,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 3.6,
+          "z": -38.65,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -3.6,
+          "z": -50.5,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 3.6,
+          "z": -50.65,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "reception",
+          "x": -2.5,
+          "z": -4.35,
+          "seat": 0.58,
+          "feet": 0.02
+        }
+      ],
+      "bagAlongSide": true
+    },
+    {
+      "stage": 1,
+      "seated": [
+        {
+          "role": "passenger",
+          "x": -4.8,
+          "z": -2,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 4.8,
+          "z": -2,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -4.8,
+          "z": -16,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 4.8,
+          "z": -16,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -4.8,
+          "z": -30,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 4.8,
+          "z": -30,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -4.8,
+          "z": -44,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 4.8,
+          "z": -44,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -4.8,
+          "z": -58,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 4.8,
+          "z": -58,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -4.8,
+          "z": -72,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 4.8,
+          "z": -72,
+          "seat": 0.58,
+          "feet": 0.02
+        }
+      ],
+      "bagAlongSide": true
+    },
+    {
+      "stage": 2,
+      "seated": [
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -3.4,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -4.6,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -4.6,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -3.4,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -10.9,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -12.1,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -12.1,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -10.9,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -18.4,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -19.6,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -19.6,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -18.4,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -25.9,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -27.1,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -27.1,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -25.9,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -33.4,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -34.6,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -34.6,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -33.4,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -40.9,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": -2.02,
+          "z": -42.1,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -42.1,
+          "seat": 0.58,
+          "feet": 0.02
+        },
+        {
+          "role": "passenger",
+          "x": 2.02,
+          "z": -40.9,
+          "seat": 0.58,
+          "feet": 0.02
+        }
+      ],
+      "bagAlongSide": true
+    }
+  ],
+  "errors": []
+}

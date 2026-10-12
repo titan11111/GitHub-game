@@ -1,0 +1,44 @@
+{
+  "results": [
+    {
+      "stage": 0,
+      "state": "clear",
+      "stats": {
+        "time": 12.43563333333355,
+        "catches": 4,
+        "perfect": 4,
+        "broken": 0,
+        "damage": 0,
+        "caught": 0,
+        "hits": 4
+      }
+    },
+    {
+      "stage": 1,
+      "state": "clear",
+      "stats": {
+        "time": 13.88659999999985,
+        "catches": 3,
+        "perfect": 3,
+        "broken": 0,
+        "damage": 0,
+        "caught": 0,
+        "hits": 3
+      }
+    },
+    {
+      "stage": 2,
+      "state": "clear",
+      "stats": {
+        "time": 14.323949999999734,
+        "catches": 7,
+        "perfect": 7,
+        "broken": 0,
+        "damage": 0,
+        "caught": 0,
+        "hits": 7
+      }
+    }
+  ],
+  "errors": []
+}

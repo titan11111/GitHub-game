@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+
+<head>
+
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+
+<title>キャッチ・ザ・スマホ！</title>
+
+<style>
+
+body{margin:0;overflow:hidden;font-family:"Hiragino Kaku Gothic ProN","Meiryo",sans-serif;background:#000}
+
+#hud{position:fixed;top:10px;left:10px;color:#fff;font-size:15px;text-shadow:0 0 4px #000,0 0 2px #000;pointer-events:none;line-height:1.7}
+
+#stamina{width:180px;height:8px;background:#333;margin-top:4px;border-radius:4px;overflow:hidden}
+
+#staminaFill{height:100%;background:#3cf}
+
+#minilog{position:fixed;right:10px;top:10px;width:340px;color:#fff;font-size:13px;text-shadow:0 0 4px #000;pointer-events:none;text-align:right;line-height:1.6}
+
+#bubbles{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+
+.bubble{position:absolute;transform:translate(-50%,-100%);background:#fff;color:#222;padding:4px 10px;border-radius:12px;font-size:14px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+
+.bubble.angry{background:#ff3b3b;color:#fff;font-weight:bold}
+
+.bubble.sys{background:#ffe600;color:#000;font-size:20px;font-weight:bold}
+
+#qte{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);width:440px;display:none;text-align:center;color:#fff;font-size:18px;font-weight:bold;text-shadow:0 0 4px #000}
+
+#bar{position:relative;height:28px;background:#333;border:3px solid #fff;border-radius:8px;margin-top:8px;overflow:hidden}
+
+#graze{position:absolute;top:0;height:100%;background:#e8b400}
+
+#perfect{position:absolute;top:0;height:100%;background:#2ecc40}
+
+#cursor{position:absolute;top:0;width:5px;height:100%;background:#fff;box-shadow:0 0 6px #fff}
+
+#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+
+#overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.8);color:#fff;text-align:center;padding:20px;box-sizing:border-box}
+
+#overlay h1{font-size:42px;margin:0 0 12px}
+
+#overlay table{margin:10px auto;border-collapse:collapse;font-size:14px}
+
+#overlay td{padding:3px 12px;border-bottom:1px solid #555}
+
+#overlay button{font-size:20px;padding:12px 34px;margin-top:18px;border:none;border-radius:30px;background:#ff3b8d;color:#fff;cursor:pointer;font-weight:bold}
+
+
+*{box-sizing:border-box;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none}html,body{width:100%;height:100%;overscroll-behavior:none;background:#10191c}canvas{display:block}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}#hud{top:max(22px,env(safe-area-inset-top));left:max(26px,env(safe-area-inset-left));font-size:13px;line-height:1.5;padding:18px 23px;width:310px;background:linear-gradient(100deg,#0b151cdd,#0b151c00);border-left:2px solid #d4b382}#hud strong{font-size:23px;font-weight:500;letter-spacing:.08em}.eyebrow{color:#d6ba8c;font-size:10px;letter-spacing:.24em;margin-bottom:12px}.mission{font-size:11px;color:#c1d0d0;max-width:265px;margin:8px 0}.metrics{display:flex;gap:25px;align-items:center;margin:13px 0}.metrics b{font-size:36px;font-weight:400;font-family:Georgia,serif}.metrics small{font:11px sans-serif;margin-left:6px}.metrics span{font-size:12px}#stamina{width:220px;height:3px;border-radius:0;background:#ffffff25}#staminaFill{background:#d6ba8c}.danger{color:#ff866d}#minilog{top:auto;bottom:145px;right:25px;font-size:12px;width:min(380px,48vw);color:#e7dccb;line-height:1.9}#overlay{align-items:flex-start;background:linear-gradient(90deg,#071016ee 0%,#071016c9 35%,#07101610 80%);padding:clamp(24px,6vw,90px);text-align:left}#overlay.title{justify-content:center}.title-copy{max-width:670px}#overlay h1{font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:clamp(40px,6.3vw,88px);font-weight:600;line-height:1.18;letter-spacing:.03em;margin:22px 0;color:#f3ead9}#overlay h1 span{color:#d6ba8c}.tagline{font-size:18px;line-height:1.85;letter-spacing:.1em;color:#d5e1df}.title-rule{font-size:12px;color:#9eadad;margin-top:25px}#overlay button{font:15px "Yu Gothic",sans-serif;background:#ddc297;color:#162226;border:1px solid #e3cfaa;border-radius:0;min-height:48px;padding:13px 32px;min-width:190px;letter-spacing:.1em;text-align:left}#overlay button:hover{background:#f4dfb9}#overlay button span{margin-left:80px}.title-controls{font-size:11px;line-height:1.9;color:#9caeae;margin:18px 0}.chapter-list{font-size:11px;letter-spacing:.08em;color:#d6ba8c;margin-top:25px}#overlay.brief,#overlay.result,#overlay.pause{align-items:center;justify-content:center;background:#09141bc9;backdrop-filter:blur(5px);text-align:center}.panel{width:min(650px,100%)}#overlay .panel h1{font-size:clamp(28px,5vw,48px)}.panel p{line-height:1.9;font-size:14px;color:#ccd6d4}.objective{padding:18px;border-top:1px solid #d5ba8355;border-bottom:1px solid #d5ba8355}.hint{font-size:12px!important}.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:25px 0}.result-grid div{font-size:12px;color:#9fb2b3}.result-grid strong{display:block;font-family:Georgia,serif;color:#e2c89e;font-size:28px;margin-bottom:4px}#overlay button.secondary{background:transparent;color:#ccdad9;border-color:#6f8284;margin-left:10px}#qte{bottom:26%;width:min(480px,85vw);font-size:23px;text-shadow:0 2px 12px #000;background:#0b151deb;border:1px solid #ccad7555;padding:18px 25px;font-weight:500}#qte small{font-size:10px;color:#dfc394;letter-spacing:.25em}#qte span{font-size:11px;color:#c1d3d0}#bar{height:22px;border:1px solid #bdc8c4;border-radius:0;background:#382e2b}#graze{background:#9b7439}#perfect{background:#7fb79b}#cursor{width:3px}.bubble{border-radius:3px;font-size:12px;background:#142930ee;color:#e3e9df;border-left:2px solid #cbb389;padding:6px 10px}.bubble.angry{background:#572c2dee}.bubble.sys{font-size:15px;background:#e2cba1;color:#14282b}#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 55% 45%,transparent 30%,#030b0f88 100%)}#distance{position:fixed;top:0;left:0;right:0;height:3px;background:#ffffff13;pointer-events:none}#distanceFill{height:100%;width:0;background:#d8bb89}#feedback{position:fixed;left:50%;top:22%;transform:translateX(-50%);color:#f1dfc0;opacity:0;transition:opacity .18s;text-shadow:0 2px 8px black;font-size:14px;pointer-events:none;white-space:nowrap}#feedback.show{opacity:1}#controls{position:fixed;left:max(22px,env(safe-area-inset-left));right:max(22px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none}#controls button{pointer-events:auto;width:54px;height:48px;color:#d9e4e0;border:1px solid #b7c5bc60;background:#13262bc4;font-size:20px;border-radius:4px}#controls button.active{background:#bfac84;color:#10252a}.pad{text-align:center}.pad div{display:flex;gap:5px;margin:5px 0}.actions{display:flex;gap:13px;align-items:flex-end}#controls #rescue{width:85px;height:85px;border-radius:50%;border-color:#d8bd90;color:#e2caa2;font-size:17px}#controls #run{width:65px;height:65px;border-radius:50%;font-size:14px}#pauseBtn,#soundBtn{position:fixed;right:22px;top:max(22px,env(safe-area-inset-top));z-index:2;background:#112229ab;color:#d6e0d9;border:1px solid #afc2bd55;height:38px;min-width:44px}#soundBtn{right:77px;font-size:11px}body:has(#overlay[style*="flex"]) #controls,body:has(#overlay[style*="flex"]) #pauseBtn{visibility:hidden}@media(max-width:600px){#hud{padding:11px 14px;width:255px;left:12px;top:15px}#hud strong{font-size:18px}.metrics{margin:5px 0}.metrics b{font-size:28px}.mission{font-size:10px}#minilog{bottom:165px;right:12px;width:65vw;font-size:10px}#overlay{padding:25px}#overlay h1{font-size:47px}.tagline{font-size:14px}.title-controls{font-size:10px}#feedback{top:35%;font-size:11px}#qte{bottom:31%;font-size:18px;padding:12px}#controls{left:12px;right:12px}#overlay button.secondary{margin-left:0}.panel p{font-size:12px}.result-grid{margin:10px 0;gap:10px}#soundBtn{top:auto;bottom:5px;right:48%;height:25px}#pauseBtn{top:15px;right:12px}}@media(max-height:580px){#overlay h1{font-size:35px;margin:12px 0}.title-copy{max-width:550px}.tagline{font-size:13px}.title-rule,.chapter-list{margin-top:10px}.title-controls{margin:8px 0}#overlay button{margin-top:10px}.metrics b{font-size:27px}#hud{top:12px;padding:10px 14px}.mission{margin:4px 0}.panel p{margin:9px 0}.objective{padding:9px}.result-grid{margin:10px 0}}
+#contactHint{font-size:12px;line-height:1.7;color:#d8bd90;text-align:center;padding:10px;background:#10242ad9;border:1px solid #d8bd9060;pointer-events:none}#contactHint small{font-size:10px}#qte{bottom:auto;top:22%;font-size:17px;padding:10px 18px;pointer-events:none;background:#0b151dc9}@media(max-width:600px){#qte{top:27%;width:82vw;font-size:14px}}
+#pursuit{font-size:17px;letter-spacing:.06em;color:#e7d6b4;border-top:1px solid #d2c39d55;padding-top:6px}#pursuit.alert{color:#ffb09e}#hidePanel{position:fixed;inset:0;background:#061316cf;display:none;align-items:center;justify-content:center;flex-direction:column;color:#e7e4d8;z-index:3;backdrop-filter:blur(4px);font-size:18px;text-align:center}#hidePanel small{font-size:12px;line-height:1.8;color:#b8c9c5}#leaveRoom{margin-top:24px;padding:12px 24px;color:#f0e3c9;background:#27413c;border:1px solid #adc6b9}#doorHint{position:fixed;bottom:145px;left:50%;transform:translateX(-50%);background:#203833dc;color:#f3dfb7;padding:8px 16px;font-size:12px;pointer-events:none;white-space:nowrap}
+</style>
+
+</head>
+
+<body><div id="hidePanel"><strong id="hideStatus"></strong><p><small>廊下から姿を隠しています。<br>制限時間は進みます。<br>各待避室は1回だけ利用できます。</small></p><button id="leaveRoom">廊下へ戻る（E）</button></div><div id="doorHint" hidden></div>
+
+<div id="hud"></div>
+
+<div id="minilog"></div>
+
+<div id="bubbles"></div>
+
+<div id="qte"><div id="qteText"></div><div id="bar"><div id="graze"></div><div id="perfect"></div><div id="cursor"></div></div></div>
+
+<div id="flash"></div>
+
+<div id="vignette"></div><div id="distance"><div id="distanceFill"></div></div><div id="feedback" role="status"></div><button id="pauseBtn" aria-label="一時停止">Ⅱ</button><button id="soundBtn">音 ON</button>
+<div id="controls"><div class="pad"><button data-code="ArrowUp" aria-label="前進">↑</button><div><button data-code="ArrowLeft" aria-label="左">←</button><button data-code="ArrowDown" aria-label="後退">↓</button><button data-code="ArrowRight" aria-label="右">→</button></div></div><div class="actions"><button id="run" data-code="ShiftLeft">走る</button><div id="contactHint">スマホへ移動<br><small>触れてキャッチ</small></div></div></div><div id="overlay"></div>
+
+
+
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+
+<script type="module">
+
+import * as THREE from 'three';
+
+
+
+// ===== ステージ（スマホ率：電車のみ実測、他は推定） =====
+
+const STAGES=[
+{name:'白凪総合病院',kind:'hospital',subtitle:'消毒液の匂い。午後の診察を待つ人たち。',mission:'受付終了までに、突き当たりの会計窓口へ。',rate:.72,count:22,len:65,w:10,limit:27,sky:0x697b79,floor:0xc1cbc4,wall:0xe4e3d8,pillars:false,weights:{granny:4,mom:3,salary:2,student:1,doctor:2,nurse:2}},
+{name:'夕方の中央駅',kind:'station',subtitle:'足音と発車メロディが、人の波に溶ける。',mission:'発車時刻までに、3番線の改札へ。',rate:.75,count:32,len:80,w:13,limit:29,sky:0x18212a,floor:0x747679,wall:0x697782,pillars:true,tactile:true,weights:{salary:4,student:3,tourist:2,mom:1,worker:1}},
+{name:'終電、車内',kind:'train',subtitle:'流れる街灯。つり革がわずかに揺れている。',mission:'降車までに、前方車両のドアへ。',rate:.85,count:16,len:47,w:5.8,limit:24,sky:0x101820,floor:0x535d63,wall:0x89989c,pillars:false,weights:{salary:4,student:3,mom:1,tourist:1}}
+];
+
+// ===== キャラクター =====
+
+const TYPES={
+
+salary:{short:'田中',name:'営業サラリーマン 田中(34)',h:1.76,speed:7.6,body:[0x1f2a44,0x2b2b2b,0x3b4250],legs:[0x1c1f26],skin:0xf0c8a0,hair:[0x111111],acc:'bag',
+
+chaseBroken:.7,chaseSafe:.2,giveUp:9,repair:38000,stun:1.6,
+
+hit:'あっ携帯が…！',broken:'ちょ、これ会社のなんですけど！？',safe:'…セーフか。気をつけてくださいよ',thanks:'あ、どうも…助かりました',
+
+chase:['待ってください！名刺ください！','ちょっと！そこのあなた！','逃げる気ですか！？'],giveup:'くそ…商談に遅れる…',caught:'会社に請求書送りますからね！'},
+
+student:{short:'りな',name:'大学生 りな(20)',h:1.6,speed:8.2,body:[0xf4a6c6,0xe9dcc9,0xffffff,0xb7d3f2],legs:[0x2d3a5a,0xc9b79c],skin:0xf6d3b8,hair:[0x5a3a22,0x2a1a10,0xc89c5a],acc:'tote',
+
+chaseBroken:.8,chaseSafe:.3,giveUp:7,repair:45000,stun:1.4,
+
+hit:'あっ携帯が！！',broken:'は？最新機種なんやけど！？',safe:'マジびびった…',thanks:'え、ありがと…優しっ',
+
+chase:['ちょっと待ってって！！','逃げんなし！','動画撮ってるけんね！？'],giveup:'…もういい、ストーリーに上げる',caught:'修理代、PayPayで送って'},
+
+granny:{short:'節子',name:'おばあちゃん 節子(78)',h:1.48,speed:3.4,body:[0x7a5c8e,0x8a6f55,0x5d6b7a],legs:[0x4a4038],skin:0xe9c4a4,hair:[0xcfcfcf,0xe8e8e8],acc:'bent',
+
+chaseBroken:.35,chaseSafe:.05,giveUp:28,repair:15000,stun:3.0,
+
+hit:'あらっ、携帯が…',broken:'孫の写真が入っとったとに…',safe:'あらあら、無事やったわ',thanks:'まあ、ご親切にどうも。飴ちゃんいる？',
+
+chase:['ちょっと〜、そこのあんた〜','待ちんしゃい〜','若い人は足が速かねぇ…'],giveup:'…まあ、急いどったんやろうねぇ',caught:'あんた、そこ座り。話があるけん'},
+
+mom:{short:'由美',name:'主婦 由美(41)',h:1.6,speed:6.2,body:[0xd8c3a5,0x8a9a6a,0xc96a6a],legs:[0x3a3a4a,0xe0d8c8],skin:0xf2cfb0,hair:[0x3a2416,0x1d140e],acc:'shop',
+
+chaseBroken:.55,chaseSafe:.1,giveUp:10,repair:25000,stun:2.0,
+
+hit:'あっ携帯が！',broken:'ちょっと！学校から連絡来とったのに！',safe:'危ないやろ！前見て歩き！',thanks:'あら、ありがとうございます',
+
+chase:['待ちなさい！！','ちゃんと謝りなさい！','どこの子ね！'],giveup:'もう…警備員さんに言うけんね',caught:'まず目を見て謝りなさい'},
+
+worker:{short:'剛',name:'現場作業員 剛(45)',h:1.82,speed:7.0,body:[0xff8c1a,0x2f4a6b],legs:[0x3b3b2f,0x2f3b4a],skin:0xd9a77f,hair:[0x111111],acc:'helmet',
+
+chaseBroken:.85,chaseSafe:.4,giveUp:12,repair:20000,stun:2.6,
+
+hit:'おわっ、携帯が！',broken:'おいコラ、どこ見て歩きよっとか！',safe:'…次はなかぞ',thanks:'お、おう…悪いな兄ちゃん',
+
+chase:['逃げんなオラァ！','待たんかコラァ！','現場で鍛えた足なめんなよ！'],giveup:'ハァ…ハァ…今日はこの辺にしといたる',caught:'ちょっとツラ貸せや'},
+
+tourist:{short:'Mike',name:'観光客 マイク(29)',h:1.88,speed:6.8,body:[0xd23b3b,0x2a9d8f,0x3a6fd0],legs:[0xc2a878,0x3a3a3a],skin:0xf5d6c0,hair:[0xd8b060,0x6b4a2a],acc:'backpack',
+
+chaseBroken:.5,chaseSafe:.05,giveUp:8,repair:42000,stun:1.5,
+
+hit:'Oh no! My phone!',broken:'Seriously!? My Google Maps!!',safe:'Phew... daijoubu desu.',thanks:'Wow! Arigatou gozaimasu!',
+
+chase:['Hey! Stop! Sumimasen!!','Wait! Chotto matte!','You owe me a phone!'],giveup:'Japanese people... so fast...',caught:'Insurance... you pay, OK?'},
+
+streamer:{short:'ケンジ',name:'配信者 ケンジ(26)',h:1.72,speed:8.8,body:[0x111111,0x6b2bd8],legs:[0x222222],skin:0xf0c8a0,hair:[0xe0e0e0,0x3fa0ff],acc:'selfie',alwaysPhone:true,
+
+chaseBroken:.95,chaseSafe:.6,giveUp:15,repair:55000,stun:2.2,
+
+hit:'あっ携帯が！配信中なんやけど！？',broken:'配信落ちた！同接500人おったとに！',safe:'今のバズるわ…追いかけよ！',thanks:'え、神対応やん…配信乗せていい？',
+
+chase:['みんな見てる？今こいつ追ってまーす！','逃げても切り抜かれるよ〜！','コメ欄「草」で埋まっとる！'],giveup:'…これは切り抜き確定っすね',caught:'顔出しNGとかないっすよね？'},
+
+};
+
+const PLAYER_T={h:1.76,body:[0x25364b],legs:[0x25364b],skin:0xe8bfa3,hair:[0x191719],acc:'salaryHero'};
+
+
+
+// ===== 基本セットアップ =====
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+document.body.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,400);
+
+const ambient=new THREE.HemisphereLight(0xc9e8ed,0x252b30,1.5);scene.add(ambient);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+
+const sun=new THREE.DirectionalLight(0xcbe6ee,1.5);
+
+sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+
+Object.assign(sun.shadow.camera,{left:-30,right:30,top:30,bottom:-30,near:1,far:100});
+
+scene.add(sun,sun.target);
+
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+
+
+const $=id=>document.getElementById(id);
+
+const hud=$('hud'),minilog=$('minilog'),bubblesEl=$('bubbles'),overlay=$('overlay');
+
+const qteEl=$('qte'),qteText=$('qteText'),perfectEl=$('perfect'),grazeEl=$('graze'),cursorEl=$('cursor'),flashEl=$('flash');
+
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+const std=c=>new THREE.MeshStandardMaterial({color:c,roughness:.65});
+
+const lerpAngle=(a,b,t)=>{let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return a+d*t;};
+
+
+
+TYPES.doctor={...TYPES.salary,short:'医師',name:'外来の医師',h:1.78,body:[0xe9eae1],legs:[0x394752],hair:[0x262625],acc:'doctor',role:'doctor',thanks:'助かりました。大丈夫ですか？'};
+TYPES.nurse={...TYPES.mom,short:'看護師',name:'外来の看護師',h:1.64,body:[0x9dbcc2,0xc9d9ce],legs:[0xc2d1cb],hair:[0x302b28],acc:'nurse',role:'nurse',thanks:'ありがとうございます。お怪我は？'};
+// ===== テクスチャ =====
+
+function tileTex(hex){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');
+
+x.fillStyle='#'+new THREE.Color(hex).getHexString();x.fillRect(0,0,128,128);x.strokeStyle='rgba(0,0,0,.12)';x.lineWidth=1;x.strokeRect(0,0,128,128);if(S.kind==='hospital'){for(let j=0;j<700;j++){const px=(j*47.31)%128,py=(j*19.73)%128;x.fillStyle=j%2?'rgba(255,255,255,.13)':'rgba(65,83,77,.045)';x.fillRect(px,py,1,1);}x.fillStyle='rgba(255,255,255,.18)';x.fillRect(1,1,126,1);}
+
+const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;return t;}
+
+function emojiTex(e){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');
+
+x.font='96px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(e,64,70);return new THREE.CanvasTexture(c);}
+
+function textSprite(txt,bg,fg='#fff'){const w=512,h=128,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+
+x.fillStyle=bg;x.beginPath();x.roundRect(4,4,w-8,h-8,30);x.fill();x.fillStyle=fg;x.font='bold 60px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(txt,w/2,h/2+4);
+
+const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t}));s.scale.set(8,2,1);return s;}
+
+const rageMat=new THREE.SpriteMaterial({map:emojiTex('💢'),depthTest:false});
+
+
+
+// ===== 人モデル =====
+
+const G={leg:new THREE.BoxGeometry(.18,.8,.2),torso:new THREE.CylinderGeometry(.24,.19,.66,12),arm:new THREE.CylinderGeometry(.075,.055,.62,8),
+
+hand:new THREE.BoxGeometry(.1,.1,.1),head:new THREE.SphereGeometry(.16,16,12),hair:new THREE.SphereGeometry(.17,16,12,0,Math.PI*2,0,Math.PI*.43),
+
+eye:new THREE.BoxGeometry(.035,.035,.02)};
+
+const black=std(0x111111);
+
+function makePerson(t){
+
+const g=new THREE.Group();
+
+const body=std(pick(t.body)),legsM=std(pick(t.legs)),skin=std(t.skin),hairM=std(pick(t.hair));
+
+const mk=(geo,m,x,y,z,parent)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;(parent||g).add(o);return o;};
+
+const pivot=(x,y,z)=>{const p=new THREE.Group();p.position.set(x,y,z);g.add(p);return p;};
+
+const legL=pivot(-.13,.8,0),legR=pivot(.13,.8,0);mk(G.leg,legsM,0,-.4,0,legL);mk(G.leg,legsM,0,-.4,0,legR);
+
+const torso=mk(G.torso,body,0,1.12,0);
+
+const armL=pivot(-.32,1.42,0),armR=pivot(.32,1.42,0);
+
+const elbowL=new THREE.Group(),elbowR=new THREE.Group();
+for(const [arm,elbow] of [[armL,elbowL],[armR,elbowR]]){mk(new THREE.CylinderGeometry(.082,.066,.29,12),body,0,-.145,0,arm);elbow.position.y=-.29;arm.add(elbow);mk(new THREE.CylinderGeometry(.065,.045,.29,12),body,0,-.145,0,elbow);mk(new THREE.CylinderGeometry(.048,.048,.045,10),std(0xeeeeea),0,-.29,0,elbow);}
+const handL=new THREE.Group(),handR=new THREE.Group();handL.position.y=handR.position.y=-.34;elbowL.add(handL);elbowR.add(handR);
+mk(new THREE.BoxGeometry(.085,.115,.055),skin,0,0,0,handL);mk(new THREE.BoxGeometry(.085,.115,.055),skin,0,0,0,handR);
+for(let j=0;j<4;j++)mk(new THREE.BoxGeometry(.023,.018,.065),skin,.047,-.038+j*.022,.025,handR);
+const thumb=mk(new THREE.BoxGeometry(.025,.06,.035),skin,-.048,0,.045,handR);handR.userData.thumb=thumb;
+
+mk(new THREE.BoxGeometry(.2,.12,.34),black,0,-.75,.07,legL);mk(new THREE.BoxGeometry(.2,.12,.34),black,0,-.75,.07,legR);
+const head=pivot(0,1.5,0);const face=mk(G.head,skin,0,.14,0,head);face.scale.set(.94,1.13,.88);const hair=mk(G.hair,hairM,0,.18,-.025,head);hair.scale.set(1,1.04,.98);
+// Visible ears, brows, and a soft expression instead of a blank sphere.
+for(const side of[-1,1]){mk(new THREE.SphereGeometry(.035,8,6),skin,side*.154,.14,0,head);const brow=mk(new THREE.BoxGeometry(.067,.012,.014),hairM,side*.061,.205,.137,head);brow.rotation.z=side*.09;}
+const mouth=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-.045,.067,.134),new THREE.Vector3(0,.057,.143),new THREE.Vector3(.045,.067,.134)]),new THREE.LineBasicMaterial({color:0x805b53}));head.add(mouth);
+if(t.acc==='salaryHero'){
+// Navy jacket, shirt, lapels, burgundy tie, and side-parted dark hair.
+mk(new THREE.BoxGeometry(.48,.14,.29),body,0,1.38,0);
+const briefcase=new THREE.Group();briefcase.rotation.y=Math.PI/2;handL.add(briefcase);mk(new THREE.BoxGeometry(.32,.24,.11),std(0x292b30),0,-.21,0,briefcase);const handle=mk(new THREE.TorusGeometry(.055,.012,6,12),black,0,-.065,0,briefcase);handle.scale.x=1.4;briefcase.userData.role='briefcase';
+
+mk(new THREE.BoxGeometry(.16,.46,.025),std(0xf3f1e8),0,1.22,.22);
+for(const side of[-1,1]){const lapel=mk(new THREE.BoxGeometry(.075,.38,.035),body,side*.12,1.24,.23);lapel.rotation.z=side*.25;mk(new THREE.SphereGeometry(.012,6,6),std(0x8f969c),side*.028,1.06,.24);}
+const tie=mk(new THREE.BoxGeometry(.045,.31,.027),std(0x752b3c),0,1.25,.249);tie.rotation.z=.035;mk(new THREE.BoxGeometry(.06,.055,.035),std(0x752b3c),0,1.43,.245);
+const part=mk(new THREE.SphereGeometry(.13,12,8),hairM,-.045,.28,-.01,head);part.scale.set(1,.35,.95);
+mk(new THREE.BoxGeometry(.095,.05,.015),std(0xc4cbd1),-.13,1.29,.247);
+}
+
+
+mk(new THREE.SphereGeometry(.025,6,6),skin,0,.11,.16,head);mk(t.acc==='salaryHero'?new THREE.BoxGeometry(.044,.015,.012):G.eye,black,-.055,.16,.15,head);mk(t.acc==='salaryHero'?new THREE.BoxGeometry(.044,.015,.012):G.eye,black,.055,.16,.15,head);
+
+if(t.acc==='doctor'||t.acc==='nurse'){
+const badge=mk(new THREE.BoxGeometry(.1,.07,.025),std(0xf4eee0),-.12,1.32,.23);mk(new THREE.BoxGeometry(.09,.017,.03),std(0x507c86),-.12,1.35,.25);
+if(t.acc==='doctor'){mk(new THREE.BoxGeometry(.42,.4,.25),body,0,.85,0);mk(new THREE.BoxGeometry(.12,.4,.025),std(0xb4c6cb),0,1.23,.22);for(const side of[-1,1])mk(new THREE.BoxGeometry(.1,.11,.025),body,side*.13,1,.24);const tube=mk(new THREE.TorusGeometry(.095,.012,8,18,Math.PI),std(0x304b53),0,1.32,.25);tube.rotation.z=Math.PI;mk(new THREE.SphereGeometry(.028,8,6),std(0x8d9d9c),.09,1.21,.25);}
+else{mk(new THREE.BoxGeometry(.12,.1,.025),std(0x668d99),.12,1.12,.23);const bun=mk(new THREE.SphereGeometry(.07,10,8),hairM,0,.2,-.16,head);mk(new THREE.BoxGeometry(.22,.09,.04),std(0xe6eee7),0,.08,.15,head);}
+}
+if(t.acc==='bag')mk(new THREE.BoxGeometry(.38,.26,.1),std(0x3b2414),0,-.8,0,armL);
+
+if(t.acc==='tote')mk(new THREE.BoxGeometry(.3,.34,.08),std(0xe8dcc0),0,-.82,0,armL);
+
+if(t.acc==='shop')mk(new THREE.BoxGeometry(.3,.36,.16),std(0xffffff),0,-.84,0,armL);
+
+if(t.acc==='backpack')mk(new THREE.BoxGeometry(.4,.48,.22),std(0x2d4a2d),0,1.12,-.26);
+
+if(t.acc==='helmet'){const hm=mk(G.hair,std(0xffd21a),0,.17,0,head);hm.scale.setScalar(1.15);}
+
+if(t.acc==='bent'){torso.rotation.x=.25;head.position.z=.1;}
+
+const rage=new THREE.Sprite(rageMat);rage.scale.set(.6,.6,1);rage.position.y=2.1;rage.visible=false;g.add(rage);
+
+g.scale.setScalar(t.h/1.76);
+
+return {g,legL,legR,armL,armR,elbowL,elbowR,handL,handR,head,torso,rage};
+
+}
+
+function makePhone(){
+const g=new THREE.Group();
+const shell=new THREE.Mesh(new THREE.BoxGeometry(.155,.285,.022),new THREE.MeshStandardMaterial({color:0x17202b,metalness:.55,roughness:.25}));shell.castShadow=true;g.add(shell);
+const cv=document.createElement('canvas');cv.width=128;cv.height=256;const x=cv.getContext('2d');x.fillStyle='#16394c';x.fillRect(0,0,128,256);x.fillStyle='#d2f6ff';x.font='20px sans-serif';x.fillText('18:42',12,33);for(let j=0;j<4;j++){x.fillStyle=j%2?'#6ad5c1':'#e3f9ff';x.fillRect(12,58+j*38,j%2?78:103,23);}x.fillStyle='#95c9ea';x.fillRect(35,225,58,4);
+const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;
+const scr=new THREE.Mesh(new THREE.PlaneGeometry(.133,.25),new THREE.MeshStandardMaterial({map:tex,emissiveMap:tex,emissive:0xffffff,emissiveIntensity:2.2,roughness:.2}));scr.position.z=.0125;g.add(scr);
+g.position.set(0,-.01,.045);g.rotation.set(2.42,Math.PI,0);g.userData={scr,p:g.position.clone(),r:g.rotation.clone()};return g;
+}
+
+// ===== 状態 =====
+
+let stageIndex=0,S=null,world=null,pillars=[],npcs=[],event=null,timeScale=1,state='title';
+
+let stats=null,timers=[],shards=[],bubbles=[],logs=[];
+
+let total={time:0,catches:0,broken:0,damage:0,caught:0,perfect:0};
+let overdue=false;let inspection=null;let paused=false,dive=0,feedbackTimer=0,stageElapsed=0,footstep=0;const heldPointers=new Map();
+
+const player={dir:new THREE.Vector3(0,0,-1),stun:0,slow:0,stamina:1,speedNow:0,phase:0};
+
+const pp0=makePerson(PLAYER_T);player.mesh=pp0.g;player.parts=pp0;scene.add(player.mesh);
+
+
+
+// ===== UI系 =====
+
+function say(anchor,html,cls='',dur=2.2){
+
+for(const b of bubbles)if(b.anchor===anchor){b.el.remove();b.t=0;}
+
+const el=document.createElement('div');el.className='bubble '+cls;el.innerHTML=html;bubblesEl.appendChild(el);
+
+bubbles.push({anchor,el,t:dur});
+
+}
+
+const sayN=(n,text,cls='',dur=2.4)=>say(n.mesh,`<b>${n.T.short}</b>「${text}」`,cls,dur);
+
+const tmpV=new THREE.Vector3();
+
+function updateBubbles(dt){
+
+for(const b of bubbles){
+
+b.t-=dt;if(b.t<=0){b.el.remove();continue;}
+
+if(b.anchor.isVector3)tmpV.copy(b.anchor).y+=.5;else tmpV.copy(b.anchor.position).y+=2.3*b.anchor.scale.y;
+
+tmpV.project(camera);
+
+if(tmpV.z>1){b.el.style.display='none';continue;}
+
+b.el.style.display='block';
+
+b.el.style.left=(tmpV.x*.5+.5)*innerWidth+'px';b.el.style.top=(-tmpV.y*.5+.5)*innerHeight+'px';
+
+}
+
+bubbles=bubbles.filter(b=>b.t>0);
+
+}
+
+function log(t){logs.unshift(t);logs=logs.slice(0,6);minilog.innerHTML=logs.join('<br>');}
+
+function flash(c='#fff'){flashEl.style.background=c;flashEl.style.opacity=.45;setTimeout(()=>flashEl.style.opacity=0,80);}
+
+const later=(t,fn)=>timers.push({t,fn});
+
+function updateTimers(dt){for(const tm of timers){tm.t-=dt;if(tm.t<=0&&!tm.done){tm.done=true;tm.fn();}}timers=timers.filter(t=>!t.done);}
+
+
+
+// ===== ステージ構築 =====
+
+function buildStage(i){
+
+if(world){scene.remove(world);const geometries=new Set(),materials=new Set(),textures=new Set();world.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material&&!npcs.some(n=>n.mesh===o)){for(const m of (Array.isArray(o.material)?o.material:[o.material])){if(m===rageMat||m===shardMat||m===black)continue;materials.add(m);if(m.map&&m.map!==rageMat.map)textures.add(m.map);}}}); // Shared character geometry remains reusable.
+for(const g of geometries)if(!Object.values(G).includes(g)&&g!==shardGeo)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();}
+
+for(const b of bubbles)b.el.remove();bubbles=[];timers=[];shards=[];pillars=[];npcs=[];event=null;timeScale=1;
+
+stageIndex=i;S=STAGES[i];$('hidePanel').style.display='none';$('doorHint').hidden=true;
+
+world=new THREE.Group();scene.add(world);
+
+scene.background=new THREE.Color(S.sky);scene.fog=new THREE.Fog(S.sky,16,68);
+props=[];solids=[];seated=[];hideDoors=[];player.hidden=null;player.hideCooldown=0;player.mesh.visible=true;ambient.color.setHex(S.kind==='hospital'?0xf4f1e6:0xb9d2ef);ambient.intensity=S.kind==='hospital'?1.9:1.5;ambient.groundColor.setHex(S.kind==='hospital'?0x929b8d:0x252b30);sun.intensity=S.kind==='train'?.7:1.1;
+
+const L=S.len+25,cz=(-S.len-5)/2;
+
+const tex=tileTex(S.floor);tex.repeat.set(S.w/2,L/2);
+
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(S.w,L),new THREE.MeshStandardMaterial({map:tex,roughness:S.kind==='hospital'?.36:.9,metalness:S.kind==='hospital'?.08:0}));
+
+floor.rotation.x=-Math.PI/2;floor.position.z=cz;floor.receiveShadow=true;world.add(floor);
+
+for(const s of[-1,1]){const wall=new THREE.Mesh(new THREE.BoxGeometry(.5,4,L),std(S.wall));wall.position.set(s*(S.w/2+.25),2,cz);wall.receiveShadow=true;world.add(wall);}
+
+if(S.tactile){const t=new THREE.Mesh(new THREE.PlaneGeometry(.35,L),new THREE.MeshStandardMaterial({color:0xf2c200}));t.rotation.x=-Math.PI/2;t.position.set(S.w/2-1.3,.01,cz);world.add(t);}
+
+if(S.pillars){for(let z=-15;z>-S.len+5;z-=18)for(const s of[-1,1]){
+
+const x=s*S.w*.28,p=new THREE.Mesh(new THREE.BoxGeometry(1.1,4,1.1),std(0xd0ccc4));p.position.set(x,2,z);p.castShadow=p.receiveShadow=true;world.add(p);pillars.push({x,z,r:.75});}}
+
+const gm=new THREE.MeshStandardMaterial({color:S.kind==='hospital'?0xa8b5a8:0x2ecc40,emissive:S.kind==='hospital'?0x000000:0x1a8a2a});
+
+for(const s of[-1,1]){const post=new THREE.Mesh(new THREE.BoxGeometry(.5,4.5,.5),gm);post.position.set(s*(S.w/2-.6),2.25,-S.len);world.add(post);}
+
+const glow=new THREE.Mesh(new THREE.PlaneGeometry(S.w,2),new THREE.MeshBasicMaterial({color:S.kind==='hospital'?0xd8c395:0x5dff7a,transparent:true,opacity:S.kind==='hospital'?.15:.5}));
+
+glow.rotation.x=-Math.PI/2;glow.position.set(0,.02,-S.len);world.add(glow);
+
+const gs=textSprite(S.kind==='hospital'?'会計 →':S.kind==='train'?'降車ドア →':'3番線 →','#183e3b');gs.position.set(0,5,-S.len);world.add(gs);
+
+decorateStage();
+
+const keys=Object.keys(S.weights),tot=keys.reduce((a,k)=>a+S.weights[k],0);
+
+const pickType=()=>{let r=Math.random()*tot;for(const k of keys){if((r-=S.weights[k])<=0)return k;}return keys[0];};
+
+for(let k=0;k<S.count;k++){
+
+const T=TYPES[S.kind==='hospital'&&k>=3&&k<7?(k%2?'doctor':'nurse'):pickType()],parts=makePerson(T);
+
+const n={T,parts,mesh:parts.g,phone:null,hasPhone:T.alwaysPhone||Math.random()<S.rate,target:new THREE.Vector3(),
+
+speed:1,timer:0,standing:false,phase:Math.random()*6,cool:0,angryTime:0,bark:0,pose:'free',rageSpeed:1};
+
+n.state=n.hasPhone?'phone':'walk';
+
+if(n.hasPhone){n.phone=makePhone(T.acc==='selfie');n.parts.handR.add(n.phone);}
+
+n.mesh.position.set((Math.random()-.5)*(S.w-3.3),0,-10-Math.random()*(S.len-14));
+if(k<3){n.mesh.position.set((k===0?0:k===1?-1.5:1.5),0,-11-k*13);n.hasPhone=true;if(!n.phone){n.phone=makePhone(false);n.parts.handR.add(n.phone);}n.state='phone';}
+if(S.kind==='hospital'&&k%5===0){const mask=new THREE.Mesh(new THREE.BoxGeometry(.22,.09,.04),std(0xcbe3de));mask.position.set(0,.08,.15);n.parts.head.add(mask);}
+
+n.mesh.rotation.y=Math.random()*Math.PI*2;
+
+world.add(n.mesh);newTarget(n);if(k<3){n.standing=true;n.timer=10;}setPose(n);npcs.push(n);
+
+}
+
+player.mesh.position.set(0,0,4);player.mesh.rotation.y=Math.PI;player.dir.set(0,0,-1);
+
+player.stun=0;player.slow=0;player.stamina=1;
+
+camera.position.set(0,3.05,10.5);camera.lookAt(0,1.1,-3);
+
+}
+
+
+
+// ===== NPC =====
+
+function newTarget(n){
+
+const p=n.mesh.position;
+
+n.standing=n.state==='phone'?Math.random()<.55:Math.random()<.15;
+
+n.target.set(THREE.MathUtils.clamp(p.x+(Math.random()-.5)*12,-S.w/2+1,S.w/2-1),0,THREE.MathUtils.clamp(p.z+(Math.random()-.5)*16,-S.len-8,-4));
+
+n.timer=3+Math.random()*5;
+
+n.speed=n.state==='phone'?.5+Math.random()*.6:1.1+Math.random()*.7;
+
+if(n.T===TYPES.granny)n.speed*=.6;
+
+}
+
+function setPose(n){
+
+const P=n.parts;
+
+P.rage.visible=n.state==='angry';
+
+P.torso.material.emissive.setHex(n.state==='angry'?0x661010:0);
+P.head.rotation.set(0,0,0);P.elbowR.rotation.x=0;P.armR.rotation.z=0;
+
+if(n.state==='shock'||n.state==='startled'||n.state==='fuming'){P.armL.rotation.x=P.armR.rotation.x=-2.8;P.head.rotation.x=-.2;n.pose='fixed';return;}
+
+if(n.hasPhone&&n.state==='phone'){
+
+P.armR.rotation.x=-.55;P.elbowR.rotation.x=-1.45;P.armR.rotation.z=-.60;P.head.rotation.x=.75;
+
+P.armL.rotation.x=0;n.pose='phone';updateReadingPose(n,0);return;}
+
+P.elbowR.rotation.x=0;P.armR.rotation.z=0;P.head.rotation.x=(n.state==='sulk'&&!n.hasPhone)?.35:0;n.pose='free';
+
+}
+
+const dirV=new THREE.Vector3(),awayV=new THREE.Vector3();
+
+function updateNPC(n,dt){
+
+const p=n.mesh.position,pp=player.mesh.position;
+
+n.cool=Math.max(0,n.cool-dt);
+
+let sp=0,dir=null;
+
+if(n.state==='phone'||n.state==='walk'){
+
+n.timer-=dt;
+
+if(n.timer<=0||p.distanceTo(n.target)<.5)newTarget(n);
+
+if(!n.standing){dir=dirV.subVectors(n.target,p).setY(0).normalize();sp=n.speed;}
+
+if(n.state==='walk'){
+
+const d=p.distanceTo(pp);
+
+if(d<3){awayV.subVectors(p,pp).setY(0).normalize();dir=dir?dir.add(awayV.multiplyScalar(1.5)).normalize():awayV;sp=Math.max(sp,1.6);}
+
+}
+
+}else if(n.state==='angry'){
+
+n.angryTime+=dt;n.bark-=dt;
+if(player.hidden){n.searchTime=(n.searchTime||0)+dt;const target=player.hidden.last;dir=dirV.subVectors(target,p).setY(0);if(dir.length()>.9){dir.normalize();sp=1.8;}else{dir=null;sp=0;n.mesh.rotation.y+=dt*.7;}if(n.searchTime>2.8){sayN(n,'あれ…どこへ？','',1.5);endChase(n);}if(dir&&sp>0)p.addScaledVector(dir,sp*dt);pushOut(p,.48);animate(n,sp,dt);return;}n.searchTime=0;
+
+
+dir=dirV.subVectors(pp,p).setY(0);const d=dir.length();dir.normalize();
+
+sp=Math.min(3.9,n.T.speed*.48*n.rageSpeed);
+
+if(n.bark<=0){sayN(n,pick(n.T.chase),'angry',2.2);n.bark=3+Math.random()*2;}
+
+if(d<.75&&player.stun<=0)caughtBy(n);
+
+else if(n.angryTime>n.T.giveUp||d>45)giveUp(n);
+
+}else if(n.state==='sulk'){
+
+n.timer-=dt;if(n.timer<=0){n.state=n.hasPhone?'phone':'walk';setPose(n);newTarget(n);}
+
+}
+
+if(dir&&sp>0){p.addScaledVector(dir,sp*dt);n.mesh.rotation.y=lerpAngle(n.mesh.rotation.y,Math.atan2(dir.x,dir.z),1-Math.exp(-10*dt));}
+
+p.x=THREE.MathUtils.clamp(p.x,S.kind==='train'?-1.25:-S.w/2+.4,S.kind==='train'?1.25:S.w/2-.4);
+
+pushOut(p,.48);
+
+animate(n,sp,dt);
+if(n.hasPhone&&n.state==='phone')updateReadingPose(n,dt);
+
+}
+
+function animate(o,sp,dt){
+
+const P=o.parts;o.phase+=sp*dt*2.4;
+
+const sw=Math.sin(o.phase)*Math.min(1,sp/2)*.6;
+
+P.legL.rotation.x=sw;P.legR.rotation.x=-sw;
+
+if(o.pose==='free'){P.armL.rotation.x=-sw*.8;P.armR.rotation.x=sw*.8;}
+
+}
+
+// Pose is derived from the actual screen position, rather than a fixed neck angle.
+const readingScreen=new THREE.Vector3(),readingEye=new THREE.Vector3(),readingDir=new THREE.Vector3();
+const readingForward=new THREE.Vector3(0,0,1),readingTurn=new THREE.Quaternion();
+function updateReadingPose(n,dt){
+if(!n.phone)return;n.readTime=(n.readTime||0)+dt;const frame=renderer.info.render.frame;if(n.readPoseFrame===frame)return;n.readPoseFrame=frame;const P=n.parts;const t=n.readTime+n.phase;
+P.armR.rotation.set(-.55+Math.sin(t*1.2)*.015,0,-.60);P.elbowR.rotation.x=-1.45+Math.sin(t*.9)*.02;
+n.mesh.updateMatrixWorld(true);n.phone.getWorldPosition(readingScreen);n.mesh.worldToLocal(readingScreen);
+// Aim the eyes, not the neck pivot, at the luminous screen. Three iterations
+// account for the eyes moving as the head tilts, including a bent older person.
+for(let i=0;i<3;i++){
+readingEye.set(0,.16,.15).applyQuaternion(P.head.quaternion).add(P.head.position);
+readingDir.subVectors(readingScreen,readingEye).normalize();
+const forward=readingForward.clone().applyQuaternion(P.head.quaternion);
+readingTurn.setFromUnitVectors(forward,readingDir);P.head.quaternion.premultiply(readingTurn).normalize();
+}
+n.mesh.updateMatrixWorld(true);P.head.localToWorld(readingEye.set(0,.16,.15));n.phone.lookAt(readingEye);
+// The thumb makes a short upward swipe, then rests to read.
+const cycle=(t%3.6)/3.6,swipe=cycle<.2?Math.sin(cycle/.2*Math.PI):0;
+P.handR.userData.thumb.position.y=-.01+swipe*.045;P.handR.userData.thumb.rotation.x=-swipe*.35;
+}
+
+function pushOut(p,r){for(const c of solids){const nx=THREE.MathUtils.clamp(p.x,c.x-c.w/2,c.x+c.w/2),nz=THREE.MathUtils.clamp(p.z,c.z-c.d/2,c.z+c.d/2),dx=p.x-nx,dz=p.z-nz,d=Math.hypot(dx,dz);if(d<r){if(d>.0001){p.x=nx+dx/d*r;p.z=nz+dz/d*r;}else{const ex=c.w/2-Math.abs(p.x-c.x),ez=c.d/2-Math.abs(p.z-c.z);if(ex<ez)p.x=c.x+Math.sign(p.x-c.x||1)*(c.w/2+r);else p.z=c.z+Math.sign(p.z-c.z||1)*(c.d/2+r);}}}for(const c of pillars){const dx=p.x-c.x,dz=p.z-c.z,d=Math.hypot(dx,dz),m=c.r+r;if(d<m&&d>1e-4){p.x=c.x+dx/d*m;p.z=c.z+dz/d*m;}}}
+
+function separate(){
+
+for(let i=0;i<npcs.length;i++){const a=npcs[i].mesh.position;
+
+for(let j=i+1;j<npcs.length;j++){const b=npcs[j].mesh.position,dx=a.x-b.x,dz=a.z-b.z,d2=dx*dx+dz*dz;
+
+if(d2<.3&&d2>1e-6){const d=Math.sqrt(d2),m=(.55-d)/2;a.x+=dx/d*m;a.z+=dz/d*m;b.x-=dx/d*m;b.z-=dz/d*m;}}}
+
+}
+
+
+
+// ===== プレイヤー =====
+
+const keys={};
+
+addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='Space'){e.preventDefault();if(!e.repeat)onSpace();}});
+
+addEventListener('keyup',e=>keys[e.code]=false);
+addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();if((e.code==='Escape'||e.code==='KeyP')&&!e.repeat)togglePause();});
+
+
+
+const moveV=new THREE.Vector3();
+
+function updatePlayer(dt){
+
+const P=player,pos=P.mesh.position;
+P.hideCooldown=Math.max(0,(P.hideCooldown||0)-dt);
+if(P.hidden){P.hidden.left-=dt;P.speedNow=0;P.stamina=Math.min(1,P.stamina+dt*.12);if(P.hidden.left<=0||keys.KeyE)exitHide();return;}
+
+
+P.stun=Math.max(0,P.stun-dt);P.slow=Math.max(0,P.slow-dt);
+
+const ix=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+
+const iz=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);
+
+moveV.set(ix,0,iz);let sp=0,dashing=false;
+
+if(P.stun<=0&&moveV.lengthSq()>0){
+
+moveV.normalize();
+
+dashing=(keys.ShiftLeft||keys.ShiftRight)&&P.stamina>.05;
+
+sp=dashing?9:5.8;if(P.slow>0)sp*=.5;
+
+P.dir.copy(moveV);pos.addScaledVector(moveV,sp*dt);
+
+P.mesh.rotation.y=lerpAngle(P.mesh.rotation.y,Math.atan2(moveV.x,moveV.z),1-Math.exp(-14*dt));
+
+}
+
+P.stamina=dashing?Math.max(0,P.stamina-dt*.35):Math.min(1,P.stamina+dt*.18);
+
+P.speedNow=sp;
+
+pos.x=THREE.MathUtils.clamp(pos.x,S.kind==='train'?-1.25:-S.w/2+.4,S.kind==='train'?1.25:S.w/2-.4);pos.z=Math.min(pos.z,8);
+
+pushOut(pos,.48);
+if(S.kind==='hospital'&&!event&&P.stun<=0&&P.hideCooldown<=0){const door=hideDoors.find(d=>!d.used&&Math.abs(pos.z-d.z)<.8&&pos.x*d.side>4.15&&ix*d.side>0);if(door){enterHide(door);return;}}
+player.pose='free';animate(player,sp,dt);P.parts.elbowR.rotation.x=P.parts.elbowL.rotation.x=event?-.65:-.12;
+dive=Math.max(0,dive-dt);P.mesh.rotation.x=dive>0?-Math.sin(dive*Math.PI)*1.1:0;P.mesh.position.y=dive>0?Math.sin(dive*Math.PI)*.45:0;
+if(dive>0){P.parts.armL.rotation.x=P.parts.armR.rotation.x=-2.5;}
+footstep-=dt;if(sp>0&&footstep<=0){tone(S.kind==='train'?110:170,.045,.018,'triangle');footstep=dashing?.23:.34;}
+
+P.parts.head.rotation.x=P.stun>0?.45:0;
+
+}
+
+function collide(){
+if(player.hidden)return;
+
+const pp=player.mesh.position;
+
+for(const n of npcs){
+
+const p=n.mesh.position,dx=p.x-pp.x,dz=p.z-pp.z,d=Math.hypot(dx,dz);
+
+if(d<.6&&d>1e-6){
+
+if(!event&&n.hasPhone&&n.state==='phone'&&n.cool<=0&&player.speedNow>2)startEvent(n);
+
+else if(n.state==='walk'&&n.cool<=0){impactCry(n);n.state='startled';n.timer=1.2;setPose(n);n.cool=3;player.slow=.4;later(1.2,()=>{if(n.state==='startled'){n.state='walk';setPose(n);newTarget(n);}});}
+
+const m=.6-d;p.x+=dx/d*m*.7;p.z+=dz/d*m*.7;pp.x-=dx/d*m*.3;pp.z-=dz/d*m*.3;
+
+}
+
+}
+
+}
+
+
+
+// ===== スマホ吹っ飛びイベント =====
+
+function startEvent(n){
+const ph=n.phone;world.attach(ph);ph.scale.setScalar(1.4);
+n.phone=null;n.hasPhone=false;n.state='shock';setPose(n);
+// Only the world and phone slow down; the player's movement stays responsive.
+const dir=player.dir.clone().setY(0).normalize();const side=new THREE.Vector3(-dir.z,0,dir.x);
+const vel=dir.multiplyScalar(3.2).addScaledVector(side,(Math.random()-.5)*1.1);vel.y=4.2;
+event={npc:n,phone:ph,vel,real:0,age:0,resolved:false,landed:false,caught:false,broken:false};timeScale=.25;stats.hits++;
+const points=[];for(let t=0;t<1;t+=.03){const v=ph.position.clone().addScaledVector(vel,t);v.y-=5*t*t;if(v.y<.1)break;v.x=THREE.MathUtils.clamp(v.x,S.kind==='train'?-1.15:-S.w/2+.6,S.kind==='train'?1.15:S.w/2-.6);points.push(v);}
+const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineDashedMaterial({color:0xf0d39a,dashSize:.18,gapSize:.12}));line.computeLineDistances();world.add(line);event.trajectory=line;
+const halo=new THREE.Mesh(new THREE.RingGeometry(.24,.31,32),new THREE.MeshBasicMaterial({color:0x8eead7,side:THREE.DoubleSide,transparent:true,opacity:.9}));halo.rotation.x=-Math.PI/2;world.add(halo);event.ring=halo;
+feedback('飛んだスマホへ移動！ 触れると自動でキャッチ');tone(280,.08,.07);impactCry(n);
+qteText.innerHTML='<small>SLOW MOTION RESCUE</small><br>飛んでいるスマホへ移動！<br><span>近づいて触れるだけ。ボタンは不要。</span>';$('bar').style.display='none';qteEl.style.display='block';
+}
+function onSpace(){} // Catching depends entirely on contact, never on a timing button.
+function updateEvent(rdt,gdt){
+const E=event;if(!E||E.resolved)return;E.real+=rdt;E.age+=gdt;
+E.vel.y-=10*gdt;E.phone.position.addScaledVector(E.vel,gdt);E.phone.rotation.x+=gdt*1.6;E.phone.rotation.z+=gdt*1.3;
+const bound=S.kind==='train'?1.15:S.w/2-.6;
+E.phone.position.x=THREE.MathUtils.clamp(E.phone.position.x,-bound,bound);
+E.ring.position.set(E.phone.position.x,.035,E.phone.position.z);E.ring.scale.setScalar(1+Math.sin(E.real*8)*.1);
+const pos=player.mesh.position,ph=E.phone.position,reach=Math.hypot(pos.x-ph.x,pos.z-ph.z);
+// Arms reach upward and down to the falling phone; no full-height invisible catch wall.
+if(E.real>.28&&reach<.68&&ph.y>.18&&ph.y<2.65){resolve('perfect');return;}
+if(ph.y<=.05){ph.y=.04;E.landed=true;E.phone.rotation.set(-Math.PI/2,0,.3);resolve('miss');}
+}
+function resolve(result){
+const E=event;if(!E||E.resolved)return;E.resolved=true;timeScale=1;qteEl.style.display='none';
+if(E.trajectory){world.remove(E.trajectory,E.ring);for(const o of[E.trajectory,E.ring]){o.geometry.dispose();o.material.dispose();}}
+if(result==='perfect'){
+E.caught=true;E.broken=false;stats.catches++;stats.perfect++;player.stun=.35;dive=.7;
+feedback('CATCH！ 触れて救出 / 破損なし');say(player.mesh,'キャッチ！ 大丈夫ですか？','sys',1.4);tone(660,.12,.06);finishOutcome(E,'perfect');
+}else{feedback('届かなかった…');tone(130,.2,.06,'triangle');finishOutcome(E,'miss');}
+}
+
+function giveBack(n,ph){const u=ph.userData;n.parts.handR.add(ph);ph.position.copy(u.p);ph.rotation.copy(u.r);ph.scale.set(1,1,1);n.phone=ph;n.hasPhone=true;setPose(n);}
+
+function finishOutcome(E,r){
+
+const n=E.npc,ph=E.phone,pp=player.mesh.position;
+
+if(r==='miss')E.broken=Math.random()<.5;
+
+if(E.broken){
+
+if(r!=='miss'){ph.position.set(pp.x+.3,.03,pp.z-.4);ph.rotation.set(-Math.PI/2,0,1);}
+
+ph.userData.scr.material.color.setHex(0x151515);
+
+stats.broken++;stats.damage+=n.T.repair;
+
+spawnShards(ph.position);say(ph.position.clone(),'パリーン💥','sys',1.6);flash('#fff');
+
+later(.7,()=>sayN(n,n.T.broken,'angry',2.6));
+
+log(`💥 ${n.T.name}のスマホ破損（修理代 ¥${n.T.repair.toLocaleString()}）`);
+
+}else{
+
+if(r==='miss'){say(ph.position.clone(),'セーフ✨','sys',1.4);later(1.0,()=>giveBack(n,ph));}else giveBack(n,ph);
+
+later(.5,()=>sayN(n,r==='perfect'?n.T.thanks:n.T.safe,'',2.4));
+
+log(r==='perfect'?`🙌 ${n.T.short}のスマホをキャッチ！`:`😮‍💨 ${n.T.short}のスマホ無事`);
+
+}
+
+let ch=r==='miss'||E.broken?1:0;
+
+if(r==='perfect')ch=0;
+
+if(r==='graze'&&!E.broken)ch*=.5;
+
+n.state='sulk';n.cool=4;
+
+if(Math.random()<ch){n.state='startled';n.timer=99;setPose(n);later(1.5,()=>{if(n.state!=='startled')return;n.state='fuming';setPose(n);sayN(n,'ちょっと…待ってください！','angry',1.4);});later(2.8,()=>{if(n.state==='startled'||n.state==='fuming')startChase(n);});}
+
+else{n.timer=2.5;setPose(n);}
+
+event=null;
+
+}
+
+function beginOvertime(){
+if(overdue||state!=='play')return;overdue=true;feedback('時間超過。でも動ける！ 追っ手をかわして目的地へ');log('⏱ 時間超過：目的地まで続行できます');
+if(event||npcs.some(n=>['angry','startled','fuming'].includes(n.state)))return;
+const n=npcs.filter(n=>['walk','phone','sulk'].includes(n.state)).sort((a,b)=>a.mesh.position.distanceToSquared(player.mesh.position)-b.mesh.position.distanceToSquared(player.mesh.position))[0];
+if(n){n.state='startled';n.timer=99;setPose(n);sayN(n,'あっ、ちょっと！','',1.5);later(1.5,()=>{if(n.state==='startled'){n.state='fuming';setPose(n);sayN(n,'待ってください！','angry',1.3);}});later(2.8,()=>{if(n.state==='startled'||n.state==='fuming')startChase(n);});}
+}
+function startChase(n){
+
+n.state='angry';n.searchTime=0;n.angryTime=0;n.bark=2.5;n.rageSpeed=.92+Math.random()*.16;setPose(n);
+
+sayN(n,pick(n.T.chase),'angry',2.4);flash('#ff0000');
+
+log(`🏃 <span style="color:#ff6060">${n.T.name}が追いかけてきた！</span>`);
+
+}
+
+function endChase(n){n.state='sulk';n.timer=3;setPose(n);}
+
+function caughtBy(n){
+if(player.hidden)return;
+
+sayN(n,n.T.caught,'angry',3);say(player.mesh,'すみませんすみません…','',2.2);
+
+player.stun=n.T.stun;stats.caught++;stats.damage+=5000;
+
+log(`🫨 ${n.T.short}に捕まった！（迷惑料 ¥5,000＋時間ロス）`);endChase(n);
+
+}
+
+function giveUp(n){sayN(n,n.T.giveup,'',2.6);log(`💨 ${n.T.short}が諦めた`);endChase(n);}
+
+
+
+// ===== 破片 =====
+
+const shardGeo=new THREE.BoxGeometry(.05,.01,.05),shardMat=new THREE.MeshBasicMaterial({color:0xbfe8ff});
+
+function spawnShards(pos){for(let i=0;i<18;i++){const m=new THREE.Mesh(shardGeo,shardMat);m.position.copy(pos).setY(Math.max(pos.y,.05));world.add(m);
+
+shards.push({m,v:new THREE.Vector3((Math.random()-.5)*5,2+Math.random()*3,(Math.random()-.5)*5)});}}
+
+function updateShards(dt){for(const s of shards){if(s.m.position.y>.01){s.v.y-=15*dt;s.m.position.addScaledVector(s.v,dt);s.m.rotation.x+=dt*10;}else s.m.position.y=.01;}}
+
+
+
+// ===== HUD・カメラ =====
+
+function enterHide(door){door.used=true;player.hidden={door,left:4,last:player.mesh.position.clone()};player.mesh.visible=false;player.speedNow=0;clearInputs();$('hidePanel').style.display='flex';feedback('待避室へ。息をひそめる…');}
+function exitHide(){if(!player.hidden)return;const d=player.hidden.door;player.mesh.position.set(d.side*3.75,0,d.z);player.hidden=null;player.mesh.visible=true;player.hideCooldown=2;clearInputs();$('hidePanel').style.display='none';}
+$('leaveRoom').onclick=exitHide;
+function updateHUD(){
+const pp=player.mesh.position,ch=npcs.filter(n=>n.state==='angry').length,left=overdue?stats.time-S.limit:Math.max(0,S.limit-stats.time);
+hud.innerHTML=`<div class="eyebrow">CHAPTER 0${stageIndex+1} / 03</div><strong>${S.name}</strong><div class="mission">${S.mission}</div><div class="metrics"><b class="${overdue||left<8?'danger':''}">${overdue?'+':''}${left.toFixed(1)}<small>${overdue?'秒 超過':'秒'}</small></b><span>残り ${Math.max(0,Math.ceil(S.len+pp.z))} m<br>救出 ${stats.catches}　完全 ${stats.perfect}</span></div><div id="stamina"><div id="staminaFill" style="width:${player.stamina*100}%"></div></div><div id="pursuit" class="${ch?'alert':''}">追跡中 ${ch}人${player.hidden?' ／ 捜索中':''}</div><div class="mission">怒りそう ${npcs.filter(n=>n.state==='fuming').length}人　破損 ${stats.broken}台</div>`;
+if(player.hidden)$('hideStatus').textContent='隠れている… '+player.hidden.left.toFixed(1)+'秒 ／ 捜索 '+ch+'人';
+const near=S.kind==='hospital'&&!player.hidden&&!event&&hideDoors.find(d=>!d.used&&Math.abs(pp.z-d.z)<2.2);$('doorHint').hidden=!near;if(near)$('doorHint').textContent=(near.side<0?'← 左':'右 →')+'の待避室へ寄ると隠れる（4秒）';
+$('distanceFill').style.width=Math.max(0,Math.min(100,(-pp.z/S.len)*100))+'%';
+}
+
+const camGoal=new THREE.Vector3();
+
+function updateCamera(dt){
+if(inspection){camera.position.copy(inspection.pos);camera.lookAt(inspection.target);return;}
+
+const pp=player.mesh.position,slow=event&&!event.resolved;
+
+camGoal.set(pp.x*.65+(S.kind==='train'?Math.sin(stageElapsed*2)*.035:0),pp.y+(slow?2.5:3.05),pp.z+(slow?4.7:6.5));
+
+camera.position.lerp(camGoal,1-Math.exp(-5*dt));
+
+camera.lookAt(pp.x*.5,pp.y+1.1,pp.z-7);
+
+sun.position.set(pp.x+12,30,pp.z+12);sun.target.position.copy(pp);
+
+}
+
+
+
+// ===== 画面遷移 =====
+
+function rankOf(s){return s.perfect>=5&&s.broken===0?'S / 街の救世主':s.catches>=3&&s.broken===0?'A / 急いでも、優しい人':s.broken===0?'B / 無事に到着':s.damage<80000?'C / ちょっと待って！':'D / 今日の話題の人';}
+function showTitle(){
+state='title';paused=false;buildStage(0);player.mesh.position.z=1;overlay.className='title';
+overlay.innerHTML=`<div class="title-copy"><div class="eyebrow">A SMALL DISASTER, A BIG DECISION.</div><h1>キャッチ・<br>ザ・スマホ<span>！</span></h1><p class="tagline">急いでいる。<br>でも、その一台は見捨てられない。</p><div class="title-rule">避けて間に合うか、飛び込んで助けるか。</div><button id="go">街へ出る <span>→</span></button><div class="title-controls">移動 WASD / 矢印　走る SHIFT<br>救出：飛ぶスマホに触れる　中断 ESC<br>スマホ：左の十字キー ＋ 右のボタン</div><div class="chapter-list">01 病院　 →　 02 駅　 →　 03 電車内</div></div>`;
+overlay.style.display='flex';$('go').onclick=()=>{unlockAudio();total={time:0,catches:0,broken:0,damage:0,caught:0,perfect:0};briefStage(0);};
+}
+function briefStage(i){state='brief';buildStage(i);overlay.className='brief';overlay.innerHTML=`<div class="panel"><div class="eyebrow">CHAPTER 0${i+1}</div><h1>${S.name}</h1><p>${S.subtitle}</p><p class="objective">${S.mission}<br>目標 ${S.limit}秒。超過しても続行できます。<br>救出するほど評価が上がる。<br>全部は助けなくていい。残り時間を見て選ぼう。</p><p class="hint">スマホを持つ人に接触すると救出チャンス。<br>空中をゆっくり飛ぶスマホへ移動。<br>主人公が近づいて触れると、自動でキャッチ。</p><button id="go">向かう →</button></div>`;overlay.style.display='flex';$('go').onclick=()=>startStage(i);}
+function startStage(i){
+buildStage(i);stats={time:0,catches:0,perfect:0,broken:0,damage:0,caught:0,hits:0};stageElapsed=0;overdue=false;dive=0;paused=false;clearInputs();
+logs=[];minilog.innerHTML='';qteEl.style.display='none';overlay.style.display='none';state='play';feedback(S.mission);tone(440,.12,.04);
+}
+function stageClear(failed=false){
+if(state!=='play')return;if(player.hidden)exitHide();state=failed?'failed':'clear';qteEl.style.display='none';clearInputs();
+const last=stageIndex===STAGES.length-1;if(!failed)for(const k in total)total[k]+=stats[k];const result=last&&!failed?total:stats;
+let best=0;const score=Math.max(0,Math.round(result.perfect*1000+result.catches*250-result.broken*450-result.caught*200+(failed?0:1000)-result.time*4-Math.max(0,stats.time-S.limit)*30));
+try{best=Number(localStorage.getItem('catch-phone-best')||0);if(last&&!failed&&score>best){localStorage.setItem('catch-phone-best',score);best=score;}}catch{}
+overlay.className='result';overlay.innerHTML=`<div class="panel"><div class="eyebrow">${failed?'TIME UP':last?'JOURNEY COMPLETE':'CHAPTER COMPLETE'}</div><h1>${failed?'間に合わなかった。':last?'急いだ。助けた。<br>なんとか、着いた。':(overdue?'遅れた。でも、着いた。':'間に合った。')}</h1><p>${failed?'次は、走る場所と助ける瞬間を選ぼう。':rankOf(result)}</p><div class="result-grid"><div><strong>${result.catches}</strong>救出 / 完全 ${result.perfect}</div><div><strong>${result.broken}</strong>破損</div><div><strong>${result.time.toFixed(1)}s</strong>所要時間</div><div><strong>¥${result.damage.toLocaleString()}</strong>修理・迷惑料</div></div><p>評価 ${score.toLocaleString()}　${last&&!failed?'最高 '+best.toLocaleString():''}</p><button id="go">${failed?'この場面をやり直す':last?'もう一度、街へ':'次の場面へ →'}</button><button class="secondary" id="home">タイトルへ</button></div>`;overlay.style.display='flex';$('go').onclick=()=>failed?startStage(stageIndex):last?showTitle():briefStage(stageIndex+1);$('home').onclick=showTitle;
+}
+
+// Environment craftsmanship: fixtures, signage, visible depth, and place-specific motion.
+let props=[],solids=[],seated=[],hideDoors=[];let audioContext=null,muted=false;
+let impactBuffers={},impactLoading=false,voiceAt=-10,voiceCount=0;
+function unlockAudio(){if(!audioContext){const Audio=window.AudioContext||window.webkitAudioContext;if(Audio)audioContext=new Audio();}if(audioContext?.state==='suspended')audioContext.resume();if(audioContext&&!impactLoading){impactLoading=true;for(const k of['f','m'])fetch('audio/impact-'+k+'.wav').then(r=>r.arrayBuffer()).then(a=>audioContext.decodeAudioData(a)).then(b=>impactBuffers[k]=b).catch(()=>{});}}
+function impactCry(n){const female=n.T===TYPES.mom||n.T===TYPES.student||n.T===TYPES.granny||n.T.role==='nurse';sayN(n,female?'きゃー！':'うわー！','',1.5);if(!audioContext||muted||audioContext.currentTime-voiceAt<.5)return;const b=impactBuffers[female?'f':'m'];if(!b)return;voiceAt=audioContext.currentTime;voiceCount++;const src=audioContext.createBufferSource(),gain=audioContext.createGain();src.buffer=b;gain.gain.value=.7;src.connect(gain);gain.connect(audioContext.destination);src.start();}
+function tone(freq,duration=.08,volume=.03,type='sine'){if(!audioContext||muted)return;const o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+duration);o.connect(g);g.connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+duration);}
+function feedback(t){$('feedback').textContent=t;$('feedback').classList.add('show');feedbackTimer=2.8;}
+function clearInputs(){for(const k in keys)keys[k]=false;heldPointers.clear();document.querySelectorAll('#controls button').forEach(b=>b.classList.remove('active'));}
+function togglePause(){if(state!=='play')return;paused=!paused;clearInputs();$('hidePanel').style.display=!paused&&player.hidden?'flex':'none';if(paused){overlay.className='pause';overlay.innerHTML='<div class="panel"><div class="eyebrow">TAKE A BREATH</div><h1>ひと息、つこう。</h1><button id="resume">続ける →</button><button class="secondary" id="home">タイトルへ</button></div>';overlay.style.display='flex';$('resume').onclick=togglePause;$('home').onclick=showTitle;}else overlay.style.display='none';}
+$('pauseBtn').onclick=togglePause;$('soundBtn').onclick=()=>{unlockAudio();muted=!muted;$('soundBtn').textContent=muted?'音 OFF':'音 ON';};
+for(const el of document.querySelectorAll('[data-code]')){el.addEventListener('pointerdown',e=>{e.preventDefault();unlockAudio();el.setPointerCapture(e.pointerId);heldPointers.set(e.pointerId,el.dataset.code);keys[el.dataset.code]=true;el.classList.add('active');});const release=e=>{heldPointers.delete(e.pointerId);keys[el.dataset.code]=[...heldPointers.values()].includes(el.dataset.code);el.classList.toggle('active',keys[el.dataset.code]);};el.addEventListener('pointerup',release);el.addEventListener('pointercancel',release);el.addEventListener('lostpointercapture',release);}
+
+addEventListener('blur',()=>{clearInputs();if(state==='play'&&!paused)togglePause();});document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInputs();if(state==='play'&&!paused)togglePause();}});document.addEventListener('dblclick',e=>e.preventDefault());document.addEventListener('contextmenu',e=>e.preventDefault());let lastTap=0;document.addEventListener('touchstart',e=>{const now=Date.now();if(now-lastTap<280)e.preventDefault();lastTap=now;},{passive:false});
+function box(w,h,d,c,x,y,z,mat){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat||std(c));m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;world.add(m);return m;}
+function cylinder(r,h,c,x,y,z){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,10),std(c));m.position.set(x,y,z);m.castShadow=true;world.add(m);return m;}
+function label(txt,x,y,z,w=3,h=.55,color='#d6e5df',bg='#183e43',rot=0){const cv=document.createElement('canvas');cv.width=1024;cv.height=128;const ctx=cv.getContext('2d');ctx.fillStyle=bg;ctx.fillRect(0,0,1024,128);ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='500 62px "Hiragino Kaku Gothic ProN",sans-serif';ctx.fillText(txt,512,69,980);const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.y=rot;world.add(m);return m;}
+// Static seated people are merged by material to keep populated spaces light.
+function bakeSeated(g){
+g.updateMatrixWorld(true);const inverse=g.matrixWorld.clone().invert(),batches=new Map();
+g.traverse(o=>{if(!o.isMesh)return;const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();geo.applyMatrix4(inverse.clone().multiply(o.matrixWorld));let b=batches.get(o.material);if(!b){b={p:[],n:[],uv:[]};batches.set(o.material,b);}b.p.push(...geo.attributes.position.array);b.n.push(...geo.attributes.normal.array);if(geo.attributes.uv)b.uv.push(...geo.attributes.uv.array);geo.dispose();});
+const result=new THREE.Group();result.position.copy(g.position);result.rotation.copy(g.rotation);result.scale.copy(g.scale);
+for(const [m,b] of batches){const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(b.p,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(b.n,3));if(b.uv.length===b.p.length/3*2)geo.setAttribute('uv',new THREE.Float32BufferAttribute(b.uv,2));geo.computeBoundingSphere();const mesh=new THREE.Mesh(geo,m);mesh.castShadow=mesh.receiveShadow=true;result.add(mesh);}return result;
+}
+function sitPerson(x,z,rot,role='passenger',seatHeight=.58,reading=false){
+const type=role==='reception'?{...TYPES.mom,body:[0xc4ddd7],legs:[0x32464d],acc:'none'}:{...pick([TYPES.granny,TYPES.salary,TYPES.student,TYPES.mom]),acc:'none'};
+const P=makePerson(type),g=P.g,scale=g.scale.y,shin=seatHeight/scale-.08;
+for(const leg of[P.legL,P.legR]){leg.clear();leg.rotation.x=-Math.PI/2;const thigh=new THREE.Mesh(new THREE.BoxGeometry(.18,.38,.2),std(type.legs[0]));thigh.position.y=-.19;leg.add(thigh);const knee=new THREE.Group();knee.position.y=-.38;knee.rotation.x=Math.PI/2;leg.add(knee);const lower=new THREE.Mesh(new THREE.BoxGeometry(.17,shin,.18),std(type.legs[0]));lower.position.y=-shin/2;knee.add(lower);const shoe=new THREE.Mesh(new THREE.BoxGeometry(.2,.12,.32),black);shoe.position.set(0,-shin,.06);knee.add(shoe);}
+P.armL.rotation.x=P.armR.rotation.x=-.45;P.elbowL.rotation.x=P.elbowR.rotation.x=-.6;P.head.rotation.x=.12;
+if(reading){const phone=makePhone();P.handR.add(phone);const n={parts:P,mesh:g,phone,phase:0,readTime:0};P.armR.rotation.z=-.6;P.elbowR.rotation.x=-1.45;updateReadingPose(n,0);}
+g.position.set(x,seatHeight-.8*scale,z);g.rotation.y=rot;const merged=bakeSeated(g);world.add(merged);seated.push({mesh:merged,role,x,z,seat:seatHeight,feet:.02});return merged;
+}
+function occupyBench(x,z,rot,offset=0,reading=false){const lx=Math.cos(rot)*offset,lz=-Math.sin(rot)*offset;return sitPerson(x+lx,z+lz,rot,'passenger',.58,reading);}
+
+function bench(x,z,rot=0,color=0x486d67){const g=new THREE.Group();world.add(g);const parts=[];const add=(w,h,d,c,px,py,pz)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),std(c));m.position.set(px,py,pz);m.castShadow=m.receiveShadow=true;g.add(m);};add(2.5,.16,.65,color,0,.5,0);add(2.5,.7,.12,color,0,.9,-.3);for(const xx of[-1,1]){add(.07,.55,.52,0x667575,xx,.25,0);add(.07,.2,.5,0x9caaaa,xx,.73,0);}g.position.set(x,0,z);g.rotation.y=rot;solids.push({x,z,w:Math.abs(Math.cos(rot))*2.5+Math.abs(Math.sin(rot))*.65,d:Math.abs(Math.cos(rot))*.65+Math.abs(Math.sin(rot))*2.5});return g;}
+function plant(x,z){cylinder(.22,.5,0x777e71,x,.25,z);for(let j=0;j<5;j++){const leaf=new THREE.Mesh(new THREE.SphereGeometry(.23,8,6),std(0x294b3c));leaf.scale.set(.65,2,.5);leaf.position.set(x+Math.sin(j*2)*.18,.8+Math.cos(j)*.15,z+Math.cos(j*2)*.18);leaf.rotation.z=Math.sin(j)*.5;world.add(leaf);}}
+function windowPanel(side,z){const x=side*(S.w/2-.29);const glass=new THREE.MeshStandardMaterial({color:0x183044,roughness:.18,metalness:.55});box(.08,1.3,3.3,0,x,2.1,z,glass);for(const dz of[-1.75,1.75])box(.12,1.5,.12,0xa5aeab,x,2.1,z+dz);box(.12,.1,3.6,0x939b99,x,2.83,z);box(.12,.1,3.6,0x939b99,x,1.38,z);for(let j=0;j<3;j++){const streak=box(.03,.05,.7,0,x-side*.06,1.8+j*.22,z-1+j*.8,new THREE.MeshBasicMaterial({color:j===1?0xe4ba75:0x7da6ba}));props.push({type:'streak',mesh:streak,z});}}
+function hospitalPanel(lines,x,y,z,w,h,rot=0,bg='#f0eee4',fg='#3c5656'){
+const c=document.createElement('canvas');c.width=768;c.height=512;const ctx=c.getContext('2d');ctx.fillStyle=bg;ctx.fillRect(0,0,768,512);ctx.fillStyle='#658b86';ctx.fillRect(0,0,768,15);ctx.textAlign='left';ctx.textBaseline='middle';lines.forEach((line,i)=>{ctx.font=(i===0?'600 54':'400 38')+'px sans-serif';ctx.fillStyle=i===0?fg:'#65716b';ctx.fillText(line,44,70+i*83,680);});const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex}));m.position.set(x,y,z);m.rotation.y=rot;world.add(m);return m;
+}
+function hospitalCart(z,phase){
+const g=new THREE.Group(),steel=std(0x9caeaa),white=std(0xdde4dc),rubber=std(0x303c3b);world.add(g);
+const part=(w,h,d,m,x,y,zz)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,zz);o.castShadow=o.receiveShadow=true;g.add(o);return o;};
+for(const y of[.28,.86])part(.92,.07,.58,steel,0,y,0);
+for(const x of[-.41,.41])for(const zz of[-.23,.23]){part(.035,.65,.035,steel,x,.56,zz);const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.095,.095,.045,12),rubber);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.105,zz);g.add(wheel);}
+part(.6,.33,.46,white,0,.6,0);part(.32,.13,.26,std(0x789d9a),-.22,.96,0);part(.23,.04,.3,white,.23,.91,0);part(.92,.04,.035,steel,0,1,.3);
+for(let j=0;j<3;j++){const bottle=new THREE.Mesh(new THREE.CylinderGeometry(.035,.045,.12,8),std(0xa4c6bc));bottle.position.set(-.28+j*.11,1.07,0);g.add(bottle);}
+const P=makePerson({...TYPES.mom,body:[0xd5e5e1],legs:[0xb9c9c6],hair:[0x2b2522],acc:'none'});P.g.position.set(0,0,.77);P.g.rotation.y=Math.PI;P.armL.rotation.x=P.armR.rotation.x=-.8;P.elbowL.rotation.x=P.elbowR.rotation.x=-.65;g.add(P.g);
+const badge=new THREE.Mesh(new THREE.BoxGeometry(.11,.08,.025),std(0x6c9e9c));badge.position.set(-.12,1.33,.22);P.g.add(badge);
+const mask=new THREE.Mesh(new THREE.BoxGeometry(.22,.09,.04),std(0xe8efea));mask.position.set(0,.08,.15);P.head.add(mask);
+g.position.set(Math.sin(phase)*2.65,0,z);g.rotation.y=phase===0?-Math.PI/2:Math.PI/2;const solid={x:-3,z,w:1.65,d:1.15};solids.push(solid);props.push({type:'medicalCart',mesh:g,parts:P,solid,z,phase});
+}
+function buildHospital(end){
+// Distinct zones, light wall panels, continuous protective rails and a route stripe.
+for(const side of[-1,1]){box(.08,1.05,S.len+14,0x9fae9f,side*4.94,.57,(-S.len+4)/2);box(.12,.035,S.len+14,0xc9c7b4,side*4.87,1.12,(-S.len+4)/2);}
+for(const z of[-6,-23,-40,-57]){const light=new THREE.PointLight(0xfff4d9,23,22,2);light.position.set(0,3.75,z);world.add(light);}
+for(const [z,text,color] of[[-10,'01  外来受付  /  OUTPATIENT','#496e68'],[-29,'02  診察・検査  /  CLINIC','#526e84'],[-49,'03  お会計  /  CASHIER','#8b7850']]){label(text,0,3.2,z,4.4,.48,'#f7f1df',color);box(S.w,.025,.08,0xb7b9a2,0,.015,z);}
+// A narrow floor stripe leaves the play area legible.
+box(.085,.012,S.len+2,0x688f86,-2.05,.012,(-S.len+4)/2);
+for(const z of[-12,-34,-54])label('会計 ↑',-1.55,.025,z,.9,.25,'#4f766f','#c1cbc4',0).rotation.x=-Math.PI/2;
+for(let z=-8;z>end+6;z-=12){for(const side of[-1,1]){const x=side*4.88,rot=side===1?-Math.PI/2:Math.PI/2,exam=z<-32;box(.09,2.65,2.2,0xc0c8bc,x,1.33,z);box(.12,2.45,1.8,exam?0x8b9fa2:0x97aca4,x-side*.05,1.23,z);box(.14,.62,1.22,0,x-side*.12,1.86,z,new THREE.MeshStandardMaterial({color:0xb7d1c8,roughness:.24,metalness:.25}));box(.19,.04,.36,0xc4c8bb,x-side*.13,1.04,z+.6);label(exam?'検査室  /  EXAM':(side<0?'内科':'外科')+'  '+(Math.floor(-z/12)+1),x-side*.15,2.83,z,1.8,.28,'#f4f1e5',exam?'#637b8a':'#517d73',rot);hospitalPanel(['診察中','お名前をお呼びします','こちらでお待ちください'],x-side*.16,1.8,z+1.62,.68,.47,rot);}
+const leftZ=z===-8?1:z+4;bench(-3.65,leftZ,Math.PI/2,0x6d8a7d);occupyBench(-3.65,leftZ,Math.PI/2,-.55,true);bench(3.65,z+4,-Math.PI/2,0x6d8a7d);occupyBench(3.65,z+4,-Math.PI/2,.4,false);
+// Seat divisions and small belongings make the waiting area feel occupied.
+for(const side of[-1,1]){const zz=side<0?leftZ:z+4;box(.32,.24,.25,0x8a745c,side*3.65,.71,zz-.8);}
+}
+for(const [side,z] of[[-1,-8],[1,-20],[-1,-32],[1,-44],[-1,-56]]){hideDoors.push({side,z,used:false});label('待避室  /  隠れる →',side*4.65,2.35,z,1.55,.29,'#f0e5c9','#566e87',side>0?-Math.PI/2:Math.PI/2);}
+// Reception: low accessible desk, timber fascia, cabinets, stationery and glass.
+solids.push({x:-2.7,z:-3,w:3.35,d:1.5});box(3.15,.97,1.25,0xb9c4b7,-2.7,.49,-3);box(3.35,.09,1.5,0xeee8d7,-2.7,1.03,-3);
+for(let j=0;j<11;j++)box(.08,.78,.035,0x7c8470,-4.12+j*.28,.49,-2.36);
+bench(-2.7,-4.8,0,0x627b70);sitPerson(-2.7,-4.8,0,'reception');
+for(const x of[-4.1,-1.3])box(.025,.63,.025,0xa8bcb5,x,1.4,-2.95);
+box(2.8,.57,.015,0,-2.7,1.42,-2.95,new THREE.MeshPhysicalMaterial({color:0xc6e5dc,transparent:true,opacity:.12,roughness:.07,depthWrite:false}));
+box(.54,.34,.055,0x344440,-2.9,1.29,-3.35);box(.1,.19,.1,0x6a7c77,-2.9,1.11,-3.35);box(.43,.025,.16,0x63736c,-2.9,1.09,-3.11);
+box(.42,.025,.3,0xf1e9d6,-1.8,1.09,-2.73);box(.43,.035,.25,0x799c93,-3.7,1.1,-2.7);cylinder(.05,.15,0x657f74,-2.2,1.15,-3);
+label('初診・再診  /  RECEPTION',-2.7,2.25,-3.1,3.2,.38,'#edead9','#456b63');label('受付票をご用意ください',-2.7,.68,-2.34,2,.22,'#385e57','#d4d9ca');
+// Wall information and a live call board. Readable at the waiting area.
+hospitalPanel(['白凪総合病院','外来診療  9:00–17:00','内科・外科・検査','会計は廊下の奥へ →'],4.78,2.12,-1,2.1,1.3,-Math.PI/2);
+hospitalPanel(['院内のお願い','通話はご遠慮ください','歩いて移動しましょう','お困りの際は職員へ'], -4.78,2.1,-21,1.7,1.15,Math.PI/2);
+const call=label('内科  028番  診察室へ',0,2.75,-18,3.2,.38,'#e3d6a0','#223e3b');props.push({type:'callBoard',mesh:call,last:-1});
+for(const z of[-5,-29,-53])plant(4.35,z);
+// Wheelchair bay: hand rims, seat, back, footrests and reserved floor area.
+const wx=-3.7,wz=-20;box(.52,.09,.55,0x4c6968,wx,.58,wz);box(.55,.58,.06,0x4c6968,wx,.9,wz-.24);
+for(const side of[-1,1]){const rim=new THREE.Mesh(new THREE.TorusGeometry(.29,.025,8,20),std(0xabb8b2));rim.rotation.y=Math.PI/2;rim.position.set(wx+side*.35,.34,wz);world.add(rim);const tire=new THREE.Mesh(new THREE.TorusGeometry(.31,.037,8,20),std(0x354640));tire.rotation.y=Math.PI/2;tire.position.copy(rim.position);world.add(tire);box(.04,.65,.04,0x9aada6,wx+side*.28,.6,wz-.23);box(.2,.04,.25,0xa5b6ad,wx+side*.15,.16,wz+.5);}solids.push({x:wx,z:wz,w:.85,d:1.1});
+// Medical equipment and hand hygiene stations.
+for(const z of[-16,-40]){box(.15,.4,.23,0xf0ede0,4.77,1.25,z);label('手指消毒',4.66,1.65,z,.65,.22,'#416b65','#e4e7d9',-Math.PI/2);cylinder(.055,.18,0xb4d5c8,4.62,1.48,z);}
+hospitalPanel(['AED','自動体外式除細動器','緊急時は職員へ'], -4.75,1.8,-38,1,.8,Math.PI/2,'#eee7d1','#a55e4f');box(.22,.7,.63,0xd5d7c6,-4.7,1.3,-38);
+box(.65,2.1,1.25,0xe0e2d5,4.45,1.05,-44);box(.03,1.35,.9,0,4.08,1.35,-44,new THREE.MeshBasicMaterial({color:0xa7bfb6}));for(let j=0;j<4;j++)cylinder(.06,.2,0xc8ae7c,4.04,1.1,-44.3+j*.2);solids.push({x:4.45,z:-44,w:.7,d:1.3});
+hospitalCart(-27,0);hospitalCart(-46,Math.PI);
+// Cashier zone has a second occupied service desk beside the exit.
+box(2.2,.96,1,0xa4b2a7,-3,.48,end+3);box(2.35,.08,1.2,0xe6dfcd,-3,1,end+3);bench(-3,end+1.3,0,0x607b6e);sitPerson(-3,end+1.3,0,'reception');solids.push({x:-3,z:end+3,w:2.35,d:1.2});label('会計  01',-3,2.2,end+2.5,2,.36,'#f2e5c6','#82734e');
+}
+function decorateStage(){
+const end=-S.len,L=S.len+22;
+// Ceiling, skirting, handrails, and physically placed overhead fixtures.
+box(S.w,.15,L,S.kind==='hospital'?0xcdd1cb:0x435151,0,4.15,(-S.len+4)/2);
+for(const side of[-1,1]){box(.09,.12,L,0x445956,side*(S.w/2-.27),.15,(-S.len+4)/2);box(.1,.12,L,0x708681,side*(S.w/2-.3),1.05,(-S.len+4)/2);}
+for(let z=1;z>end;z-=7){for(const side of[-1,1]){box(.35,.07,2.4,0,side*S.w*.27,3.99,z,new THREE.MeshBasicMaterial({color:S.kind==='hospital'?0xe1f1dd:0xd4e0ec}));}box(S.w,.08,.16,0x566665,0,3.85,z-2);}
+const spot=new THREE.PointLight(S.kind==='hospital'?0xe3f3dc:0xc9dce8,35,24,2);spot.position.set(0,3.5,-10);world.add(spot);props.push({type:'followlight',mesh:spot});
+if(S.kind==='hospital'){
+ buildHospital(end);
+}else if(S.kind==='station'){
+for(let z=-5;z>end;z-=14){for(const side of[-1,1]){box(.12,2.3,7.6,0x31434e,side*(S.w/2-.3),2,z,new THREE.MeshStandardMaterial({color:0x273c4b,roughness:.22,metalness:.65}));bench(side*4.8,z+3,side===1?-Math.PI/2:Math.PI/2,0x5b5c55);occupyBench(side*4.8,z+3,side===1?-Math.PI/2:Math.PI/2,0,true);plant(side*5.8,z-3);}label('3　新幹線 ↑　　出口 EAST →',0,3.5,z,5.3,.56,'#f3e9cb','#263b42');}
+for(let z=-18;z>end;z-=24){box(3.8,.85,.1,0x152b30,0,2.8,z);label('18:42　快速　中央・空港方面',0,2.8,z+.08,3.6,.38,'#e7c779','#14282c');}
+for(const x of[-4,-2,0,2,4]){box(.6,1,.9,0x697c7c,x,.5,end+1);box(.35,.08,.8,0,x,1.02,end+1,new THREE.MeshBasicMaterial({color:0x83c5a6}));}label('きっぷ・ICカード',-4.5,2,-3,2.6,.5);
+}else{
+for(let z=-4;z>end+1;z-=7.5){for(const side of[-1,1]){bench(side*2.02,z,side===1?-Math.PI/2:Math.PI/2,0x455a70);occupyBench(side*2.02,z,side===1?-Math.PI/2:Math.PI/2,-.6,true);occupyBench(side*2.02,z,side===1?-Math.PI/2:Math.PI/2,.6,false);windowPanel(side,z);const pole=cylinder(.035,3.7,0xb9c1be,side*1.35,1.85,z-1.7);for(let j=0;j<3;j++){const xx=side*1.45,zz=z-1+j;const strap=new THREE.Group();strap.position.set(xx,3.6,zz);const rope=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.45,6),std(0xd0d0ba));rope.position.y=-.22;strap.add(rope);const handle=new THREE.Mesh(new THREE.TorusGeometry(.105,.021,6,12),std(0xc9c8b5));handle.position.y=-.52;strap.add(handle);world.add(strap);props.push({type:'strap',mesh:strap,phase:j+z});}}}
+for(let z=-15;z>end;z-=15){box(S.w,.6,.25,0x334d54,0,3.65,z);label('次は 中央駅　NEXT: CHUO',0,3.65,z+.15,3.7,.32,'#bddbb8','#172b32');for(const side of[-1,1]){box(.3,3.3,1.1,0x788d92,side*2.65,1.65,z);box(.31,1.2,.8,0x203743,side*2.64,2,z);}}
+label('優先席　PRIORITY SEAT',0,3.4,-5,2.9,.34,'#e6c3a0','#4d4943');
+}
+// Destination reads like a doorway rather than an abstract finish line.
+box(S.w,3.7,.35,0x354f52,0,1.85,end-1);box(2.3,2.8,.38,0x799b91,0,1.4,end-.75);box(1.9,.75,.04,0,0,2,end-.53,new THREE.MeshBasicMaterial({color:0xaed5bd}));label(S.kind==='hospital'?'会計 / CASHIER':S.kind==='train'?'出口 / EXIT':'3番線 / PLATFORM 3',0,3.15,end-.5,3.4,.45);
+}
+function updateEnvironment(dt){for(const p of props){if(p.type==='medicalCart'){const x=Math.sin(stageElapsed*.3+p.phase)*2.65;p.mesh.position.x=x;p.solid.x=x;p.mesh.rotation.y=Math.cos(stageElapsed*.3+p.phase)>0?-Math.PI/2:Math.PI/2;p.solid.z=p.z;p.parts.legL.rotation.x=Math.sin(stageElapsed*4)*.18;p.parts.legR.rotation.x=-Math.sin(stageElapsed*4)*.18;}if(p.type==='callBoard'){const n=Math.floor(stageElapsed/7);if(n!==p.last){p.last=n;const c=p.mesh.material.map.image,ctx=c.getContext('2d');ctx.fillStyle='#223e3b';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#e3d6a0';ctx.font='500 62px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('内科  '+String(28+n).padStart(3,'0')+'番  診察室へ',512,69,980);p.mesh.material.map.needsUpdate=true;}}if(p.type==='strap')p.mesh.rotation.z=Math.sin(stageElapsed*2+p.phase)*.065;if(p.type==='streak')p.mesh.position.z=p.z+Math.sin(stageElapsed*3+p.z)*1.1;if(p.type==='followlight')p.mesh.position.z=player.mesh.position.z-8;}if(state==='play'&&!paused&&Math.floor(stageElapsed/7)>Math.floor((stageElapsed-dt)/7)){if(S.kind==='hospital'){tone(700,.12,.018);setTimeout(()=>tone(550,.16,.018),180);}else if(S.kind==='train')tone(58,.4,.018,'triangle');else{tone(523,.15,.025);setTimeout(()=>tone(659,.16,.02),150);}}}
+// Inspection interface enabled only with ?test=1, never active in ordinary play.
+if(new URLSearchParams(location.search).has('test'))window.__game={unlock:unlockAudio,chase:(i=0)=>startChase(npcs[i]),hideDoors:()=>hideDoors.map(d=>({...d})),reading:()=>npcs.filter(n=>n.phone&&n.state==='phone').map(n=>{n.mesh.updateMatrixWorld(true);const eye=P=>P.head.localToWorld(new THREE.Vector3(0,.16,.15));const e=eye(n.parts),ph=n.phone.getWorldPosition(new THREE.Vector3()),f=new THREE.Vector3(0,0,1).applyQuaternion(n.parts.head.getWorldQuaternion(new THREE.Quaternion()));return {dot:f.dot(ph.clone().sub(e).normalize()),phone:n.mesh.worldToLocal(ph.clone()).toArray(),head:n.parts.head.rotation.toArray().slice(0,3),thumb:n.parts.handR.userData.thumb.position.y};}),inspect:who=>{if(who==='hospital-cart'){inspection={pos:new THREE.Vector3(1,2.6,-21),target:new THREE.Vector3(0,1,-27)};return;}if(who==='hospital-waiting'){inspection={pos:new THREE.Vector3(1.4,2.1,-12),target:new THREE.Vector3(-3.3,1.1,-19)};return;}if(who==='hospital-cashier'){inspection={pos:new THREE.Vector3(1,2.2,-57),target:new THREE.Vector3(-2,1.15,-63)};return;}if(who==='seats'){inspection={pos:new THREE.Vector3(S.kind==='train'?-.7:0,2.25,1),target:new THREE.Vector3(S.kind==='train'?2:-3,1,-4)};return;}if(who==='reception'){inspection={pos:new THREE.Vector3(-.6,2,-.4),target:new THREE.Vector3(-2.5,1.2,-4.2)};return;}const o=who==='hero'?player.mesh:(npcs.find(n=>n.T.role===who)||(who.startsWith('elder')?(npcs.find(n=>n.T===TYPES.granny)||npcs[0]):npcs[0])).mesh;o.updateMatrixWorld(true);const offset=(who==='hero'||who.endsWith('-front')?new THREE.Vector3(.6,1.7,2.4):new THREE.Vector3(1.1,1.7,-1.9)).applyQuaternion(o.quaternion);inspection={pos:o.position.clone().add(offset),target:o.position.clone().add(new THREE.Vector3(0,1.28,0))};},start:startStage,brief:briefStage,clear:stageClear,title:showTitle,pause:togglePause,hit:()=>{const n=npcs.find(n=>n.hasPhone&&n.state==='phone');if(n){n.mesh.position.copy(player.mesh.position).add(new THREE.Vector3(0,0,-.5));startEvent(n);}},resolve,step:dt=>{if(state==='play'&&!paused){stats.time+=dt;stageElapsed+=dt;updatePlayer(dt);for(const n of npcs)updateNPC(n,dt);updateTimers(dt);if(stats.time>=S.limit)beginOvertime();}},get:()=>({state,paused,stage:stageIndex,stats,total,overdue,hidden:player.hidden?{left:player.hidden.left}:null,voices:voiceCount,voiceReady:Object.keys(impactBuffers),chasing:npcs.filter(n=>n.state==='angry').length,position:player.mesh.position.toArray(),stamina:player.stamina,event:event?{position:event.phone.position.toArray(),real:event.real,resolved:event.resolved}:null,npcs:npcs.map(n=>({x:n.mesh.position.x,z:n.mesh.position.z,state:n.state,role:n.T.role||'visitor',phone:n.hasPhone,speed:Math.min(3.9,n.T.speed*.48*n.rageSpeed)})),seated:seated.map(o=>({role:o.role,x:o.x,z:o.z,seat:o.seat,feet:o.feet,bounds:(()=>{const b=new THREE.Box3().setFromObject(o.mesh);return {min:b.min.toArray(),max:b.max.toArray()};})()})),bagAlongSide:player.parts.handL.children.some(o=>o.userData.role==='briefcase'&&Math.abs(o.rotation.y-Math.PI/2)<.001),hero:PLAYER_T.acc,grips:npcs.filter(n=>n.phone).map(n=>({attached:n.phone.parent===n.parts.handR,emissive:n.phone.userData.scr.material.emissiveIntensity})),props:props.length,hospital:props.filter(o=>o.type==='medicalCart').map(o=>({x:o.mesh.position.x,z:o.mesh.position.z,box:{...o.solid}})),calls:props.filter(o=>o.type==='callBoard').map(o=>o.last),render:renderer.info.render,keys:{...keys}}),position:(x,z)=>{player.mesh.position.set(x,0,z);},rng:fn=>{Math.random=fn;}};
+
+// ===== メインループ =====
+
+const clock=new THREE.Clock();
+
+function loop(){
+
+requestAnimationFrame(loop);
+
+const elapsed=Math.min(clock.getDelta(),.25),rdt=elapsed;
+if(state==='play'&&!paused){
+const steps=Math.max(1,Math.ceil(elapsed/(1/60))),step=elapsed/steps;
+for(let k=0;k<steps&&state==='play';k++){
+const gdt=step*timeScale;stats.time+=step;stageElapsed+=gdt;
+updatePlayer(event?step:gdt);for(const n of npcs)updateNPC(n,gdt);
+separate();collide();for(const n of npcs)pushOut(n.mesh.position,.48);if(!player.hidden)pushOut(player.mesh.position,.48);updateEvent(step,gdt);updateShards(gdt);updateTimers(step);
+if(player.mesh.position.z<-S.len&&!event)stageClear();else if(stats.time>=S.limit)beginOvertime();
+}
+if(state==='play')updateHUD();
+}
+if(!paused){updateCamera(rdt);updateBubbles(rdt);updateEnvironment(rdt);feedbackTimer-=rdt;if(feedbackTimer<=0)$('feedback').classList.remove('show');}renderer.render(scene,camera);
+
+}
+
+showTitle();loop();
+
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,38 @@
+{
+  "results": [
+    {
+      "strategy": "3台を助けて急ぐ",
+      "stage": 0,
+      "state": "clear",
+      "time": 14.5554500000004,
+      "catches": 3,
+      "perfect": 3,
+      "broken": 0,
+      "damage": 0,
+      "wall": 18.477
+    },
+    {
+      "strategy": "3台を助けて急ぐ",
+      "stage": 1,
+      "state": "clear",
+      "time": 18.769985714285742,
+      "catches": 3,
+      "perfect": 3,
+      "broken": 0,
+      "damage": 0,
+      "wall": 22.049700000000186
+    },
+    {
+      "strategy": "3台を助けて急ぐ",
+      "stage": 2,
+      "state": "clear",
+      "time": 19.57366249999996,
+      "catches": 5,
+      "perfect": 5,
+      "broken": 0,
+      "damage": 0,
+      "wall": 24.127399999999906
+    }
+  ],
+  "errors": []
+}

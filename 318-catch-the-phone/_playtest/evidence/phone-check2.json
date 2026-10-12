@@ -1,0 +1,71 @@
+{
+  "results": [
+    {
+      "strategy": "避けて急ぐ",
+      "stage": 0,
+      "state": "clear",
+      "time": 13.544400000000044,
+      "catches": 2,
+      "perfect": 2,
+      "broken": 0,
+      "damage": 0,
+      "wall": 14.3805
+    },
+    {
+      "strategy": "避けて急ぐ",
+      "stage": 1,
+      "state": "clear",
+      "time": 16.65013333333326,
+      "catches": 1,
+      "perfect": 1,
+      "broken": 0,
+      "damage": 0,
+      "wall": 17.355899999999906
+    },
+    {
+      "strategy": "避けて急ぐ",
+      "stage": 2,
+      "state": "clear",
+      "time": 14.293820000000007,
+      "catches": 5,
+      "perfect": 5,
+      "broken": 0,
+      "damage": 0,
+      "wall": 14.672
+    },
+    {
+      "strategy": "救出を狙う",
+      "stage": 0,
+      "state": "failed",
+      "time": 27.00942000000019,
+      "catches": 11,
+      "perfect": 11,
+      "broken": 0,
+      "damage": 0,
+      "wall": 27.469600000000092
+    },
+    {
+      "strategy": "救出を狙う",
+      "stage": 1,
+      "state": "clear",
+      "time": 27.441199999999895,
+      "catches": 9,
+      "perfect": 9,
+      "broken": 0,
+      "damage": 0,
+      "wall": 28.2415
+    },
+    {
+      "strategy": "救出を狙う",
+      "stage": 2,
+      "state": "failed",
+      "time": 24.002533333332305,
+      "catches": 11,
+      "perfect": 11,
+      "broken": 0,
+      "damage": 0,
+      "wall": 25.249899999999908
+    }
+  ],
+  "errors": []
+}
