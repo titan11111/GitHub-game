@@ -165,19 +165,19 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 const STAGES=[
  {day:'一日目',line:'夕暮れの庭。爺さんが竹箒で掃いている。大きな柿の木。今度、孫が帰ってきたら一緒に柿狩りをするのだ。',
   who:'爺さん（竹箒）',enemies:['grandpa'],say:'孫が帰ったら柿狩りじゃ♪',
-  kaki:[[176,364],[214,334],[286,336],[324,370],[210,398]],trig:80,wind:.5},
+  kaki:[[199,341],[166,323],[293,340],[330,323],[277,278]],trig:80,wind:.5},
  {day:'二日目',line:'爺さんは警戒を高めている。さらに、裸眼のとめさんが縁側からキョロキョロ見張っている。',
   who:'＋とめさん（見られると発見→警戒。目をそらす隙をつけ）',enemies:['grandpa','tome'],say:'昨夜も柿が減っとった…',
-  kaki:[[176,374],[214,344],[286,346],[324,380],[210,408]],trig:95,wind:.45,tomeRate:.8},
+  kaki:[[199,341],[166,323],[293,340],[330,323],[277,278]],trig:95,wind:.45,tomeRate:.8},
  {day:'三日目',line:'高枝切りばさみのはじめさんが加勢。リーチは竹箒よりずっと長く、厄介。',
   who:'＋はじめさん（高枝切りばさみ・リーチ長）／とめさんは発見が速くなる',enemies:['grandpa','tome','hajime'],say:'今日こそ捕まえるぞ',
-  kaki:[[176,384],[214,354],[286,356],[324,390],[210,418]],trig:95,wind:.45,tomeRate:1.0},
+  kaki:[[199,341],[166,323],[293,340],[330,323],[277,278]],trig:95,wind:.45,tomeRate:1.0},
  {day:'四日目',line:'『くのいち』が現れた。なぜかクナイを投げてくる。理由は誰も知らない。',
   who:'＋くのいち（なぜかクナイを投げる）',enemies:['grandpa','tome','hajime','kunoichi'],say:'あの娘、どこの子じゃ？',
-  kaki:[[176,388],[214,358],[286,360],[324,394],[210,422]],trig:95,wind:.45,tomeRate:1.3},
+  kaki:[[199,341],[166,323],[293,340],[330,323],[277,278]],trig:95,wind:.45,tomeRate:1.3},
  {day:'五日目',line:'仮称サスケ。ただし尻尾がある。人間ではなさそうだ。孫が帰ってくるのは明日。',
   who:'＋サスケ(仮)（尻尾あり・跳ぶ）',enemies:['grandpa','tome','hajime','kunoichi','sasuke'],say:'…尻尾、あったか？',
-  kaki:[[176,392],[214,362],[286,364],[324,398],[210,426]],trig:95,wind:.45,tomeRate:1.7}
+  kaki:[[199,341],[166,323],[293,340],[330,323],[277,278]],trig:95,wind:.45,tomeRate:1.7}
 ];
 // 木になる柿は毎日5こ（多いと見づらく狙いづらいので固定）。取った分は翌日またなる
 
@@ -409,12 +409,8 @@ function buildTree(ks){
   const tc=t=>T.cx+T.lean*(1-t)+T.bend*Math.sin(t*3.1);           // t:0=幹の上端 1=根もと
   const tw=t=>lerp(T.w0,T.w1,Math.pow(t,1.7))+(t>.93?(t-.93)*70:0);
   const tx=y=>{const t=clamp((y-T.top)/(T.bot-T.top),0,1);return[tc(t),tw(t)]};
-  // 枝のリスト（木ごとの太枝＋実ごとに1本ずつ、実のヘタへ伸びる）
+  // 枝のリスト（太枝のみ。実は太枝の真下に短い柄でつく）
   const limbs=T.limbs.slice();
-  for(const k of ks){
-    const side=k.x<T.cx?-1:1,ay=clamp(k.y-44-R()*10,T.top+14,400),[cx,hw]=tx(ay),sx=cx+side*hw*.4;
-    limbs.push([sx,ay,(sx+k.x)/2,ay-14-R()*8,k.x,k.y-17,7,2.6]);
-  }
   const leafAt=(x,y,n)=>{for(let i=0;i<n;i++){
     const a=-1.9+R()*3.8,len=22+R()*12;
     flatLeaf(g,x,y,len,a,LEAF_C[Math.floor(R()*3)])}};
@@ -455,10 +451,16 @@ function buildTree(ks){
   }
   // 4) 枝先の葉（太枝の先に2〜4枚。実のヘタの近くは避ける）
   for(const L of T.limbs){const e=bez(L,1);leafAt(e[0],e[1],2+Math.floor(R()*2+T.leafN/6))}
+  // 実ごとに、いちばん近い太枝の点から短い柄を下ろし、同じ新梢の葉を2〜3枚つける（柿は新梢の葉のつけ根に実がつく）
   for(const k of ks){
+    let best=null,bd=1e9;
+    for(const L of T.limbs)for(let i=0;i<=60;i++){const q=bez(L,i/60),d=Math.hypot(q[0]-k.x,q[1]-(k.y-24));if(d<bd){bd=d;best=q}}
+    const px=best[0],py=best[1],ex=k.x,ey=k.y-16;
+    g.fillStyle=TRUNK;g.beginPath();g.moveTo(px-2,py);g.quadraticCurveTo((px+ex)/2-2,(py+ey)/2-2,ex-1.1,ey);g.lineTo(ex+1.1,ey);g.quadraticCurveTo((px+ex)/2+2,(py+ey)/2-2,px+2,py);g.closePath();g.fill();
     const s=k.x<T.cx?-1:1;
-    flatLeaf(g,k.x+s*6,k.y-30,26,s>0?-.5:-2.6,LEAF_C[1]);
-    flatLeaf(g,k.x-s*4,k.y-34,22,s>0?-2.4:-.7,LEAF_C[0]);
+    flatLeaf(g,px,py-1,28,s>0?-.35:-2.8,LEAF_C[1]);
+    flatLeaf(g,px,py-1,24,s>0?-1.1:-2.05,LEAF_C[0]);
+    flatLeaf(g,px,py-1,22,s>0?-.0:-3.1,LEAF_C[2]);
   }
   // 5) 根もとの落ち葉
   for(let i=0;i<8;i++)flatLeaf(g,T.cx-70+R()*140,T.bot+2+R()*12,16,R()*6.283,['#b8541c','#d9822b','#cbc474'][i%3]);
@@ -946,7 +948,7 @@ function frame(ts){
 
 
 /* ============ エンディング（木に残った柿の数で3分岐） ============ */
-const SLOTS=[[176,364],[214,334],[286,336],[324,370],[210,398]];
+const SLOTS=[[199,341],[166,323],[293,340],[330,323],[277,278]];
 function endKind(){
   const T=[0,1,2,3,4].reduce((a,j)=>a+(taken[j]||1),0),R=clamp(5-Math.round(T/3),0,5);   // R=エンディングの木に残る柿（0〜5）
   return{T:T,R:R,kind:T<=7?'armful':T<=10?'jump':'despair'};
