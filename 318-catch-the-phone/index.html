@@ -86,16 +86,16 @@ import * as THREE from 'three';
 // ===== ステージ（スマホ率：電車のみ実測、他は推定） =====
 
 const STAGES=[
-{name:'白凪総合病院',call:'今どこだ。病院の外で待っている。いつまで待たせるんだ。{N}秒で来てほしい。',tip:'横のドアに入ると、4秒隠れられる',short:'病院',goal:'会計 →',goalLabel:'会計 / CASHIER',kind:'hospital',subtitle:'消毒液の匂い。午後の診察を待つ人たち。',mission:'受付終了までに、突き当たりの会計窓口へ。',rate:.72,count:22,len:65,w:10,limit:30,sky:0x697b79,floor:0xc1cbc4,wall:0xe4e3d8,pillars:false,weights:{granny:4,mom:3,salary:2,student:1,doctor:2,nurse:2}},
-{name:'夕方の中央駅',call:'今どこだ！3番線の改札で待ってるぞ。いつまで待たせる気だ。{N}秒で来い！',tip:'A しゃがむ：植木・ベンチ・人の陰で、追っ手をやり過ごす',short:'駅',goal:'3番線 →',goalLabel:'3番線 / PLATFORM 3',kind:'station',subtitle:'足音と発車メロディが、人の波に溶ける。',mission:'発車時刻までに、3番線の改札へ。',rate:.75,count:32,len:80,w:13,limit:29,sky:0x18212a,floor:0x747679,wall:0x697782,pillars:true,tactile:true,weights:{salary:4,student:3,tourist:2,mom:1,worker:1}},
-{name:'終電、車内',call:'今どこだ！駅のホームで待ってる。次で降りろ。{N}秒でドアまで来い！',tip:'6秒ごとに、2秒間だけ停電する',short:'電車内',goal:'降車ドア →',goalLabel:'出口 / EXIT',kind:'train',subtitle:'流れる街灯。つり革がわずかに揺れている。',mission:'降車までに、前方車両のドアへ。',rate:.85,count:16,len:47,w:5.8,limit:24,sky:0x101820,floor:0x535d63,wall:0x89989c,pillars:false,weights:{salary:4,student:3,mom:1,tourist:1}},
-{name:'おまつり商店街',call:'今どこだ！駅前広場で待ってるぞ。いつまで待たせるんだ。{N}秒で来てくれ！',tip:'暖簾の店に入ると隠れられる',short:'商店街',goal:'広場 →',goalLabel:'駅前広場 / PLAZA',kind:'shopping',subtitle:'のぼりが揺れる夕方。店先から人が飛び出してくる。',mission:'店じまいの前に、通りの先の駅前広場へ。',rate:.78,count:28,len:72,w:9,limit:28,sky:0xc99a6a,floor:0x8e8a84,wall:0xb09a7e,cross:.6,amb:{c:0xffe7cc,g:0x4a3b30,i:1.7,sun:.9},weights:{mom:4,granny:2,student:3,salary:2,worker:2,tourist:1,clerk:2}},
-{name:'百貨店 本館',call:'今どこだ！催事場で待ってる。閉店が近いぞ。{N}秒で来てくれ！',tip:'試着室のカーテンに入ると隠れられる',short:'デパート',goal:'催事場 →',goalLabel:'催事場 / EVENT',kind:'department',subtitle:'香水とBGM。島什器が通路を切り分けている。',mission:'閉店の放送までに、最上階の催事場へ。',rate:.74,count:26,len:70,w:11,limit:30,sky:0x6a5a56,floor:0xd9cfbd,wall:0xe6dccb,amb:{c:0xfff0dc,g:0x7a6a5a,i:1.9,sun:1.0},weights:{mom:4,granny:3,student:3,salary:1,clerk:3,tourist:1}},
-{name:'本社フロア',call:'今どこだ！応接室でお客様がお待ちだ。{N}秒で来てくれ！',short:'会社',goal:'応接室 →',goalLabel:'応接室 / MEETING',kind:'office',subtitle:'キーボードの音。誰もがスマホを机の近くに置いている。',mission:'来客の到着までに、フロア奥の応接室へ。',rate:.9,count:24,len:64,w:12,limit:27,sky:0x6a7a84,floor:0x9aa3a8,wall:0xdfe3e2,amb:{c:0xeaf2f6,g:0x7a8288,i:1.8,sun:.9},weights:{salary:7,student:1,clerk:2,mom:1}},
-{name:'国際空港 出発ロビー',call:'今どこだ！搭乗口で待ってる。締め切り前だぞ。{N}秒で来い！',short:'空港',goal:'搭乗口 →',goalLabel:'搭乗口 / GATE',kind:'airport',subtitle:'アナウンスと車輪の音。旅の荷物が通路に広がる。',mission:'搭乗締め切りまでに、奥の搭乗口へ。',rate:.8,count:34,len:84,w:14,limit:30,sky:0x8fb3d4,floor:0xc9ced2,wall:0xe8edf0,amb:{c:0xeaf3ff,g:0x6f7880,i:1.8,sun:1.1},weights:{tourist:5,salary:3,student:2,mom:2,clerk:1,granny:1}},
-{name:'中央公園',call:'今どこだ！公園の出口で待ってるぞ。{N}秒で来てくれ！',tip:'池に落ちたスマホは必ず壊れる',short:'公園',goal:'出口 →',goalLabel:'公園出口 / EXIT',kind:'park',open:true,plain:true,subtitle:'木漏れ日と鳩。池のほとりを散歩する人たち。',mission:'日没までに、公園の出口へ。池に落とさないこと。',rate:.7,count:26,len:78,w:18,limit:30,sky:0x9fd0ee,fog:[40,130],floor:0x5f9a52,wall:0x7a8a5a,amb:{c:0xdff0ff,g:0x4d7a3d,i:1.6,sun:1.5},weights:{mom:3,granny:3,student:3,salary:1,worker:1,tourist:1}},
-{name:'ドーム ライブ会場',call:'今どこだ！入場ゲートで待ってる。もうすぐ開演だ。{N}秒で来い！',short:'ライブ',goal:'ゲート →',goalLabel:'入場ゲート / GATE',kind:'concert',stand:.5,subtitle:'開演前の熱気。人の波が一斉に動きを止める。',mission:'開演までに、入場ゲートまで抜けよう。',rate:.6,count:42,len:62,w:12,limit:28,sky:0x140f24,floor:0x2f2b3a,wall:0x1b1630,amb:{c:0xb9a6ff,g:0x3a2f5a,i:2.6,sun:.7},weights:{fan:6,student:2,streamer:2,salary:1,mom:1}},
-{name:'取引先 大海商事 本社',call:'今どこだ！役員が応接でお待ちだ。{N}秒で来てくれ。頼むぞ！',short:'取引先',goal:'応接フロア →',goalLabel:'役員応接 / EXECUTIVE',kind:'lobby',gloss:[.22,.12],pillars:true,subtitle:'磨かれた床。ここでは、スマホ一台が商談を壊す。',mission:'商談の開始までに、奥の応接フロアへ。',rate:.72,count:20,len:70,w:12,limit:26,sky:0x26303c,floor:0xcfc6b2,wall:0xe8e1d0,amb:{c:0xfff3dc,g:0x8a7e68,i:1.8,sun:1.0},weights:{exec:3,salary:4,clerk:3,tourist:1}}
+{name:'白凪総合病院',call:'今どこだ。病院の外で待っている。いつまで待たせるんだ。{N}秒で来てほしい。',tip:'横のドアに入ると、4秒隠れられる',short:'病院',goal:'会計 →',goalLabel:'会計 / CASHIER',kind:'hospital',bgm:'between',subtitle:'消毒液の匂い。午後の診察を待つ人たち。',mission:'受付終了までに、突き当たりの会計窓口へ。',rate:.72,count:22,len:65,w:10,limit:30,sky:0x697b79,floor:0xc1cbc4,wall:0xe4e3d8,pillars:false,weights:{granny:4,mom:3,salary:2,student:1,doctor:2,nurse:2}},
+{name:'夕方の中央駅',call:'今どこだ！3番線の改札で待ってるぞ。いつまで待たせる気だ。{N}秒で来い！',tip:'A しゃがむ：植木・ベンチ・人の陰で、追っ手をやり過ごす',short:'駅',goal:'3番線 →',goalLabel:'3番線 / PLATFORM 3',kind:'station',bgm:'between',subtitle:'足音と発車メロディが、人の波に溶ける。',mission:'発車時刻までに、3番線の改札へ。',rate:.75,count:32,len:80,w:13,limit:29,sky:0x18212a,floor:0x747679,wall:0x697782,pillars:true,tactile:true,weights:{salary:4,student:3,tourist:2,mom:1,worker:1}},
+{name:'終電、車内',call:'今どこだ！駅のホームで待ってる。次で降りろ。{N}秒でドアまで来い！',tip:'6秒ごとに、2秒間だけ停電する',short:'電車内',goal:'降車ドア →',goalLabel:'出口 / EXIT',kind:'train',bgm:'midnight',subtitle:'流れる街灯。つり革がわずかに揺れている。',mission:'降車までに、前方車両のドアへ。',rate:.85,count:16,len:47,w:5.8,limit:24,sky:0x101820,floor:0x535d63,wall:0x89989c,pillars:false,weights:{salary:4,student:3,mom:1,tourist:1}},
+{name:'おまつり商店街',call:'今どこだ！駅前広場で待ってるぞ。いつまで待たせるんだ。{N}秒で来てくれ！',tip:'暖簾の店に入ると隠れられる',short:'商店街',goal:'広場 →',goalLabel:'駅前広場 / PLAZA',kind:'shopping',bgm:'banana',subtitle:'のぼりが揺れる夕方。店先から人が飛び出してくる。',mission:'店じまいの前に、通りの先の駅前広場へ。',rate:.78,count:28,len:72,w:9,limit:28,sky:0xc99a6a,floor:0x8e8a84,wall:0xb09a7e,cross:.6,amb:{c:0xffe7cc,g:0x4a3b30,i:1.7,sun:.9},weights:{mom:4,granny:2,student:3,salary:2,worker:2,tourist:1,clerk:2}},
+{name:'百貨店 本館',call:'今どこだ！催事場で待ってる。閉店が近いぞ。{N}秒で来てくれ！',tip:'試着室のカーテンに入ると隠れられる',short:'デパート',goal:'催事場 →',goalLabel:'催事場 / EVENT',kind:'department',bgm:'mall',subtitle:'香水とBGM。島什器が通路を切り分けている。',mission:'閉店の放送までに、最上階の催事場へ。',rate:.74,count:26,len:70,w:11,limit:30,sky:0x6a5a56,floor:0xd9cfbd,wall:0xe6dccb,amb:{c:0xfff0dc,g:0x7a6a5a,i:1.9,sun:1.0},weights:{mom:4,granny:3,student:3,salary:1,clerk:3,tourist:1}},
+{name:'本社フロア',call:'今どこだ！応接室でお客様がお待ちだ。{N}秒で来てくれ！',short:'会社',goal:'応接室 →',goalLabel:'応接室 / MEETING',kind:'office',bgm:'mall',subtitle:'キーボードの音。誰もがスマホを机の近くに置いている。',mission:'来客の到着までに、フロア奥の応接室へ。',rate:.9,count:24,len:64,w:12,limit:27,sky:0x6a7a84,floor:0x9aa3a8,wall:0xdfe3e2,amb:{c:0xeaf2f6,g:0x7a8288,i:1.8,sun:.9},weights:{salary:7,student:1,clerk:2,mom:1}},
+{name:'国際空港 出発ロビー',call:'今どこだ！搭乗口で待ってる。締め切り前だぞ。{N}秒で来い！',short:'空港',goal:'搭乗口 →',goalLabel:'搭乗口 / GATE',kind:'airport',bgm:'between',subtitle:'アナウンスと車輪の音。旅の荷物が通路に広がる。',mission:'搭乗締め切りまでに、奥の搭乗口へ。',rate:.8,count:34,len:84,w:14,limit:30,sky:0x8fb3d4,floor:0xc9ced2,wall:0xe8edf0,amb:{c:0xeaf3ff,g:0x6f7880,i:1.8,sun:1.1},weights:{tourist:5,salary:3,student:2,mom:2,clerk:1,granny:1}},
+{name:'中央公園',call:'今どこだ！公園の出口で待ってるぞ。{N}秒で来てくれ！',tip:'池に落ちたスマホは必ず壊れる',short:'公園',goal:'出口 →',goalLabel:'公園出口 / EXIT',kind:'park',bgm:'banana',open:true,plain:true,subtitle:'木漏れ日と鳩。池のほとりを散歩する人たち。',mission:'日没までに、公園の出口へ。池に落とさないこと。',rate:.7,count:26,len:78,w:18,limit:30,sky:0x9fd0ee,fog:[40,130],floor:0x5f9a52,wall:0x7a8a5a,amb:{c:0xdff0ff,g:0x4d7a3d,i:1.6,sun:1.5},weights:{mom:3,granny:3,student:3,salary:1,worker:1,tourist:1}},
+{name:'ドーム ライブ会場',call:'今どこだ！入場ゲートで待ってる。もうすぐ開演だ。{N}秒で来い！',short:'ライブ',goal:'ゲート →',goalLabel:'入場ゲート / GATE',kind:'concert',bgm:'midnight',stand:.5,subtitle:'開演前の熱気。人の波が一斉に動きを止める。',mission:'開演までに、入場ゲートまで抜けよう。',rate:.6,count:42,len:62,w:12,limit:28,sky:0x140f24,floor:0x2f2b3a,wall:0x1b1630,amb:{c:0xb9a6ff,g:0x3a2f5a,i:2.6,sun:.7},weights:{fan:6,student:2,streamer:2,salary:1,mom:1}},
+{name:'取引先 大海商事 本社',call:'今どこだ！役員が応接でお待ちだ。{N}秒で来てくれ。頼むぞ！',short:'取引先',goal:'応接フロア →',goalLabel:'役員応接 / EXECUTIVE',kind:'lobby',bgm:'midnight',gloss:[.22,.12],pillars:true,subtitle:'磨かれた床。ここでは、スマホ一台が商談を壊す。',mission:'商談の開始までに、奥の応接フロアへ。',rate:.72,count:20,len:70,w:12,limit:26,sky:0x26303c,floor:0xcfc6b2,wall:0xe8e1d0,amb:{c:0xfff3dc,g:0x8a7e68,i:1.8,sun:1.0},weights:{exec:3,salary:4,clerk:3,tourist:1}}
 ];
 
 // ===== キャラクター =====
@@ -349,6 +349,16 @@ let overdue=false;let inspection=null;let paused=false,dive=0,feedbackTimer=0,st
 const player={dir:new THREE.Vector3(0,0,-1),stun:0,slow:0,stamina:1,speedNow:0,phase:0};
 
 const pp0=makePerson(PLAYER_T);player.mesh=pp0.g;player.parts=pp0;scene.add(player.mesh);
+// The player alone gets knees and a hip-pivoted upper body, so a squat reads as a squat instead of a squashed block.
+(function rigPlayer(P){
+for(const leg of[P.legL,P.legR]){const mat=(leg.children.find(c=>c.isMesh&&c.material!==black)||{}).material||std(0x1c1f26);leg.clear();
+const th=new THREE.Mesh(new THREE.BoxGeometry(.18,.4,.2),mat);th.position.y=-.2;th.castShadow=true;leg.add(th);
+const knee=new THREE.Group();knee.position.y=-.4;leg.add(knee);
+const sh=new THREE.Mesh(new THREE.BoxGeometry(.17,.4,.18),mat);sh.position.y=-.2;sh.castShadow=true;knee.add(sh);
+const shoe=new THREE.Mesh(new THREE.BoxGeometry(.2,.12,.34),black);shoe.position.set(0,-.36,.07);knee.add(shoe);leg.userData.knee=knee;}
+const up=new THREE.Group();up.position.y=.8;P.g.add(up);
+for(const c of[...P.g.children]){if(c===up||c===P.legL||c===P.legR||c===P.rage)continue;up.add(c);c.position.y-=.8;}
+P.up=up;P.g.rotation.order='YXZ';P.g.traverse(o=>{if(o.userData&&o.userData.role==='briefcase'){P.case=o;P.caseHome={parent:o.parent,p:o.position.clone(),r:o.rotation.clone()};}});})(pp0);
 
 
 
@@ -698,7 +708,7 @@ moveV.normalize();
 
 dashing=(keys.ShiftLeft||keys.ShiftRight)&&P.stamina>.05;
 
-sp=dashing?9:5.8;if(P.slow>0)sp*=.5;
+sp=dashing?11.5:5.8;if(P.slow>0)sp*=.5;
 
 P.dir.copy(moveV);pos.addScaledVector(moveV,sp*dt);
 
@@ -706,22 +716,28 @@ P.mesh.rotation.y=lerpAngle(P.mesh.rotation.y,Math.atan2(moveV.x,moveV.z),1-Math
 
 }
 
-P.stamina=dashing?Math.max(0,P.stamina-dt*.35):Math.min(1,P.stamina+dt*.18);
+P.stamina=dashing?Math.max(0,P.stamina-dt*.3):Math.min(1,P.stamina+dt*.18);
 
 P.speedNow=sp;
 
-pos.x=THREE.MathUtils.clamp(pos.x,S.kind==='train'?-1.25:-S.w/2+.4,S.kind==='train'?1.25:S.w/2-.4);pos.z=Math.min(pos.z,8);
+pos.x=THREE.MathUtils.clamp(pos.x,S.kind==='train'?-1.25:-S.w/2+.4,S.kind==='train'?1.25:S.w/2-.4);pos.z=THREE.MathUtils.clamp(pos.z,-S.len+1,8);// never run past the goal door while a rescue is still in the air (the door sequence starts only after it resolves)
 
 pushOut(pos,.48);
 if(hideDoors.length&&!event&&P.stun<=0&&P.hideCooldown<=0&&!P.crouch){const door=hideDoors.find(d=>!d.used&&Math.abs(pos.z-d.z)<d.range&&pos.x*d.side>d.edge&&ix*d.side>0);if(door){enterHide(door);return;}}
 player.pose='free';animate(player,sp,dt);P.parts.elbowR.rotation.x=P.parts.elbowL.rotation.x=event?-.65:-.12;
-if(!P.base)P.base=P.mesh.scale.y;P.cr=(P.cr||0)+((P.crouch?1:0)-(P.cr||0))*Math.min(1,dt*14);P.mesh.scale.y=P.base*(1-.4*P.cr);
-if(P.cr>.02){const c=P.cr;P.parts.armL.rotation.x=P.parts.armR.rotation.x=-2.7*c+P.parts.armL.rotation.x*(1-c);P.parts.elbowL.rotation.x=P.parts.elbowR.rotation.x=-1.9*c-.12*(1-c);}
-dive=Math.max(0,dive-dt);P.mesh.rotation.x=dive>0?-Math.sin(dive*Math.PI)*1.1:0;P.mesh.position.y=dive>0?Math.sin(dive*Math.PI)*.45:0;
+P.cr=(P.cr||0)+((P.crouch?1:0)-(P.cr||0))*Math.min(1,dt*12);P.lean=(P.lean||0)+((dashing?1:0)-(P.lean||0))*Math.min(1,dt*9);
+{const c=P.cr,r=P.lean,pa=P.parts;
+if(dashing){pa.legL.rotation.x*=1.9;pa.legR.rotation.x*=1.9;pa.armL.rotation.x*=2.1;pa.armR.rotation.x*=2.1;pa.elbowL.rotation.x=pa.elbowR.rotation.x=-1.35;player.phase+=sp*dt*1.1;}
+if(c>.01){pa.legL.rotation.x=pa.legR.rotation.x=-1.45*c;pa.legL.userData.knee.rotation.x=pa.legR.userData.knee.rotation.x=1.95*c;
+pa.armL.rotation.x=pa.armR.rotation.x=-2.75*c+pa.armL.rotation.x*(1-c);pa.elbowL.rotation.x=pa.elbowR.rotation.x=-1.6*c-.12*(1-c);pa.armL.rotation.z=.5*c;pa.armR.rotation.z=-.5*c;}
+else{pa.legL.userData.knee.rotation.x=pa.legR.userData.knee.rotation.x=0;pa.armL.rotation.z=pa.armR.rotation.z=0;}
+if(pa.case){if(c>.5&&pa.case.parent!==P.mesh){P.mesh.add(pa.case);pa.case.position.set(.38,.17,.3);pa.case.rotation.set(0,Math.PI/2,0);}else if(c<=.5&&pa.case.parent!==pa.caseHome.parent){pa.caseHome.parent.add(pa.case);pa.case.position.copy(pa.caseHome.p);pa.case.rotation.copy(pa.caseHome.r);}}
+P.parts.up.rotation.x=.85*c+.12*r;}
+dive=Math.max(0,dive-dt);P.mesh.rotation.x=(dive>0?Math.sin(dive*Math.PI)*1.1:0)+.3*P.lean;P.mesh.position.y=(dive>0?Math.sin(dive*Math.PI)*.45:0)-.36*P.cr;
 if(dive>0){P.parts.armL.rotation.x=P.parts.armR.rotation.x=-2.5;}
-footstep-=dt;if(sp>0&&footstep<=0){tone(S.kind==='train'?110:170,.045,.018,'triangle');footstep=dashing?.23:.34;}
+footstep-=dt;if(sp>0&&footstep<=0){tone(S.kind==='train'?110:170,.045,.018,'triangle');footstep=dashing?.17:.34;}
 
-P.parts.head.rotation.x=P.stun>0?.45:.5*(P.cr||0);
+P.parts.head.rotation.x=P.stun>0?.45:.7*(P.cr||0)-.25*(P.lean||0);
 
 }
 
@@ -934,12 +950,12 @@ sun.position.set(pp.x+12,30,pp.z+12);sun.target.position.copy(pp);
 
 function rankOf(s){return s.perfect>=5&&s.broken===0?'S / 街の救世主':s.catches>=3&&s.broken===0?'A / 急いでも、優しい人':s.broken===0?'B / 無事に到着':s.damage<80000?'C / ちょっと待って！':'D / 今日の話題の人';}
 function showTitle(){
-state='title';paused=false;buildStage(0);player.mesh.position.z=1;overlay.className='title';
+state='title';paused=false;buildStage(0);player.mesh.position.z=1;overlay.className='title';playBgm('between');
 overlay.innerHTML=`<div class="title-copy"><div class="eyebrow">A SMALL DISASTER, A BIG DECISION.</div><h1>キャッチ・<br>ザ・スマホ<span>！</span></h1><p class="tagline">急いでいる。<br>でも、その一台は見捨てられない。</p><div class="title-rule">避けて間に合うか、飛び込んで助けるか。</div><button id="goTitle">街へ出る <span>→</span></button><div class="title-controls">移動 WASD / 矢印　B：走る SHIFT　A：しゃがむ C<br>救出：飛ぶスマホに触れる　中断 ESC<br>スマホ：左に十字キー、右に B（走る）と A（しゃがむ）</div><div class="chapter-list">${STAGES.map((st,k)=>String(k+1).padStart(2,'0')+' '+st.short).join('　→　')}</div></div>`;
 overlay.style.display='flex';$('goTitle').onclick=()=>{unlockAudio();total={time:0,catches:0,broken:0,damage:0,caught:0,perfect:0};briefStage(0);};
 }
 function goalName(){return S.goalLabel.split(' / ')[0];}
-function briefStage(i){state='brief';buildStage(i);overlay.className='brief';
+function briefStage(i){state='brief';buildStage(i);playBgm(S.bgm||'between');overlay.className='brief';
 const how=i===0?'<div class="how"><span><i>💥</i>ぶつかる</span><em>→</em><span><i>📱</i>スマホが飛ぶ</span><em>→</em><span><i>🏃</i>触れてキャッチ</span></div>':'';
 overlay.innerHTML=`<div class="panel"><div class="eyebrow">CHAPTER ${String(i+1).padStart(2,'0')} / ${String(STAGES.length).padStart(2,'0')}</div><h1>${S.name}</h1><div class="callcard"><div class="ring">📞</div><div class="callbody"><b>課長</b><p>「${S.call.replace('{N}',S.limit)}」</p></div></div><div class="bigtime">${S.limit}<small>秒</small></div>${how}${S.tip?`<div class="tip">${S.tip}</div>`:''}<button id="goBrief">向かう →</button></div>`;overlay.style.display='flex';$('goBrief').onclick=()=>startStage(i);}
 function startStage(i){
@@ -950,7 +966,7 @@ function startGoal(){state='goal';goal={t:0,phase:'in',sx:player.mesh.position.x
 function updateGoal(dt){
 const G=goal,P=player,pos=P.mesh.position,end=-S.len;if(!G)return;G.t+=dt;
 if(G.phase==='in'){
-if(G.t>.15){const total=G.z0-(end-.8),u=Math.min(1,(G.z0-pos.z)/total/.8),k=u*u*(3-2*u);pos.z-=4.4*dt;pos.x=G.sx*(1-k);P.mesh.rotation.y=lerpAngle(P.mesh.rotation.y,Math.PI,1-Math.exp(-12*dt));animate(P,4.4,dt);footstep-=dt;if(footstep<=0){tone(170,.045,.02,'triangle');footstep=.26;}}
+if(G.t>.15&&goalDoor.open>.8){const total=G.z0-(end-.8),u=Math.min(1,(G.z0-pos.z)/total/.8),k=u*u*(3-2*u);pos.z-=4.4*dt;pos.x=G.sx*(1-k);P.mesh.rotation.y=lerpAngle(P.mesh.rotation.y,Math.PI,1-Math.exp(-12*dt));animate(P,4.4,dt);footstep-=dt;if(footstep<=0){tone(170,.045,.02,'triangle');footstep=.26;}}
 if(pos.z<end-1.55){P.mesh.visible=false;G.phase='close';G.t=0;}
 }else if(G.phase==='close'){
 if(G.t>.4)goalDoor.target=0;
@@ -968,13 +984,37 @@ overlay.className='result';overlay.innerHTML=`<div class="panel"><div class="eye
 // Environment craftsmanship: fixtures, signage, visible depth, and place-specific motion.
 let props=[],solids=[],seated=[],hideDoors=[],covers=[];let audioContext=null,muted=(()=>{try{return localStorage.getItem('tg.318.muted')==='1';}catch{return false;}})();
 let impactBuffers={},impactLoading=false,voiceAt=-10,voiceCount=0;
-function unlockAudio(){if(!audioContext){const Audio=window.AudioContext||window.webkitAudioContext;if(Audio)audioContext=new Audio();}if(audioContext?.state==='suspended')audioContext.resume();if(audioContext&&!impactLoading){impactLoading=true;for(const k of['f','m'])fetch('audio/impact-'+k+'.wav').then(r=>r.arrayBuffer()).then(a=>audioContext.decodeAudioData(a)).then(b=>impactBuffers[k]=b).catch(()=>{});}}
+const BGM_TRACKS={between:{file:'audio/Between_Stations.mp3',vol:.34},mall:{file:'audio/Mall_Floor_Sprint.mp3',vol:.36},banana:{file:'audio/Banana_Peel_Ballet.mp3',vol:.32},midnight:{file:'audio/Midnight_Concourse.mp3',vol:.35}};
+let bgmEl=null,bgmPlaying='',bgmWanted='between',audioUnlocked=false;
+function playBgm(key){
+if(!key||!BGM_TRACKS[key])key='between';
+bgmWanted=key;
+if(!audioUnlocked||muted){if(bgmEl)bgmEl.pause();return;}
+try{
+if(!bgmEl){bgmEl=new Audio();bgmEl.loop=true;}
+const t=BGM_TRACKS[key];
+if(bgmPlaying!==key){bgmEl.src=t.file;bgmPlaying=key;}
+updateBgmVolume();
+const p=bgmEl.play();if(p&&p.catch)p.catch(()=>{});
+}catch{}
+}
+function updateBgmVolume(){
+if(!bgmEl||muted||!bgmPlaying)return;
+const t=BGM_TRACKS[bgmPlaying];if(!t)return;
+let mul=1;
+if(state==='play'){
+if(npcs.some(n=>n.state==='angry'))mul=.55;
+else if(event&&!event.resolved)mul=.62;
+}
+bgmEl.volume=t.vol*mul;
+}
+function unlockAudio(){if(!audioContext){const Audio=window.AudioContext||window.webkitAudioContext;if(Audio)audioContext=new Audio();}if(audioContext?.state==='suspended')audioContext.resume();audioUnlocked=true;if(audioContext&&!impactLoading){impactLoading=true;for(const k of['f','m'])fetch('audio/impact-'+k+'.wav').then(r=>r.arrayBuffer()).then(a=>audioContext.decodeAudioData(a)).then(b=>impactBuffers[k]=b).catch(()=>{});}playBgm(bgmWanted);}
 function impactCry(n){const female=n.T===TYPES.mom||n.T===TYPES.student||n.T===TYPES.granny||n.T.role==='nurse';sayN(n,female?'きゃー！':'うわー！','',1.5);if(!audioContext||muted||audioContext.currentTime-voiceAt<.5)return;const b=impactBuffers[female?'f':'m'];if(!b)return;voiceAt=audioContext.currentTime;voiceCount++;const src=audioContext.createBufferSource(),gain=audioContext.createGain();src.buffer=b;gain.gain.value=.7;src.connect(gain);gain.connect(audioContext.destination);src.start();}
 function tone(freq,duration=.08,volume=.03,type='sine'){if(!audioContext||muted)return;const o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+duration);o.connect(g);g.connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+duration);}
 function feedback(t){$('feedback').textContent=t;$('feedback').classList.add('show');feedbackTimer=2.8;}
 function clearInputs(){for(const k in keys)keys[k]=false;heldPointers.clear();document.querySelectorAll('#controls button').forEach(b=>b.classList.remove('active'));}
-function togglePause(){if(state!=='play')return;paused=!paused;clearInputs();$('hidePanel').style.display=!paused&&hideInside()?'flex':'none';if(paused){overlay.className='pause';overlay.innerHTML='<div class="panel"><div class="eyebrow">TAKE A BREATH</div><h1>ひと息、つこう。</h1><button id="resume">続ける →</button><button class="secondary" id="homePause">タイトルへ</button></div>';overlay.style.display='flex';$('resume').onclick=togglePause;$('homePause').onclick=showTitle;}else overlay.style.display='none';}
-$('soundBtn').textContent=muted?'音 OFF':'音 ON';$('pauseBtn').onclick=togglePause;$('soundBtn').onclick=()=>{unlockAudio();muted=!muted;try{localStorage.setItem('tg.318.muted',muted?'1':'0');}catch{}$('soundBtn').textContent=muted?'音 OFF':'音 ON';};
+function togglePause(){if(state!=='play')return;paused=!paused;clearInputs();$('hidePanel').style.display=!paused&&hideInside()?'flex':'none';if(paused){if(bgmEl)bgmEl.pause();overlay.className='pause';overlay.innerHTML='<div class="panel"><div class="eyebrow">TAKE A BREATH</div><h1>ひと息、つこう。</h1><button id="resume">続ける →</button><button class="secondary" id="homePause">タイトルへ</button></div>';overlay.style.display='flex';$('resume').onclick=togglePause;$('homePause').onclick=showTitle;}else{overlay.style.display='none';playBgm(bgmWanted);}}
+$('soundBtn').textContent=muted?'音 OFF':'音 ON';$('pauseBtn').onclick=togglePause;$('soundBtn').onclick=()=>{unlockAudio();muted=!muted;try{localStorage.setItem('tg.318.muted',muted?'1':'0');}catch{}$('soundBtn').textContent=muted?'音 OFF':'音 ON';playBgm(bgmWanted);};
 for(const el of document.querySelectorAll('[data-code]')){el.addEventListener('pointerdown',e=>{e.preventDefault();unlockAudio();el.setPointerCapture(e.pointerId);heldPointers.set(e.pointerId,el.dataset.code);keys[el.dataset.code]=true;el.classList.add('active');});const release=e=>{heldPointers.delete(e.pointerId);keys[el.dataset.code]=[...heldPointers.values()].includes(el.dataset.code);el.classList.toggle('active',keys[el.dataset.code]);};el.addEventListener('pointerup',release);el.addEventListener('pointercancel',release);el.addEventListener('lostpointercapture',release);}
 
 addEventListener('blur',()=>{clearInputs();if(state==='play'&&!paused)togglePause();});document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInputs();if(state==='play'&&!paused)togglePause();}});document.addEventListener('dblclick',e=>e.preventDefault());document.addEventListener('contextmenu',e=>e.preventDefault());let lastEnd=0;document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastEnd<300)e.preventDefault();lastEnd=now;},{passive:false});let lastTap=0;document.addEventListener('touchstart',e=>{const now=Date.now();if(now-lastTap<280)e.preventDefault();lastTap=now;},{passive:false});
@@ -1271,7 +1311,7 @@ if(S.kind==='hospital'){
 }else if(S.kind==='station'){
 for(let z=-5;z>end;z-=14){for(const side of[-1,1]){box(.12,2.3,7.6,0x31434e,side*(S.w/2-.3),2,z,new THREE.MeshStandardMaterial({color:0x273c4b,roughness:.22,metalness:.65}));bench(side*4.8,z+3,side===1?-Math.PI/2:Math.PI/2,0x5b5c55);occupyBench(side*4.8,z+3,side===1?-Math.PI/2:Math.PI/2,0,true);plant(side*5.8,z-3);}label('3　新幹線 ↑　　出口 EAST →',0,3.5,z,5.3,.56,'#f3e9cb','#263b42');}
 for(let z=-18;z>end;z-=24){box(3.8,.85,.1,0x152b30,0,2.8,z);label('18:42　快速　中央・空港方面',0,2.8,z+.08,3.6,.38,'#e7c779','#14282c');}
-for(const x of[-4,-2,0,2,4]){box(.6,1,.9,0x697c7c,x,.5,end+1);box(.35,.08,.8,0,x,1.02,end+1,new THREE.MeshBasicMaterial({color:0x83c5a6}));}label('きっぷ・ICカード',-4.5,2,-3,2.6,.5);
+for(const x of[-4,-2.4,2.4,4]){box(.6,1,.9,0x697c7c,x,.5,end+1);box(.35,.08,.8,0,x,1.02,end+1,new THREE.MeshBasicMaterial({color:0x83c5a6}));}label('きっぷ・ICカード',-4.5,2,-3,2.6,.5);
 }else if(S.kind==='train'){
 for(let z=-4;z>end+1;z-=7.5){for(const side of[-1,1]){bench(side*2.02,z,side===1?-Math.PI/2:Math.PI/2,0x455a70);occupyBench(side*2.02,z,side===1?-Math.PI/2:Math.PI/2,-.6,true);occupyBench(side*2.02,z,side===1?-Math.PI/2:Math.PI/2,.6,false);windowPanel(side,z);const pole=cylinder(.035,3.7,0xb9c1be,side*1.35,1.85,z-1.7);for(let j=0;j<3;j++){const xx=side*1.45,zz=z-1+j;const strap=new THREE.Group();strap.position.set(xx,3.6,zz);const rope=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.45,6),std(0xd0d0ba));rope.position.y=-.22;strap.add(rope);const handle=new THREE.Mesh(new THREE.TorusGeometry(.105,.021,6,12),std(0xc9c8b5));handle.position.y=-.52;strap.add(handle);world.add(strap);props.push({type:'strap',mesh:strap,phase:j+z});}}}
 for(let z=-15;z>end;z-=15){box(S.w,.6,.25,0x334d54,0,3.65,z);label('次は 中央駅　NEXT: CHUO',0,3.65,z+.15,3.7,.32,'#bddbb8','#172b32');for(const side of[-1,1]){box(.3,3.3,1.1,0x788d92,side*2.65,1.65,z);box(.31,1.2,.8,0x203743,side*2.64,2,z);}}
@@ -1332,7 +1372,7 @@ updatePlayer(event?step:gdt);for(const n of npcs)updateNPC(n,gdt);
 separate();collide();for(const n of npcs)pushOut(n.mesh.position,.48);if(!player.hidden)pushOut(player.mesh.position,.48);updateEvent(step,gdt);updateShards(gdt);updateTimers(step);
 if(player.mesh.position.z<-S.len+4.5&&!event&&!player.hidden&&goalDoor){startGoal();break;}else if(stats.time>=S.limit)beginOvertime();
 }
-if(state==='play')updateHUD();
+if(state==='play'){updateHUD();updateBgmVolume();}
 }
 if(state==='goal'&&!paused)updateGoal(Math.min(elapsed,.05));
 if(!paused){updateCamera(rdt);updateLOD();updateBubbles(rdt);updateEnvironment(rdt);feedbackTimer-=rdt;if(feedbackTimer<=0)$('feedback').classList.remove('show');}renderer.render(scene,camera);
