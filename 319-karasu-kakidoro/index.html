@@ -312,18 +312,7 @@ SPR.sasuke=mkSpr([
 "...KKooOKnKKnK..",
 ".....KKKKnKKnK..",
 "........KKK.KKK."],{K:K0,o:'#d98a35',O:'#a85d1c',c:'#fbe3b3',n:'#2f2a44',N:'#1f1b30',h:'#4aa0d8'});
-SPR.kaki=mkSpr([
-"....KKK.....",
-"..KKgggKK...",
-".KgggggggK..",
-"KooKgggKooK.",
-"KohoooooooK.",
-"KhooooooooK.",
-"KooooooooOK.",
-"KooooooooOK.",
-".KooooooOOK.",
-"..KOOOOOOK..",
-"...KKKKKK..."],{K:'#6a2a08',g:'#4f7a2e',o:'#f08a24',O:'#c9500c',h:'#ffc46b'});
+SPR.kaki=flatKaki();   // ベクター調の柿（木のブロックで定義）
 SPR.kid=mkSpr([
 "....KKKK.....",
 "...KhhhhK....",
@@ -385,105 +374,122 @@ SPR.crowPerch=mkSpr([
 ".....k..k......."],{k:CK,g:'#4a4160',e:'#fff',y:'#d9a441'});
 
 
-/* ============ 柿の木（ドット絵。ステージごとに柿の位置へ枝を伸ばす。画像ファイルなし） ============ */
-const TP=3,TGW=120,TGH=128,TY0=108;     // 1ドット=3px。木の領域は世界座標 y=108〜492
-let treeImg=null;
+/* ============ 柿の木（フラットなベクター調。実在の古木3本をモデルに。画像ファイルなし） ============
+   hira   = 平核無の原木（新潟市秋葉区・樹齢300年超・県指定文化財）… 太く古い幹、低く広がる枝、葉はまばら
+   fuyu   = 富有柿の原木（岐阜県瑞穂市居倉・1820年頃植栽・市天然記念物）… 端正な丸い樹冠、葉が多い
+   hibaku = 被爆柿の木（長崎市若草町・爆心地から約900m・高さ約6m・樹齢約150年）… 小ぶりで傾き、幹に焼け焦げの跡
+   ?tree=hira|fuyu|hibaku で切替（既定=hira） */
+const TY0=108,TH=392;                      // 木の画像領域＝世界座標 y=108〜500（幅は画面いっぱい）
+const TRUNK='#866240',TRUNK_D='#6e4f32',LEAF_C=['#8a8f3c','#a3a54a','#cbc474'];
+const TREES={
+ hira:{cx:247,top:292,bot:490,w0:17,w1:32,lean:-7,bend:7,leafN:4.5,
+  limbs:[[238,352,190,340,112,312,13,3.5],[257,345,306,326,352,296,12,3.5],[245,318,232,262,208,214,10,3.5],[252,312,290,272,326,230,9,3.5]],
+  crown:[[150,290,50],[330,282,46],[212,226,52],[300,236,44],[250,204,38]]},
+ fuyu:{cx:247,top:292,bot:490,w0:12,w1:27,lean:0,bend:2,leafN:13,
+  limbs:[[243,342,205,320,160,296,9,3],[252,336,292,316,336,296,9,3],[246,312,232,266,222,226,8,3],[250,306,272,262,292,224,8,3],[247,298,246,256,250,208,7,3]],
+  crown:[[168,286,46],[328,286,46],[214,228,50],[286,228,50],[247,190,46],[247,262,40]]},
+ hibaku:{cx:250,top:322,bot:490,w0:10,w1:22,lean:9,bend:5,leafN:6,scar:true,
+  limbs:[[246,352,206,338,168,314,8,3],[254,346,292,326,334,308,8,3],[250,334,258,296,266,262,7,3]],
+  crown:[[176,300,40],[328,296,38],[262,250,40],[214,276,32]]}
+};
+let treeImg=null,treeKind=(new URLSearchParams(location.search).get('tree')||'hira');
+if(!TREES[treeKind])treeKind='hira';
 function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-const LEAF=[[150,230,70],[215,190,80],[285,215,70],[330,270,45],[110,285,40],[240,265,75],[175,300,55],[290,300,50],[225,330,38]];
+function flatLeaf(g,x,y,len,ang,col){
+  const w=len*.42;
+  g.save();g.translate(x,y);g.rotate(ang);g.fillStyle=col;g.beginPath();
+  g.moveTo(0,0);g.bezierCurveTo(len*.25,-w,len*.7,-w*.9,len,0);g.bezierCurveTo(len*.7,w*.9,len*.25,w,0,0);g.fill();g.restore();
+}
+function flatKaki(){
+  const cv=document.createElement('canvas');cv.width=32;cv.height=30;const g=cv.getContext('2d');g.scale(1.34,1.34);
+  g.fillStyle='#c97435';g.beginPath();                         // 実（上が平ら・下がやや四角い）
+  g.moveTo(2,12);g.bezierCurveTo(1,6,6,4.5,12,4.5);g.bezierCurveTo(18,4.5,23,6,22,12);
+  g.bezierCurveTo(22,18,17,21.5,12,21.5);g.bezierCurveTo(7,21.5,2,18,2,12);g.fill();
+  g.fillStyle='rgba(255,210,140,.28)';g.beginPath();g.ellipse(7.5,10,2.2,3.4,-.5,0,7);g.fill();
+  g.fillStyle='#5c8040';g.beginPath();                          // ヘタ（4枚）
+  g.moveTo(12,7.5);g.lineTo(5,4.5);g.lineTo(8.5,8.5);g.lineTo(4,10.5);g.lineTo(10,10);g.lineTo(11,14);
+  g.lineTo(13.5,10.5);g.lineTo(19.5,12);g.lineTo(15.5,8);g.lineTo(20,5);g.closePath();g.fill();
+  g.fillStyle='#8a6a48';g.fillRect(11.2,0,1.6,6.2);              // 枝とつなぐ軸
+  g.beginPath();g.ellipse(12,7.6,2,1.2,0,0,7);g.fill();
+  return cv;
+}
 function buildTree(ks){
-  const cv=document.createElement('canvas');cv.width=TGW;cv.height=TGH;
-  const g=cv.getContext('2d'),R=rng(319);
-  const P=(x,y,col)=>{x=Math.round(x);y=Math.round(y);if(x<0||y<0||x>=TGW||y>=TGH)return;g.fillStyle=col;g.fillRect(x,y,1,1)};
-  const wx=x=>x/TP,wy=y=>(y-TY0)/TP;
-  const nearKaki=(x,y,r)=>ks.some(k=>Math.hypot(k.x-x,k.y-y)<r);
-  // 1) 奥の葉むら（暗い緑のかたまり。夕日は左下から当たる）
-  for(const l of LEAF){
-    const cx=wx(l[0]),cy=wy(l[1]),r=l[2]/TP;
-    for(let y=Math.floor(cy-r);y<=cy+r;y++)for(let x=Math.floor(cx-r);x<=cx+r;x++){
-      const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)/r;
-      if(d>1-.14*R())continue;
-      const lit=(-dx*.5+dy*.35)/r;
-      let col=lit>.4?'#3f5f26':lit>.1?'#2f4b22':'#223a1b';
-      if(((x+y)&1)&&Math.abs(lit-.1)<.12)col='#3a5826';       // ディザ
-      P(x,y,col);
-    }
-  }
-  // 2) 幹
-  const top=wy(298),bot=wy(488),tcx=wx(247);
-  for(let y=Math.ceil(top);y<=bot;y++){
-    const t=(y-top)/(bot-top),hw=4.6+t*t*5.5,sw=Math.sin(y*.18)*.7,x0=Math.round(tcx-hw+sw),x1=Math.round(tcx+hw+sw);
-    for(let x=x0;x<=x1;x++){
-      const u=(x-x0)/Math.max(1,x1-x0);
-      let col=u<.28?'#6b4a30':u<.62?'#4e3523':'#352316';
-      if(x===x0||x===x1)col='#241810';
-      else if(((x*7+y*3)%11===0&&R()<.55)||((x*5+y*13)%17===0&&R()<.4))col='#2a1a10';
-      else if(u<.2&&R()<.2)col='#7d5a3a';
-      P(x,y,col);
-    }
-  }
-  // 3) 枝（輪郭→本体→ハイライトの3パス）
-  const limbs=[
-    [240,330,210,300,165,285,4,2],[252,318,285,290,322,275,4,2],[246,305,240,262,222,215,4,2],
-    [250,300,276,252,292,215,3,1],[243,312,196,276,120,288,3,1],[255,312,300,262,338,262,3,1]
-  ];
+  const T=TREES[treeKind],SC=2,R=rng(319);
+  const cv=document.createElement('canvas');cv.width=W*SC;cv.height=TH*SC;
+  const g=cv.getContext('2d');g.scale(SC,SC);g.translate(0,-TY0);
+  const nearKaki=(x,y,r)=>ks.some(k=>Math.hypot(k.x-x,k.y-(y+4))<r||Math.hypot(k.x-x,k.y-8-y)<r);
+  const tc=t=>T.cx+T.lean*(1-t)+T.bend*Math.sin(t*3.1);           // t:0=幹の上端 1=根もと
+  const tw=t=>lerp(T.w0,T.w1,Math.pow(t,1.7))+(t>.93?(t-.93)*70:0);
+  const tx=y=>{const t=clamp((y-T.top)/(T.bot-T.top),0,1);return[tc(t),tw(t)]};
+  // 枝のリスト（木ごとの太枝＋実ごとに1本ずつ、実のヘタへ伸びる）
+  const limbs=T.limbs.slice();
   for(const k of ks){
-    const side=k.x<247?-1:1,ay=clamp(k.y-46-R()*10,318,372);
-    const sx=247+side*7;
-    limbs.push([sx,ay,(sx+k.x)/2,ay-16-R()*6,k.x,k.y-14,3,1]);
+    const side=k.x<T.cx?-1:1,ay=clamp(k.y-44-R()*10,T.top+14,400),[cx,hw]=tx(ay),sx=cx+side*hw*.4;
+    limbs.push([sx,ay,(sx+k.x)/2,ay-14-R()*8,k.x,k.y-17,7,2.6]);
   }
-  const bez=(L,t)=>{const u=1-t;return[u*u*L[0]+2*u*t*L[2]+t*t*L[4],u*u*L[1]+2*u*t*L[3]+t*t*L[5]]};
-  const pass=(col,dw,off)=>{
-    for(const L of limbs){
-      for(let i=0;i<=48;i++){
-        const t=i/48,q=bez(L,t);
-        const rw=Math.max(1,Math.round(lerp(L[6],L[7],t)))+dw;
-        const gx=wx(q[0])+off,gy=wy(q[1])+off;
-        for(let yy=0;yy<rw;yy++)for(let xx=0;xx<rw;xx++)P(gx-rw/2+xx+.5,gy-rw/2+yy+.5,col);
-      }
-    }
-  };
-  pass('#241810',2,0);pass('#4e3523',0,0);pass('#7a5636',-1,-.6);
-  // 4) 前の葉（柿の近くは避ける）
-  const GREEN=['#3f6b2a','#4f8233','#6a9a3c','#8fb84e'],AUT=['#d9822b','#e8a43a','#b8541c'];
-  const leaf=(x,y,o)=>{
-    const lit=clamp((-(x-wx(247))*.02+(y-wy(300))*.012)+.5,0,1);
-    const aut=R()<.22;
-    const col=aut?AUT[Math.floor(R()*3)]:GREEN[Math.min(3,Math.floor(lit*3+R()*1.4))];
-    const dark=aut?'#7a3a10':'#244020';
-    if(o===0){P(x,y,col);P(x+1,y,col);P(x+2,y,col);P(x,y+1,dark);P(x+1,y+1,col);P(x+2,y+1,dark)}
-    else if(o===1){P(x,y,col);P(x,y+1,col);P(x,y+2,dark);P(x+1,y+1,col);P(x+1,y+2,dark)}
-    else{P(x,y,col);P(x+1,y,col);P(x+1,y+1,col);P(x+2,y+1,col);P(x+2,y+2,dark)}
-    if(R()<.3)P(x+1,y,aut?'#f6c25a':'#cfe07a');   // 葉の照り
-  };
-  for(const l of LEAF){
-    const cx=wx(l[0]),cy=wy(l[1]),r=l[2]/TP,n=Math.floor(r*r*.34);
+  const leafAt=(x,y,n)=>{for(let i=0;i<n;i++){
+    const a=-1.9+R()*3.8,len=22+R()*12;
+    flatLeaf(g,x,y,len,a,LEAF_C[Math.floor(R()*3)])}};
+  // 1) 奥の葉（樹冠まわりに散らす）
+  for(const c of T.crown){
+    const n=Math.round(c[2]/7*(T.leafN/7));
     for(let i=0;i<n;i++){
-      const a=R()*6.283,d=Math.sqrt(R())*r*.98,x=cx+Math.cos(a)*d,y=cy+Math.sin(a)*d*.95;
-      if(nearKaki(x*TP,y*TP+TY0,20))continue;
-      leaf(Math.round(x),Math.round(y),Math.floor(R()*3));
+      const a=R()*6.283,d=Math.sqrt(R())*c[2],x=c[0]+Math.cos(a)*d,y=c[1]+Math.sin(a)*d*.85;
+      if(nearKaki(x,y,34))continue;
+      flatLeaf(g,x,y,24+R()*16,R()*6.283,LEAF_C[Math.floor(R()*3)]);
     }
   }
-  // 枝先の小さな葉（柿のヘタの横に2枚）
+  // 2) 幹（先細りの多角形＋根もとのすそ広がり）
+  g.fillStyle=TRUNK;g.beginPath();
+  const N=40,Lp=[],Rp=[];
+  for(let i=0;i<=N;i++){const t=i/N,y=lerp(T.top,T.bot,t),c=tc(t),w=tw(t);Lp.push([c-w,y]);Rp.push([c+w,y])}
+  g.moveTo(Lp[0][0],Lp[0][1]);for(const p of Lp)g.lineTo(p[0],p[1]);
+  const bx=tc(1),bw=tw(1);
+  g.lineTo(bx-bw-6,T.bot+3);g.quadraticCurveTo(bx-bw*.4,T.bot-3,bx,T.bot+5);g.quadraticCurveTo(bx+bw*.5,T.bot-2,bx+bw+8,T.bot+3);
+  for(let i=N;i>=0;i--)g.lineTo(Rp[i][0],Rp[i][1]);g.closePath();g.fill();
+  if(T.scar){                                                       // 被爆の焼け焦げ跡
+    g.fillStyle='#3d2c20';g.beginPath();
+    const y0=lerp(T.top,T.bot,.22),y1=lerp(T.top,T.bot,.62);
+    g.moveTo(tc(.22)-tw(.22)+1,y0);
+    for(let i=0;i<=8;i++){const t=.22+.4*i/8;g.lineTo(tc(t)-tw(t)+1,lerp(y0,y1,i/8))}
+    for(let i=8;i>=0;i--){const t=.22+.4*i/8;g.lineTo(tc(t)-tw(t)+tw(t)*(.65+.25*Math.sin(i*1.9))+1,lerp(y0,y1,i/8))}
+    g.closePath();g.fill();
+  }else{
+    g.fillStyle=TRUNK_D;g.beginPath();                              // 幹の陰（右側）
+    for(let i=0;i<=N;i++){const t=i/N;g.lineTo(tc(t)+tw(t)*.45,lerp(T.top,T.bot,t))}
+    for(let i=N;i>=0;i--){const t=i/N;g.lineTo(tc(t)+tw(t),lerp(T.top,T.bot,t))}
+    g.closePath();g.fill();
+  }
+  // 3) 枝（先細り）
+  g.fillStyle=TRUNK;
+  const bez=(L,t)=>{const u=1-t;return[u*u*L[0]+2*u*t*L[2]+t*t*L[4],u*u*L[1]+2*u*t*L[3]+t*t*L[5]]};
+  for(const L of limbs){
+    const a=[],b=[];
+    for(let i=0;i<=16;i++){
+      const t=i/16,p=bez(L,t),q=bez(L,Math.min(1,t+.02)),p0=bez(L,Math.max(0,t-.02));
+      const dx=q[0]-p0[0],dy=q[1]-p0[1],d=Math.hypot(dx,dy)||1,w=lerp(L[6],L[7],t)/2;
+      a.push([p[0]-dy/d*w,p[1]+dx/d*w]);b.push([p[0]+dy/d*w,p[1]-dx/d*w]);
+    }
+    g.beginPath();g.moveTo(a[0][0],a[0][1]);for(const p of a)g.lineTo(p[0],p[1]);for(let i=b.length-1;i>=0;i--)g.lineTo(b[i][0],b[i][1]);g.closePath();g.fill();
+  }
+  // 4) 枝先の葉（太枝の先に2〜4枚。実のヘタの近くは避ける）
+  for(const L of T.limbs){const e=bez(L,1);leafAt(e[0],e[1],2+Math.floor(R()*2+T.leafN/6))}
   for(const k of ks){
-    const x=wx(k.x),y=wy(k.y-14);
-    leaf(Math.round(x-5),Math.round(y-1),0);leaf(Math.round(x+3),Math.round(y-2),2);
+    const s=k.x<T.cx?-1:1;
+    flatLeaf(g,k.x+s*6,k.y-30,26,s>0?-.5:-2.6,LEAF_C[1]);
+    flatLeaf(g,k.x-s*4,k.y-34,22,s>0?-2.4:-.7,LEAF_C[0]);
   }
   // 5) 根もとの落ち葉
-  for(let i=0;i<16;i++){
-    const x=wx(150+R()*200),y=wy(474+R()*14);
-    const c=['#b8541c','#d9822b','#8a3d12','#e8a43a'][Math.floor(R()*4)];
-    P(x,y,c);P(x+1,y,c);P(x+1,y+1,'#6a2c0c');
-  }
+  for(let i=0;i<8;i++)flatLeaf(g,T.cx-70+R()*140,T.bot+2+R()*12,16,R()*6.283,['#b8541c','#d9822b','#cbc474'][i%3]);
   treeImg=cv;
 }
 function drawTreeImg(c){
   if(!treeImg)return;
-  c.save();c.imageSmoothingEnabled=false;c.drawImage(treeImg,0,TY0,TGW*TP,TGH*TP);c.restore();
+  c.drawImage(treeImg,0,TY0,W,TH);
   // ひらひら落ちる葉
   for(let i=0;i<5;i++){
     const x=(60+i*67+Math.sin(clock*.9+i*2)*22+clock*(5+i))%W,y=(clock*(13+i*2)+i*97)%330+120;
-    c.fillStyle=i%2?'#d9822b':'#b8541c';
-    c.fillRect(Math.round(x/3)*3,Math.round(y/3)*3,6,3);c.fillRect(Math.round(x/3)*3+3,Math.round(y/3)*3+3,3,3);
+    flatLeaf(c,x,y,13,clock*1.3+i,i%2?'#cbc474':'#d9822b');
   }
 }
 
@@ -758,7 +764,7 @@ function drawCrow(c,x,y,vx,vy,flap,perched,spin){
   c.restore();
 }
 
-function drawKaki(c,k){put(c,SPR.kaki,k.x,k.y+11,2,false)}
+function drawKaki(c,k){put(c,SPR.kaki,k.x,k.y+13,1,false)}
 
 function drawScene(c){
   // 夕空
@@ -928,7 +934,7 @@ function render(){
     c.fillStyle='#cfd5da';c.beginPath();c.moveTo(8,0);c.lineTo(-5,-3.5);c.lineTo(-3,0);c.lineTo(-5,3.5);c.fill();
     c.strokeStyle='#222';c.lineWidth=2;c.beginPath();c.arc(-8,0,2.5,0,7);c.stroke();c.restore();
   }
-  crow.carry.forEach((k,i)=>{const a=i*1.9;put(c,SPR.kaki,crow.x+5+Math.cos(a)*5,crow.y+22+Math.abs(Math.sin(a))*9+i*2,2,false)});
+  crow.carry.forEach((k,i)=>{const a=i*1.9;put(c,SPR.kaki,crow.x+5+Math.cos(a)*5,crow.y+22+Math.abs(Math.sin(a))*9+i*2,1,false)});
   const perched=crow.mode==='perch';
   drawCrow(c,crow.x,crow.y,perched?1:crow.vx,crow.vy,Math.sin(clock*(crow.mode==='hit'?4:20)),perched||false,crow.mode==='hit'?crow.t*12:0);
   drawDark(c);
@@ -1064,7 +1070,7 @@ function drawEnding(c){
       c.fillStyle='#46545f';c.fillRect(gx-24,f-32,48,12);                                    // 抱える腕
       // 柿の山
       const pile=[[-18,-34],[-6,-40],[8,-38],[20,-33],[-12,-50],[4,-52],[16,-48],[-2,-64],[-20,-48]];
-      pile.forEach((q,i)=>put(c,SPR.kaki,gx+q[0],f+q[1]+4+Math.sin(t*3+i)*.8,2,false));
+      pile.forEach((q,i)=>put(c,SPR.kaki,gx+q[0],f+q[1]+4+Math.sin(t*3+i)*.8,1,false));
       c.fillStyle='#ffd13a';c.font='bold 16px sans-serif';c.textAlign='center';c.fillText('♪',gx+34+Math.sin(t*5)*3,f-84-(t*20)%14);
     }
   }else{
