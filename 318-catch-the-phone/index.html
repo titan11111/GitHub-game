@@ -537,7 +537,7 @@ if(n.T===TYPES.granny)n.speed*=.6;
 
 function setPose(n){
 
-const P=n.parts;
+const P=n.parts;if(n.phone&&n.state!=='angry')n.phone.visible=true;
 
 P.rage.visible=n.state==='angry'||n.state==='fuming';
 
@@ -546,10 +546,8 @@ P.head.rotation.set(0,0,0);P.elbowR.rotation.x=0;P.armR.rotation.z=0;
 
 if(n.state==='shock'||n.state==='startled'||n.state==='fuming'){P.armL.rotation.x=P.armR.rotation.x=-2.8;P.head.rotation.x=-.2;n.pose='fixed';return;}
 
-if(n.state==='angry'){// chasing with the phone held up at the player, screen glowing red
-P.armR.rotation.x=-1.55;P.elbowR.rotation.x=-.3;P.armR.rotation.z=-.15;P.armL.rotation.x=-.5;n.pose='fixed';
-if(!n.phone){const ph=makePhone();ph.userData.scr.material.emissive.setHex(0xff3a2a);ph.userData.scr.material.emissiveIntensity=1.6;P.handR.add(ph);n.phone=ph;n.chasePhone=true;}
-return;}
+if(n.state==='angry'){// chasing with both arms thrown up in rage, nothing in the hands (a phone they still own is pocketed)
+P.armL.rotation.x=P.armR.rotation.x=-2.85;P.elbowL.rotation.x=P.elbowR.rotation.x=-.25;n.pose='fixed';if(n.phone)n.phone.visible=false;return;}
 if(n.hasPhone&&n.state==='phone'){
 
 P.armR.rotation.x=-.55;P.elbowR.rotation.x=-1.45;P.armR.rotation.z=-.60;P.head.rotation.x=.75;
@@ -622,7 +620,7 @@ if(d<3&&!n.rushing){awayV.subVectors(p,pp).setY(0).normalize();dir=dir?dir.add(a
 
 }else if(n.state==='angry'){
 
-n.angryTime+=dt;n.bark-=dt;n.parts.armR.rotation.z=-.15+.14*Math.sin(stageElapsed*22);
+n.angryTime+=dt;n.bark-=dt;{const w=Math.sin(stageElapsed*13+n.phase);n.parts.armL.rotation.z=.28+.3*w;n.parts.armR.rotation.z=-.28+.3*w;n.parts.armL.rotation.x=-2.7+.25*Math.cos(stageElapsed*13+n.phase);n.parts.armR.rotation.x=-2.7-.25*Math.cos(stageElapsed*13+n.phase);}
 const lost=player.hidden||concealed(n);if(!lost)(n.seen||(n.seen=new THREE.Vector3())).copy(pp);
 if(lost){n.searchTime=(n.searchTime||0)+dt;const target=player.hidden?player.hidden.last:(n.seen||pp);dir=dirV.subVectors(target,p).setY(0);if(dir.length()>(player.hidden?.9:2.6)){dir.normalize();sp=1.8;}else{dir=null;sp=0;n.mesh.rotation.y+=dt*.7;}if(n.searchTime>2.8){sayN(n,'あれ…どこへ？','',1.5);endChase(n);}if(dir&&sp>0)p.addScaledVector(dir,sp*dt);pushOut(p,.48);animate(n,sp,dt);return;}n.searchTime=0;
 
@@ -898,7 +896,8 @@ log(`🏃 <span style="color:#ff6060">${n.T.name}が追いかけてきた！</sp
 
 }
 
-function endChase(n){n.state='sulk';n.timer=3;if(n.chasePhone&&n.phone){n.phone.parent&&n.phone.parent.remove(n.phone);n.phone=null;n.chasePhone=false;}setPose(n);}
+function P_armReset(n){n.parts.armL.rotation.z=n.parts.armR.rotation.z=0;}
+function endChase(n){n.state='sulk';n.timer=3;if(n.chasePhone&&n.phone){n.phone.parent&&n.phone.parent.remove(n.phone);n.phone=null;n.chasePhone=false;}P_armReset(n);setPose(n);}
 
 function caughtBy(n){
 if(player.hidden)return;
