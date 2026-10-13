@@ -62,7 +62,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
 function lsGet(k,d){try{const v=localStorage.getItem(KEY+k);return v===null?d:JSON.parse(v)}catch(e){return d}}
 function lsSet(k,v){try{localStorage.setItem(KEY+k,JSON.stringify(v))}catch(e){}}
-let muted=lsGet('mute',false), cleared=lsGet('cleared',0);
+let muted=lsGet('mute',false), cleared=lsGet('cleared',0), taken=lsGet('taken',[]);
 
 /* ============ 音（BGMは既存の4曲を再利用） ============ */
 const TRACKS=['The_Longest_Standoff.mp3','Calculated_Strike.mp3','Hard_Target_Lock.mp3','Against_the_Iron_Hour.mp3','Against_the_Iron_Hour.mp3'];
@@ -99,24 +99,87 @@ function applyMute(){
   if(bgm)bgm.muted=muted;
 }
 
+/* ============ 声（Web Audioの合成ボイス。音声ファイルなし＝容量増ゼロ） ============ */
+const VOICE={
+  grandpa :{f:112,type:'sawtooth',v:.05,d:.1,gap:.085,lp:850, col:'#6b7d8c'},
+  tome    :{f:300,type:'triangle',v:.09,d:.11,gap:.09,lp:1900,col:'#b85a68'},
+  hajime  :{f:185,type:'square',  v:.035,d:.07,gap:.06,lp:1300,col:'#4f7a52'},
+  kunoichi:{f:560,type:'sine',    v:.09,d:.06,gap:.07,lp:3200,col:'#7a5fbf'},
+  sasuke  :{f:780,type:'triangle',v:.07,d:.12,gap:.1, lp:3400,col:'#d98a35'},
+  kid     :{f:660,type:'triangle',v:.08,d:.085,gap:.07,lp:3000,col:'#4aa0d8'}
+};
+const SEMI=[0,2,4,7,9,-3,-5];
+let voiceAt={};
+function voice(who,text,o){
+  o=o||{};
+  if(muted||!AC||!acted)return;
+  const p=VOICE[who];if(!p)return;
+  if(AC.currentTime<(voiceAt[who]||0))return;            // 同じ人の声が重ならないように
+  const chars=[...text].filter(ch=>!/[\s、。…！？!?♪〜「」]/.test(ch)).slice(0,9);
+  if(!chars.length)return;
+  const q=/[？?]/.test(text),ex=/[！!]/.test(text),sp=o.speed||1,pm=o.pitch||1;
+  let t=AC.currentTime+.02;
+  chars.forEach((ch,i)=>{
+    const last=i===chars.length-1;
+    const semi=SEMI[ch.charCodeAt(0)%7]+(q&&last?5:0)+(ex&&last?3:0)-(i/chars.length)*(q?0:2);
+    const f=p.f*pm*Math.pow(2,semi/12),d=p.d/sp;
+    try{
+      const og=AC.createOscillator(),g=AC.createGain(),lp=AC.createBiquadFilter();
+      og.type=p.type;og.frequency.setValueAtTime(f,t);og.frequency.linearRampToValueAtTime(f*(1+(ex?.06:-.04)),t+d);
+      lp.type='lowpass';lp.frequency.value=p.lp;
+      const v=p.v*(ex&&last?1.5:1);
+      g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+      og.connect(lp);lp.connect(g);g.connect(AC.destination);og.start(t);og.stop(t+d+.02);
+    }catch(e){}
+    t+=(d+p.gap/sp);
+  });
+  voiceAt[who]=t;
+}
+function caw(){   // カラスの「カァ」
+  if(muted||!AC||!acted)return;
+  try{
+    const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain(),lp=AC.createBiquadFilter();
+    o.type='sawtooth';o.frequency.setValueAtTime(520,t);o.frequency.exponentialRampToValueAtTime(300,t+.22);
+    lp.type='bandpass';lp.frequency.value=1100;lp.Q.value=1.2;
+    g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.09,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.26);
+    o.connect(lp);lp.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.28);
+  }catch(e){}
+}
+function slurp(){   // お茶を啜る「ずずっ」
+  if(muted||!AC||!acted)return;
+  try{
+    const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+    o.type='sawtooth';o.frequency.setValueAtTime(90,t);o.frequency.linearRampToValueAtTime(190,t+.5);
+    g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.05,t+.05);g.gain.linearRampToValueAtTime(.02,t+.3);g.gain.exponentialRampToValueAtTime(.0001,t+.55);
+    o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.6);
+  }catch(e){}
+}
+/* しゃべる：吹き出し＋声。x,y は頭上の位置 */
+function say(who,text,x,y,life,o){
+  fx.push({x:x,y:y,t:life||1.3,t0:life||1.3,text:text,who:who});
+  voice(who,text,o);
+}
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
 /* ============ ステージ定義 ============ */
 const STAGES=[
  {day:'一日目',line:'夕暮れの庭。爺さんが竹箒で掃いている。大きな柿の木。今度、孫が帰ってきたら一緒に柿狩りをするのだ。',
   who:'爺さん（竹箒）',enemies:['grandpa'],say:'孫が帰ったら柿狩りじゃ♪',
   kaki:[[205,338],[262,326],[302,356],[180,364]],trig:80,wind:.5},
- {day:'二日目',line:'爺さんは警戒を高めている。さらに、裸眼のとめさんが協力。カラスの初動に気づきやすい。',
-  who:'＋とめさん（飛び立った瞬間に爺さんへ知らせる）',enemies:['grandpa','tome'],say:'昨夜も柿が減っとった…',
-  kaki:[[212,350],[268,384],[186,392]],trig:95,wind:.45},
+ {day:'二日目',line:'爺さんは警戒を高めている。さらに、裸眼のとめさんが縁側からキョロキョロ見張っている。',
+  who:'＋とめさん（見られると発見→警戒。目をそらす隙をつけ）',enemies:['grandpa','tome'],say:'昨夜も柿が減っとった…',
+  kaki:[[212,350],[268,384],[186,392]],trig:95,wind:.45,tomeRate:.8},
  {day:'三日目',line:'高枝切りばさみのはじめさんが加勢。リーチは竹箒よりずっと長く、厄介。',
-  who:'＋はじめさん（高枝切りばさみ・リーチ長）',enemies:['grandpa','tome','hajime'],say:'今日こそ捕まえるぞ',
-  kaki:[[225,388],[292,398],[180,404]],trig:95,wind:.45},
+  who:'＋はじめさん（高枝切りばさみ・リーチ長）／とめさんは発見が速くなる',enemies:['grandpa','tome','hajime'],say:'今日こそ捕まえるぞ',
+  kaki:[[225,388],[292,398],[180,404]],trig:95,wind:.45,tomeRate:1.0},
  {day:'四日目',line:'『くのいち』が現れた。なぜかクナイを投げてくる。理由は誰も知らない。',
   who:'＋くのいち（なぜかクナイを投げる）',enemies:['grandpa','tome','hajime','kunoichi'],say:'あの娘、どこの子じゃ？',
-  kaki:[[222,392],[286,404],[176,410]],trig:95,wind:.45},
+  kaki:[[222,392],[286,404],[176,410]],trig:95,wind:.45,tomeRate:1.3},
  {day:'五日目',line:'仮称サスケ。ただし尻尾がある。人間ではなさそうだ。孫が帰ってくるのは明日。',
   who:'＋サスケ(仮)（尻尾あり・跳ぶ）',enemies:['grandpa','tome','hajime','kunoichi','sasuke'],say:'…尻尾、あったか？',
-  kaki:[[220,396],[284,408],[178,414]],trig:95,wind:.45}
+  kaki:[[220,396],[284,408],[178,414]],trig:95,wind:.45,tomeRate:1.7}
 ];
+const TREE_TOTAL=16;   // 五日間に柿がなる総数（各日の柿の数の合計）
 
 /* ============ ゲーム状態 ============ */
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -124,16 +187,18 @@ const dk=document.createElement('canvas');dk.width=180;dk.height=280;const dctx=
 let S=1,DPR=1;
 let phase='title',paused=false,stage=0,timeLeft=TIME,attempts=0,clock=0;
 let path=[],plen=0,drag=null,hinted=false;
-let crow,world,enemies,kakis,kunai,fx;
+let crow,world,enemies,kakis,kunai,fx,end=null;
 const bar={go:document.getElementById('go')};
 
-function resetCrow(){crow={x:PERCH.x,y:PERCH.y,vx:0,vy:0,mode:'perch',pi:0,pd:0,t:0,rot:0,kaki:null}}
+function resetCrow(){crow={x:PERCH.x,y:PERCH.y,vx:0,vy:0,mode:'perch',pi:0,pd:0,t:0,rot:0,carry:[]}}
 
 function startStage(i){
   stage=i;timeLeft=TIME;attempts=0;path=[];plen=0;hinted=false;
   world={alert:0,speechT:0};kunai=[];fx=[];
   const st=STAGES[i];
+  if(i===0){taken=[];lsSet('taken',taken)}
   kakis=st.kaki.map(p=>({x:p[0],y:p[1],r:11}));
+  buildTree(kakis);
   enemies=st.enemies.map(n=>makeEnemy(n,st));
   resetCrow();
   playBgm(i);
@@ -259,6 +324,20 @@ SPR.kaki=mkSpr([
 ".KooooooOOK.",
 "..KOOOOOOK..",
 "...KKKKKK..."],{K:'#6a2a08',g:'#4f7a2e',o:'#f08a24',O:'#c9500c',h:'#ffc46b'});
+SPR.kid=mkSpr([
+"....KKKK.....",
+"...KhhhhK....",
+"..KhhhhhhK...",
+"..KsssssssK..",
+"..KsKssKssK..",
+"..KsssssssK..",
+"...KKsssKK...",
+"..KyyyyyyK...",
+".KyyyyyyyyK..",
+".KyyyyyyyyKKK",
+"..KyyyyyyKooK",
+"..KssKKssKooK",
+"..KKK..KKKKK."],{K:K0,s:SK,h:'#4aa0d8',y:'#e0a02a',o:'#d98a35'});
 const CK='#15121c';
 SPR.crowUp=mkSpr([
 "....kk..........",
@@ -305,10 +384,113 @@ SPR.crowPerch=mkSpr([
 ".....k..k.......",
 ".....k..k......."],{k:CK,g:'#4a4160',e:'#fff',y:'#d9a441'});
 
+
+/* ============ 柿の木（ドット絵。ステージごとに柿の位置へ枝を伸ばす。画像ファイルなし） ============ */
+const TP=3,TGW=120,TGH=128,TY0=108;     // 1ドット=3px。木の領域は世界座標 y=108〜492
+let treeImg=null;
+function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const LEAF=[[150,230,70],[215,190,80],[285,215,70],[330,270,45],[110,285,40],[240,265,75],[175,300,55],[290,300,50],[225,330,38]];
+function buildTree(ks){
+  const cv=document.createElement('canvas');cv.width=TGW;cv.height=TGH;
+  const g=cv.getContext('2d'),R=rng(319);
+  const P=(x,y,col)=>{x=Math.round(x);y=Math.round(y);if(x<0||y<0||x>=TGW||y>=TGH)return;g.fillStyle=col;g.fillRect(x,y,1,1)};
+  const wx=x=>x/TP,wy=y=>(y-TY0)/TP;
+  const nearKaki=(x,y,r)=>ks.some(k=>Math.hypot(k.x-x,k.y-y)<r);
+  // 1) 奥の葉むら（暗い緑のかたまり。夕日は左下から当たる）
+  for(const l of LEAF){
+    const cx=wx(l[0]),cy=wy(l[1]),r=l[2]/TP;
+    for(let y=Math.floor(cy-r);y<=cy+r;y++)for(let x=Math.floor(cx-r);x<=cx+r;x++){
+      const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)/r;
+      if(d>1-.14*R())continue;
+      const lit=(-dx*.5+dy*.35)/r;
+      let col=lit>.4?'#3f5f26':lit>.1?'#2f4b22':'#223a1b';
+      if(((x+y)&1)&&Math.abs(lit-.1)<.12)col='#3a5826';       // ディザ
+      P(x,y,col);
+    }
+  }
+  // 2) 幹
+  const top=wy(298),bot=wy(488),tcx=wx(247);
+  for(let y=Math.ceil(top);y<=bot;y++){
+    const t=(y-top)/(bot-top),hw=4.6+t*t*5.5,sw=Math.sin(y*.18)*.7,x0=Math.round(tcx-hw+sw),x1=Math.round(tcx+hw+sw);
+    for(let x=x0;x<=x1;x++){
+      const u=(x-x0)/Math.max(1,x1-x0);
+      let col=u<.28?'#6b4a30':u<.62?'#4e3523':'#352316';
+      if(x===x0||x===x1)col='#241810';
+      else if(((x*7+y*3)%11===0&&R()<.55)||((x*5+y*13)%17===0&&R()<.4))col='#2a1a10';
+      else if(u<.2&&R()<.2)col='#7d5a3a';
+      P(x,y,col);
+    }
+  }
+  // 3) 枝（輪郭→本体→ハイライトの3パス）
+  const limbs=[
+    [240,330,210,300,165,285,4,2],[252,318,285,290,322,275,4,2],[246,305,240,262,222,215,4,2],
+    [250,300,276,252,292,215,3,1],[243,312,196,276,120,288,3,1],[255,312,300,262,338,262,3,1]
+  ];
+  for(const k of ks){
+    const side=k.x<247?-1:1,ay=clamp(k.y-46-R()*10,318,372);
+    const sx=247+side*7;
+    limbs.push([sx,ay,(sx+k.x)/2,ay-16-R()*6,k.x,k.y-14,3,1]);
+  }
+  const bez=(L,t)=>{const u=1-t;return[u*u*L[0]+2*u*t*L[2]+t*t*L[4],u*u*L[1]+2*u*t*L[3]+t*t*L[5]]};
+  const pass=(col,dw,off)=>{
+    for(const L of limbs){
+      for(let i=0;i<=48;i++){
+        const t=i/48,q=bez(L,t);
+        const rw=Math.max(1,Math.round(lerp(L[6],L[7],t)))+dw;
+        const gx=wx(q[0])+off,gy=wy(q[1])+off;
+        for(let yy=0;yy<rw;yy++)for(let xx=0;xx<rw;xx++)P(gx-rw/2+xx+.5,gy-rw/2+yy+.5,col);
+      }
+    }
+  };
+  pass('#241810',2,0);pass('#4e3523',0,0);pass('#7a5636',-1,-.6);
+  // 4) 前の葉（柿の近くは避ける）
+  const GREEN=['#3f6b2a','#4f8233','#6a9a3c','#8fb84e'],AUT=['#d9822b','#e8a43a','#b8541c'];
+  const leaf=(x,y,o)=>{
+    const lit=clamp((-(x-wx(247))*.02+(y-wy(300))*.012)+.5,0,1);
+    const aut=R()<.22;
+    const col=aut?AUT[Math.floor(R()*3)]:GREEN[Math.min(3,Math.floor(lit*3+R()*1.4))];
+    const dark=aut?'#7a3a10':'#244020';
+    if(o===0){P(x,y,col);P(x+1,y,col);P(x+2,y,col);P(x,y+1,dark);P(x+1,y+1,col);P(x+2,y+1,dark)}
+    else if(o===1){P(x,y,col);P(x,y+1,col);P(x,y+2,dark);P(x+1,y+1,col);P(x+1,y+2,dark)}
+    else{P(x,y,col);P(x+1,y,col);P(x+1,y+1,col);P(x+2,y+1,col);P(x+2,y+2,dark)}
+    if(R()<.3)P(x+1,y,aut?'#f6c25a':'#cfe07a');   // 葉の照り
+  };
+  for(const l of LEAF){
+    const cx=wx(l[0]),cy=wy(l[1]),r=l[2]/TP,n=Math.floor(r*r*.34);
+    for(let i=0;i<n;i++){
+      const a=R()*6.283,d=Math.sqrt(R())*r*.98,x=cx+Math.cos(a)*d,y=cy+Math.sin(a)*d*.95;
+      if(nearKaki(x*TP,y*TP+TY0,20))continue;
+      leaf(Math.round(x),Math.round(y),Math.floor(R()*3));
+    }
+  }
+  // 枝先の小さな葉（柿のヘタの横に2枚）
+  for(const k of ks){
+    const x=wx(k.x),y=wy(k.y-14);
+    leaf(Math.round(x-5),Math.round(y-1),0);leaf(Math.round(x+3),Math.round(y-2),2);
+  }
+  // 5) 根もとの落ち葉
+  for(let i=0;i<16;i++){
+    const x=wx(150+R()*200),y=wy(474+R()*14);
+    const c=['#b8541c','#d9822b','#8a3d12','#e8a43a'][Math.floor(R()*4)];
+    P(x,y,c);P(x+1,y,c);P(x+1,y+1,'#6a2c0c');
+  }
+  treeImg=cv;
+}
+function drawTreeImg(c){
+  if(!treeImg)return;
+  c.save();c.imageSmoothingEnabled=false;c.drawImage(treeImg,0,TY0,TGW*TP,TGH*TP);c.restore();
+  // ひらひら落ちる葉
+  for(let i=0;i<5;i++){
+    const x=(60+i*67+Math.sin(clock*.9+i*2)*22+clock*(5+i))%W,y=(clock*(13+i*2)+i*97)%330+120;
+    c.fillStyle=i%2?'#d9822b':'#b8541c';
+    c.fillRect(Math.round(x/3)*3,Math.round(y/3)*3,6,3);c.fillRect(Math.round(x/3)*3+3,Math.round(y/3)*3+3,3,3);
+  }
+}
+
 /* ============ 敵 ============ */
 function makeEnemy(name,st){
   if(name==='grandpa')return mkGrandpa(st);
-  if(name==='tome')return mkTome();
+  if(name==='tome')return mkTome(st.tomeRate||1);
   if(name==='hajime')return mkHajime();
   if(name==='kunoichi')return mkKunoichi();
   return mkSasuke();
@@ -337,6 +519,7 @@ function mkGrandpa(st){
           this.state='wind';this.t=0;
           if(crowFlying())this.dir=Math.sign(crow.x-this.x)||this.dir;
           beep(170,.18,'sawtooth',.05,-60);
+          voice('grandpa',pick(['せいっ！','とりゃっ！','そこじゃっ！']),{speed:1.2});
         }
       }else if(this.state==='wind'){
         const w=st.wind*(al?.65:1);
@@ -366,17 +549,80 @@ function mkGrandpa(st){
       c.strokeStyle='#c9a35a';c.lineWidth=9;c.beginPath();c.moveTo(lerp(px,ex,.72),lerp(py,ey,.72));c.lineTo(ex,ey);c.stroke();
       if(this.state==='wind'){bang(c,x,f-72)}
       // セリフ
-      if(world.speechT>0&&this.state==='walk')bubble(c,x,f-80,STAGES[stage].say);
+      if(world.speechT>0&&this.state==='walk')bubble(c,x,f-80,STAGES[stage].say,VOICE.grandpa.col);
     }};
 }
 
-function mkTome(){
-  return{type:'tome',x:44,update(){},
+function mkTome(rate){
+  const HX=44,HY=438;     // 目の位置
+  // 視線ごとの視野（ang=度, half=半角, rng=届く距離）。left/sipは何も見ていない＝隙
+  const POSE={
+    right:{ang:-12,half:38,rng:300,w:3,min:1.3,max:2.3},
+    up   :{ang:-84,half:30,rng:430,w:2,min:1.0,max:1.7},
+    left :{ang:180,half:0, rng:0,  w:2,min:.7,max:1.3},
+    sip  :{ang:0,  half:0, rng:0,  w:2,min:1.3,max:2.0}
+  };
+  const pickPose=cur=>{
+    const ks=Object.keys(POSE).filter(k=>k!==cur);let tot=0;ks.forEach(k=>tot+=POSE[k].w);
+    let r=Math.random()*tot;for(const k of ks){r-=POSE[k].w;if(r<=0)return k}return ks[0];
+  };
+  return{type:'tome',x:44,pose:'right',pt:1.6,meter:0,wasSip:false,
+    update(dt){
+      this.pt-=dt;
+      if(this.pt<=0){
+        this.pose=pickPose(this.pose);const P=POSE[this.pose];this.pt=P.min+Math.random()*(P.max-P.min);
+        if(this.pose==='sip')slurp();
+        else if(this.pose==='left'&&Math.random()<.5)voice('tome','ふんふん',{pitch:.9});
+      }
+      const P=POSE[this.pose];let seen=false,near=0;
+      const visible=crow&&(crow.mode==='fly'||(crow.mode==='perch'&&this.pose==='up'));
+      if(P.rng&&visible){
+        const dx=crow.x-HX,dy=crow.y-HY,dist=Math.hypot(dx,dy);
+        let da=Math.abs(Math.atan2(dy,dx)*180/Math.PI-P.ang);if(da>180)da=360-da;
+        if(dist<P.rng&&da<P.half){seen=true;near=1-dist/P.rng}
+      }
+      this.seen=seen;
+      if(seen)this.meter=Math.min(1,this.meter+rate*(1+near*.7)*dt);
+      else this.meter=Math.max(0,this.meter-.8*dt);
+      if(this.meter>=1&&world.alert<=0){
+        world.alert=4;this.meter=.55;
+        say('tome',pick(['あっ！カラスじゃ！','おったぞ！カラスじゃ！','こりゃ！柿どろぼう！']),this.x+22,478-74,1.5,{speed:1.25,pitch:1.1});
+        beep(1000,.2,'square',.05,300);
+      }
+    },
     draw(c){
-      const x=this.x,f=478;
-      c.fillStyle='#6a4a30';c.fillRect(0,f,96,8);        // 縁側
+      const x=this.x,f=478,P=POSE[this.pose];
+      c.fillStyle='#6a4a30';c.fillRect(0,f,96,8);c.fillStyle='#4a321f';c.fillRect(0,f+8,96,3);     // 縁側
+      // 視野（見ている間だけ）
+      if(P.rng&&(phase==='aim'||phase==='fly')){
+        const a0=(P.ang-P.half)*Math.PI/180,a1=(P.ang+P.half)*Math.PI/180;
+        const gr=c.createRadialGradient(HX,HY,10,HX,HY,P.rng);
+        const hot=Math.max(this.meter,this.seen?.35:0);
+        gr.addColorStop(0,'rgba(255,248,190,'+(.42+.3*hot)+')');gr.addColorStop(1,'rgba(255,248,190,.05)');
+        c.fillStyle=gr;c.beginPath();c.moveTo(HX,HY);c.arc(HX,HY,P.rng,a0,a1);c.closePath();c.fill();
+        c.strokeStyle='rgba(255,250,200,'+(.5+.3*hot)+')';c.lineWidth=1.5;c.setLineDash([5,5]);c.stroke();c.setLineDash([]);
+      }
       put(c,SPR.tome,x,f,3,false);
-      if(world.alert>0){bang(c,x,f-62);bubble(c,x+18,f-74,'あっ！カラス！')}
+      // 目：視線の向きを、顔のドットを描き替えて見せる（スプライトは 12x14、1ドット=3px）
+      const L=x-18,T=f-42,dot=(cx,cy,col)=>{c.fillStyle=col;c.fillRect(L+cx*3,T+cy*3,3,3)};
+      dot(5,4,SK);dot(7,4,SK);
+      if(this.pose==='right'){dot(6,4,K0);dot(8,4,K0)}
+      else if(this.pose==='up'){dot(5,4,SK);dot(5,3,K0);dot(7,3,K0)}
+      else if(this.pose==='left'){for(let yy=3;yy<=5;yy++)for(let xx=4;xx<=8;xx++)dot(xx,yy,'#ece8e0')}   // 後頭部
+      else{dot(5,4,'#8a5a3a');dot(7,4,'#8a5a3a')}   // 目を細めてお茶
+      if(this.pose==='sip'){
+        c.fillStyle='#fff';c.fillRect(x+7,f-28,12,9);c.fillStyle='#c9b8a0';c.fillRect(x+7,f-28,12,3);   // 湯のみ
+        c.fillStyle='rgba(255,255,255,.55)';
+        for(let i=0;i<3;i++)c.fillRect(x+9+i*3+Math.sin(clock*4+i)*2,f-36-((clock*14+i*5)%12),2,5);       // 湯気
+      }
+      // 発見メーター（?が満ちていく）
+      if(this.meter>.02&&world.alert<=0){
+        const m=this.meter,cx=x+4,cy=f-62;
+        c.fillStyle='rgba(20,10,30,.7)';c.beginPath();c.arc(cx,cy,13,0,7);c.fill();
+        c.strokeStyle=m>.6?'#ff6a4a':'#ffd13a';c.lineWidth=4;c.beginPath();c.arc(cx,cy,9,-Math.PI/2,-Math.PI/2+m*6.283);c.stroke();
+        c.fillStyle='#fff';c.font='bold 12px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('?',cx,cy+1);
+      }
+      if(world.alert>0)bang(c,x+4,f-62);
     }};
 }
 
@@ -394,6 +640,7 @@ function mkHajime(){
           this.ang=Math.atan2(crow.y-hy,crow.x-hx);
           this.dir=crow.x>=this.x?1:-1;
           beep(150,.2,'sawtooth',.05,-40);
+          voice('hajime',pick(['いくぞぉ！','そこだっ！','もらった！']),{speed:1.15});
         }
       }else if(this.state==='wind'){
         // 狙いは予告線として固定
@@ -440,7 +687,7 @@ function mkKunoichi(){
       if(this.cd<=0&&kunai.length<4){
         const sx=this.x-6,sy=FEET-40,d=Math.hypot(crow.x-sx,crow.y-sy)||1;
         kunai.push({x:sx,y:sy,vx:(crow.x-sx)/d*250,vy:(crow.y-sy)/d*250});
-        this.cd=1.5;this.arm=.25;beep(900,.08,'triangle',.04,-500);
+        this.cd=1.5;this.arm=.25;beep(900,.08,'triangle',.04,-500);if(Math.random()<.6)voice('kunoichi',pick(['ハッ！','ふっ！','参る']),{speed:1.3});
       }
     },
     draw(c){
@@ -461,7 +708,7 @@ function mkSasuke(){
           this.state='crouch';this.t=0;
           this.tx=clamp(crow.x+crow.vx*.8,24,336);
           this.dir=Math.sign(this.tx-this.x)||this.dir;
-          beep(120,.3,'sine',.07,80);
+          beep(120,.3,'sine',.07,80);voice('sasuke',pick(['にゃふ','ふしゅっ','くぅん']),{speed:1.1});
         }
       }else if(this.state==='crouch'){
         this.y=FEET-12;
@@ -486,11 +733,12 @@ function bang(c,x,y){
   c.fillStyle='#ffd13a';c.beginPath();c.arc(x,y,9,0,7);c.fill();
   c.fillStyle='#b01818';c.font='bold 14px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('!',x,y+1);
 }
-function bubble(c,x,y,text){
+function bubble(c,x,y,text,col){
   c.font='bold 11px sans-serif';c.textAlign='center';c.textBaseline='middle';
   const w=c.measureText(text).width+14;
   const bx=clamp(x-w/2,4,W-w-4);
   c.fillStyle='rgba(255,255,255,.95)';c.beginPath();c.roundRect(bx,y-11,w,22,8);c.fill();
+  if(col){c.strokeStyle=col;c.lineWidth=2;c.stroke()}
   c.beginPath();c.moveTo(x-4,y+10);c.lineTo(x,y+17);c.lineTo(x+4,y+10);c.fill();
   c.fillStyle='#2a1c3c';c.fillText(text,bx+w/2,y);
 }
@@ -512,7 +760,6 @@ function drawCrow(c,x,y,vx,vy,flap,perched,spin){
 
 function drawKaki(c,k){put(c,SPR.kaki,k.x,k.y+11,2,false)}
 
-const LEAF=[[150,230,70],[215,190,80],[285,215,70],[330,270,45],[110,285,40],[240,265,75],[175,300,55],[290,300,50],[225,330,38]];
 function drawScene(c){
   // 夕空
   const g=c.createLinearGradient(0,0,0,GY);
@@ -526,12 +773,7 @@ function drawScene(c){
   // 地面
   const gg=c.createLinearGradient(0,GY,0,H);gg.addColorStop(0,'#5d4a32');gg.addColorStop(1,'#2e2a1c');
   c.fillStyle=gg;c.fillRect(0,GY,W,H-GY);
-  c.fillStyle='rgba(176,92,36,.55)';for(let i=0;i<14;i++){c.fillRect((i*53)%340+8,GY+10+(i*29)%70,9,3)}   // 落ち葉
-  // 柿の木
-  c.fillStyle='#3a2a1c';c.beginPath();c.moveTo(232,GY+12);c.lineTo(238,300);c.lineTo(254,300);c.lineTo(262,GY+12);c.fill();
-  c.strokeStyle='#3a2a1c';c.lineWidth=7;c.beginPath();c.moveTo(240,330);c.lineTo(190,290);c.moveTo(252,320);c.lineTo(300,285);c.stroke();
-  for(const l of LEAF){c.fillStyle='#3e5a2c';c.beginPath();c.arc(l[0],l[1],l[2],0,7);c.fill()}
-  for(const l of LEAF){c.fillStyle='rgba(214,120,40,.35)';c.beginPath();c.arc(l[0]+8,l[1]+6,l[2]*.55,0,7);c.fill()}
+  drawTreeImg(c);
 }
 
 function drawPath(c){
@@ -577,6 +819,12 @@ function drawHUD(c){
   const t=Math.ceil(Math.max(0,timeLeft));
   c.textAlign='center';c.font='bold 20px sans-serif';c.fillStyle=t<=15?'#ff7a6b':'#fff';c.fillText('0:'+String(t).padStart(2,'0'),W/2,16);
   c.textAlign='right';c.font='13px sans-serif';c.fillStyle='#e6d9f5';c.fillText('とびたち '+attempts+'回',W-10,16);
+  const rem=TREE_TOTAL-taken.slice(0,stage).reduce((a,b)=>a+(b||0),0);
+  c.textAlign='right';c.font='bold 11px sans-serif';c.fillStyle='#ffb35a';c.fillText('木の柿 '+rem+'こ',W-10,38);
+  if(world&&world.alert>0&&phase==='fly'){            // 警戒中
+    c.fillStyle='rgba(176,24,24,'+(.55+.25*Math.sin(clock*12))+')';c.beginPath();c.roundRect(W/2-34,42,68,18,9);c.fill();
+    c.fillStyle='#fff';c.font='bold 11px sans-serif';c.textAlign='center';c.fillText('警戒中！',W/2,51.5);
+  }
   // インクゲージ
   c.fillStyle='rgba(255,255,255,.2)';c.fillRect(10,35,100,5);
   c.fillStyle='#ffe28a';c.fillRect(10,35,100*clamp(1-plen/INK,0,1),5);
@@ -588,6 +836,8 @@ function hitCrow(msg){
   if(crow.mode!=='fly')return;
   crow.mode='hit';crow.t=0;crow.vy=-120;crow.vx=(Math.random()-.5)*80;
   fx.push({x:crow.x,y:crow.y-20,t:1.2,text:msg});
+  if(crow.carry.length){fx.push({x:crow.x,y:crow.y-44,t:1.4,text:'柿を落とした…'});for(const k of crow.carry)kakis.push(k);crow.carry=[]}
+  caw();
   beep(220,.35,'sawtooth',.07,-180);
   for(let i=0;i<8;i++)fx.push({x:crow.x,y:crow.y,t:.8,vx:(Math.random()-.5)*160,vy:(Math.random()-.9)*120,feather:true});
 }
@@ -596,7 +846,6 @@ function launch(){
   if(phase!=='aim'||crow.mode!=='perch'||plen<40||paused)return;
   unlock();
   crow.mode='fly';crow.pi=0;crow.pd=0;attempts++;phase='fly';
-  if(STAGES[stage].enemies.includes('tome')){world.alert=4;beep(1000,.2,'square',.05,300)}
   for(const e of enemies){if(e.type==='kunoichi')e.cd=.7;if(e.type==='sasuke')e.cd=Math.min(e.cd,.5)}
   beep(500,.15,'triangle',.06,400);
   refreshBar();
@@ -613,18 +862,22 @@ function updateCrow(dt){
       const a=path[c.pi],b=path[c.pi+1],sl=Math.hypot(b.x-a.x,b.y-a.y)||.001,left=sl-c.pd;
       if(rem<left){c.pd+=rem;rem=0}else{rem-=left;c.pi++;c.pd=0}
     }
-    if(c.pi>=path.length-1){c.mode='ret';c.t=0;fx.push({x:c.x,y:c.y-18,t:1,text:'あー届かない…'});return}
-    const a=path[c.pi],b=path[c.pi+1],u=c.pd/(Math.hypot(b.x-a.x,b.y-a.y)||1);
-    c.x=lerp(a.x,b.x,u);c.y=lerp(a.y,b.y,u);
-    c.vx=(c.x-ox)/dt;c.vy=(c.y-oy)/dt;
-    for(let i=0;i<kakis.length;i++){
+    const atEnd=c.pi>=path.length-1;
+    if(!atEnd){
+      const a=path[c.pi],b=path[c.pi+1],u=c.pd/(Math.hypot(b.x-a.x,b.y-a.y)||1);
+      c.x=lerp(a.x,b.x,u);c.y=lerp(a.y,b.y,u);
+      c.vx=(c.x-ox)/dt;c.vy=(c.y-oy)/dt;
+    }
+    for(let i=kakis.length-1;i>=0;i--){     // 通り道の柿はぜんぶ拾う（欲張るほどリスクも増える）
       const k=kakis[i];
       if(Math.hypot(c.x-k.x,c.y-k.y)<k.r+8){
-        kakis.splice(i,1);c.mode='got';c.t=0;c.kaki=k;
-        beep(660,.12,'square',.06);setTimeout(()=>beep(990,.2,'square',.06),110);
-        break;
+        kakis.splice(i,1);c.carry.push(k);
+        beep(660,.12,'square',.06);setTimeout(()=>beep(990,.2,'square',.06),110);caw();
+        fx.push({x:c.x,y:c.y-22,t:.9,text:'柿 +'+c.carry.length});
       }
     }
+    if(c.carry.length&&(atEnd||kakis.length===0)){c.mode='got';c.t=0;return}
+    if(atEnd){c.mode='ret';c.t=0;fx.push({x:c.x,y:c.y-18,t:1,text:'あー届かない…'});return}
   }else if(c.mode==='hit'){
     c.vy+=620*dt;c.x+=c.vx*dt;c.y=Math.min(c.y+c.vy*dt,GY+6);
     if(c.t>1.0){c.mode='ret';c.t=0}
@@ -634,7 +887,6 @@ function updateCrow(dt){
     else{c.vx=dx/d*300;c.vy=dy/d*300;c.x+=c.vx*dt;c.y+=c.vy*dt}
   }else if(c.mode==='got'){
     c.vx=140;c.vy=-120;c.x+=c.vx*dt;c.y+=c.vy*dt;
-    if(c.kaki){c.kaki.x=c.x+6;c.kaki.y=c.y+12}
     if(c.t>.9)finishStage();
   }
 }
@@ -644,7 +896,9 @@ function update(dt){
   if(phase==='aim'||phase==='fly'){
     timeLeft-=dt;
     world.alert=Math.max(0,world.alert-dt);
-    world.speechT=(clock%9)<3?1:0;
+    const sp=(clock%9)<3?1:0;
+    if(sp&&!world.speechT&&enemies.some(e=>e.type==='grandpa'))voice('grandpa',STAGES[stage].say,{speed:.95});
+    world.speechT=sp;
     if(timeLeft<=0&&crow.mode!=='got'){timeLeft=0;return gameOver()}
     for(const e of enemies)e.update(dt);
     for(let i=kunai.length-1;i>=0;i--){
@@ -664,6 +918,7 @@ function update(dt){
 function render(){
   const c=ctx;
   c.setTransform(DPR*S,0,0,DPR*S,0,0);
+  if(phase==='ending'&&end){drawEnding(c);return}
   if(!world){drawScene(c);return}
   drawScene(c);
   for(const k of kakis)drawKaki(c,k);
@@ -673,14 +928,14 @@ function render(){
     c.fillStyle='#cfd5da';c.beginPath();c.moveTo(8,0);c.lineTo(-5,-3.5);c.lineTo(-3,0);c.lineTo(-5,3.5);c.fill();
     c.strokeStyle='#222';c.lineWidth=2;c.beginPath();c.arc(-8,0,2.5,0,7);c.stroke();c.restore();
   }
-  if(crow.kaki)drawKaki(c,crow.kaki);
+  crow.carry.forEach((k,i)=>{const a=i*1.9;put(c,SPR.kaki,crow.x+5+Math.cos(a)*5,crow.y+22+Math.abs(Math.sin(a))*9+i*2,2,false)});
   const perched=crow.mode==='perch';
   drawCrow(c,crow.x,crow.y,perched?1:crow.vx,crow.vy,Math.sin(clock*(crow.mode==='hit'?4:20)),perched||false,crow.mode==='hit'?crow.t*12:0);
   drawDark(c);
   if(phase==='aim'||phase==='fly')drawPath(c);
   for(const f of fx){
     if(f.feather){c.fillStyle='#15121c';c.fillRect(f.x,f.y,4,2)}
-    else{bubble(c,f.x,f.y-(1.2-f.t)*18,f.text)}
+    else{bubble(c,f.x,f.y-((f.t0||1.2)-f.t)*18,f.text,f.who&&VOICE[f.who]?VOICE[f.who].col:null)}
   }
   if(phase==='aim'&&!hinted&&stage===0){
     c.fillStyle='rgba(10,5,25,.7)';c.beginPath();c.roundRect(20,512,320,38,10);c.fill();
@@ -698,9 +953,150 @@ let last=0;
 function frame(ts){
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
   if(!paused&&(phase==='aim'||phase==='fly'))update(dt);
-  else if(!paused)clock+=dt;
+  else if(!paused){clock+=dt;if(phase==='ending'&&end)updateEnding(dt)}
   render();
   requestAnimationFrame(frame);
+}
+
+
+/* ============ エンディング（木に残った柿の数で3分岐） ============ */
+const SLOTS=[[178,364],[212,352],[262,330],[300,358],[190,400],[226,392],[284,404],[322,392],[158,372],[244,372],[205,330],[300,320]];
+function endKind(){
+  const T=[0,1,2,3,4].reduce((a,j)=>a+(taken[j]||1),0),R=TREE_TOTAL-T;
+  return{T:T,R:R,kind:R>=9?'armful':R>=6?'jump':'despair'};
+}
+function showEnding(){
+  const e=endKind();
+  end={t:0,kind:e.kind,R:e.R,T:e.T,done:{},card:false};
+  phase='ending';paused=false;
+  kakis=SLOTS.slice(0,Math.min(e.R,SLOTS.length)).map(p=>({x:p[0],y:p[1],r:11}));
+  world={alert:0,speechT:0};fx=[];kunai=[];
+  buildTree(kakis);
+  hideOv();refreshBar();
+}
+const END_SPLIT=7,END_CARD=12.5;
+function updateEnding(dt){
+  end.t+=dt;
+  const t=end.t,once=(k,at,fn)=>{if(t>=at&&!end.done[k]){end.done[k]=1;fn()}};
+  const gx=190,gy=FEET-70;
+  if(t<END_SPLIT){
+    if(end.kind==='despair'){
+      once('a',.6,()=>say('grandpa','ワシの柿がぁ…',gx,gy-30,2.2,{pitch:.78,speed:.7}));
+      once('b',3.6,()=>say('grandpa','…こんなに少ないとは',gx,gy-30,2.4,{pitch:.8,speed:.75}));
+    }else if(end.kind==='jump'){
+      once('a',.5,()=>say('grandpa','おおっ！まだあるぞい！',gx,gy-52,1.8,{speed:1.2,pitch:1.15}));
+      for(let i=1;i<5;i++)once('h'+i,.5+i*1.35,()=>voice('grandpa',pick(['やった！','ほいっ！','よっしゃ！']),{speed:1.3,pitch:1.25}));
+    }else{
+      once('a',.6,()=>say('grandpa','ほっほっほ。大漁じゃ！',gx,gy-34,2.2,{pitch:1.05}));
+      once('b',3.8,()=>say('grandpa','ぜんぶ孫と食うぞい',gx,gy-34,2.2));
+    }
+    for(let i=0;i<4;i++)once('k'+i,1.2+i*1.7,()=>{const o=orbit(end.t+.0);say('kid',pick(['わーい！','じいじー！','ぐるぐるー']),clamp(o.x,40,320),FEET-62,1.1,{speed:1.1})});
+  }else{
+    once('c',END_SPLIT+1.4,slurp);
+    once('d',END_SPLIT+3.4,slurp);
+    once('e',END_SPLIT+2.2,()=>say('kid','たのしー！',clamp(orbit(end.t).x,40,320),FEET-60,1.1));
+    once('f',END_SPLIT+4.6,()=>say('grandpa','それにしても、あの子は誰じゃ…？',gx,gy-14,2.8,{pitch:.9,speed:.85}));
+  }
+  for(let i=fx.length-1;i>=0;i--){fx[i].t-=dt;if(fx[i].t<=0)fx.splice(i,1)}
+  if(t>=END_CARD&&!end.card)showEndCard();
+}
+function orbit(t){   // 孫が爺さんのまわりをぐるぐる
+  const a=t*2.6;return{x:190+Math.cos(a)*78,y:FEET-8+Math.sin(a)*14,front:Math.sin(a)>0,vx:-Math.sin(a)};
+}
+function showEndCard(){
+  end.card=true;
+  const names={armful:'柿を手いっぱいに抱えた爺さん',jump:'飛び跳ねる爺さん',despair:'絶望する爺さん'};
+  showOv('<h2>おしまい</h2><p class="sub">五日間でカラスがとった柿 <b>'+end.T+'こ</b><br>木に残った柿 <b>'+end.R+'こ</b></p>'+
+    '<p>エンディング：<b>'+names[end.kind]+'</b></p>'+
+    '<p class="sub">残り9こ以上＝抱える ／ 6〜8こ＝飛び跳ねる ／ 5こ以下＝絶望<br>とりすぎず、でも腹は満たせるか。</p>'+
+    '<button class="btn" data-act="intro" data-i="0">もういちど（一日目から）</button><button class="btn g" data-act="title">タイトルへ</button>','ttl');
+}
+function drawKidAt(c,t){
+  const o=orbit(t);
+  put(c,SPR.kid,o.x,o.y+4,3,o.vx<0);
+  return o;
+}
+function drawEnding(c){
+  const t=end.t,B=t>=END_SPLIT,k=end.kind;
+  drawScene(c);
+  for(const q of kakis)drawKaki(c,q);
+  // ムード
+  if(!B){
+    if(k==='despair'){
+      c.fillStyle='rgba(30,40,80,.5)';c.fillRect(0,0,W,GY+2);
+      c.strokeStyle='rgba(190,210,255,.5)';c.lineWidth=1;
+      for(let i=0;i<46;i++){const x=(i*37+clock*60)%W,y=(i*53+clock*420)%GY;c.beginPath();c.moveTo(x,y);c.lineTo(x-3,y+9);c.stroke()}
+    }else{
+      for(let i=0;i<22;i++){      // きらきら・紙吹雪
+        const x=(i*41+Math.sin(clock*2+i)*14)%W,y=(i*67+clock*(k==='jump'?70:30))%GY;
+        c.fillStyle=['#ffd13a','#ff7a6b','#7ad7ff','#b6f06a'][i%4];
+        if(k==='jump')c.fillRect(Math.round(x/3)*3,Math.round(y/3)*3,6,3);
+        else{const r=2+Math.abs(Math.sin(clock*4+i))*2;c.fillRect(Math.round(x),Math.round(y),r,r)}
+      }
+    }
+  }else{
+    c.fillStyle='rgba(60,20,50,.25)';c.fillRect(0,0,W,GY+2);   // 夕暮れ
+  }
+  const gx=190,f=FEET;
+  const kid=drawKidAt;   // 後ろ側を先に
+  const o=orbit(t);
+  if(!o.front)kid(c,t);
+  // ---- 爺さん
+  if(!B){
+    if(k==='despair'){
+      const sh=Math.sin(t*3)*1.5;
+      c.save();c.translate(gx+sh,f);c.rotate(.12);
+      put(c,SPR.grandpa,0,0,3,false,.74);c.restore();
+      // 頬に手（青い袖と肌）／縦線（ガーン）
+      c.fillStyle='#6b7d8c';c.fillRect(gx-17,f-34,7,14);c.fillRect(gx+10,f-34,7,14);
+      c.fillStyle=SK;c.fillRect(gx-15,f-40,6,6);c.fillRect(gx+9,f-40,6,6);
+      c.fillStyle='rgba(120,110,200,.85)';for(let i=0;i<5;i++)c.fillRect(gx-15+i*7,f-72,3,12+((i*7)%3)*5);
+      c.fillStyle='#7ad7ff';const ty=(t*40)%24;c.fillRect(gx-8,f-62+ty,3,5);c.fillRect(gx+8,f-62+((ty+10)%24),3,5);   // 涙
+    }else if(k==='jump'){
+      const hop=Math.abs(Math.sin(t*4.4))*40;
+      put(c,SPR.grandpa,gx,f-hop,3,false,hop<3?.92:1);
+      const ay=f-hop;
+      c.fillStyle='#6b7d8c';c.fillRect(gx-26,ay-72,7,28);c.fillRect(gx+19,ay-72,7,28);     // 万歳の腕
+      c.fillStyle=SK;c.fillRect(gx-26,ay-80,7,8);c.fillRect(gx+19,ay-80,7,8);
+      c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(gx,f+2,22-hop*.25,5,0,0,7);c.fill();
+    }else{
+      put(c,SPR.grandpa,gx,f,3,false);
+      c.fillStyle='#46545f';c.fillRect(gx-24,f-32,48,12);                                    // 抱える腕
+      // 柿の山
+      const pile=[[-18,-34],[-6,-40],[8,-38],[20,-33],[-12,-50],[4,-52],[16,-48],[-2,-64],[-20,-48]];
+      pile.forEach((q,i)=>put(c,SPR.kaki,gx+q[0],f+q[1]+4+Math.sin(t*3+i)*.8,2,false));
+      c.fillStyle='#ffd13a';c.font='bold 16px sans-serif';c.textAlign='center';c.fillText('♪',gx+34+Math.sin(t*5)*3,f-84-(t*20)%14);
+    }
+  }else{
+    // 縁側でお茶
+    c.fillStyle='#6a4a30';c.fillRect(104,f-4,172,10);c.fillStyle='#4a321f';c.fillRect(104,f+6,172,4);
+    c.fillStyle='#3a281a';c.fillRect(112,f+10,8,16);c.fillRect(260,f+10,8,16);
+    put(c,SPR.grandpa,gx,f-4,3,false,.82);
+    const sip=(Math.sin((t-END_SPLIT)*1.5)>.2);
+    const cy=f-(sip?46:30);
+    c.fillStyle='#fff';c.fillRect(gx+6,cy,13,10);c.fillStyle='#c9b8a0';c.fillRect(gx+6,cy,13,3);
+    c.fillStyle='rgba(255,255,255,.6)';for(let i=0;i<3;i++)c.fillRect(gx+8+i*4+Math.sin(clock*3+i)*2,cy-8-((clock*16+i*6)%14),2,5);
+    if(t>END_SPLIT+4.6){c.fillStyle='#fff';c.font='bold 22px sans-serif';c.textAlign='center';c.textBaseline='middle';
+      c.fillText('？',gx+Math.sin(clock*6)*2,f-84-Math.abs(Math.sin(clock*4))*4)}
+  }
+  if(o.front)kid(c,t);
+  // セリフ
+  for(const q of fx){const dy=((q.t0||1.2)-q.t)*10;bubble(c,q.x,q.y-dy,q.text,q.who&&VOICE[q.who]?VOICE[q.who].col:null)}
+  // 字幕
+  const lines=B?['ずずっ…。','それにしても、あの子は誰じゃ。']
+    :k==='despair'?['木に残った柿は、わずか '+end.R+'こ。','枝はほとんど空っぽだった…']
+    :k==='jump'?['木にはまだ '+end.R+'こ も残っていた！','爺さん、思わず飛び跳ねる。']
+    :['木には '+end.R+'こ も残っていた！','爺さんは両手いっぱいに抱えて、ほくほく顔。'];
+  const show=B?(t>END_SPLIT+.5?(t>END_SPLIT+3.2?2:1):0):(t>.4?2:0);
+  if(show&&!end.card){
+    c.fillStyle='rgba(10,5,25,.72)';c.beginPath();c.roundRect(14,516,332,38,10);c.fill();
+    c.fillStyle='#ffe9b0';c.font='bold 12px sans-serif';c.textAlign='center';c.textBaseline='middle';
+    c.fillText(lines[0],W/2,529);if(show>1)c.fillText(lines[1],W/2,544);
+  }
+  // 場面転換のフェード
+  let fa=0;if(t>END_SPLIT-.5&&t<END_SPLIT)fa=(t-(END_SPLIT-.5))/.5;else if(t>=END_SPLIT&&t<END_SPLIT+.5)fa=1-(t-END_SPLIT)/.5;
+  if(fa>0){c.fillStyle='rgba(8,4,18,'+fa+')';c.fillRect(0,0,W,H)}
+  if(!end.card){c.fillStyle='rgba(255,255,255,.6)';c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('タップでスキップ',W-8,6)}
 }
 
 /* ============ UI（オーバーレイ） ============ */
@@ -730,12 +1126,13 @@ function showIntro(i){
     '<button class="btn" data-act="start" data-i="'+i+'">庭をのぞく</button>');
 }
 function finishStage(){
+  const n=crow.carry.length;
+  taken[stage]=n;lsSet('taken',taken);
   phase='clear';cleared=Math.max(cleared,stage+1);lsSet('cleared',cleared);refreshBar();
-  const last=stage===4;
-  if(last)showOv('<h2>柿、ゲット！</h2><p>五日目の夕方。カラスは最後の柿をくわえて飛び立った。</p>'+
-    '<p>翌日、孫が帰ってきた。<br>枝には、カラスが一つだけ残した柿。<br>爺さんは笑って、孫と一緒にそれをもいだ。</p>'+
-    '<p class="sub">（エンディングは仮）</p><button class="btn" data-act="title">タイトルへ</button>');
-  else showOv('<h2>柿、ゲット！</h2><p>'+STAGES[stage].day+'の収穫。とびたち '+attempts+'回、のこり '+Math.ceil(timeLeft)+'秒。</p>'+
+  const rem=TREE_TOTAL-taken.slice(0,stage+1).reduce((a,b)=>a+(b||0),0);
+  if(stage===4){showEnding();return}
+  showOv('<h2>柿、ゲット！</h2><p>'+STAGES[stage].day+'の収穫は <b>'+n+'こ</b>。とびたち '+attempts+'回、のこり '+Math.ceil(timeLeft)+'秒。</p>'+
+    '<p class="sub">木にはまだ <b>'+rem+'こ</b> のこっている。<br>とりすぎると、最後に爺さんが泣くかもしれない…</p>'+
     '<p>…しかし、翌日。爺さんは警戒を高めている。</p>'+
     '<button class="btn" data-act="intro" data-i="'+(stage+1)+'">つぎの日へ</button><button class="btn g" data-act="title">タイトルへ</button>');
 }
@@ -776,6 +1173,7 @@ addEventListener('keydown',e=>{
 function pt(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/S,y:(e.clientY-r.top)/S}}
 cv.addEventListener('pointerdown',e=>{
   unlock();
+  if(phase==='ending'&&end&&!end.card){end.t=end.t<END_SPLIT?END_SPLIT:END_CARD;return}
   if(phase!=='aim'||paused||!crow||crow.mode!=='perch')return;
   e.preventDefault();
   try{cv.setPointerCapture(e.pointerId)}catch(_){}
@@ -806,7 +1204,7 @@ addEventListener('resize',resize);addEventListener('orientationchange',resize);
 if(!CanvasRenderingContext2D.prototype.roundRect){
   CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h){this.rect(x,y,w,h)};
 }
-resetCrow();world=null;enemies=[];kakis=[];kunai=[];fx=[];
+resetCrow();world=null;enemies=[];kakis=STAGES[0].kaki.map(p=>({x:p[0],y:p[1],r:11}));kunai=[];fx=[];buildTree(kakis);
 resize();applyMute();showTitle();
 requestAnimationFrame(frame);
 </script>
