@@ -799,15 +799,47 @@ function drawScene(c){
   drawTreeImg(c);
 }
 
-function drawHouse(c){   // 縁側のある家（おばあさんはここから庭の柿の木を見張る）
-  c.fillStyle='#3a2b3f';c.beginPath();c.moveTo(-6,404);c.lineTo(52,372);c.lineTo(112,412);c.lineTo(112,420);c.lineTo(-6,420);c.fill();   // 屋根
-  c.fillStyle='#241a2a';c.fillRect(-6,418,118,5);
-  c.fillStyle='#8a6a48';c.fillRect(0,423,98,55);
-  c.fillStyle='#e9d6a0';c.fillRect(4,428,90,48);                                                   // 障子
-  c.fillStyle='#8a6a48';for(let i=1;i<4;i++)c.fillRect(4+i*22,428,2,48);c.fillRect(4,450,90,2);
-  c.fillStyle='rgba(255,170,80,.22)';c.fillRect(4,428,90,48);
-  c.fillStyle='#6a4a30';c.fillRect(0,478,96,8);c.fillStyle='#4a321f';c.fillRect(0,486,96,3);          // 縁側
-  c.fillStyle='#3a281a';c.fillRect(6,489,7,14);c.fillRect(80,489,7,14);
+function drawHouse(c){   // 昭和の木造平屋の縁側（瓦屋根・ガラス戸・戸袋・風鈴・蚊取り線香・座布団・沓脱石）
+  const wood='#7a5233',woodD='#4a321f',woodL='#9a6f45';
+  // 瓦屋根（入母屋風。段ごとに瓦の筋）
+  c.fillStyle='#34303f';c.beginPath();c.moveTo(-8,414);c.lineTo(8,374);c.lineTo(84,374);c.lineTo(124,414);c.closePath();c.fill();
+  c.strokeStyle='#4b4660';c.lineWidth=1.5;
+  for(let y=382;y<414;y+=6){c.beginPath();c.moveTo(-8+(414-y)*.4,y);c.lineTo(124-(414-y),y);c.stroke()}
+  c.fillStyle='#4b4660';c.fillRect(8,371,76,4);                                   // 棟
+  c.fillStyle='#34303f';c.fillRect(5,366,8,8);c.fillRect(80,366,8,8);               // 鬼瓦
+  c.fillStyle='#241f2e';c.fillRect(-8,413,134,4);                                 // 軒先の瓦
+  c.fillStyle=woodD;c.fillRect(-8,417,134,5);                                     // 破風・鼻隠し
+  // 壁：上は白い漆喰、柱と鴨居
+  c.fillStyle='#d9ccb0';c.fillRect(0,422,110,10);
+  c.fillStyle=wood;c.fillRect(0,431,110,4);                                       // 鴨居
+  // 戸袋（左）
+  c.fillStyle=woodL;c.fillRect(0,435,20,43);c.strokeStyle=woodD;c.lineWidth=1;
+  for(let x=4;x<20;x+=4){c.beginPath();c.moveTo(x,435);c.lineTo(x,478);c.stroke()}
+  // ガラス戸（木枠＋格子。中の明かりでほんのり暖色）
+  for(let i=0;i<4;i++){
+    const x=20+i*22;
+    c.fillStyle='rgba(240,214,150,.92)';c.fillRect(x,435,22,43);
+    c.fillStyle='rgba(180,215,230,.28)';c.fillRect(x+2,437,18,39);                // ガラスの照り
+    c.fillStyle=wood;c.fillRect(x,435,2,43);c.fillRect(x+20,435,2,43);c.fillRect(x,435,22,2);c.fillRect(x,476,22,2);
+    c.fillStyle=woodL;c.fillRect(x+10,437,2,39);                                   // 縦桟
+    for(let y=449;y<476;y+=13)c.fillRect(x+2,y,18,2);                              // 横桟
+  }
+  c.fillStyle=wood;c.fillRect(106,431,5,47);                                        // 柱
+  // 風鈴（そよ風でゆれる）
+  const sw=Math.sin(clock*2.2)*3,hx=76;
+  c.strokeStyle='#d8d0c0';c.lineWidth=1;c.beginPath();c.moveTo(hx,422);c.lineTo(hx+sw*.3,436);c.stroke();
+  c.fillStyle='rgba(170,220,235,.9)';c.beginPath();c.arc(hx+sw*.3,440,4.5,Math.PI,0);c.lineTo(hx+sw*.3+4.5,442);c.lineTo(hx+sw*.3-4.5,442);c.fill();
+  c.fillStyle='#e8a0b0';c.fillRect(hx+sw*.6-1.5,444,3,9);                           // 短冊
+  // 縁側（板張り・縁の下の束・沓脱石）
+  c.fillStyle='#8a6038';c.fillRect(0,478,118,8);
+  c.strokeStyle='#5a3d22';c.lineWidth=1;for(let x=10;x<118;x+=22){c.beginPath();c.moveTo(x,478);c.lineTo(x,486);c.stroke()}
+  c.fillStyle=woodD;c.fillRect(0,486,118,4);
+  c.fillStyle='#2a1c12';c.fillRect(8,490,7,15);c.fillRect(56,490,7,15);c.fillRect(100,490,7,15);
+  c.fillStyle='#6f6a68';c.beginPath();c.ellipse(130,497,18,6,0,0,7);c.fill();c.fillStyle='#8a8582';c.beginPath();c.ellipse(130,495,16,4.5,0,0,7);c.fill();   // 沓脱石
+  c.fillStyle='#b05a68';c.fillRect(22,472,44,6);c.fillStyle='#d27d8a';c.fillRect(22,472,44,2);   // 座布団
+  // 蚊取り線香
+  c.fillStyle='#3f5a3a';c.beginPath();c.ellipse(90,476,6,2.5,0,0,7);c.fill();c.fillStyle='#8a6038';c.beginPath();c.ellipse(90,476,3,1.2,0,0,7);c.fill();
+  c.strokeStyle='rgba(220,220,220,.5)';c.lineWidth=1.5;c.beginPath();c.moveTo(90,474);for(let i=1;i<=6;i++)c.lineTo(90+Math.sin(clock*2+i)*3,474-i*5);c.stroke();
 }
 
 function drawPath(c){
