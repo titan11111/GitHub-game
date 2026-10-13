@@ -320,7 +320,7 @@ if(t.acc==='bent'){torso.rotation.x=.25;head.position.z=.1;}
 
 mergeLimbs(g,new Set([torso,thumb]));
 
-const rage=new THREE.Sprite(rageMat);rage.scale.set(.6,.6,1);rage.position.y=2.1;rage.visible=false;g.add(rage);
+const rage=new THREE.Sprite(rageMat);rage.scale.set(.8,.8,1);rage.position.set(.18,2.12,0);rage.visible=false;g.add(rage);
 
 g.scale.setScalar(t.h/1.76);
 
@@ -526,9 +526,9 @@ function setPose(n){
 
 const P=n.parts;
 
-P.rage.visible=n.state==='angry';
+P.rage.visible=n.state==='angry'||n.state==='fuming';
 
-P.torso.material.emissive.setHex(n.state==='angry'?0x661010:0);
+P.torso.material.emissive.setHex(n.state==='angry'||n.state==='fuming'?0x661010:0);
 P.head.rotation.set(0,0,0);P.elbowR.rotation.x=0;P.armR.rotation.z=0;
 
 if(n.state==='shock'||n.state==='startled'||n.state==='fuming'){P.armL.rotation.x=P.armR.rotation.x=-2.8;P.head.rotation.x=-.2;n.pose='fixed';return;}
@@ -572,7 +572,7 @@ return false;}
 function updateNPC(n,dt){
 
 const p=n.mesh.position,pp=player.mesh.position;
-
+if(n.parts.rage.visible){const k=.95+.17*Math.sin(stageElapsed*16);n.parts.rage.scale.set(k,k,1);n.parts.rage.position.y=2.1+.04*Math.sin(stageElapsed*16);}
 n.cool=Math.max(0,n.cool-dt);
 
 let sp=0,dir=null;
@@ -602,7 +602,7 @@ if(lost){n.searchTime=(n.searchTime||0)+dt;const target=player.hidden?player.hid
 
 dir=dirV.subVectors(pp,p).setY(0);const d=dir.length();dir.normalize();
 
-sp=Math.min(3.9,n.T.speed*.48*n.rageSpeed);
+sp=Math.min(5.85,n.T.speed*.72*n.rageSpeed);
 
 if(n.bark<=0){sayN(n,pick(n.T.chase),'angry',2.2);n.bark=3+Math.random()*2;}
 
@@ -777,7 +777,7 @@ n.phone=null;n.hasPhone=false;n.state='shock';setPose(n);
 const dir=player.dir.clone().setY(0).normalize();const side=new THREE.Vector3(-dir.z,0,dir.x);
 const vel=dir.multiplyScalar(3.2).addScaledVector(side,(Math.random()-.5)*1.1);vel.y=4.2;
 if(S.ponds)for(const pd of S.ponds){const cx=(pd.x0+pd.x1)/2,cz=(pd.z0+pd.z1)/2;if(Math.abs(ph.position.z-cz)<11)vel.x+=THREE.MathUtils.clamp((cx-ph.position.x)*.55,-3.2,3.2);}
-event={npc:n,phone:ph,vel,real:0,age:0,resolved:false,landed:false,caught:false,broken:false};timeScale=.25;stats.hits++;
+event={npc:n,phone:ph,vel,real:0,age:0,resolved:false,landed:false,caught:false,broken:false};timeScale=.5;stats.hits++;
 const points=[];for(let t=0;t<1;t+=.03){const v=ph.position.clone().addScaledVector(vel,t);v.y-=5*t*t;if(v.y<.1)break;v.x=THREE.MathUtils.clamp(v.x,S.kind==='train'?-1.15:-S.w/2+.6,S.kind==='train'?1.15:S.w/2-.6);points.push(v);}
 const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineDashedMaterial({color:0xf0d39a,dashSize:.18,gapSize:.12}));line.computeLineDistances();world.add(line);event.trajectory=line;
 const halo=new THREE.Mesh(new THREE.RingGeometry(.24,.31,32),new THREE.MeshBasicMaterial({color:0x8eead7,side:THREE.DoubleSide,transparent:true,opacity:.9}));halo.rotation.x=-Math.PI/2;world.add(halo);event.ring=halo;
@@ -846,7 +846,7 @@ if(r==='graze'&&!E.broken)ch*=.5;
 
 n.state='sulk';n.cool=4;
 
-if(Math.random()<ch){n.state='startled';n.timer=99;setPose(n);later(1.5,()=>{if(n.state!=='startled')return;n.state='fuming';setPose(n);sayN(n,'ちょっと…待ってください！','angry',1.4);});later(2.8,()=>{if(n.state==='startled'||n.state==='fuming')startChase(n);});}
+if(Math.random()<ch){n.state='startled';n.timer=99;setPose(n);later(.08,()=>{if(n.state!=='startled')return;n.state='fuming';setPose(n);sayN(n,'ちょっと…待ってください！','angry',1.4);});later(.2,()=>{if(n.state==='startled'||n.state==='fuming')startChase(n);});}
 
 else{n.timer=2.5;setPose(n);}
 
