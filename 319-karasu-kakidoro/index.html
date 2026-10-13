@@ -165,21 +165,21 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 const STAGES=[
  {day:'一日目',line:'夕暮れの庭。爺さんが竹箒で掃いている。大きな柿の木。今度、孫が帰ってきたら一緒に柿狩りをするのだ。',
   who:'爺さん（竹箒）',enemies:['grandpa'],say:'孫が帰ったら柿狩りじゃ♪',
-  kaki:[[205,338],[262,326],[302,356],[180,364]],trig:80,wind:.5},
+  kaki:[[176,364],[214,334],[286,336],[324,370],[210,398]],trig:80,wind:.5},
  {day:'二日目',line:'爺さんは警戒を高めている。さらに、裸眼のとめさんが縁側からキョロキョロ見張っている。',
   who:'＋とめさん（見られると発見→警戒。目をそらす隙をつけ）',enemies:['grandpa','tome'],say:'昨夜も柿が減っとった…',
-  kaki:[[212,350],[268,384],[186,392]],trig:95,wind:.45,tomeRate:.8},
+  kaki:[[176,374],[214,344],[286,346],[324,380],[210,408]],trig:95,wind:.45,tomeRate:.8},
  {day:'三日目',line:'高枝切りばさみのはじめさんが加勢。リーチは竹箒よりずっと長く、厄介。',
   who:'＋はじめさん（高枝切りばさみ・リーチ長）／とめさんは発見が速くなる',enemies:['grandpa','tome','hajime'],say:'今日こそ捕まえるぞ',
-  kaki:[[225,388],[292,398],[180,404]],trig:95,wind:.45,tomeRate:1.0},
+  kaki:[[176,384],[214,354],[286,356],[324,390],[210,418]],trig:95,wind:.45,tomeRate:1.0},
  {day:'四日目',line:'『くのいち』が現れた。なぜかクナイを投げてくる。理由は誰も知らない。',
   who:'＋くのいち（なぜかクナイを投げる）',enemies:['grandpa','tome','hajime','kunoichi'],say:'あの娘、どこの子じゃ？',
-  kaki:[[222,392],[286,404],[176,410]],trig:95,wind:.45,tomeRate:1.3},
+  kaki:[[176,388],[214,358],[286,360],[324,394],[210,422]],trig:95,wind:.45,tomeRate:1.3},
  {day:'五日目',line:'仮称サスケ。ただし尻尾がある。人間ではなさそうだ。孫が帰ってくるのは明日。',
   who:'＋サスケ(仮)（尻尾あり・跳ぶ）',enemies:['grandpa','tome','hajime','kunoichi','sasuke'],say:'…尻尾、あったか？',
-  kaki:[[220,396],[284,408],[178,414]],trig:95,wind:.45,tomeRate:1.7}
+  kaki:[[176,392],[214,362],[286,364],[324,398],[210,426]],trig:95,wind:.45,tomeRate:1.7}
 ];
-const TREE_TOTAL=16;   // 五日間に柿がなる総数（各日の柿の数の合計）
+// 木になる柿は毎日5こ（多いと見づらく狙いづらいので固定）。取った分は翌日またなる
 
 /* ============ ゲーム状態 ============ */
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -806,8 +806,7 @@ function drawHUD(c){
   const t=Math.ceil(Math.max(0,timeLeft));
   c.textAlign='center';c.font='bold 20px sans-serif';c.fillStyle=t<=15?'#ff7a6b':'#fff';c.fillText('0:'+String(t).padStart(2,'0'),W/2,16);
   c.textAlign='right';c.font='13px sans-serif';c.fillStyle='#e6d9f5';c.fillText('とびたち '+attempts+'回',W-10,16);
-  const rem=TREE_TOTAL-taken.slice(0,stage).reduce((a,b)=>a+(b||0),0);
-  c.textAlign='right';c.font='bold 11px sans-serif';c.fillStyle='#ffb35a';c.fillText('木の柿 '+rem+'こ',W-10,38);
+  c.textAlign='right';c.font='bold 11px sans-serif';c.fillStyle='#ffb35a';c.fillText('木の柿 '+kakis.length+'こ',W-10,38);
   if(world&&world.alert>0&&phase==='fly'){            // 警戒中
     c.fillStyle='rgba(176,24,24,'+(.55+.25*Math.sin(clock*12))+')';c.beginPath();c.roundRect(W/2-34,42,68,18,9);c.fill();
     c.fillStyle='#fff';c.font='bold 11px sans-serif';c.textAlign='center';c.fillText('警戒中！',W/2,51.5);
@@ -947,16 +946,16 @@ function frame(ts){
 
 
 /* ============ エンディング（木に残った柿の数で3分岐） ============ */
-const SLOTS=[[178,364],[212,352],[262,330],[300,358],[190,400],[226,392],[284,404],[322,392],[158,372],[244,372],[205,330],[300,320]];
+const SLOTS=[[176,364],[214,334],[286,336],[324,370],[210,398]];
 function endKind(){
-  const T=[0,1,2,3,4].reduce((a,j)=>a+(taken[j]||1),0),R=TREE_TOTAL-T;
-  return{T:T,R:R,kind:R>=9?'armful':R>=6?'jump':'despair'};
+  const T=[0,1,2,3,4].reduce((a,j)=>a+(taken[j]||1),0),R=clamp(5-Math.round(T/3),0,5);   // R=エンディングの木に残る柿（0〜5）
+  return{T:T,R:R,kind:T<=7?'armful':T<=10?'jump':'despair'};
 }
 function showEnding(){
   const e=endKind();
   end={t:0,kind:e.kind,R:e.R,T:e.T,done:{},card:false};
   phase='ending';paused=false;
-  kakis=SLOTS.slice(0,Math.min(e.R,5)).map(p=>({x:p[0],y:p[1],r:11}));
+  kakis=SLOTS.slice(0,e.R).map(p=>({x:p[0],y:p[1],r:11}));
   world={alert:0,speechT:0};fx=[];kunai=[];
   buildTree(kakis);
   hideOv();refreshBar();
@@ -1116,10 +1115,9 @@ function finishStage(){
   const n=crow.carry.length;
   taken[stage]=n;lsSet('taken',taken);
   phase='clear';cleared=Math.max(cleared,stage+1);lsSet('cleared',cleared);refreshBar();
-  const rem=TREE_TOTAL-taken.slice(0,stage+1).reduce((a,b)=>a+(b||0),0);
   if(stage===4){showEnding();return}
   showOv('<h2>柿、ゲット！</h2><p>'+STAGES[stage].day+'の収穫は <b>'+n+'こ</b>。とびたち '+attempts+'回、のこり '+Math.ceil(timeLeft)+'秒。</p>'+
-    '<p class="sub">木にはまだ <b>'+rem+'こ</b> のこっている。<br>とりすぎると、最後に爺さんが泣くかもしれない…</p>'+
+    '<p class="sub">とりすぎると、最後に爺さんが泣くかもしれない…</p>'+
     '<p>…しかし、翌日。爺さんは警戒を高めている。</p>'+
     '<button class="btn" data-act="intro" data-i="'+(stage+1)+'">つぎの日へ</button><button class="btn g" data-act="title">タイトルへ</button>');
 }
