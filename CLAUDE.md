@@ -11,9 +11,9 @@
 
 ## 鉄則
 
-1. **20MB鉄則**: ゲームフォルダの公開実体（`.git` / `node_modules` / `_playtest` 除外）は合計 20.00MB 以下。超過は監査・harness・公開ゲートで FAIL。無駄ファイル削除と無圧縮MP3の HE-AAC(m4a) 化を優先する
+1. **携帯で動くことが基準**。サイズの上限は**20MB鉄則**（旧8MB縛りは廃止）: ゲームフォルダの公開実体（`.git` / `node_modules` / `_playtest` 除外）は合計 20.00MB 以下。超過は監査・harness・公開ゲートで FAIL。無駄ファイル削除と無圧縮MP3の HE-AAC(m4a) 化を優先する
 2. **フォルダ番号は変更しない**。`2025年制作生成AIゲーム作品集`（1〜100番アーカイブ）は触らない
-3. **push は AI が判断して自動実行する**。ローカルコミットが3件以上溜まったとき、緊急修正・iOS対応バグ修正のときは即 push（Pages は自動反映）
+3. **push はタイタンの指示があったときだけ**（「公開して」「できた」等の公開指示を含む）。コミットは作業の区切りごとにしてよい。**公開するときは push と Slack 通知を必ずセットで行う**
 4. **新作は4段ゲート**: 批評 → 設計書（SPEC.md） → 実装 → learnings記録。**実装の1手目は必ずコントロールパネル**（操作/設定UI）。判断不要の機械的改修（圧縮・git初期化など）は実装＋learnings記録のみでよい。品質劣化が再発したら全面ゲートに戻す
 5. **完了報告は証跡つきで言い切る**（旧ファイル削除の確認＋preview / harness の出力）。証跡の無い項目は「未検証」と明言する
 6. **改修は頼まれた範囲だけ**。他ゲームへの横展開・共通化・抽象化を頼まれずに始めない
@@ -30,7 +30,7 @@
 | セキュリティスキャン | `_tools/security-scan.sh` |
 | スクリーンショット一括 | `_tools/capture-screenshots.js` |
 | iPhone実機サイズ確認 | `/game-local-test` スキル |
-| 公開＋Slack通知（「公開して」「できた」） | `.cursor/rules/global.mdc/game-ship-pipeline.mdc`（SPEC→iOS→harness→`publish.sh`→Slack）。確認質問しない |
+| 公開＋Slack通知（「公開して」「できた」） | `/game-publish` スキル（SPEC→iOS→harness→`publish.sh`→Slack）。確認質問しない。**`publish.sh` は Slack を送らない**ので、出力された `SLACK_NOTIFY_TEXT` を AI が Slack コネクターの `slack_send_message` で `C0AMVQGBWFP` へ送る。「送信済」は permalink が返ったときだけ |
 
 ## トリガー
 
@@ -48,6 +48,14 @@
 5. プレイヤーが自分で止められる明示ポーズを実装する
 
 部品の置き場は `titans-ui/src/components/Controls/`。理由・実装の定石（仮想パッド・音声unlock）・着手順序: `docs/rules/control-panel.md`
+
+## 実装の禁止事項
+
+- `resizeCanvas()` などのリサイズ処理を毎フレーム呼ばない
+- 背景のランダム値を毎フレーム計算しない（事前に配列へ保存）
+- DOMノードを毎フレーム `createElement` で増やさない（プール方式）
+- `alert()` でゲームオーバーを出さない（画面内に描画）
+- デバッグ用 `console.log` を公開前に残さない
 
 ## ナレッジの場所（コードを書く前に見る）
 
