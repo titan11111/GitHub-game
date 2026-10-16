@@ -11,6 +11,7 @@
 <title>ひかりのしずく ― ぷるぷるスライム大冒険</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fc-ios-controller.css">
 <style>
 /* Layout: handheld-style column. Playfield (8:7, SFC ratio) on top, controller below. */
 :root{
@@ -24,7 +25,8 @@ body{
   margin:0; background:var(--bg); color:var(--ink);
   font-family:'DotGothic16','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
   box-sizing:border-box; padding-block:10px; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
-  padding-top:max(10px,env(safe-area-inset-top,0px)); padding-bottom:max(10px,env(safe-area-inset-bottom,0px));
+  padding-top:max(10px,env(safe-area-inset-top,0px)); padding-bottom:0;
+  min-height:100dvh;
   padding-left:max(16px,env(safe-area-inset-left,0px));
   padding-right:max(16px,env(safe-area-inset-right,0px));
   display:flex; flex-direction:column; align-items:center; gap:10px;
@@ -92,48 +94,58 @@ button.big:focus-visible,.pill:focus-visible{outline:2px solid #fff;outline-offs
 #banner small{display:block;font-size:calc(var(--u)*7);color:var(--lime);letter-spacing:.14em}
 
 /* Controller: every size scales with --k so it always fits the phone width */
-#pills{display:flex;gap:8px;justify-content:center;flex:none}
-#pad{
-  width:min(100%,520px); display:flex; justify-content:space-between; align-items:center; gap:8px;
-  flex:none; padding:2px 0 12px; touch-action:none;
+/* ---- controller: titans-ui FC deck (fc-ios-controller.css) + this game's overrides ---- */
+/* the grey shell grows into the space under the screen, so the handheld reads as one body
+   and the controls get as big as the phone allows */
+#pad.fc-control-deck{
+  flex:1 1 auto; height:auto; min-height:min(36dvh,250px); max-height:48dvh; width:100%; max-width:640px; margin-top:auto;
+  border-radius:16px 16px 0 0; flex-direction:column; align-items:stretch; justify-content:center;
+  gap:clamp(6px,2vw,14px);
+  padding-top:clamp(8px,2.4vw,16px); padding-bottom:max(10px,env(safe-area-inset-bottom,10px));
 }
-#dpad{position:relative;width:calc(150px*var(--k));height:calc(150px*var(--k));flex:none;touch-action:none;transition:transform .06s}
-#dpad::before{content:'';position:absolute;inset:-18px}   /* bigger touch area than it looks */
-#dpad i{
-  position:absolute; background:#222a66; border:2px solid #4b56b0; box-sizing:border-box;
-  display:flex; align-items:center; justify-content:center; font-style:normal; font-size:calc(18px*var(--k)); color:#aab4ff;
+.fc-sysrow{display:flex;justify-content:center;align-items:center;gap:clamp(5px,2vw,12px);flex:0 0 auto;position:relative;z-index:3}
+.fc-maindeck{display:flex;align-items:center;justify-content:space-between;gap:clamp(4px,1.5vw,10px);flex:1 1 auto;min-height:0;position:relative;z-index:2}
+.fc-deck-left{flex:0 0 auto}
+.fc-dpad-wrap{width:min(37vw,26dvh,176px);height:min(37vw,26dvh,176px);min-width:112px;min-height:112px}
+#dpad{transition:transform .06s}
+#dpad i.u,#dpad i.l,#dpad i.r,#dpad i.d{
+  position:absolute; z-index:2; display:flex; align-items:center; justify-content:center;
+  font-style:normal; font-size:clamp(11px,3vw,15px); color:#8e8e8e; text-shadow:0 1px 0 #0009;
+  pointer-events:none; background:none; border:0;
 }
-#dpad i.on{background:#5a68e8;color:#fff}
-#dpad .u{left:33.33%;top:0;width:33.33%;height:37.33%;border-radius:10px 10px 0 0}
-#dpad .d{left:33.33%;bottom:0;width:33.33%;height:37.33%;border-radius:0 0 10px 10px}
-#dpad .l{left:0;top:33.33%;width:37.33%;height:33.33%;border-radius:10px 0 0 10px}
-#dpad .r{right:0;top:33.33%;width:37.33%;height:33.33%;border-radius:0 10px 10px 0}
-#dpad .c{left:33.33%;top:33.33%;width:33.33%;height:33.33%;border:0;background:#222a66}
-.pill{
-  font:inherit; font-size:12px; color:var(--ink); background:#262e70; border:2px solid #4b56b0;
-  border-radius:16px; padding:6px 12px; cursor:pointer; touch-action:none; white-space:nowrap;
+#dpad i.u{left:32%;top:1%;width:36%;height:22%}
+#dpad i.d{left:32%;bottom:1%;width:36%;height:22%}
+#dpad i.l{left:1%;top:32%;width:22%;height:36%}
+#dpad i.r{right:1%;top:32%;width:22%;height:36%}
+#dpad i.u.on,#dpad i.d.on,#dpad i.l.on,#dpad i.r.on{color:#fff}
+#dpad i.c{display:none}
+
+.fc-deck-center{gap:clamp(5px,1.6vw,9px)}
+.fc-sysbtn{font-family:inherit;font-size:clamp(10px,2.8vw,13px);width:clamp(68px,19vw,92px);height:clamp(34px,9vw,42px);letter-spacing:0}
+.fc-sysbtn.on{transform:translateY(2px);box-shadow:0 0 0 #111,inset 0 2px 4px #00000073}
+.fc-sysbtn[hidden]{display:none}
+
+#btns.fc-deck-right{gap:clamp(3px,1.4vw,9px);touch-action:none;flex:0 0 auto;align-items:center;justify-content:flex-end;min-width:0}
+.fc-turbo{display:flex;flex-direction:column;justify-content:center;gap:clamp(6px,2vw,11px)}
+.fc-tbtn{
+  position:relative; width:clamp(44px,11.5vw,58px); height:clamp(32px,8.5vw,40px); padding:0; border-radius:9px;
+  border:2px solid #00000059; background:linear-gradient(180deg,#6e6e6e,#3d3d3d);
+  box-shadow:0 4px 0 #171717,inset 0 1px 0 #ffffff33; color:#f2f2f2;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1;
+  font-family:inherit; font-size:clamp(12px,3.4vw,15px);
 }
-.pill.on{background:#5a68e8}
-.pill[hidden]{display:none}
-#btns{position:relative;width:calc(170px*var(--k));height:calc(150px*var(--k));flex:none}
-.fb{
-  position:absolute; width:calc(58px*var(--k)); height:calc(58px*var(--k)); border-radius:50%; border:3px solid #0006; color:#fff;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; padding:0;
-  font-family:inherit; font-size:calc(20px*var(--k)); touch-action:none; cursor:pointer; box-shadow:0 4px 0 #0007;
-}
-.fb small{font-size:calc(10px*var(--k));margin-top:2px;opacity:.95}
-#btns{touch-action:none}
-#btns .fb{pointer-events:none;transition:transform .05s,box-shadow .05s,filter .05s}   /* the container picks the nearest button, so fingers can roll across */
-.fb.on{transform:translateY(3px) scale(.93);box-shadow:0 1px 0 #0007,inset 0 0 12px #fff6;filter:brightness(1.3)}
-.fb::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:3px solid #fff;opacity:0;pointer-events:none}
+#bX{border-top-color:#6fb4ff}
+#bY{border-top-color:#79dd86}
+.fc-ab{width:min(37vw,26dvh,176px);height:min(37vw,26dvh,176px);min-width:112px;min-height:112px;flex:0 0 auto}
+.fc-abbtn{font-family:inherit;color:#fff}
+.fc-abbtn i{font-family:inherit;font-size:clamp(15px,4.4vw,19px);color:#ffffffd9;flex-direction:column}
+.fb small{font-size:clamp(8px,2.3vw,10px);opacity:.95;margin-top:1px;display:block}
+#btns .fb{pointer-events:none;transition:transform .05s,box-shadow .05s,filter .05s}   /* the deck picks the nearest button, so fingers can roll across */
+.fb.on{transform:translateY(3px) scale(.94);filter:brightness(1.3)}
+.fb::after{content:'';position:absolute;inset:-3px;border-radius:inherit;border:3px solid #fff;opacity:0;pointer-events:none}
 .fb.rip::after{animation:rip .3s ease-out}
-@keyframes rip{from{transform:scale(.85);opacity:.8}to{transform:scale(1.55);opacity:0}}
+@keyframes rip{from{transform:scale(.85);opacity:.8}to{transform:scale(1.5);opacity:0}}
 button{-webkit-tap-highlight-color:transparent}
-.pill.on{transform:scale(.94)}
-#bX{left:calc(56px*var(--k));top:0;background:var(--px)}
-#bY{left:0;top:calc(46px*var(--k));background:var(--py)}
-#bA{right:0;top:calc(46px*var(--k));background:var(--pa)}
-#bB{left:calc(56px*var(--k));bottom:0;background:var(--pb);color:#2a2000}
 #keys{display:none;width:min(100%,760px);font-size:13px;line-height:1.7;color:#b7c0ff;text-align:center}
 @media (hover:hover) and (pointer:fine){
   #pad,#pills{display:none}
@@ -159,6 +171,11 @@ button{-webkit-tap-highlight-color:transparent}
 #endCv{width:calc(var(--u)*86);height:calc(var(--u)*48);image-rendering:pixelated}
 .ovbtns{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*2.5)}
 </style>
+    <meta property="og:title" content="ひかりのしずく ― ぷるぷるスライム大冒険">
+    <meta property="og:description" content="スマホ・PCのブラウザで遊べる無料ゲームです。インストール不要！">
+    <meta property="og:url" content="https://titan11111.github.io/323-hikari-no-shizuku/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
 </head>
 <body>
 
@@ -228,21 +245,32 @@ button{-webkit-tap-highlight-color:transparent}
   </div>
 </div>
 
-<div id="pills">
-  <button class="pill" id="bS" hidden>かわる</button>
-  <button class="pill" id="bM">おと ON</button>
-  <button class="pill" id="bH">ふるえ ON</button>
-  <button class="pill" id="bP">ポーズ</button>
-</div>
-<div id="pad">
-  <div id="dpad">
-    <i class="u">▲</i><i class="l">◀</i><i class="c"></i><i class="r">▶</i><i class="d">▼</i>
+<div id="pad" class="fc-control-deck">
+  <div class="fc-sysrow">
+    <button class="fc-sysbtn" id="bS" hidden>かわる</button>
+    <button class="fc-sysbtn" id="bM">おと ON</button>
+    <button class="fc-sysbtn" id="bH">ふるえ ON</button>
+    <button class="fc-sysbtn" id="bP">ポーズ</button>
   </div>
-  <div id="btns">
-    <button class="fb" id="bX">X<small>ふわり</small></button>
-    <button class="fb" id="bY">Y<small>ぶんれつ</small></button>
-    <button class="fb" id="bA">A<small>ジャンプ</small></button>
-    <button class="fb" id="bB">B<small>ぱくっ</small></button>
+  <div class="fc-maindeck">
+    <div class="fc-deck-left">
+      <div class="fc-dpad-wrap" id="dpadWrap">
+        <div id="dpad" class="fc-dpad" aria-label="十字キー" data-up="0" data-down="0" data-left="0" data-right="0">
+          <i class="fc-dpad-v"></i><i class="fc-dpad-h"></i><i class="fc-dpad-c"></i>
+          <i class="u">▲</i><i class="l">◀</i><i class="r">▶</i><i class="d">▼</i><i class="c"></i>
+        </div>
+      </div>
+    </div>
+    <div class="fc-deck-right" id="btns">
+      <div class="fc-turbo">
+        <button class="fc-tbtn fb" id="bX">X<small>ふわり</small></button>
+        <button class="fc-tbtn fb" id="bY">Y<small>ぶんれつ</small></button>
+      </div>
+      <div class="fc-ab">
+        <button class="fc-abbtn fc-abbtn-b fb" id="bB"><i>B<small>ぱくっ</small></i></button>
+        <button class="fc-abbtn fc-abbtn-a fb" id="bA"><i>A<small>ジャンプ</small></i></button>
+      </div>
+    </div>
   </div>
 </div>
 <div id="keys">←→ うごく ／ Z ジャンプ ／ X ぱくっ・のっとり ／ C ふわり ／ V ぶんれつ・合体 ／ Tab かわる ／ ↓ ながおしで しみこむ ／ P ポーズ ／ M おと</div>
@@ -802,6 +830,11 @@ function drawTiles(t){
         const X=Math.round(tx*T-camx),Y=ty*T-Math.round(camy);
         cx.fillStyle=MOSSC[0];cx.fillRect(X,Y,T,2);cx.fillStyle=MOSSC[1];cx.fillRect(X,Y,T,1);cx.fillStyle=MOSSC[2];
         for(let k=0;k<4;k++){const mx=X+Math.floor(hash(tx*4+k,ty)*14);cx.fillRect(mx,Y+2,1,1+Math.floor(hash(tx+k,9)*3));}}
+      if(G.stage===5&&SOLID[id]===1&&ty<NR-1&&!M[row+NC+tx]){   // every block that hangs over nothing is held up by something
+        const X=Math.round(tx*T-camx),Y=ty*T-Math.round(camy)+T,A=SPACC[spzOf(tx)];
+        cx.fillStyle=A;cx.globalAlpha=.15+.05*Math.sin(t*.05+tx*.7);cx.fillRect(X,Y,T,2);
+        cx.globalAlpha=.07;cx.fillRect(X,Y+2,T,3);cx.globalAlpha=1;
+      }
       if(id===1&&!up&&G.stage<4)drawBlades(tx,ty,t);
       if(id===3&&!up&&((t>>4)+tx*3)%9===0)R(tx*T+3+((t>>3)%9),ty*T+1,2,1,'#e6f6ff');
       if(id===7){const f=Math.sin(t*.1+tx)*2;R(tx*T+4,ty*T-5+f,2,4,'#ffffff55');R(tx*T+10,ty*T-8-f,2,5,'#ffffff44');}
@@ -3819,30 +3852,58 @@ let TLSP=null,SP=[],SPBG=[];
 function spzOf(tx){let z=0;for(let i=1;i<SPZB.length;i++)if(tx>=SPZB[i])z=i;return z;}
 const SPG=[['#c6cade','#eef0ff','#9aa0bc','#6c7290'],['#a8845e','#d4aa7a','#7a5c3e','#54402a'],['#5c6c90','#8a9cc4','#3e4a68','#2a3248'],['#6a5ac8','#a898ff','#4a3c98','#30286a'],['#34224a','#6a4a8a','#221430','#160c20']];
 const SPRK=[['#868cac','#b4bad8','#5a6080','#3a3e58'],['#6e5a46','#9a8264','#4a3c2c','#30261c'],['#48587c','#7a90b8','#2c3858','#1a2238'],['#3a5ac8','#78a0ff','#223a94','#14246a'],['#2a1a3a','#5a3a7a','#180e24','#0e0716']];
-function mkSpTop(z,v){const P=SPG[z];return mkC(T,T,f=>{
-  f(0,0,16,16,P[0]);speck(f,14,50+v*13,3,[P[1],P[2],P[3]]);
-  f(0,0,16,3,P[1]);f(0,3,16,1,P[0]);f(0,15,16,1,P[2]);
-  if(z===0){if(v===0){f(3,1,5,2,P[2]);f(4,1,3,1,P[3]);}if(v===1){f(9,0,4,3,P[2]);f(10,1,2,1,P[3]);}if(v===2){f(1,4,2,1,P[3]);f(12,5,2,1,P[3]);f(6,0,1,1,'#fff');}}
-  if(z===1){f(2+v*3,0,2,3,'#9ae8ff');f(3+v*3,0,1,2,'#fff');f(11,2,2,1,P[3]);}
-  if(z===2){f(0,0,16,2,'#8a9cc4');f(0,2,16,1,'#2a3248');for(const x of[2,13])f(x,5,1,1,'#ffd23f');f(5+v*2,1,2,1,'#ffd23f');f(0,9,16,1,P[3]);f(8,9,1,7,P[3]);}
-  if(z===3){f(3+v*3,0,1,2,'#fff');f(2+v*3,1,3,1,'#e0d8ff');f(11,4,1,1,'#ff9ae0');f(6,6,1,1,'#7af0ff');}
-  if(z===4){f(2,3,5,1,'#ff4a7a');f(6,4,1,3,'#ff4a7a');f(10,2,4,1,'#ff4a7a55');}});}
+const SPACC=['#7af0ff','#ffd23f','#7af0ff','#c8a8ff','#ff6a9a'];   // each zone's rune colour
+/* Laputa-ish masonry: every block is a carved stone with a lit top-left chamfer,
+   a dark bottom-right shadow and a mortar groove, so a wall reads as separate
+   floating stones instead of a flat panel. A few blocks carry a glowing rune. */
+function spBlockBase(f,z,v,seed){
+  const P=SPRK[z];
+  f(0,0,16,16,P[0]);
+  speck(f,9,seed+v*17,0,[P[1],P[2]]);
+  f(1,1,15,2,P[1]);f(1,1,2,15,P[1]);          // chamfer, lit from the upper left
+  f(1,1,15,1,'#ffffff3a');
+  f(1,13,15,2,P[2]);f(13,1,2,14,P[2]);        // the far side of the chamfer
+  f(0,0,16,1,P[3]);f(0,0,1,16,P[3]);          // mortar
+  f(0,15,16,1,P[3]);f(15,0,1,16,P[3]);
+  f(1,14,14,1,'#00000047');
+}
+function mkSpRock(z,v){return mkC(T,T,f=>{
+  spBlockBase(f,z,v,120);
+  const P=SPRK[z];
+  if(v===0){f(5,5,6,6,P[2]);f(6,6,4,4,P[3]);f(6,6,1,1,P[1]);}            // a sunken square boss
+  else if(v===1){f(4,7,8,1,P[3]);f(7,4,1,8,P[3]);}                        // a carved cross groove
+  else if(v===2){for(let k=0;k<3;k++){f(4,4+k*3,8,1,P[2]);}}              // stacked grooves
+  else{f(4,4,3,3,P[2]);f(9,9,3,3,P[2]);f(9,4,3,3,P[3]);f(4,9,3,3,P[3]);}  // checker inlay
+});}
+function mkSpRune(z,on){const A=SPACC[z];return mkC(T,T,f=>{
+  spBlockBase(f,z,1,140);
+  const c=on?A:A+'88',h=on?'#ffffff':A;
+  f(5,4,6,1,c);f(5,11,6,1,c);f(5,4,1,8,c);f(10,4,1,8,c);                  // rune ring
+  f(7,6,2,4,c);f(6,7,4,1,h);
+  if(on){f(5,4,6,1,h);f(7,6,2,1,h);}
+});}
+function mkSpTop(z,v){const P=SPG[z],A=SPACC[z];return mkC(T,T,f=>{
+  f(0,0,16,16,P[0]);
+  speck(f,10,50+v*13,5,[P[1],P[2],P[3]]);
+  f(0,0,16,2,P[1]);f(0,0,16,1,'#ffffff55');                               // capstone edge catches the light
+  f(0,2,16,1,A+'66');                                                     // a thin seam of the zone's energy
+  f(0,3,16,1,P[2]);
+  f(0,14,16,2,P[2]);f(0,15,16,1,P[3]);
+  f(0,0,1,16,P[3]);f(15,0,1,16,P[3]);
+  if(v===0){f(3,6,4,4,P[2]);f(4,7,2,2,P[3]);}
+  if(v===1){f(9,5,5,1,P[2]);f(9,9,5,1,P[2]);}
+  if(v===2){f(6,5,1,8,P[2]);f(5,8,4,1,P[2]);f(6,5,1,1,A);}
+});}
 function mkSpDeep(z,v){const P=SPG[z];return mkC(T,T,f=>{
-  f(0,0,16,16,P[2]);speck(f,22,80+v*11,0,[P[0],P[3],P[1]]);f(0,5+v,16,1,P[3]);f(0,11-v,16,1,P[3]);
-  if(z===2){f(0,0,16,1,P[3]);f(0,8,16,1,P[3]);f(7,0,2,16,P[3]);for(const x of[2,13])for(const y of[2,11])f(x,y,1,1,'#ffd23f');}
-  if(z===1&&v===0){f(5,6,3,4,'#9ae8ff');f(6,6,1,3,'#fff');}
-  if(z===3&&v===1){f(4,5,2,6,'#a898ff');f(5,5,1,6,'#fff');f(10,3,2,4,'#a898ff');}
-  if(z===4&&v===2){f(3,4,1,6,'#ff4a7a');f(3,9,5,1,'#ff4a7a');f(10,2,1,5,'#ff4a7a');}
-  if(v===0&&z===0){f(3,2,4,3,P[3]);f(4,2,2,1,P[1]);f(9,9,4,3,P[3]);}});}
-function mkSpRock(z,v){const P=SPRK[z];return mkC(T,T,f=>{
-  f(0,0,16,16,P[0]);speck(f,16,120+v*17,0,[P[1],P[2]]);
-  f(0,0,16,2,P[1]);f(0,0,2,16,P[1]);f(14,0,2,16,P[2]);f(0,14,16,2,P[3]);f(0,0,1,1,'#fff6');
-  if(z===0){if(v===0){f(4,4,4,3,P[2]);f(5,4,2,1,P[3]);}if(v===1){f(9,8,4,4,P[2]);f(10,9,2,2,P[3]);}if(v===2){f(3,9,10,1,P[3]);f(6,3,1,6,P[3]);}if(v===3){f(2,2,5,5,P[2]);f(3,3,3,3,P[3]);}}
-  if(z===1){f(3+v*2,3,2,4,'#9ae8ff');f(3+v*2,3,1,3,'#fff');f(10,9,3,3,P[2]);f(11,9,1,1,P[1]);}
-  if(z===2){f(0,7,16,2,P[3]);f(7,0,2,16,P[3]);f(1,1,5,5,v&1?P[2]:P[3]);f(10,10,5,5,P[2]);
-    if(v===0){f(2,2,3,3,'#ffd23f');f(3,3,1,1,'#fff');}if(v===1){f(11,11,3,3,'#7af0ff');f(12,12,1,1,'#fff');}if(v===2){for(let i=0;i<4;i++)f(2,2+i*3,4,1,'#1a2238');}if(v===3){f(10,2,4,4,'#7af0ff44');f(10,2,4,1,'#fff');}}
-  if(z===3){f(3,3,1,9,'#a8d0ff');f(4,3,6,1,'#a8d0ff');f(9,5,1,7,'#a8d0ff');f(5,6,1,1,'#fff');f(12,3,2,2,'#fff');}
-  if(z===4){f(3,3,2,2,'#ff4a7a');f(11,3,2,2,'#ff4a7a');f(4,9,8,1,'#ff4a7a');f(6,9,1,3,'#ff4a7a');f(9,9,1,3,'#ff4a7a');}});}
+  f(0,0,16,16,P[2]);
+  speck(f,18,80+v*11,0,[P[0],P[3],P[1]]);
+  f(0,0,16,1,P[3]);f(0,0,1,16,P[3]);f(15,0,1,16,P[3]);f(0,15,16,1,P[3]);
+  f(1,1,14,1,P[0]);f(1,1,1,14,P[0]);                                      // the same carve, one shade deeper
+  f(1,13,14,2,'#00000030');
+  if(v===0){f(5,5,6,6,P[3]);f(6,6,4,4,P[2]);}
+  if(v===1){f(4,8,8,1,P[3]);f(8,4,1,8,P[3]);}
+  if(v===2){f(3,3,4,1,P[3]);f(9,11,4,1,P[3]);}
+});}
 function makeSpace(){
   const S=Object.assign({},TLG);
   S.soilTop=mkC(T,T,f=>{f(0,0,16,16,'#8a90ac');speck(f,24,17,2,['#6a7090','#b4bad8','#6a7090']);f(0,0,16,3,'#b4bad8');f(0,0,16,1,'#dce0f4');f(3,1,2,1,'#fff');f(10,2,1,1,'#fff');f(7,7,3,1,'#6a7090');});
@@ -3855,11 +3916,15 @@ function makeSpace(){
     f(7,0,1,5,'#0a0e1c');f(6,4,3,1,'#0a0e1c');f(8,5,1,5,'#0a0e1c');f(5,9,4,1,'#0a0e1c');f(3,10,1,5,'#0a0e1c');f(10,2,1,3,'#0a0e1c');f(11,11,3,1,'#0a0e1c');f(12,8,1,4,'#0a0e1c');f(2,2,2,2,'#ffd23f');});
   S.vine=S.leaf;
   TLSP=S;
-  SP=[0,1,2,3,4].map(z=>({grassV:[0,1,2].map(v=>mkSpTop(z,v)),dirtV:[0,1,2].map(v=>mkSpDeep(z,v)),reef:[0,1,2,3].map(v=>mkSpRock(z,v))}));
+  SP=[0,1,2,3,4].map(z=>({grassV:[0,1,2].map(v=>mkSpTop(z,v)),dirtV:[0,1,2].map(v=>mkSpDeep(z,v)),reef:[0,1,2,3].map(v=>mkSpRock(z,v)),rune:[mkSpRune(z,false),mkSpRune(z,true)]}));
   makeSpaceBG();
 }
 function spSet(tx){return SP[spzOf(tx)];}
-function spStone(tx,ty){const S=SP[spzOf(tx)];return S.reef[Math.floor(hash(tx*3,ty*7+2)*4)];}
+function spStone(tx,ty){
+  const S=SP[spzOf(tx)],h=hash(tx*3,ty*7+2);
+  if(h>.9)return S.rune[((G.t>>4)+tx*2+ty)&1];      // one block in ten breathes with a rune
+  return S.reef[Math.floor(h*4)];
+}
 
 /* ---------- backdrops ---------- */
 function starField(f,g,w,h,n,seed,cols,big){for(let i=0;i<n;i++){const x=Math.floor(hash(i,seed)*w),y=Math.floor(hash(i,seed+1)*h),c=cols[i%cols.length];g.globalAlpha=.4+hash(i,seed+2)*.6;f(x,y,1,1,c);if(big&&hash(i,seed+3)>.9){f(x-1,y,3,1,c);f(x,y-1,1,3,c);}}g.globalAlpha=1;}
@@ -4095,6 +4160,30 @@ function buildSpBG(z){
   return{sky,far,mid};
 }
 /* --- draw --- */
+/* a mid-distance band of floating castle islands: crisp, but much darker and much
+   bigger than anything you can stand on, so near and far never read as the same depth */
+let SPISL=null;
+function spIslands(){
+  if(SPISL)return SPISL;
+  SPISL=mkC(512,H,(f,g)=>{
+    const D='#0b1130',D2='#121b40',L='#1b2857',E='#2c3d72',A='#5ad8ff';
+    const isle=(X,Y,w)=>{
+      X=Math.round(X);Y=Math.round(Y);
+      for(let k=0;k<w*.95;k++){const hw=Math.round(w/2*(1-k/(w*.95)));if(hw<1)break;f(X-hw,Y+k,hw*2,1,k<4?D2:D);}
+      for(let k=0;k<w*.5;k+=5)f(X-Math.round(w/2*(1-k/(w*.95)))-1,Y+k,1,3,E);
+      f(X-(w>>1)-3,Y-5,w+6,6,L);f(X-(w>>1)-3,Y-5,w+6,1,E);
+      for(let x=-(w>>1);x<(w>>1);x+=6)f(X+x,Y-5,1,6,D);
+      for(const [o,hh,ww] of [[-w*.3,Math.round(w*.3),7],[0,Math.round(w*.46),9],[w*.32,Math.round(w*.24),6]]){
+        const x=Math.round(X+o),top=Y-5-hh;
+        f(x-(ww>>1),top,ww,hh,L);f(x-(ww>>1),top,ww,1,E);f(x-(ww>>1)-1,top-2,ww+2,2,D2);
+        for(let wy=top+4;wy<Y-9;wy+=5){g.globalAlpha=.75;f(x-1,wy,2,2,A);g.globalAlpha=1;}
+      }
+      g.globalAlpha=.07;for(let k=1;k<5;k++)f(X-(w>>1)-k*3,Y+2+k*2,w+k*6,3,A);g.globalAlpha=1;
+    };
+    isle(92,118,58);isle(298,84,40);isle(436,142,72);isle(190,160,30);
+  });
+  return SPISL;
+}
 function drawSpaceBG(t){
   const c=(camx+128)/T;let z=spzOf(c),nz=z,a=0;
   if(z<4){const d=SPZB[z+1]-c;if(d<4){nz=z+1;a=.5*(1-d/4);}}
@@ -4104,9 +4193,21 @@ function drawSpaceBG(t){
     ox=-(Math.floor(camx*.2)%512);cx.drawImage(S.mid,ox,0);cx.drawImage(S.mid,ox+512,0);cx.globalAlpha=1;};
   lay(spbg(z),1);if(a>0)lay(spbg(nz),a);
   const fo=-(Math.floor(camx*.05)%512);
-  // living details: twinkling sstars, a slow satellite, a comet, spinning embers around the black hole, shooting sstars
-  for(let i=0;i<22;i++){const x=((i*53-camx*(.08+(i%3)*.06))%W+W)%W,y=(i*37)%H;const tw=Math.sin(t*.05+i*1.7);
-    if(tw>.5){cx.globalAlpha=(tw-.5)*2;cx.fillStyle='#fff';cx.fillRect(Math.round(x)-1,Math.round(y),3,1);cx.fillRect(Math.round(x),Math.round(y)-1,1,3);cx.globalAlpha=1;}}
+  // living details: a slow satellite, a comet, embers around the black hole, shooting stars
+  // every star keeps its own period, floor and range, so the field shimmers instead of blinking together
+  for(let i=0;i<26;i++){
+    const x=((i*53-camx*(.08+(i%3)*.06))%W+W)%W,y=(i*37+((i*17)%23))%H;
+    const sp=.012+hash(i,301)*.055,ph=hash(i,307)*6.283,base=.3+hash(i,311)*.5,amp=.2+hash(i,313)*.5;
+    const vv=base+Math.sin(t*sp+ph)*amp;
+    if(vv<.22)continue;
+    const warm=hash(i,317)>.84;
+    cx.fillStyle=vv>1?'#ffffff':vv>.74?(warm?'#fff3d8':'#eaf3ff'):vv>.5?(warm?'#d8c9a8':'#b9cdf0'):'#8294c4';
+    const X=Math.round(x),Y=Math.round(y);
+    cx.fillRect(X,Y,1,1);
+    if(vv>1.02&&hash(i,319)>.72){cx.globalAlpha=.6;cx.fillRect(X-1,Y,3,1);cx.fillRect(X,Y-1,1,3);cx.globalAlpha=1;}
+  }
+  cx.globalAlpha=.34;cx.fillStyle='#070c22';cx.fillRect(0,0,W,H);cx.globalAlpha=1;   // distance veil: the far half sits back without going blurry
+  const ix=-(Math.floor(camx*.12)%512),IS=spIslands();cx.drawImage(IS,ix,0);cx.drawImage(IS,ix+512,0);
   if(z===0){const sx=((t*.12)%360)-50,sy=34+Math.sin(sx*.03)*6;cx.fillStyle='#cfd8ee';cx.fillRect(Math.round(sx),Math.round(sy),3,1);cx.fillRect(Math.round(sx)-2,Math.round(sy)-1,2,3);cx.fillRect(Math.round(sx)+3,Math.round(sy)-1,2,3);
     if((t>>5)&1){cx.fillStyle='#fff';cx.fillRect(Math.round(sx)+1,Math.round(sy)-2,1,1);}}
   if(z===1){const ph=(t*.35)%900,x=W+40-ph,y=14+ph*.12;for(let k=0;k<46;k++){cx.globalAlpha=.7*(1-k/46);cx.fillStyle=k<8?'#e8f8ff':'#8ac8ff';cx.fillRect(Math.round(x+k*1.6),Math.round(y-k*.2),2,k<14?2:1);}cx.globalAlpha=1;cx.fillStyle='#fff';cx.fillRect(Math.round(x)-1,Math.round(y)-1,3,3);}
@@ -4172,7 +4273,8 @@ function drawSpaceDecor(){
   for(const p of MPLAT){const X=Math.round(p.x-camx),Y=Math.round(p.y-camy);if(X>W+8||X+p.w<-8)continue;
     cx.fillStyle='#2c3858';cx.fillRect(X,Y+2,p.w,4);cx.fillStyle='#8a9cc4';cx.fillRect(X,Y,p.w,2);cx.fillStyle='#d0e0ff';cx.fillRect(X+1,Y,p.w-2,1);
     cx.fillStyle='#ffd23f';for(let i=3;i<p.w-3;i+=8)cx.fillRect(X+i,Y+3,3,1);
-    cx.globalAlpha=.5+.3*Math.sin(t*.3);cx.fillStyle='#7af0ff';cx.fillRect(X+3,Y+6,3,2);cx.fillRect(X+p.w-6,Y+6,3,2);cx.globalAlpha=.2;cx.fillRect(X+4,Y+8,1,5);cx.fillRect(X+p.w-5,Y+8,1,5);cx.globalAlpha=1;}
+    cx.globalAlpha=.5+.3*Math.sin(t*.3);cx.fillStyle='#7af0ff';cx.fillRect(X+3,Y+6,3,2);cx.fillRect(X+p.w-6,Y+6,3,2);cx.globalAlpha=.2;cx.fillRect(X+4,Y+8,1,5);cx.fillRect(X+p.w-5,Y+8,1,5);
+    cx.globalAlpha=.16+.06*Math.sin(t*.09+X*.1);cx.fillRect(X+1,Y+6,p.w-2,2);cx.globalAlpha=.07;cx.fillRect(X-2,Y+8,p.w+4,4);cx.globalAlpha=1;}
   for(const d of DECOR){
     if(d.x<camx-14||d.x>camx+W+14)continue;
     const X=d.x,yy=d.y!==undefined?d.y:y,sw=Math.round(Math.sin(t*.04+X*.31)*1);
@@ -4446,7 +4548,9 @@ function drawSpringCv(lit,id){
 const el=id=>document.getElementById(id);
 const stageEl=el('stage');
 function fitUI(){const w=stageEl.clientWidth||512,s=document.documentElement.style;s.setProperty('--u',(w/256)+'px');s.setProperty('--k',String(Math.max(.55,Math.min(1.3,(Math.min(w,520)-12)/320))));}
-if(typeof ResizeObserver!=='undefined')new ResizeObserver(fitUI).observe(stageEl);
+if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>{fitUI();if(typeof fbMeasure==='function'){fbMeasure();dpMeasure();}}).observe(stageEl);
+addEventListener('resize',()=>{if(typeof fbMeasure==='function'){fbMeasure();dpMeasure();}});
+addEventListener('orientationchange',()=>{setTimeout(()=>{if(typeof fbMeasure==='function'){fbMeasure();dpMeasure();}},250);});
 fitUI();
 
 let hapOn=true,hapEl=null;
@@ -4872,6 +4976,7 @@ function perfTick(dt,ms,steps){
 function clearInputs(){   // a finger that was lifted while the page was away never sends pointerup: drop everything that might be stuck
   for(const k in K)K[k]=0;for(const k in PR)PR[k]=0;
   dpId=null;dpPrev=0;dp.style.transform='';for(const k in arms)arms[k].classList.remove('on');
+  dp.dataset.up=dp.dataset.down=dp.dataset.left=dp.dataset.right='0';dp.classList.remove('pressed');
   for(const id in fbp)delete fbp[id];for(const k in FB)FB[k].classList.remove('on');
   for(const id of['bS','bP'])el(id).classList.remove('on');
 }
@@ -4889,10 +4994,15 @@ function bindBtn(id,key){
 [['bS','s'],['bP','p']].forEach(p=>bindBtn(p[0],p[1]));
 /* face buttons: one container tracks every finger, picks the NEAREST button (no dead gaps) and lets a rolling thumb slide A→B */
 const FB={a:el('bA'),b:el('bB'),x:el('bX'),y:el('bY')},fbp={};
+let fbR=null;
+function fbMeasure(){   // measured once per layout change, not once per touch move
+  fbR={};for(const k in FB){const r=FB[k].getBoundingClientRect();fbR[k]={cx:r.left+r.width/2,cy:r.top+r.height/2,r:Math.max(r.width,r.height)*.5+18};}
+}
 function fbNear(px,py){
+  if(!fbR)fbMeasure();
   let best=null,bd=1e9;
-  for(const k in FB){const r=FB[k].getBoundingClientRect(),d=Math.hypot(px-(r.left+r.width/2),py-(r.top+r.height/2));if(d<bd){bd=d;best=k;}}
-  return best&&bd<=FB[best].getBoundingClientRect().width*.5+16?best:null;
+  for(const k in fbR){const o=fbR[k],d=Math.hypot(px-o.cx,py-o.cy);if(d<bd){bd=d;best=k;}}
+  return best&&bd<=fbR[best].r?best:null;
 }
 function fbSync(){
   for(const k in FB){
@@ -4903,7 +5013,7 @@ function fbSync(){
   }
 }
 const btnBox=el('btns');
-btnBox.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();try{btnBox.setPointerCapture(e.pointerId);}catch(_){}fbp[e.pointerId]=fbNear(e.clientX,e.clientY);fbSync();});
+btnBox.addEventListener('pointerdown',e=>{e.preventDefault();fbMeasure();audioInit();try{btnBox.setPointerCapture(e.pointerId);}catch(_){}fbp[e.pointerId]=fbNear(e.clientX,e.clientY);fbSync();});
 btnBox.addEventListener('pointermove',e=>{if(e.pointerId in fbp){fbp[e.pointerId]=fbNear(e.clientX,e.clientY);fbSync();}});
 const fbEnd=e=>{delete fbp[e.pointerId];fbSync();};
 btnBox.addEventListener('pointerup',fbEnd);btnBox.addEventListener('pointercancel',fbEnd);btnBox.addEventListener('lostpointercapture',fbEnd);
@@ -4912,17 +5022,30 @@ el('bH').addEventListener('click',()=>{hapOn=!hapOn;el('bH').textContent=hapOn?'
 el('bM').addEventListener('click',()=>{audioInit();toggleMute();});
 const dp=el('dpad'),arms={l:dp.querySelector('.l'),r:dp.querySelector('.r'),u:dp.querySelector('.u'),d:dp.querySelector('.d')};
 let dpId=null,dpPrev=0;
+let dpRect=null;
+function dpMeasure(){dpRect=dp.getBoundingClientRect();}
 function dpSet(e){
-  const r=dp.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5,ax=Math.abs(x),ay=Math.abs(y),dz=.13;
-  K.l=(x<-dz&&ax>=ay*.55)?1:0;K.r=(x>dz&&ax>=ay*.55)?1:0;K.u=(y<-dz&&ay>=ax*.55)?1:0;K.d=(y>dz&&ay>=ax*.55)?1:0;
+  if(!dpRect)dpMeasure();
+  const r=dpRect,x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5,ax=Math.abs(x),ay=Math.abs(y);
+  const on=.115,off=.055;                       // hysteresis: a thumb drifting toward the centre no longer drops the input
+  const ck=(v,held)=>v>(held?off:on);
+  K.l=(ck(-x,K.l)&&ax>=ay*(K.l?.45:.55))?1:0;K.r=(ck(x,K.r)&&ax>=ay*(K.r?.45:.55))?1:0;
+  K.u=(ck(-y,K.u)&&ay>=ax*(K.u?.45:.55))?1:0;K.d=(ck(y,K.d)&&ay>=ax*(K.d?.45:.55))?1:0;
   for(const k in arms)arms[k].classList.toggle('on',!!K[k]);
-  const code=K.l+2*K.r+4*K.u+8*K.d;if(code!==dpPrev){if(code)haptic(6);dpPrev=code;}
-  dp.style.transform=code?'perspective(240px) rotateX('+(-clamp(y,-.5,.5)*18).toFixed(1)+'deg) rotateY('+(clamp(x,-.5,.5)*18).toFixed(1)+'deg)':'';
+  dp.dataset.up=K.u?'1':'0';dp.dataset.down=K.d?'1':'0';dp.dataset.left=K.l?'1':'0';dp.dataset.right=K.r?'1':'0';
+  dp.classList.toggle('pressed',!!(K.l||K.r||K.u||K.d));
+  const code=K.l+2*K.r+4*K.u+8*K.d;
+  if(code!==dpPrev){
+    if(code)haptic(6);
+    dpPrev=code;
+    dp.style.transform=code?'perspective(240px) rotateX('+(-clamp(y,-.5,.5)*16).toFixed(1)+'deg) rotateY('+(clamp(x,-.5,.5)*16).toFixed(1)+'deg)':'';
+  }
 }
 function dpEnd(e){
   if(e.pointerId!==dpId)return;dpId=null;dpPrev=0;K.l=K.r=K.u=K.d=0;dp.style.transform='';for(const k in arms)arms[k].classList.remove('on');
+  dp.dataset.up=dp.dataset.down=dp.dataset.left=dp.dataset.right='0';dp.classList.remove('pressed');
 }
-dp.addEventListener('pointerdown',e=>{e.preventDefault();dpId=e.pointerId;try{dp.setPointerCapture(e.pointerId);}catch(_){}audioInit();dpSet(e);});
+dp.addEventListener('pointerdown',e=>{e.preventDefault();dpMeasure();dpId=e.pointerId;try{dp.setPointerCapture(e.pointerId);}catch(_){}audioInit();dpSet(e);});
 dp.addEventListener('pointermove',e=>{if(e.pointerId===dpId)dpSet(e);});
 dp.addEventListener('pointerup',dpEnd);dp.addEventListener('pointercancel',dpEnd);dp.addEventListener('lostpointercapture',dpEnd);
 dp.addEventListener('contextmenu',e=>e.preventDefault());
