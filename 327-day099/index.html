@@ -8,76 +8,151 @@
 <title>背負いロケット グランプリ</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+:root{--ph:25dvh;--bs:clamp(46px,calc(25dvh - 16px - env(safe-area-inset-bottom)),92px)}
 html,body{margin:0;height:100%;overflow:hidden;background:#05070f;color:#fff;font-family:-apple-system,"Hiragino Sans",sans-serif;overscroll-behavior:none}
-#stage{position:fixed;inset:0;height:100dvh}
+/* 3D画面は上75%。コントロールパネルは下25%を常に確保する */
+#stage{position:fixed;left:0;right:0;top:0;height:calc(100dvh - var(--ph));overflow:hidden;background:#05070f}
+body.full #stage{height:100dvh}
+body.full #panel{display:none}
+body.full .hudwrap{display:none}
+#cv{position:absolute;inset:0}
 canvas{display:block;width:100%;height:100%}
-.hud{z-index:30;position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;padding:calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left));pointer-events:none;font-weight:700;text-shadow:0 1px 4px #000}
-.hud .col{display:flex;flex-direction:column;gap:4px;font-size:15px}
-.hud .big{font-size:22px}
-.gauge{width:150px;height:10px;border-radius:5px;background:rgba(255,255,255,.18);overflow:hidden}
-.gauge i{display:block;height:100%;width:0%;background:#5cf}
-.gauge.heat i{background:#fa4}
+.hudwrap{position:absolute;inset:0;pointer-events:none;z-index:5;text-shadow:0 1px 4px #000;font-weight:700}
+.hl{position:absolute;left:calc(10px + env(safe-area-inset-left));top:calc(6px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:1px}
+#hRank{font-size:30px;line-height:1;letter-spacing:.02em}
+#hRank small{font-size:14px;opacity:.8}
+.hl .sm{font-size:13px;opacity:.95}
+.hr{position:absolute;right:calc(10px + env(safe-area-inset-right));top:calc(6px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .btns{display:flex;gap:8px;pointer-events:auto}
-.sbtn{width:44px;height:44px;border-radius:12px;border:2px solid rgba(255,255,255,.55);background:rgba(10,14,30,.55);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;padding:0}
-#toast{position:fixed;left:0;right:0;top:34%;text-align:center;font-size:26px;font-weight:800;text-shadow:0 2px 8px #000;pointer-events:none;opacity:0;transition:opacity .25s}
+.sbtn{width:42px;height:42px;border-radius:12px;border:2px solid rgba(255,255,255,.55);background:rgba(10,14,30,.55);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;padding:0}
+#stand{font-size:11px;line-height:1.35;background:rgba(5,8,20,.45);border-radius:8px;padding:4px 7px;min-width:132px}
+#stand div{display:flex;gap:5px;align-items:center;white-space:nowrap}
+#stand i{display:inline-block;width:8px;height:8px;border-radius:50%}
+#stand .me{color:#ffe14a}
+#strip{position:absolute;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);width:min(34vw,300px);height:10px;border-radius:6px;background:rgba(255,255,255,.18)}
+#strip .tick{position:absolute;top:-3px;width:2px;height:16px;background:rgba(255,255,255,.55)}
+#strip .tick.on{background:#ffe14a}
+#strip .dot{position:absolute;top:1px;width:8px;height:8px;margin-left:-4px;border-radius:50%;border:1px solid rgba(0,0,0,.6)}
+#strip .dot.me{top:-2px;width:14px;height:14px;margin-left:-7px;border:2px solid #fff;z-index:2}
+#lmName{position:absolute;left:0;right:0;top:34%;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
+#lmName.on{opacity:1}
+#lmName b{display:block;font-size:30px;letter-spacing:.06em;text-shadow:0 2px 10px #000}
+#lmName span{font-size:14px;opacity:.9}
+#toast{position:absolute;left:0;right:0;top:20%;text-align:center;font-size:26px;font-weight:800;text-shadow:0 2px 8px #000;pointer-events:none;opacity:0;transition:opacity .2s}
 #toast.on{opacity:1}
-.pad{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom));display:flex;gap:14px}
-#padL{left:calc(16px + env(safe-area-inset-left))}
-#padR{right:calc(16px + env(safe-area-inset-right))}
-body.inner #padL{left:calc(56px + env(safe-area-inset-left))}
-body.inner #padR{right:calc(56px + env(safe-area-inset-right))}
-.pbtn{width:78px;height:78px;border-radius:50%;border:3px solid rgba(255,255,255,.7);background:rgba(10,14,30,.5);color:#fff;font-size:28px;font-weight:800;display:flex;align-items:center;justify-content:center}
-.pbtn.on{background:rgba(90,200,255,.55);transform:scale(.94)}
-#bBoost{width:96px;height:96px;font-size:15px;border-color:#fa4}
-#bBoost.on{background:rgba(255,160,60,.65)}
-.screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(5,7,15,.82);padding:calc(12px + env(safe-area-inset-top)) 16px calc(12px + env(safe-area-inset-bottom));text-align:center}
+#tag{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-size:13px;color:#8ff;opacity:0;transition:opacity .2s;text-shadow:0 1px 4px #000}
+#tag.on{opacity:1}
+#gArrow{position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(255,225,74,.9);color:#222;font-size:20px;font-weight:900;display:none;align-items:center;justify-content:center;z-index:6}
+#gArrow.on{display:flex}
+#bMute0{position:fixed;z-index:45;right:calc(12px + env(safe-area-inset-right));top:calc(8px + env(safe-area-inset-top))}
+body:not(.full) #bMute0{display:none}
+#warn{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;box-shadow:inset 0 0 70px 18px rgba(255,40,40,.75);z-index:4}
+/* コントロールパネル（下25%） */
+#panel{position:fixed;left:0;right:0;bottom:0;height:var(--ph);z-index:20;background:linear-gradient(#111a34,#070b18);border-top:2px solid #2b3a6a;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px calc(14px + env(safe-area-inset-right)) calc(2px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
+.dpad{display:flex;gap:8px;align-items:center;flex:none}
+.dcol{display:flex;flex-direction:column;gap:6px}
+.pb{width:var(--bs);height:var(--bs);border-radius:16px;border:3px solid rgba(255,255,255,.7);background:rgba(40,60,120,.55);color:#fff;font-size:calc(var(--bs)*.42);font-weight:800;display:flex;align-items:center;justify-content:center}
+.pb.half{height:calc((var(--bs) - 6px)/2);font-size:calc(var(--bs)*.3);border-radius:12px}
+.pb.on{background:rgba(90,200,255,.7);transform:scale(.95)}
+#bBoost{width:calc(var(--bs)*1.55);height:var(--bs);border-radius:50% / 50%;border-color:#fa4;background:rgba(160,70,10,.5);font-size:calc(var(--bs)*.24);letter-spacing:.04em;flex:none}
+#bBoost.on{background:rgba(255,160,60,.8)}
+.mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;justify-content:center;font-size:11px;font-weight:700}
+.mid .row{display:flex;align-items:center;gap:6px}
+.mid .row b{width:58px;opacity:.85;white-space:nowrap}
+.gauge{flex:1;height:10px;border-radius:5px;background:rgba(255,255,255,.14);overflow:hidden}
+.gauge i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);background:#5cf}
+.gauge.heat i{background:#fa4}
+.gauge.heat.hot i{background:#f33}
+.gauge.heat.lock i{background:#7ad}
+#hSpd{font-size:13px;text-align:center;opacity:.9}
+body.inner #panel{padding-left:calc(56px + env(safe-area-inset-left));padding-right:calc(56px + env(safe-area-inset-right))}
+/* 画面（全面） */
+.screen{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(5,7,15,.82);padding:calc(10px + env(safe-area-inset-top)) 16px calc(10px + env(safe-area-inset-bottom));text-align:center}
 .screen.on{display:flex}
 .screen h1{margin:0;font-size:30px;letter-spacing:.04em}
-.screen p{margin:0;font-size:14px;opacity:.85;line-height:1.6}
-.mbtn{min-width:200px;height:48px;border-radius:12px;border:2px solid #fff;background:rgba(40,60,120,.8);color:#fff;font-size:17px;font-weight:700}
+.screen p{margin:0;font-size:14px;opacity:.88;line-height:1.55}
+.mbtn{min-width:200px;height:46px;border-radius:12px;border:2px solid #fff;background:rgba(40,60,120,.8);color:#fff;font-size:17px;font-weight:700}
 .mbtn.main{background:#e8531e;border-color:#ffb08a}
-.set{display:grid;grid-template-columns:auto auto;gap:8px 16px;align-items:center;text-align:left;max-height:60dvh;overflow-y:auto;touch-action:pan-y;font-size:14px}
+#sTitle{background:linear-gradient(90deg,rgba(3,5,12,.88) 0%,rgba(3,5,12,.55) 42%,rgba(3,5,12,0) 70%);align-items:flex-start;padding-left:calc(28px + env(safe-area-inset-left));text-align:left}
+#sTitle h1{font-size:34px;line-height:1.15;text-shadow:0 2px 14px #000}
+#sTitle h1 small{display:block;font-size:13px;letter-spacing:.2em;color:#ffb08a;font-weight:600}
+#sTitle .mbtn{min-width:230px}
+.set{display:grid;grid-template-columns:auto auto;gap:8px 16px;align-items:center;text-align:left;max-height:62dvh;overflow-y:auto;touch-action:pan-y;font-size:14px}
 .set label{white-space:nowrap}
 .set select,.set button{height:36px;border-radius:8px;border:1px solid #fff;background:#223;color:#fff;font-size:14px;min-width:120px}
 .set .rng{width:140px}
-#rot{z-index:50;background:rgba(5,7,15,.9);pointer-events:none}
-.res{font-size:18px;line-height:1.9}
+#rot{z-index:60;background:rgba(5,7,15,.94);pointer-events:none}
+#sRes{overflow-y:auto}
+.res{font-size:16px;line-height:1.7}
+.res b{font-size:24px}
+#rList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 18px;font-size:12px;text-align:left;max-width:520px;width:100%}
+#rList div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rList .me{color:#ffe14a;font-weight:800}
+#stamps{font-size:13px;letter-spacing:.04em;max-width:560px}
+#stamps span{display:inline-block;margin:2px 4px;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,.12)}
+#stamps span.on{background:#e8a21e;color:#201400;font-weight:800}
+/* 出走表 */
+#sRoster{justify-content:flex-start;padding-top:calc(8px + env(safe-area-inset-top));gap:6px}
+#sRoster h1{font-size:22px}
+#rosterBox{flex:1;min-height:0;width:100%;max-width:880px;overflow-y:auto;touch-action:pan-y;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:2px 2px 8px;align-content:start}
+.card{display:flex;gap:8px;text-align:left;background:rgba(30,40,80,.72);border:2px solid #334;border-radius:12px;padding:6px;align-items:center;min-height:92px}
+.card.me{border-color:#ffe14a;background:rgba(70,60,20,.7)}
+.card img{width:96px;height:96px;border-radius:10px;flex:none;background:#0b1226;object-fit:cover}
+.card .tx{min-width:0;font-size:12px;line-height:1.35}
+.card .tx b{font-size:15px;display:block}
+.card .tx .ti{color:#ffcf9a;display:block}
+.card .tx .ln{opacity:.85;display:block;margin:2px 0}
+.card .st{display:flex;gap:8px;font-size:11px;color:#9fd8ff}
+.card .num{font-size:11px;opacity:.7}
+#rotBtns{display:flex;gap:10px}
+#load{position:fixed;inset:0;z-index:70;background:#05070f;display:flex;align-items:center;justify-content:center;font-size:15px;letter-spacing:.1em}
 </style>
 </head>
-<body>
-<div class="hud" id="hud">
-  <div class="col">
-    <div class="big" id="hTime">0:00.0</div>
-    <div id="hGate">ゲート 0/0</div>
-    <div id="hSpd">0 m/s</div>
+<body class="full">
+<button class="sbtn" id="bMute0" aria-label="ミュート">🔊</button>
+<div id="stage">
+  <div id="cv"></div>
+  <div class="hudwrap" id="hud">
+    <div class="hl"><div id="hRank">1<small>/11位</small></div><div class="sm" id="hTime">0:00.0</div><div class="sm" id="hGate">ゲート 0/0</div></div>
+    <div id="strip"></div>
+    <div class="hr">
+      <div class="btns"><button class="sbtn" id="bMute" aria-label="ミュート">🔊</button><button class="sbtn" id="bPause" aria-label="ポーズ">‖</button></div>
+      <div id="stand"></div>
+    </div>
+    <div id="lmName"><b></b><span></span></div>
+    <div id="tag"></div>
   </div>
-  <div class="col" style="align-items:center">
-    <div class="gauge"><i id="gBoost"></i></div>
-    <div class="gauge heat"><i id="gHeat"></i></div>
-  </div>
-  <div class="btns">
-    <button class="sbtn" id="bMute" aria-label="ミュート">🔊</button>
-    <button class="sbtn" id="bPause" aria-label="ポーズ">‖</button>
-  </div>
+  <div id="toast"></div>
+  <div id="gArrow">➤</div>
+  <div id="warn"></div>
 </div>
-<div id="stage"></div>
 
-<div id="toast"></div>
-
-<div class="pad" id="padL">
-  <div class="pbtn" id="bL" aria-label="左">◀</div>
-  <div class="pbtn" id="bR" aria-label="右">▶</div>
-</div>
-<div class="pad" id="padR">
-  <div class="pbtn" id="bBoost" aria-label="ブースト">BOOST</div>
+<div id="panel">
+  <div class="dpad" id="dpad">
+    <div class="pb" id="bL" data-k="l" aria-label="左">◀</div>
+    <div class="dcol"><div class="pb half" id="bU" data-k="u" aria-label="上">▲</div><div class="pb half" id="bD" data-k="d" aria-label="下">▼</div></div>
+    <div class="pb" id="bR" data-k="r" aria-label="右">▶</div>
+  </div>
+  <div class="mid">
+    <div class="row"><b>ブースト</b><div class="gauge"><i id="gBoost"></i></div></div>
+    <div class="row"><b>ねつ</b><div class="gauge heat" id="gHeatBox"><i id="gHeat"></i></div></div>
+    <div id="hSpd">0 m/s　高さ 0m</div>
+  </div>
+  <div class="pb" id="bBoost" aria-label="ブースト">BOOST</div>
 </div>
 
 <div class="screen on" id="sTitle">
-  <h1>背負いロケット<br>グランプリ</h1>
-  <p>ロケットは止まらない。<br>◀▶で曲がって、BOOSTで加速。<br>ゲートをくぐって地球を一周しよう。</p>
-  <button class="mbtn main" id="bStart">地球一周 スタート</button>
+  <h1><small>ROCKET GRAND PRIX</small>背負いロケット<br>グランプリ</h1>
+  <p>背中のロケットは止まらない。<br>◀▶▲▼で舵をとり、BOOSTで加速。<br>東京から世界の名所をめぐる地球一周レース、11人で勝負！</p>
+  <button class="mbtn main" id="bStart">出走表を見る</button>
   <button class="mbtn" id="bSet1">せってい</button>
   <p id="tBest" style="font-size:13px"></p>
+</div>
+
+<div class="screen" id="sRoster">
+  <h1>🏁 出走表　— 地球一周グランプリ —</h1>
+  <div id="rosterBox"></div>
+  <div id="rotBtns"><button class="mbtn" id="bRBack" style="min-width:120px">もどる</button><button class="mbtn main" id="bGo">スタート位置へ</button></div>
 </div>
 
 <div class="screen" id="sPause">
@@ -93,6 +168,7 @@ body.inner #padR{right:calc(56px + env(safe-area-inset-right))}
   <div class="set">
     <label for="iVol">音量</label><input class="rng" type="range" id="iVol" min="0" max="100" step="5">
     <label for="iSens">曲がりの感度</label><input class="rng" type="range" id="iSens" min="0.5" max="1.5" step="0.1">
+    <label for="iCpu">CPUの強さ</label><select id="iCpu"><option value="easy">のんびり</option><option value="normal">ふつう</option><option value="hard">はやい</option></select>
     <label for="iQual">画質</label><select id="iQual"><option value="high">高</option><option value="low">低</option></select>
     <label for="iShake">画面の揺れ</label><select id="iShake"><option value="1">ON</option><option value="0">OFF</option></select>
     <label for="iPad">ボタンの位置</label><select id="iPad"><option value="std">標準</option><option value="inner">内側</option></select>
@@ -101,398 +177,19 @@ body.inner #padR{right:calc(56px + env(safe-area-inset-right))}
 </div>
 
 <div class="screen" id="sRes">
-  <h1>ゴール！</h1>
+  <h1 id="rTitle">ゴール！</h1>
   <div class="res" id="tRes"></div>
-  <button class="mbtn main" id="bAgain">もう一度</button>
-  <button class="mbtn" id="bToTitle2">タイトルへ</button>
+  <div id="stamps"></div>
+  <div id="rList"></div>
+  <div style="display:flex;gap:10px"><button class="mbtn main" id="bAgain" style="min-width:150px">もう一度</button><button class="mbtn" id="bToTitle2" style="min-width:150px">タイトルへ</button></div>
 </div>
 
 <div class="screen" id="rot"><h1>📱↻</h1><p>画面を横にしてください</p></div>
+<div id="load">よみこみ中…</div>
 
 <script src="three.min.js"></script>
-<script>
-(function(){
-'use strict';
-
-/* ================= 設定・保存 (tg.327.*) ================= */
-var KEY_SET='tg.327.settings', KEY_BEST='tg.327.best', KEY_TUT='tg.327.tutorial';
-var DEF={vol:80,mute:false,sens:1.0,quality:'high',shake:true,pad:'std'};
-var S=load(KEY_SET,DEF); for(var k in DEF){ if(!(k in S)) S[k]=DEF[k]; }
-var BEST=load(KEY_BEST,{earth:null});
-function load(key,def){ try{ var v=localStorage.getItem(key); return v?JSON.parse(v):JSON.parse(JSON.stringify(def)); }catch(e){ return JSON.parse(JSON.stringify(def)); } }
-function save(key,v){ try{ localStorage.setItem(key,JSON.stringify(v)); }catch(e){} }
-
-/* ================= iOS 拡大対策 ================= */
-(function(){
-  var lastEnd=0;
-  document.addEventListener('touchend',function(e){ var n=Date.now(); if(n-lastEnd<=300) e.preventDefault(); lastEnd=n; },{passive:false});
-  document.addEventListener('dblclick',function(e){ e.preventDefault(); });
-  document.addEventListener('contextmenu',function(e){ e.preventDefault(); });
-  ['gesturestart','gesturechange','gestureend'].forEach(function(t){ document.addEventListener(t,function(e){ e.preventDefault(); }); });
-  document.addEventListener('touchmove',function(e){
-    var el=e.target; var scroller=el.closest&&el.closest('.set');
-    if(e.touches.length>2||!scroller) e.preventDefault();
-  },{passive:false});
-})();
-
-/* ================= 定数 ================= */
-var C={
-  R:1400, H:60, V0:60, VBOOST:1.6, ACCEL:1.6,
-  YAW_MAX:0.6, LEAN_RATE:5, LAT_MAX:40,
-  BOOST_DRAIN:35, BOOST_REGEN:8, HEAT_UP:40, HEAT_DOWN:25, STALL_T:1.5, STALL_V:0.5,
-  GATE_N:40, GATE_R:14, GATE_BOOST:20, GATE_HEAT:-15
-};
-var TAU=Math.PI*2;
-var LAP_M=TAU*C.R;
-
-/* ================= 状態 ================= */
-var st={mode:'title', t:0, countdown:0, th:0, lat:0, yaw:0, v:0, boost:100, heat:0, stall:0, gates:0, gi:0, shake:0, prevTh:0};
-var inp={l:false,r:false,b:false}, held={};
-
-/* ================= 3D ================= */
-var stage=document.getElementById('stage');
-var renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
-stage.appendChild(renderer.domElement);
-var scene=new THREE.Scene();
-scene.background=new THREE.Color(0x05070f);
-var cam=new THREE.PerspectiveCamera(65,1,0.5,9000);
-scene.add(new THREE.HemisphereLight(0xbcd8ff,0x223344,0.9));
-var sun=new THREE.DirectionalLight(0xfff0d0,1.0); sun.position.set(2000,3000,1000); scene.add(sun);
-
-// 星（1つのポイントクラウド）
-(function(){
-  var n=700, pos=new Float32Array(n*3), seed=12345;
-  function rnd(){ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; }
-  for(var i=0;i<n;i++){
-    var u=rnd()*2-1, a=rnd()*TAU, r=Math.sqrt(1-u*u), d=7000;
-    pos[i*3]=Math.cos(a)*r*d; pos[i*3+1]=u*d; pos[i*3+2]=Math.sin(a)*r*d;
-  }
-  var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:14,sizeAttenuation:true,fog:false})));
-})();
-
-// 地球（頂点色の簡易表現）
-(function(){
-  var g=new THREE.SphereGeometry(C.R,96,64), p=g.attributes.position, col=new Float32Array(p.count*3);
-  for(var i=0;i<p.count;i++){
-    var x=p.getX(i)/C.R, y=p.getY(i)/C.R, z=p.getZ(i)/C.R;
-    var lat=Math.abs(y);
-    var n=Math.sin(x*5.1+1.3)*Math.cos(z*4.3-0.7)+0.6*Math.sin(y*7.7+x*3.1)+0.4*Math.cos(x*11+z*9);
-    var r,gg,b;
-    if(lat>0.88){ r=.93; gg=.95; b=1; }
-    else if(n>0.35){ if(lat<0.28&&n>0.9){ r=.82; gg=.7; b=.4; } else { r=.25; gg=.55+0.12*n; b=.25; } }
-    else { r=.1; gg=.3+0.1*n; b=.65; }
-    col[i*3]=r; col[i*3+1]=gg; col[i*3+2]=b;
-  }
-  g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  scene.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true})));
-  // 大気
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(C.R+55,48,32),new THREE.MeshBasicMaterial({color:0x7ab8ff,transparent:true,opacity:0.12,side:THREE.BackSide})));
-})();
-
-// 機体（人間＋ロケット）
-var rocket=new THREE.Group(), flame, body;
-(function(){
-  var skin=new THREE.MeshLambertMaterial({color:0xffd2a8}), suit=new THREE.MeshLambertMaterial({color:0x2d6cdf});
-  var red=new THREE.MeshLambertMaterial({color:0xe8531e}), white=new THREE.MeshLambertMaterial({color:0xf4f4f4});
-  body=new THREE.Group();
-  var torso=new THREE.Mesh(new THREE.BoxGeometry(1.6,2.2,1.0),suit); torso.position.y=0; body.add(torso);
-  var head=new THREE.Mesh(new THREE.SphereGeometry(0.7,12,10),skin); head.position.y=1.7; body.add(head);
-  var helm=new THREE.Mesh(new THREE.SphereGeometry(0.78,12,8,0,TAU,0,Math.PI/2),red); helm.position.y=1.8; body.add(helm);
-  var armL=new THREE.Mesh(new THREE.BoxGeometry(0.5,1.8,0.5),suit); armL.position.set(-1.1,0.2,-0.6); armL.rotation.x=-0.9; body.add(armL);
-  var armR=armL.clone(); armR.position.x=1.1; body.add(armR);
-  var legL=new THREE.Mesh(new THREE.BoxGeometry(0.6,2.0,0.6),suit); legL.position.set(-0.4,-2.0,0.2); legL.rotation.x=0.5; body.add(legL);
-  var legR=legL.clone(); legR.position.x=0.4; body.add(legR);
-  // 背中のロケット（人は -z 向き、背中は +z 側）
-  var rk=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,3.4,12),white); rk.position.set(0,0.2,1.2); body.add(rk);
-  var nose=new THREE.Mesh(new THREE.ConeGeometry(0.55,1.1,12),red); nose.position.set(0,2.45,1.2); body.add(nose);
-  var fin1=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.9,0.12),red); fin1.position.set(0,-1.2,1.2); body.add(fin1);
-  var fin2=fin1.clone(); fin2.rotation.y=Math.PI/2; body.add(fin2);
-  flame=new THREE.Mesh(new THREE.ConeGeometry(0.5,3.2,10),new THREE.MeshBasicMaterial({color:0xffa030}));
-  flame.rotation.x=Math.PI; flame.position.set(0,-3.4,1.2); body.add(flame);
-  // 後方（-y）が噴射。機体は前方(-z)へ、体は水平に寝かせて飛ぶ
-  body.rotation.x=-Math.PI/2; // 頭を前へ
-  rocket.add(body); rocket.scale.set(1.8,1.8,1.8); scene.add(rocket);
-})();
-
-// ゲート
-var gates=[], gateGroup=new THREE.Group();
-(function(){
-  var geo=new THREE.TorusGeometry(C.GATE_R,1.1,8,28);
-  var mA=new THREE.MeshBasicMaterial({color:0x66ddff}), mB=new THREE.MeshBasicMaterial({color:0x66ff99});
-  for(var i=0;i<C.GATE_N;i++){
-    var th=(i+1)/C.GATE_N*TAU;          // i=C.GATE_N-1 はゴール位置
-    var lat=Math.sin(i*1.7)*18;
-    var m=new THREE.Mesh(geo,i%2?mA:mB);
-    gateGroup.add(m);
-    gates.push({th:th,lat:lat,mesh:m,hit:false});
-  }
-  scene.add(gateGroup);
-})();
-
-// 基底ベクトル（毎フレームの new を避けて使い回す）
-var vN=new THREE.Vector3(), vUp=new THREE.Vector3(), vF=new THREE.Vector3(), vR=new THREE.Vector3(), vP=new THREE.Vector3(), vC=new THREE.Vector3(), vT=new THREE.Vector3();
-var mB=new THREE.Matrix4();
-var camPos=new THREE.Vector3(), camInit=false;
-var NORTH=new THREE.Vector3(0,1,0);
-function frame(th,lat,h,outP,outUp,outF){
-  var phi=lat/C.R, c=Math.cos(th), s=Math.sin(th);
-  outF.set(-s,0,c);
-  outUp.set(c*Math.cos(phi),Math.sin(phi),s*Math.cos(phi)).normalize();
-  outP.copy(outUp).multiplyScalar(C.R+h);
-}
-function placeGates(){
-  for(var i=0;i<gates.length;i++){
-    var g=gates[i]; frame(g.th,g.lat,C.H,vP,vUp,vF);
-    vR.crossVectors(vF,vUp).normalize();
-    mB.makeBasis(vR,vUp,vN.copy(vF).negate());
-    g.mesh.position.copy(vP); g.mesh.quaternion.setFromRotationMatrix(mB);
-  }
-}
-placeGates();
-
-function resize(){
-  var w=stage.clientWidth, h=stage.clientHeight;
-  var pr=Math.min(window.devicePixelRatio||1, S.quality==='high'?2:1.25);
-  renderer.setPixelRatio(pr); renderer.setSize(w,h,false);
-  cam.aspect=w/h; cam.updateProjectionMatrix();
-  checkOrientation();
-}
-function checkOrientation(){
-  var portrait=window.innerHeight>window.innerWidth;
-  document.getElementById('rot').classList.toggle('on',portrait);
-  if(portrait&&st.mode==='race') pause();
-}
-window.addEventListener('resize',resize);
-window.addEventListener('orientationchange',function(){ setTimeout(resize,200); });
-
-/* ================= 音 (Web Audio 合成) ================= */
-var AC=null, master=null, eng=null, engG=null, engF=null;
-function audioInit(){
-  if(AC) return;
-  try{
-    var Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) return;
-    AC=new Ctx(); master=AC.createGain(); master.connect(AC.destination); applyVol();
-    var len=AC.sampleRate*2, buf=AC.createBuffer(1,len,AC.sampleRate), d=buf.getChannelData(0);
-    for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
-    eng=AC.createBufferSource(); eng.buffer=buf; eng.loop=true;
-    engF=AC.createBiquadFilter(); engF.type='bandpass'; engF.frequency.value=500; engF.Q.value=0.9;
-    engG=AC.createGain(); engG.gain.value=0;
-    eng.connect(engF); engF.connect(engG); engG.connect(master); eng.start();
-  }catch(e){ AC=null; }
-}
-function unlock(){ audioInit(); if(AC&&AC.state==='suspended'){ try{AC.resume();}catch(e){} } }
-function applyVol(){ if(master) master.gain.value=S.mute?0:S.vol/100*0.8; }
-function beep(f0,f1,dur,type,vol){
-  if(!AC||S.mute) return;
-  var t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
-  o.type=type||'sine'; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f1,t+dur);
-  g.gain.setValueAtTime(vol||0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-  o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.02);
-}
-function engineSound(){
-  if(!AC||!engG) return;
-  var run=st.mode==='race'||st.mode==='ready';
-  var sp=Math.min(1.8,st.v/C.V0), b=inp.b&&st.boost>0&&st.stall<=0;
-  engG.gain.setTargetAtTime(run?(0.18+0.22*sp+(b?0.25:0)):0,AC.currentTime,0.05);
-  engF.frequency.setTargetAtTime(350+500*sp+(b?600:0),AC.currentTime,0.05);
-}
-
-/* ================= HUD ================= */
-var $=function(id){ return document.getElementById(id); };
-var hTime=$('hTime'), hGate=$('hGate'), hSpd=$('hSpd'), gBoost=$('gBoost'), gHeat=$('gHeat'), toast=$('toast');
-var toastT=0;
-function showToast(msg,sec){ toast.textContent=msg; toast.classList.add('on'); toastT=sec||1.2; }
-function fmt(t){ var m=Math.floor(t/60), s=t-m*60; return m+':'+(s<10?'0':'')+s.toFixed(1); }
-function hud(){
-  hTime.textContent=fmt(st.t);
-  hGate.textContent='ゲート '+st.gates+'/'+C.GATE_N;
-  hSpd.textContent=Math.round(st.v)+' m/s';
-  gBoost.style.width=st.boost+'%';
-  gHeat.style.width=Math.min(100,st.heat)+'%';
-}
-
-/* ================= 画面遷移 ================= */
-var screens=['sTitle','sPause','sSet','sRes'];
-function show(id){ screens.forEach(function(s){ $(s).classList.toggle('on',s===id); }); }
-var setReturn='sTitle';
-function reset(){
-  st.t=0; st.th=0; st.prevTh=0; st.lat=0; st.yaw=0; st.v=0; st.boost=100; st.heat=0; st.stall=0; st.gates=0; st.shake=0;
-  for(var i=0;i<gates.length;i++){ gates[i].hit=false; gates[i].mesh.visible=true; }
-  camInit=false; hud();
-}
-function startRace(){
-  if(window.innerHeight>window.innerWidth) return;
-  unlock(); reset(); show(null);
-  st.mode='ready'; st.countdown=3.99;
-  save(KEY_TUT,true);
-}
-function pause(){
-  if(st.mode!=='race'&&st.mode!=='ready') return;
-  st.mode='paused'; show('sPause'); if(AC&&AC.state==='running'){ try{AC.suspend();}catch(e){} }
-  inp.l=inp.r=inp.b=false; syncBtns();
-}
-function resume(){
-  unlock(); show(null); st.mode='ready'; st.countdown=3.99; st.resumeFrom=true;
-}
-function toTitle(){ st.mode='title'; show('sTitle'); refreshBest(); engineSound(); }
-function finish(){
-  st.mode='result';
-  var best=BEST.earth; var isBest=(best===null||st.t<best);
-  if(isBest){ BEST.earth=st.t; save(KEY_BEST,BEST); }
-  $('tRes').innerHTML='タイム　<b>'+fmt(st.t)+'</b>'+(isBest?'　★ベスト更新':'')+'<br>ゲート　'+st.gates+' / '+C.GATE_N;
-  show('sRes'); beep(523,1047,0.5,'triangle',0.3);
-}
-function refreshBest(){ $('tBest').textContent=BEST.earth!==null?'ベスト '+fmt(BEST.earth):''; }
-
-/* ================= 入力 ================= */
-function syncBtns(){ $('bL').classList.toggle('on',inp.l); $('bR').classList.toggle('on',inp.r); $('bBoost').classList.toggle('on',inp.b); }
-function bindHold(id,key){
-  var el=$(id);
-  el.addEventListener('pointerdown',function(e){ e.preventDefault(); try{el.setPointerCapture(e.pointerId);}catch(x){} unlock(); held[e.pointerId]=key; recalc(); });
-  function up(e){ delete held[e.pointerId]; recalc(); }
-  el.addEventListener('pointerup',up); el.addEventListener('pointercancel',up); el.addEventListener('lostpointercapture',up);
-}
-function recalc(){
-  var l=false,r=false,b=false;
-  for(var id in held){ var k=held[id]; if(k==='l') l=true; else if(k==='r') r=true; else b=true; }
-  inp.l=l||kbd.l; inp.r=r||kbd.r; inp.b=b||kbd.b; syncBtns();
-}
-var kbd={l:false,r:false,b:false};
-window.addEventListener('keydown',function(e){
-  unlock();
-  if(e.code==='ArrowLeft') kbd.l=true; else if(e.code==='ArrowRight') kbd.r=true; else if(e.code==='Space'){ kbd.b=true; e.preventDefault(); }
-  else if(e.code==='Escape'){ if(st.mode==='paused') resume(); else pause(); }
-  recalc();
-});
-window.addEventListener('keyup',function(e){
-  if(e.code==='ArrowLeft') kbd.l=false; else if(e.code==='ArrowRight') kbd.r=false; else if(e.code==='Space') kbd.b=false;
-  recalc();
-});
-bindHold('bL','l'); bindHold('bR','r'); bindHold('bBoost','b');
-document.addEventListener('visibilitychange',function(){ if(document.hidden) pause(); });
-
-function tap(id,fn){ $(id).addEventListener('pointerup',function(e){ e.preventDefault(); unlock(); fn(); }); }
-tap('bStart',startRace); tap('bAgain',startRace);
-tap('bSet1',function(){ setReturn='sTitle'; show('sSet'); });
-tap('bSet2',function(){ setReturn='sPause'; show('sSet'); });
-tap('bSetBack',function(){ save(KEY_SET,S); show(setReturn); });
-tap('bResume',resume);
-tap('bRetry',function(){ startRace(); });
-tap('bToTitle',toTitle); tap('bToTitle2',toTitle);
-tap('bPause',function(){ if(st.mode==='race'||st.mode==='ready') pause(); });
-tap('bMute',function(){ S.mute=!S.mute; save(KEY_SET,S); applyVol(); muteIcon(); });
-function muteIcon(){ $('bMute').textContent=S.mute?'🔇':'🔊'; }
-
-function bindSettings(){
-  $('iVol').value=S.vol; $('iSens').value=S.sens; $('iQual').value=S.quality; $('iShake').value=S.shake?'1':'0'; $('iPad').value=S.pad;
-  $('iVol').addEventListener('input',function(){ S.vol=+this.value; applyVol(); save(KEY_SET,S); });
-  $('iSens').addEventListener('input',function(){ S.sens=+this.value; save(KEY_SET,S); });
-  $('iQual').addEventListener('change',function(){ S.quality=this.value; save(KEY_SET,S); resize(); });
-  $('iShake').addEventListener('change',function(){ S.shake=this.value==='1'; save(KEY_SET,S); });
-  $('iPad').addEventListener('change',function(){ S.pad=this.value; save(KEY_SET,S); document.body.classList.toggle('inner',S.pad==='inner'); });
-  document.body.classList.toggle('inner',S.pad==='inner');
-  muteIcon(); refreshBest();
-}
-
-/* ================= シミュレーション ================= */
-var STEP=1/60, acc=0;
-function step(dt){
-  if(st.mode==='ready'){
-    var prev=Math.ceil(st.countdown);
-    st.countdown-=dt;
-    var cur=Math.ceil(st.countdown);
-    if(cur!==prev&&cur>0){ showToast(String(cur),0.9); beep(440,440,0.12,'square',0.15); }
-    if(st.countdown<=0){ st.mode='race'; showToast('GO!',0.8); beep(880,880,0.3,'square',0.2); if(!st.resumeFrom) st.v=C.V0*0.6; st.resumeFrom=false; }
-    return;
-  }
-  if(st.mode!=='race') return;
-  st.t+=dt;
-
-  // ブースト・発熱
-  var boosting=inp.b&&st.boost>0&&st.stall<=0;
-  if(boosting){ st.boost=Math.max(0,st.boost-C.BOOST_DRAIN*dt); st.heat+=C.HEAT_UP*dt; }
-  else { st.boost=Math.min(100,st.boost+C.BOOST_REGEN*dt); st.heat=Math.max(0,st.heat-C.HEAT_DOWN*dt); }
-  if(st.stall>0){ st.stall-=dt; if(st.stall<=0){ st.heat=70; showToast('復帰',0.6); } }
-  else if(st.heat>=100){ st.stall=C.STALL_T; st.heat=100; showToast('オーバーヒート！',1.2); beep(300,80,0.6,'sawtooth',0.25); }
-
-  // 速度
-  var vt=C.V0*(boosting?C.VBOOST:1)*(st.stall>0?C.STALL_V:1);
-  st.v+=(vt-st.v)*Math.min(1,C.ACCEL*dt);
-
-  // 曲がり（傾きが遅れて追従）
-  var dir=(inp.r?1:0)-(inp.l?1:0);
-  var yt=dir*C.YAW_MAX*S.sens;
-  st.yaw+=(yt-st.yaw)*Math.min(1,C.LEAN_RATE*dt);
-  st.prevTh=st.th;
-  st.th+=st.v*Math.cos(st.yaw)*dt/C.R;
-  st.lat+=st.v*Math.sin(st.yaw)*dt;
-  if(st.lat>C.LAT_MAX){ st.lat=C.LAT_MAX; st.v*=1-0.2*dt*6; st.yaw=Math.min(st.yaw,0); }
-  else if(st.lat<-C.LAT_MAX){ st.lat=-C.LAT_MAX; st.v*=1-0.2*dt*6; st.yaw=Math.max(st.yaw,0); }
-
-  // ゲート判定
-  for(var i=0;i<gates.length;i++){
-    var g=gates[i];
-    if(g.hit) continue;
-    if(st.prevTh<g.th&&st.th>=g.th){
-      g.hit=true;
-      if(Math.abs(st.lat-g.lat)<C.GATE_R){
-        st.gates++; st.boost=Math.min(100,st.boost+C.GATE_BOOST); st.heat=Math.max(0,st.heat+C.GATE_HEAT);
-        g.mesh.visible=false; beep(660,990,0.18,'sine',0.25);
-      }
-    }
-  }
-  st.shake=boosting?1:Math.max(0,st.shake-dt*4);
-  if(st.th>=TAU){ finish(); }
-}
-
-/* ================= 描画 ================= */
-function render(dt,now){
-  frame(st.th,st.lat,C.H,vP,vUp,vF);
-  vR.crossVectors(vF,vUp).normalize();
-  // 機体の向き（ヨーで進行方向を傾ける）
-  var cy=Math.cos(st.yaw), sy=Math.sin(st.yaw);
-  vT.copy(vF).multiplyScalar(cy).addScaledVector(vR,sy);      // 進行方向
-  vC.crossVectors(vT,vUp).normalize();                         // 右
-  mB.makeBasis(vC,vUp,vN.copy(vT).negate());
-  rocket.position.copy(vP); rocket.quaternion.setFromRotationMatrix(mB);
-  body.rotation.z=-st.yaw*0.9;
-  var boosting=inp.b&&st.boost>0&&st.stall<=0&&st.mode==='race';
-  var fl=(st.mode==='race'||st.mode==='ready')?(boosting?2.0:1.0)*(0.85+0.3*Math.sin(now*0.05)):0.2;
-  flame.scale.set(1,fl,1);
-  flame.material.color.setHex(boosting?0xfff070:0xffa030);
-
-  // カメラ追従（後ろ上から）
-  vC.copy(vP).addScaledVector(vF,-20).addScaledVector(vUp,7);
-  if(!camInit){ camPos.copy(vC); camInit=true; } else { camPos.lerp(vC,Math.min(1,dt*8)); }
-  cam.position.copy(camPos);
-  if(S.shake&&st.shake>0){ cam.position.x+=Math.sin(now*0.07)*0.2*st.shake; cam.position.y+=Math.sin(now*0.053+1)*0.2*st.shake; }
-  cam.up.copy(vUp);
-  vT.copy(vP).addScaledVector(vF,24);
-  cam.lookAt(vT);
-  var tf=65+(boosting?10:0)*1; cam.fov+=(tf-cam.fov)*Math.min(1,dt*5); cam.updateProjectionMatrix();
-  renderer.render(scene,cam);
-}
-
-/* ================= ループ ================= */
-var last=0, fpsAcc=0, fpsN=0;
-window.__fps=0;
-function loop(now){
-  requestAnimationFrame(loop);
-  var dt=Math.min(1/20,(now-last)/1000||0); last=now;
-  fpsAcc+=dt; fpsN++; if(fpsAcc>=1){ window.__fps=Math.round(fpsN/fpsAcc); fpsAcc=0; fpsN=0; }
-  if(toastT>0){ toastT-=dt; if(toastT<=0) toast.classList.remove('on'); }
-  if(st.mode==='race'||st.mode==='ready'){
-    acc+=dt; while(acc>=STEP){ step(STEP); acc-=STEP; }
-    hud(); engineSound();
-  } else { acc=0; }
-  render(dt,now);
-}
-
-bindSettings(); resize();
-window.__st=st; window.__inp=inp; window.__C=C;
-requestAnimationFrame(loop);
-})();
-</script>
+<script src="world.js"></script>
+<script src="racers.js"></script>
+<script src="game.js"></script>
 </body>
 </html>
