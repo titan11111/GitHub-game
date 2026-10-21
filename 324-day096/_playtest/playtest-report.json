@@ -1,0 +1,33 @@
+{
+  "tutorial": "all five steps via pointer",
+  "multitouch": "two simultaneous strikes released",
+  "pause": "held inputs cleared, audio clock frozen",
+  "settings": "offset persisted across reload",
+  "稽古": {
+    "score": 5902,
+    "rank": 4,
+    "relax": 94,
+    "good": 52,
+    "ok": 12,
+    "miss": 8,
+    "maxCombo": 27,
+    "tension": [],
+    "fps": 31,
+    "drawCalls": 55,
+    "triangles": 7390
+  },
+  "宵の大太鼓": {
+    "score": 20231,
+    "rank": 4,
+    "relax": 99,
+    "good": 161,
+    "ok": 26,
+    "miss": 3,
+    "maxCombo": 105,
+    "tension": [],
+    "fps": 39,
+    "drawCalls": 55,
+    "triangles": 7390
+  },
+  "errors": []
+}

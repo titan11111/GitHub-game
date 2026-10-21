@@ -1,0 +1,33 @@
+{
+  "layout": {
+    "ratio": 0.25,
+    "scroll": false,
+    "diagnostics": {
+      "state": "playing",
+      "mode": "free",
+      "time": 0.06385487528344672,
+      "active": 0,
+      "fps": 10,
+      "drawCalls": 55,
+      "triangles": 7390,
+      "audioState": "running",
+      "settings": {
+        "volume": 80,
+        "offset": 0,
+        "hand": "right",
+        "quality": "low",
+        "guide": "on",
+        "partner": "on",
+        "tempo": 112,
+        "mute": false
+      }
+    }
+  },
+  "settingsFit": true,
+  "sound": {
+    "relaxedRms": 0.01985110407056365,
+    "heldRms": 0.0024814053597822902,
+    "ratio": 7.99994406085482
+  },
+  "orientation": "auto pause, no auto resume"
+}
