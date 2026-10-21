@@ -1,0 +1,95 @@
+---
+name: "ゲーム出荷パイプライン（質問なし）"
+description: "SPEC→iOS→ハーネス→GitHub公開→Slackまで、確認質問せず一本で実行する"
+priority: 70
+globs:
+  - "**/index.html"
+  - "**/SPEC.md"
+  - "**/LEARNINGS.md"
+  - "**/*.js"
+  - "**/*.css"
+---
+
+# ゲーム出荷パイプライン（確認質問を切る）
+
+タイタンの主作業ループはこれだけ:
+
+> **SPECを回す → iOS必須を入れる → 作る → 機械チェック → GitHub公開 → Slack通知**
+
+部品は既存スキル／スクリプトに既にある。新しい仕組みは作らない。**連結して黙って実行する。**
+
+## 発動（このいずれかでパイプライン開始）
+
+- 「公開して」「リリースして」「デプロイして」「GitHubに上げて」
+- 「できた」「完成」「出荷して」「上げて」
+- `/game-publish`
+
+フォルダ名が会話・添付・作業中パスから一意に分かるときは**確認しない**。曖昧なときだけ一覧を出して1回だけ聞く。
+
+## 実行順（飛ばさない・順番を変えない）
+
+対象: `~/Desktop/GitHub-game/<フォルダ>/`
+
+### 1. SPEC
+
+- `SPEC.md` が無ければテンプレ（`game-spec-writing-rule`）で**最低限を書いてから**次へ
+- ある場合は「未確定事項」が公開ブロッカーでないことだけ確認（ブロッカーなら1行で止める）
+
+### 2. iOS（毎回・聞かない）
+
+`ios-game-base` + `game-touch-ux` + `game-standard-requirements` を適用済みか検査し、不足なら**その場で直す**:
+
+- `index.html` 必須
+- viewport / safe-area / touch-action / ダブルタップ防止
+- WebAudio unlock（開始タップ）
+- 携帯で動くこと（サイズは20MB鉄則。harness が判定）
+
+### 3. 機械チェック
+
+```bash
+~/Desktop/GitHub-game/_tools/game-harness.sh <フォルダ名>
+```
+
+失敗したら修正して再実行。通るまで「公開完了」と言わない。  
+harness が使えない場合のみ、編集JSの `node --check` または esbuild プリフライトで代替し、**未検証**と明記する。
+
+### 4. learnings
+
+当該フォルダの `LEARNINGS.md` に本日の変更を1エントリ追記（無ければ作る）。
+
+### 5. 公開
+
+```bash
+cd ~/Desktop/GitHub-game && bash publish.sh <フォルダ名>
+```
+
+push はタイタンの指示があったときだけ（このパイプライン発動＝公開指示とみなす。公開するなら必ず push する）。
+
+### 6. Slack
+
+**公開と同時に必ず送る。** `publish.sh` は送信しない（末尾に `SLACK_NOTIFY_CHANNEL` / `SLACK_NOTIFY_TEXT` を出すだけ）。AIがその値で Slack コネクターの `slack_send_message` を呼び、`#general`（`C0AMVQGBWFP`）へ:
+
+```
+🚀 ゲーム公開完了 | <フォルダ名>
+https://titan11111.github.io/<フォルダ名>/
+```
+
+`not_in_channel` のときはタイタンDMに送ってその旨を報告する。未認証・権限未許可などで送れないときはエラー文を添えて「Slack未送信（理由）」と書き、公開自体は成功扱いにする。**「送信済」は送信ツールが permalink を返したときだけ**書く。
+
+## 禁止（これが「毎回同じことを聞く」の原因）
+
+- 「iOS対応しますか？」「公開しますか？」「Slack送りますか？」「SPEC書きますか？」と聞かない
+- パイプラインの**途中で**別ゲームへ横展開しない（最後に「横展開しますか？」と提案するのは鉄則7で必須）
+- harness 未実施のまま「完成」と言わない
+- 新しいチェックリストファイル／新しいランナーを増やさない（既存を太くする）
+
+## 完了報告フォーマット（短く）
+
+```
+✅ <フォルダ>
+SPEC: …
+iOS: …
+harness: …（証跡）
+URL: https://titan11111.github.io/<フォルダ>/
+Slack: 送信済（permalink）/ DM代替 / 未送信（理由）
+```
