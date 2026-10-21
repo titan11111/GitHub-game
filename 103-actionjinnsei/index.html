@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<title>かえりみちヒーローズ</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/negotiation.css">
+</head>
+<body>
+<div id="gameContainer">
+  <!-- ステータスバー -->
+  <div id="statusBar">
+    <div id="ui">
+      <div class="stage-info">
+        <span class="stage-label">STAGE <span id="stage">1</span></span>
+        <span id="stageName" class="stage-name">小学生</span>
+      </div>
+      <div id="hp-container">
+        <span class="hp-label">HP</span>
+        <div class="hp-bar-wrapper">
+          <div class="hp-bar-bg">
+            <div id="hp-bar" class="hp-bar" style="width:100%"></div>
+          </div>
+          <span id="hp" class="hp-text">100</span>
+        </div>
+      </div>
+      <div id="score-container">
+        <span class="score-label">SCORE</span>
+        <span id="score">0</span>
+      </div>
+      <div id="attack-level" class="attack-badge" title="攻撃レベル">
+        <span class="attack-icon" id="attack-icon">✨</span>
+        <span id="attack-name">光</span>
+      </div>
+      <div id="omega-display" class="omega-badge">
+        <span class="omega-icon">⚡</span>
+        <span id="omega-charges">3</span>
+      </div>
+    </div>
+    <div id="stage-progress-wrap">
+      <div id="stage-progress-bg">
+        <div id="stage-progress-bar"></div>
+        <div id="boss-marker"></div>
+      </div>
+      <span id="progress-label">0%</span>
+    </div>
+    <button id="pauseBtn" class="icon-btn" aria-label="一時停止">⏸</button>
+    <button id="muteBtn" class="icon-btn" aria-label="音声切替">🔊</button>
+  </div>
+
+  <!-- ゲームエリア -->
+  <div id="gameArea">
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
+
+    <!-- オンスクリーンコントロール -->
+    <div id="touch-controls">
+      <div id="left-controls" class="control-zone">
+        <div id="stick-container" class="control-zone">
+          <div id="stick-knob"></div>
+        </div>
+        <button id="btn-jump-touch" class="action-btn jump-btn" aria-label="ジャンプ">↑</button>
+      </div>
+      <div id="action-buttons" class="control-zone">
+        <button id="btn-b-touch" class="action-btn omega-btn" aria-label="オメガビーム">B</button>
+        <button id="btn-a-touch" class="action-btn" aria-label="攻撃">A</button>
+      </div>
+    </div>
+
+    <!-- コンボ表示 -->
+    <div id="combo-display" class="hidden">
+      <span id="combo-count">0</span>
+      <span class="combo-label">COMBO</span>
+      <span id="combo-multiplier">x1</span>
+    </div>
+
+    <!-- チュートリアル -->
+    <div id="tutorial-overlay" class="hidden">
+      <div class="tutorial-card">
+        <h3>操作ガイド</h3>
+        <div class="tutorial-row"><span class="tut-key">スティック</span><span>左右移動</span></div>
+        <div class="tutorial-row"><span class="tut-key">↑ ボタン</span><span>ジャンプ</span></div>
+        <div class="tutorial-row"><span class="tut-key">A</span><span>攻撃（スコアで進化）</span></div>
+        <div class="tutorial-row"><span class="tut-key">B 長押し</span><span>オメガビーム（チャージ後発動）</span></div>
+        <p class="tutorial-hint">キーボード: 矢印 + Z(攻撃) + X(必殺)</p>
+        <button id="tutorialClose" class="tutorial-btn">わかった！</button>
+      </div>
+    </div>
+
+    <!-- ステージバナー -->
+    <div id="stage-banner" class="hidden">
+      <span id="banner-stage-num">STAGE 1</span>
+      <span id="banner-stage-name">小学生</span>
+      <span id="banner-boss-name"></span>
+    </div>
+  </div>
+
+  <!-- ポーズ画面 -->
+  <div id="pauseScreen" class="overlay-screen hidden">
+    <h2>PAUSED</h2>
+    <div class="pause-stats">
+      <p>スコア: <span id="pause-score">0</span></p>
+      <p>撃破数: <span id="pause-kills">0</span></p>
+      <p>最大コンボ: <span id="pause-combo">0</span></p>
+    </div>
+    <button id="resumeBtn" class="startBtn"><span class="btn-text">再開</span></button>
+    <button id="pauseTitleBtn" class="startBtn secondary"><span class="btn-text">タイトルへ</span></button>
+  </div>
+
+  <!-- タイトル画面 -->
+  <div id="startScreen">
+    <div class="title-particles"></div>
+    <div class="title-container">
+      <div class="title-main">かえりみち<br>ヒーローズ</div>
+      <div class="title-sub">KAERIMICHI HEROES</div>
+    </div>
+    <div class="subtitle-container">
+      <div class="subtitle-line">小学生から勇者へ</div>
+      <div class="subtitle-line">7つの帰り道を冒険しよう！</div>
+    </div>
+    <p class="description">帰り道で出会う敵を倒し、ボスを撃破して<br>人生のステージを進めよう</p>
+    <button id="startButton" class="startBtn">
+      <span class="btn-glow"></span>
+      <span class="btn-text">TAP TO START</span>
+    </button>
+  </div>
+
+  <!-- ゲームオーバー -->
+  <div id="gameOverScreen">
+    <div class="go-title">GAME OVER</div>
+    <p class="go-score">スコア: <span id="finalScore">0</span></p>
+    <p class="go-stats">撃破 <span id="go-kills">0</span> 体 / 最大コンボ <span id="go-combo">0</span></p>
+    <button id="restartButton" class="startBtn"><span class="btn-text">もう一度</span></button>
+    <button id="returnToTitleButton" class="startBtn secondary"><span class="btn-text">タイトルへ</span></button>
+  </div>
+
+  <!-- エンディング -->
+  <div id="endingScreen">
+    <div id="endingParticles" class="ending-particles"></div>
+    <div class="journey-icons">
+      <div class="stage-icon">小学</div>
+      <div class="stage-icon">中学</div>
+      <div class="stage-icon">高校</div>
+      <div class="stage-icon">大学</div>
+      <div class="stage-icon">社会</div>
+      <div class="stage-icon">会社</div>
+      <div class="stage-icon">勇者</div>
+    </div>
+    <div class="ending-title">おかえりなさい</div>
+    <div class="endingMessage">
+      いろんな<span class="highlight">道</span>を帰ったね。<br><br>
+      いろんな<span class="highlight2">道</span>を通った<br>
+      <span class="highlight3">彩り</span>こそ素敵だね。
+    </div>
+    <div class="final-score-display">最終スコア: <span id="endingScore">0</span></div>
+    <button id="endingRestartBtn" class="startBtn"><span class="btn-text">もう一度、帰り道へ</span></button>
+  </div>
+
+  <!-- フィードバックオーバーレイ -->
+  <div id="damage-flash"></div>
+  <div id="score-popup-container"></div>
+  <div id="screen-shake-wrap">
+    <div id="screen-shake-inner"></div>
+  </div>
+
+  <!-- 交渉フェーズ -->
+  <div id="negotiation-overlay" class="hidden">
+    <div class="negotiation-card">
+      <div class="negotiation-boss" id="negotiation-boss-name">ボス</div>
+      <div class="negotiation-line" id="negotiation-line"></div>
+      <div class="negotiation-hint" id="negotiation-hint"></div>
+      <div class="negotiation-options" id="negotiation-options"></div>
+      <div class="negotiation-status" id="negotiation-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BGM -->
+<audio id="bgm-stage1" loop preload="auto"><source src="audio/Stage 1_ school.m4a" type="audio/mp4"></audio>
+<audio id="bgm-stage2" loop preload="auto"><source src="audio/Stage 2_ Junior High.m4a" type="audio/mp4"></audio>
+<audio id="bgm-stage3" loop preload="auto"><source src="audio/Stage 3_ High.m4a" type="audio/mp4"></audio>
+<audio id="bgm-stage4" loop preload="auto"><source src="audio/stage4_university.m4a" type="audio/mp4"></audio>
+<audio id="bgm-stage5" loop preload="auto"><source src="audio/stage5.m4a" type="audio/mp4"></audio>
+<audio id="bgm-stage6" loop preload="auto"><source src="audio/stage6.m4a" type="audio/mp4"></audio>
+<audio id="bgm-stage7" loop preload="auto"><source src="audio/stage7.m4a" type="audio/mp4"></audio>
+<audio id="bgm-boss" loop preload="auto"><source src="audio/boss.m4a" type="audio/mp4"></audio>
+<audio id="bgm-lastboss" loop preload="auto"><source src="audio/last boss.m4a" type="audio/mp4"></audio>
+
+<script>
+window.onerror = function(msg, url, line) {
+  var el = document.getElementById('game-error');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'game-error';
+    el.style.cssText = 'position:fixed;inset:0;background:#200;color:#f88;padding:20px;font:14px monospace;z-index:99999;overflow:auto;';
+    document.body.appendChild(el);
+  }
+  el.textContent += '\n' + msg + ' (' + line + ')';
+};
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(e) {
+  var now = Date.now();
+  if (now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, false);
+document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+</script>
+<script src="js/config.js"></script>
+<script src="js/performance.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/sound-effects.js"></script>
+<script src="js/state-machine.js"></script>
+<script src="js/actor.js"></script>
+<script src="js/player.js"></script>
+<script src="js/enemy.js"></script>
+<script src="js/obstacle.js"></script>
+<script src="js/collision-engine.js"></script>
+<script src="js/obstacle-patterns.js"></script>
+<script src="js/obstacle-generator.js"></script>
+<script src="js/game-state.js"></script>
+<script src="js/feedback.js"></script>
+<script src="js/vector-graphics.js"></script>
+<script src="js/enemy-blueprints.js"></script>
+<script src="js/attack-system.js"></script>
+<script src="js/input.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/renderer-background.js"></script>
+<script src="js/renderer-characters.js"></script>
+<script src="js/renderer-obstacles.js"></script>
+<script src="js/renderer-effects.js"></script>
+<script src="js/particles.js"></script>
+<script src="js/lighting.js"></script>
+<script src="js/postfx.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/negotiation.js"></script>
+<script src="js/main.js"></script>
+<script src="js/init.js"></script>
+</body>
+</html>

@@ -1,0 +1,1182 @@
+/* ============================================
+   マップ関連スタイル
+   ============================================
+   
+   役割: マップグリッド、セル、オブジェクト、アニメーションのスタイル
+   
+   含まれる内容:
+   - マップグリッド（#map-grid）
+   - セル（.cell, .cell.wall, .cell.plain など）
+   - オブジェクト（.cell.obj-*）
+   - アニメーション（@keyframes）
+   - フィールド別スタイル
+   - レスポンシブ対応（メディアクエリ）
+   ============================================ */
+#map-grid {
+    display: grid; 
+    grid-template-columns: repeat(10, 9.6vw);  /* 8vw × 1.2 */
+    gap: 1px;
+    max-width: 384px;  /* 320px × 1.2 */
+    justify-content: center; 
+    margin: 10px auto;
+    background-color: #222; 
+    border: 2px solid #555;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+@media (min-width: 400px) {
+    #map-grid { 
+        grid-template-columns: repeat(10, 38.4px);  /* 32px × 1.2 */
+    }
+}
+
+/* 横向き（ランドスケープ）対応：パディングを広げて見やすく */
+@media (orientation: landscape) {
+    #control-panel {
+        height: 160px;  /* 横向き時の高さ */
+    }
+    
+    /* 横向きでも画面全体に表示（変更なし） */
+    
+    #battle-screen {
+        height: calc(100vh - 180px);   /* フォールバック: コントロールパネルの高さを引く（横向き160px + margin-top 20px） */
+        height: calc(100dvh - 180px);  /* iOS Safari: 動的ビューポート - コントロールパネル（横向き） */
+    }
+    
+    .pad-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    .circle-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 20px;
+    }
+    
+    #game-container {
+        padding-left: max(24px, env(safe-area-inset-left, 0));
+        padding-right: max(24px, env(safe-area-inset-right, 0));
+    }
+    
+    #map-grid {
+        max-width: 100%;
+    }
+}
+
+/* 縦向き（ポートレート）対応 */
+@media (orientation: portrait) {
+    #control-panel {
+        height: 200px;  /* 縦向き時の高さ */
+    }
+    
+    #battle-screen {
+        height: calc(100vh - 220px);   /* フォールバック: コントロールパネルの高さを引く（縦向き200px + margin-top 20px） */
+        height: calc(100dvh - 220px);  /* iOS Safari: 動的ビューポート - コントロールパネル（縦向き） */
+    }
+    
+    #game-container {
+        padding-left: env(safe-area-inset-left, 0);
+        padding-right: env(safe-area-inset-right, 0);
+    }
+}
+
+/* 横幅が狭い端末（iPhone SE 縦など）：横スクロール防止・コントロールを少し小さく */
+@media (max-width: 380px) {
+    #game-container {
+        padding-left: env(safe-area-inset-left, 0);
+        padding-right: env(safe-area-inset-right, 0);
+    }
+    .pad-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+    .circle-btn {
+        width: 58px;
+        height: 58px;
+        font-size: 20px;
+    }
+    #map-grid {
+        grid-template-columns: repeat(10, 8.8vw);
+        max-width: 100%;
+    }
+}
+
+/* モバイル・iOS：画面高さが短いとき戦闘レイアウトを圧縮（上下ログ・コマンド必ず見える） */
+@media (max-height: 700px) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(13px * 1.6 * 2 + 18px);  /* 最小高さ：2行分の高さを確保 */
+        max-height: none;
+        font-size: 13px;
+        padding: 9px 8px;
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 150px;
+        max-height: none;  /* 高さ制限を解除 */
+        padding: 4px 8px;
+        gap: 4px;
+    }
+    #battle-screen .monster-sprite {
+        font-size: min(100px, 18vw);
+    }
+    #battle-screen .monster-sprite img {
+        max-height: 100%;  /* 親要素に合わせる */
+    }
+    #battle-screen .enemy-area {
+        height: 45%;  /* モンスター画像：45% */
+        min-height: 100px;
+        max-height: none;
+    }
+    .command-box {
+        overflow-y: auto;  /* スクロール可能に */
+        max-height: calc((100dvh - 400px) * 0.7);  /* 戦闘画面の高さから敵エリアとログを引いた値の70% */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+    }
+    .status-box {
+        font-size: 11px;
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    .command-box li {
+        padding: 5px 4px;
+        font-size: 13px;
+    }
+}
+
+/* さらに縦が短い端末（iOS Plus等） */
+@media (max-height: 580px) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(12px * 1.6 * 2 + 16px);  /* 最小高さ：2行分の高さを確保 */
+        max-height: none;
+        font-size: 12px;
+        padding: 8px 6px;
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 130px;
+        max-height: none;  /* 高さ制限を解除 */
+    }
+    #battle-screen .monster-sprite {
+        font-size: min(72px, 14vw);
+    }
+    #battle-screen .monster-sprite img {
+        max-height: 100%;  /* 親要素に合わせる */
+    }
+    #battle-screen .enemy-area {
+        height: 30%;  /* モンスター画像：30% */
+        min-height: 80px;
+        max-height: none;
+    }
+    .command-box {
+        overflow-y: auto;  /* スクロール可能に */
+        max-height: calc((100dvh - 400px) * 0.7);  /* 戦闘画面の高さから敵エリアとログを引いた値の70% */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+    }
+    .status-box {
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    .command-box li {
+        padding: 4px 3px;
+        font-size: 12px;
+    }
+}
+
+/* 携帯・タッチ：画像が確実に映るようコンテナ最小サイズを確保 */
+@media (max-width: 768px) {
+    #battle-screen .monster-sprite {
+        min-height: 40px;
+    }
+    #battle-screen .monster-sprite img {
+        min-width: 16px;
+        min-height: 16px;
+    }
+    .cat-npc-container .cat-npc-frame {
+        min-width: 16px;
+        min-height: 16px;
+    }
+}
+
+/* フィールドごとの背景色と雰囲気 */
+#map-grid.field-town_inside {
+    background: linear-gradient(135deg, #3a2a1a 0%, #5a4a3a 100%);
+    border: 3px solid #d4a574;
+    box-shadow: 0 0 25px rgba(212, 165, 116, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+#map-grid.field-green_field {
+    background: linear-gradient(135deg, #1a3a1a 0%, #2a5a2a 100%);
+    border: 3px solid #4a8a4a;
+    box-shadow: 0 0 25px rgba(74, 138, 74, 0.4), inset 0 0 10px rgba(100, 200, 100, 0.1);
+}
+
+#map-grid.field-wasteland {
+    background: linear-gradient(135deg, #2a1a0a 0%, #4a3a2a 100%);
+    border: 3px solid #8a6a4a;
+    box-shadow: 0 0 25px rgba(138, 106, 74, 0.3), inset 0 0 10px rgba(100, 80, 60, 0.1);
+}
+
+#map-grid.field-lonely_desert {
+    background: linear-gradient(135deg, #5a4a2a 0%, #8a7a5a 100%);
+    border: 3px solid #d4b884;
+    box-shadow: 0 0 30px rgba(212, 184, 132, 0.5), inset 0 0 15px rgba(255, 240, 200, 0.2);
+}
+
+#map-grid.field-lava_cave {
+    background: linear-gradient(135deg, #2a0000 0%, #4a1a00 100%);
+    border: 3px solid #ff4400;
+    box-shadow: 0 0 35px rgba(255, 68, 0, 0.6), inset 0 0 20px rgba(255, 100, 0, 0.3);
+    animation: lavaGlow 3s ease-in-out infinite;
+}
+
+#map-grid.field-demon_castle {
+    background: linear-gradient(135deg, #001a2a 0%, #003a5a 100%);
+    border: 3px solid #4aa4ff;
+    box-shadow: 0 0 35px rgba(74, 164, 255, 0.6), inset 0 0 20px rgba(150, 220, 255, 0.3);
+    animation: waterFlow 4s ease-in-out infinite;
+}
+
+#map-grid.field-ruined_village {
+    background: linear-gradient(135deg, #1a1a1a 0%, #3a3a3a 100%);
+    border: 3px solid #6a6a6a;
+    box-shadow: 0 0 25px rgba(106, 106, 106, 0.4), inset 0 0 10px rgba(150, 150, 150, 0.1);
+}
+
+#map-grid.field-dark_forest {
+    background: linear-gradient(135deg, #001a00 0%, #003a1a 100%);
+    border: 3px solid #2a5a2a;
+    box-shadow: 0 0 25px rgba(42, 90, 42, 0.4), inset 0 0 10px rgba(50, 120, 50, 0.1);
+}
+
+#map-grid.field-tropical_south {
+    background: linear-gradient(135deg, #1a4a5a 0%, #2a6a7a 50%, #0a3a4a 100%);
+    border: 3px solid #4ab4c4;
+    box-shadow: 0 0 30px rgba(74, 180, 196, 0.5), inset 0 0 15px rgba(150, 220, 230, 0.2);
+}
+
+/* 南国フィールドのセルスタイル */
+.field-tropical_south .cell.plain,
+.field-tropical_south .cell[class*="plain"] { }
+.field-tropical_south .cell.wall {
+    background: linear-gradient(135deg, #2a5a6a 0%, #1a4a5a 100%);
+    border: 1px solid #3a6a7a;
+}
+.field-tropical_south .cell.sea {
+    background: linear-gradient(135deg, #1e90ff 0%, #0077be 50%, #005a8a 100%);
+    border: 1px solid #4ab4ff;
+    box-shadow: inset 0 0 15px rgba(100, 200, 255, 0.4);
+}
+.field-tropical_south .cell.palm {
+    background: linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%);
+    border: 1px solid #3d7a3d;
+}
+/* 南国は0=ビーチとしてplain扱いにするため、.cellにビーチ色をデフォルトで */
+.field-tropical_south .cell {
+    background: linear-gradient(135deg, #f4e4b4 0%, #e8d498 100%);
+    border: 1px solid #f8ecc8;
+}
+.field-tropical_south .cell.wall { background: linear-gradient(135deg, #2a5a6a 0%, #1a4a5a 100%); border-color: #3a6a7a; }
+.field-tropical_south .cell.sea { background: linear-gradient(135deg, #1e90ff 0%, #0077be 100%); border-color: #4ab4ff; }
+.field-tropical_south .cell.palm { background: linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%); border-color: #3d7a3d; }
+/* 橋（浜⇔村を繋ぐ） */
+.field-tropical_south .cell.bridge,
+.field-tropical_village .cell.bridge {
+    background: repeating-linear-gradient(90deg, #8B4513 0px, #8B4513 3px, #6d3410 3px, #6d3410 6px);
+    border: 1px solid #5d2a0a;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
+}
+/* 南国の浜・装飾タイル（上を通れる） */
+.field-tropical_south .cell.beach,
+.field-tropical_south .cell.hibiscus,
+.field-tropical_south .cell.coconut,
+.field-tropical_south .cell.mango {
+    background: linear-gradient(135deg, #f4e4b4 0%, #e8d498 100%);
+    border: 1px solid #f8ecc8;
+}
+
+#map-grid.field-tropical_village {
+    background: linear-gradient(135deg, #1a4a3a 0%, #2a6a5a 50%, #0a3a2a 100%);
+    border: 3px solid #4a9a6a;
+    box-shadow: 0 0 25px rgba(74, 154, 106, 0.5), inset 0 0 12px rgba(120, 200, 150, 0.2);
+}
+.field-tropical_village .cell {
+    background: linear-gradient(135deg, #e8d8a8 0%, #d4c490 100%);
+    border: 1px solid #eae0b0;
+}
+.field-tropical_village .cell.wall {
+    background: linear-gradient(135deg, #3a5a4a 0%, #2a4a3a 100%);
+    border-color: #4a6a5a;
+}
+.field-tropical_village .cell.palm {
+    background: linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%);
+    border-color: #3d7a3d;
+}
+
+/* 水の精霊のすみか */
+#map-grid.field-water_spirit_dwelling {
+    background: linear-gradient(135deg, #0a3a4a 0%, #1a5a6a 50%, #0a2a3a 100%);
+    border: 3px solid #4ab4d4;
+    box-shadow: 0 0 30px rgba(74, 180, 212, 0.5), inset 0 0 15px rgba(100, 220, 255, 0.15);
+}
+.field-water_spirit_dwelling .cell {
+    background: linear-gradient(135deg, #b8e0f0 0%, #88c0e0 100%);
+    border: 1px solid #a0d8f0;
+}
+.field-water_spirit_dwelling .cell.wall {
+    background: linear-gradient(135deg, #2a5a6a 0%, #1a4a5a 100%);
+    border-color: #3a6a7a;
+}
+/* 水の精霊のすみかへの入口：橋を通って入る */
+.field-water_spirit_dwelling .cell.bridge {
+    background: repeating-linear-gradient(90deg, #8B4513 0px, #8B4513 3px, #6d3410 3px, #6d3410 6px);
+    border: 1px solid #5d2a0a;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
+}
+.field-water_spirit_dwelling .cell.obj-water-spirit {
+    background: linear-gradient(135deg, #4ab4e0 0%, #2a94c0 100%);
+    border-color: #5ac4f0;
+    color: #fff;
+}
+
+/* 魔物の森（水の精霊で「森へ行く」を選ぶと東に出現） */
+#map-grid.field-monster_forest {
+    background: linear-gradient(135deg, #001a0a 0%, #003a1a 100%);
+    border: 3px solid #2a5a2a;
+    box-shadow: 0 0 25px rgba(42, 90, 42, 0.4), inset 0 0 10px rgba(50, 120, 50, 0.1);
+}
+.field-monster_forest .cell {
+    background: linear-gradient(135deg, #1a3a1a 0%, #0a2a0a 100%);
+    border: 1px solid #2a4a2a;
+}
+.field-monster_forest .cell.wall {
+    background: linear-gradient(135deg, #001a00 0%, #000a00 100%);
+    border-color: #0a2a0a;
+}
+.field-monster_forest .cell.forest {
+    background: linear-gradient(135deg, #2a6a2a 0%, #1a5a1a 100%);
+    border-color: #3a7a3a;
+}
+.field-monster_forest #area-title {
+    color: #228b22;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(34, 139, 34, 0.5);
+}
+
+/* 猫NPC（125-猫アニメの4コマアニメ） */
+.pixelated {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+.cat-npc-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cat-npc-bounce {
+    position: relative;
+    width: 80%;
+    height: 80%;
+    min-width: 24px;
+    min-height: 24px;
+}
+.cat-npc-container .cat-npc-frame {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    animation: cat-sprite-step 0.4s infinite;
+    display: block;
+}
+.cat-npc-container .cat-npc-f1 { animation-delay: 0s; }
+.cat-npc-container .cat-npc-f2 { animation-delay: 0.1s; }
+.cat-npc-container .cat-npc-f3 { animation-delay: 0.2s; }
+.cat-npc-container .cat-npc-f4 { animation-delay: 0.3s; }
+@keyframes cat-sprite-step {
+    0%, 24.9% { opacity: 1; }
+    25%, 100% { opacity: 0; }
+}
+
+/* フィールドごとのアニメーション */
+@keyframes lavaGlow {
+    0%, 100% {
+        box-shadow: 0 0 35px rgba(255, 68, 0, 0.6), inset 0 0 20px rgba(255, 100, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 45px rgba(255, 100, 0, 0.8), inset 0 0 25px rgba(255, 150, 50, 0.5);
+    }
+}
+
+@keyframes waterFlow {
+    0%, 100% {
+        box-shadow: 0 0 35px rgba(74, 164, 255, 0.6), inset 0 0 20px rgba(150, 220, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 45px rgba(100, 200, 255, 0.8), inset 0 0 25px rgba(180, 240, 255, 0.5);
+    }
+}
+
+.cell {
+    width: 100%;
+    aspect-ratio: 1/1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 18px;
+    line-height: 1;
+    position: relative;
+    transition: transform 0.1s ease, box-shadow 0.2s ease;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8), 0 0 3px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    border-radius: 2px;
+}
+
+/* 街（town_inside）のセルスタイル */
+.field-town_inside .cell.wall { 
+    background: linear-gradient(135deg, #3a2a1a 0%, #5a4a3a 100%);
+    border: 1px solid #6a5a4a;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.field-town_inside .cell.plain { 
+    background: linear-gradient(135deg, #f4d5a4 0%, #e4c584 100%);
+    border: 1px solid #f4e5b4;
+    box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.4);
+}
+
+/* 平原（green_field）のセルスタイル */
+.field-green_field .cell.plain { 
+    background: linear-gradient(135deg, #6aaa6a 0%, #5a9a5a 100%);
+    border: 1px solid #7aba7a;
+    box-shadow: inset 0 0 8px rgba(150, 250, 150, 0.4), 0 1px 2px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.field-green_field .cell.plain::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(150, 250, 150, 0.4) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.field-green_field .cell.wall { 
+    background: linear-gradient(135deg, #1a4a1a 0%, #0a3a0a 100%);
+    border: 1px solid #2a5a2a;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+/* 荒野（wasteland）のセルスタイル */
+.field-wasteland .cell.wasteland { 
+    background: linear-gradient(135deg, #8a7a6a 0%, #7a6a5a 100%);
+    border: 1px solid #9a8a7a;
+    box-shadow: inset 0 0 10px rgba(200, 180, 160, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.field-wasteland .cell.wasteland::after {
+    content: '';
+    position: absolute;
+    top: 20%;
+    left: 20%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(ellipse, rgba(150, 130, 110, 0.5) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.field-wasteland .cell.wall { 
+    background: linear-gradient(135deg, #2a1a0a 0%, #1a0a00 100%);
+    border: 1px solid #3a2a1a;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.7);
+}
+
+/* 砂漠（lonely_desert）のセルスタイル */
+.field-lonely_desert .cell.desert { 
+    background: linear-gradient(135deg, #f4e4b4 0%, #e4d4a4 100%);
+    border: 1px solid #f4f4c4;
+    box-shadow: inset 0 0 8px rgba(255, 250, 230, 0.5), 0 1px 3px rgba(220, 200, 170, 0.2);
+    position: relative;
+    animation: sandShimmer 4s ease-in-out infinite;
+}
+
+.field-lonely_desert .cell.desert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
+    animation: sandWave 3s ease-in-out infinite;
+}
+
+.field-lonely_desert .cell.wall { 
+    background: linear-gradient(135deg, #7a6a4a 0%, #6a5a3a 100%);
+    border: 1px solid #8a7a5a;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes sandShimmer {
+    0%, 100% {
+        background: linear-gradient(135deg, #f4e4b4 0%, #e4d4a4 100%);
+    }
+    50% {
+        background: linear-gradient(135deg, #f4f4c4 0%, #f4e4b4 100%);
+    }
+}
+
+@keyframes sandWave {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 200%;
+    }
+}
+
+/* 火の洞窟（lava_cave）のセルスタイル */
+.field-lava_cave .cell.lava { 
+    background: linear-gradient(135deg, #ff8844 0%, #ff6622 100%);
+    border: 1px solid #ffaa66;
+    box-shadow: 0 0 20px rgba(255, 136, 68, 0.9), inset 0 0 15px rgba(255, 200, 100, 0.7);
+    position: relative;
+    animation: lavaFlicker 2s ease-in-out infinite;
+}
+
+.field-lava_cave .cell.lava::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 240, 150, 0.5) 0%, transparent 60%);
+    animation: lavaPulse 1.5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.field-lava_cave .cell.wall { 
+    background: linear-gradient(135deg, #3a0a00 0%, #1a0000 100%);
+    border: 1px solid #5a1a00;
+    box-shadow: inset 0 0 12px rgba(255, 68, 0, 0.4), 0 0 8px rgba(255, 100, 0, 0.3);
+}
+
+@keyframes lavaFlicker {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(255, 136, 68, 0.9), inset 0 0 15px rgba(255, 200, 100, 0.7);
+        background: linear-gradient(135deg, #ff8844 0%, #ff6622 100%);
+    }
+    25% {
+        box-shadow: 0 0 25px rgba(255, 150, 100, 1), inset 0 0 20px rgba(255, 240, 150, 0.8);
+        background: linear-gradient(135deg, #ffaa66 0%, #ff8844 100%);
+    }
+    50% {
+        box-shadow: 0 0 22px rgba(255, 136, 68, 1), inset 0 0 17px rgba(255, 200, 100, 0.8);
+        background: linear-gradient(135deg, #ff9955 0%, #ff7733 100%);
+    }
+    75% {
+        box-shadow: 0 0 27px rgba(255, 170, 120, 1), inset 0 0 21px rgba(255, 220, 180, 0.9);
+        background: linear-gradient(135deg, #ffbb77 0%, #ff9955 100%);
+    }
+}
+
+@keyframes lavaPulse {
+    0%, 100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
+/* 水の山（demon_castle）のセルスタイル */
+.field-demon_castle .cell.mountain { 
+    background: linear-gradient(135deg, #6ac4ff 0%, #4aa4ef 100%);
+    border: 1px solid #8ae4ff;
+    box-shadow: 0 0 20px rgba(106, 196, 255, 0.9), inset 0 0 15px rgba(180, 240, 255, 0.7);
+    position: relative;
+    animation: waterRipple 3s ease-in-out infinite;
+}
+
+.field-demon_castle .cell.mountain::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(220, 250, 255, 0.6) 0%, transparent 60%);
+    animation: waterShimmer 2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.field-demon_castle .cell.mountain::after {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 80%;
+    height: 80%;
+    border: 1px solid rgba(180, 240, 255, 0.5);
+    border-radius: 50%;
+    animation: waterRing 2s ease-out infinite;
+    pointer-events: none;
+}
+
+.field-demon_castle .cell.wall { 
+    background: linear-gradient(135deg, #002a4a 0%, #001a1a 100%);
+    border: 1px solid #003a6a;
+    box-shadow: inset 0 0 12px rgba(74, 164, 255, 0.4), 0 0 8px rgba(100, 200, 255, 0.3);
+}
+
+@keyframes waterRipple {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(106, 196, 255, 0.9), inset 0 0 15px rgba(180, 240, 255, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(130, 220, 255, 1), inset 0 0 20px rgba(200, 250, 255, 0.8);
+    }
+}
+
+@keyframes waterShimmer {
+    0%, 100% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+@keyframes waterRing {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1.2);
+        opacity: 0;
+    }
+}
+
+/* かつての村（ruined_village）のセルスタイル */
+.field-ruined_village .cell.ruins { 
+    background: linear-gradient(135deg, #6a6a6a 0%, #5a5a5a 100%);
+    border: 1px solid #7a7a7a;
+    box-shadow: inset 0 0 10px rgba(200, 200, 200, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.field-ruined_village .cell.ruins::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.05) 2px,
+        rgba(0, 0, 0, 0.05) 4px
+    );
+    pointer-events: none;
+}
+
+.field-ruined_village .cell.wall { 
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+    border: 1px solid #2a2a2a;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+}
+
+/* かつての村・装飾タイル（上を通れる） */
+.field-ruined_village .cell.coffin,
+.field-ruined_village .cell.cobweb,
+.field-ruined_village .cell.candle {
+    background: linear-gradient(135deg, #6a6a6a 0%, #5a5a5a 100%);
+    border: 1px solid #7a7a7a;
+    box-shadow: inset 0 0 10px rgba(200, 200, 200, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* 迷いの森（dark_forest）のセルスタイル */
+.field-dark_forest .cell.forest { 
+    background: linear-gradient(135deg, #2a6a2a 0%, #1a5a1a 100%);
+    border: 1px solid #3a7a3a;
+    box-shadow: inset 0 0 10px rgba(50, 150, 50, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+    position: relative;
+}
+
+.field-dark_forest .cell.forest::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at 30% 30%, rgba(50, 100, 50, 0.4) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.field-dark_forest .cell.wall { 
+    background: linear-gradient(135deg, #001a00 0%, #000a00 100%);
+    border: 1px solid #0a2a0a;
+    box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.9);
+}
+
+/* 共通のセルスタイル */
+.cell.wall { 
+    background: linear-gradient(135deg, #333 0%, #222 100%);
+    border: 1px solid #444;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.cell.plain { 
+    background: linear-gradient(135deg, #2e8b57 0%, #1e6b37 100%);
+    border: 1px solid #3e9b67;
+    box-shadow: inset 0 0 3px rgba(100, 200, 100, 0.2);
+}
+
+.cell.forest { 
+    background: linear-gradient(135deg, #004d00 0%, #003300 100%);
+    border: 1px solid #005d00;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
+}
+
+.cell.lava { 
+    background: linear-gradient(135deg, #8b0000 0%, #6b0000 100%);
+    border: 1px solid #ab0000;
+    box-shadow: 0 0 10px rgba(255, 68, 0, 0.6);
+}
+
+.cell.mountain { 
+    background: linear-gradient(135deg, #4b3621 0%, #3b2611 100%);
+    border: 1px solid #5b4631;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
+}
+
+.cell.wasteland { 
+    background: linear-gradient(135deg, #554433 0%, #453323 100%);
+    border: 1px solid #655443;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.cell.desert { 
+    background: linear-gradient(135deg, #c2b280 0%, #a29260 100%);
+    border: 1px solid #d2c290;
+    box-shadow: inset 0 0 3px rgba(255, 240, 200, 0.3);
+}
+
+.cell.ruins { 
+    background: linear-gradient(135deg, #444 0%, #333 100%);
+    border: 1px solid #555;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.6);
+}
+
+.cell.hero { 
+    background: transparent;
+    border-radius: 0; 
+    color: #000;
+    z-index: 5;
+    box-shadow: none;
+    border: none;
+    animation: none;
+    overflow: visible;
+}
+
+/* 主人公SVGコンテナ（参考HTMLの動作に合わせる）・携帯で確実に表示 */
+.hero-svg-container {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+    transition: transform 0.1s;
+    position: relative;
+}
+
+/* アニメーション用の内側コンテナ（参考HTMLのanimatingクラス） */
+.hero-animating {
+    width: 100%;
+    height: 100%;
+    animation: heroBob 0.8s infinite ease-in-out;
+}
+
+.hero-svg {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* 主人公のアニメーション（上下に軽く揺れる - 参考HTMLのbobアニメーション） */
+@keyframes heroBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+/* 犬のSVGアニメーション・携帯で確実に表示 */
+.dog-svg {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3));
+}
+
+/* しっぽのアニメーション */
+.dog-svg path.tail {
+    animation: wag 0.5s infinite ease-in-out;
+}
+
+@keyframes wag {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(10deg); }
+    75% { transform: rotate(-10deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* 猿のSVGアニメーション・携帯で確実に表示 */
+.monkey-svg {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3));
+}
+
+/* きじのSVGアニメーション・携帯で確実に表示 */
+.bird-svg {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3));
+    image-rendering: pixelated;
+    shape-rendering: crispEdges;
+}
+
+@keyframes heroGlow {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 235, 0, 1), inset 0 0 15px rgba(255, 255, 255, 0.5);
+    }
+}
+
+/* オブジェクトの視覚的強化 */
+.cell.obj-enemy {
+    filter: drop-shadow(0 0 5px rgba(255, 0, 255, 0.8));
+    animation: enemyPulse 2s ease-in-out infinite;
+}
+
+.cell.obj-treasure {
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.9));
+    animation: treasureGlow 2s ease-in-out infinite;
+}
+
+.cell.obj-castle {
+    filter: drop-shadow(0 0 10px rgba(200, 200, 255, 0.8));
+    font-size: 1.2em;  /* 城を1.2倍表示 */
+}
+
+.cell.obj-boss {
+    filter: drop-shadow(0 0 12px rgba(255, 0, 0, 1));
+    animation: bossPulse 1.5s ease-in-out infinite;
+}
+
+.cell.obj-shop {
+    filter: drop-shadow(0 0 8px rgba(255, 200, 100, 0.8));
+}
+
+.cell.obj-door {
+    filter: drop-shadow(0 0 8px rgba(200, 200, 200, 0.8));
+    animation: doorGlow 3s ease-in-out infinite;
+}
+
+.cell.obj-ghost {
+    filter: drop-shadow(0 0 10px rgba(200, 200, 255, 0.9));
+    animation: ghostFloat 3s ease-in-out infinite;
+}
+
+.cell.obj-momo {
+    filter: drop-shadow(0 0 8px rgba(255, 150, 150, 0.8));
+    animation: momoGlow 2s ease-in-out infinite;
+}
+
+.cell.obj-npc {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 200, 0.7));
+}
+
+.cell.obj-ally {
+    filter: drop-shadow(0 0 6px rgba(255, 220, 150, 0.7));
+}
+
+.cell.obj-village-entrance {
+    filter: drop-shadow(0 0 8px rgba(150, 100, 50, 0.8));
+}
+
+.cell.obj-golden-cat {
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1));
+    animation: goldenCatGlow 2s ease-in-out infinite;
+    font-size: 1.5em;
+    overflow: visible;
+}
+.cell.obj-golden-cat .golden-cat-svg-container {
+    transform: scale(1.2);  /* 金色の🐈を1.2倍表示 */
+}
+
+@keyframes goldenCatGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1)) brightness(1);
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 25px rgba(255, 235, 0, 1)) brightness(1.2);
+        transform: scale(1.1);
+    }
+}
+
+@keyframes enemyPulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 5px rgba(255, 0, 255, 0.8));
+    }
+    50% {
+        transform: scale(1.05);
+        filter: drop-shadow(0 0 8px rgba(255, 50, 255, 1));
+    }
+}
+
+@keyframes treasureGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.9));
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 255, 100, 1));
+        transform: scale(1.08);
+    }
+}
+
+@keyframes bossPulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 12px rgba(255, 0, 0, 1));
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 18px rgba(255, 50, 50, 1));
+        transform: scale(1.1);
+    }
+}
+
+@keyframes doorGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(200, 200, 200, 0.8));
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 255, 255, 1));
+    }
+}
+
+@keyframes ghostFloat {
+    0%, 100% {
+        transform: translateY(0);
+        filter: drop-shadow(0 0 10px rgba(200, 200, 255, 0.9));
+    }
+    50% {
+        transform: translateY(-3px);
+        filter: drop-shadow(0 0 15px rgba(220, 220, 255, 1));
+    }
+}
+
+@keyframes momoGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(255, 150, 150, 0.8));
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 200, 200, 1));
+    }
+}
+
+/* セルのホバーエフェクト（PC用） */
+@media (hover: hover) {
+    .cell:not(.hero):hover {
+        transform: scale(1.1);
+        z-index: 3;
+        transition: transform 0.2s ease, z-index 0s;
+    }
+}
+
+@media (min-width: 400px) {
+    .cell {
+        font-size: 20px;
+    }
+}
+
+/* フィールドごとのセル基本スタイル調整 */
+.field-town_inside .cell {
+    border-radius: 3px;
+}
+
+.field-green_field .cell {
+    border-radius: 2px;
+}
+
+.field-wasteland .cell {
+    border-radius: 1px;
+}
+
+.field-lonely_desert .cell {
+    border-radius: 2px;
+}
+
+.field-lava_cave .cell {
+    border-radius: 3px;
+}
+
+.field-demon_castle .cell {
+    border-radius: 4px;
+}
+
+.field-ruined_village .cell {
+    border-radius: 1px;
+}
+
+.field-dark_forest .cell {
+    border-radius: 2px;
+}
+
+.field-tropical_south .cell {
+    border-radius: 3px;
+}
+
+.field-tropical_village .cell {
+    border-radius: 3px;
+}
+
+.field-water_spirit_dwelling .cell {
+    border-radius: 3px;
+}
+
+.field-monster_forest .cell {
+    border-radius: 2px;
+}
+
+/* エリアタイトルのスタイル強化 */
+#area-title {
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    padding: 8px;
+    transition: all 0.3s ease;
+}
+
+/* フィールドごとのエリアタイトルスタイル */
+.field-town_inside #area-title {
+    color: #ffd4a3;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 212, 163, 0.5);
+}
+
+.field-green_field #area-title {
+    color: #90ee90;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(144, 238, 144, 0.5);
+}
+
+.field-wasteland #area-title {
+    color: #d2b48c;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(210, 180, 140, 0.4);
+}
+
+.field-lonely_desert #area-title {
+    color: #f4a460;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(244, 164, 96, 0.6);
+}
+
+.field-lava_cave #area-title {
+    color: #ff6347;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 99, 71, 0.8);
+    animation: titleFireGlow 2s ease-in-out infinite;
+}
+
+.field-demon_castle #area-title {
+    color: #87ceeb;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(135, 206, 235, 0.8);
+    animation: titleWaterGlow 3s ease-in-out infinite;
+}
+
+.field-ruined_village #area-title {
+    color: #c0c0c0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(192, 192, 192, 0.5);
+}
+
+.field-dark_forest #area-title {
+    color: #228b22;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(34, 139, 34, 0.5);
+}
+
+.field-tropical_south #area-title {
+    color: #7fffd4;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(127, 255, 212, 0.6);
+}
+
+.field-tropical_village #area-title {
+    color: #98fb98;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(152, 251, 152, 0.6);
+}
+
+.field-water_spirit_dwelling #area-title {
+    color: #87ceeb;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(135, 206, 235, 0.6);
+}
+
+@keyframes titleFireGlow {
+    0%, 100% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 99, 71, 0.8);
+    }
+    50% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 150, 100, 1);
+    }
+}
+
+@keyframes titleWaterGlow {
+    0%, 100% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(135, 206, 235, 0.8);
+    }
+    50% {

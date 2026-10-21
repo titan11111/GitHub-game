@@ -1,0 +1,2085 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI限界挑戦 1ファイルRPG - 星屑の王冠</title>
+<style>
+  :root{
+    --bg:#0f1220;
+    --panel:#1b2138;
+    --panel2:#232b49;
+    --line:#44507f;
+    --text:#eef3ff;
+    --sub:#b8c2ea;
+    --accent:#7dd3fc;
+    --accent2:#fbbf24;
+    --danger:#f87171;
+    --heal:#86efac;
+    --shadow:rgba(0,0,0,.35);
+    --floor:#202844;
+    --grass:#244d35;
+    --forest:#173323;
+    --water:#173c68;
+    --mount:#4a4a56;
+    --town:#6f4d2d;
+    --road:#7b6a46;
+    --dungeon:#3b2744;
+    --boss:#7f1d1d;
+    --event:#8b5cf6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at top, #1c2440, #090c16 70%);
+    color:var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans JP", monospace;
+    overflow:hidden;
+  }
+  #app{
+    display:grid;
+    grid-template-columns: 1fr 360px;
+    height:100vh;
+  }
+  #left{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:12px;
+  }
+  #gameWrap{
+    position:relative;
+    width:min(96vw, 920px);
+    aspect-ratio: 16 / 10;
+    border:2px solid var(--line);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 18px 50px var(--shadow);
+    background:#11182e;
+  }
+  canvas{
+    width:100%;
+    height:100%;
+    image-rendering: pixelated;
+    display:block;
+    background:#0e1528;
+  }
+  #right{
+    border-left:2px solid #202949;
+    background:linear-gradient(180deg,#151a2f,#0f1325);
+    padding:12px;
+    overflow:auto;
+  }
+  .panel{
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:10px;
+    margin-bottom:10px;
+    box-shadow:0 8px 20px var(--shadow);
+  }
+  .title{
+    font-weight:700;
+    color:var(--accent);
+    margin-bottom:8px;
+    letter-spacing:.06em;
+  }
+  .row{display:flex; gap:8px; align-items:center; justify-content:space-between; margin:4px 0;}
+  .small{font-size:12px; color:var(--sub)}
+  .btns{display:grid; grid-template-columns:repeat(2,1fr); gap:8px;}
+  button{
+    border:none;
+    background:linear-gradient(180deg,#33406d,#243055);
+    color:white;
+    border:1px solid #5c6aa1;
+    border-radius:10px;
+    padding:10px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  button:hover{filter:brightness(1.08)}
+  button:active{transform:translateY(1px)}
+  .danger{background:linear-gradient(180deg,#8b2f2f,#6b1d1d);border-color:#bf6a6a}
+  .heal{background:linear-gradient(180deg,#2f7b46,#1b5a31);border-color:#74c38f}
+  .gold{color:#ffd166}
+  .log{
+    height:220px;
+    overflow:auto;
+    background:#0d1222;
+    border:1px solid #2e3a66;
+    border-radius:10px;
+    padding:8px;
+    line-height:1.5;
+    font-size:13px;
+  }
+  .meter{
+    height:12px;
+    background:#0f1528;
+    border:1px solid #33406d;
+    border-radius:999px;
+    overflow:hidden;
+    flex:1;
+    margin-left:8px;
+  }
+  .fill{height:100%}
+  .hp{background:linear-gradient(90deg,#f87171,#ef4444)}
+  .mp{background:linear-gradient(90deg,#60a5fa,#2563eb)}
+  .xp{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+  .kbd{
+    display:inline-block;
+    padding:2px 6px;
+    border:1px solid #51609b;
+    border-radius:6px;
+    background:#121830;
+    font-size:12px;
+    color:#dbe5ff;
+  }
+  #overlay, #menuOverlay, #dialogOverlay, #battleOverlay, #endingOverlay, #titleOverlay{
+    position:absolute;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(4,8,18,.7);
+    backdrop-filter: blur(2px);
+    z-index:20;
+  }
+  .modal{
+    width:min(92%, 760px);
+    max-height:88%;
+    overflow:auto;
+    background:linear-gradient(180deg,#1c2340,#12182e);
+    border:2px solid var(--line);
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,.45);
+    padding:14px;
+  }
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .list{
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .itemBtn{
+    text-align:left;
+    background:linear-gradient(180deg,#2a355d,#1f294a);
+  }
+  .battleLayout{
+    display:grid;
+    grid-template-columns: 1.1fr .9fr;
+    gap:12px;
+  }
+  .enemyBox, .partyBox{
+    min-height:280px;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:12px;
+    background:linear-gradient(180deg,#10162a,#18213d);
+    position:relative;
+    overflow:hidden;
+  }
+  .enemySprite{
+    width:180px; height:180px; margin:0 auto 10px auto;
+    filter: drop-shadow(0 8px 18px rgba(0,0,0,.45));
+  }
+  .center{text-align:center}
+  .battleActions{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:8px;
+  }
+  .tag{
+    display:inline-block; padding:3px 8px; border-radius:999px;
+    border:1px solid #5667a5; font-size:12px; color:#dce6ff; margin-right:6px;
+    background:#151d39;
+  }
+  .quest{
+    border-left:4px solid #8b5cf6;
+    padding-left:8px;
+    margin:8px 0;
+  }
+  .footerHint{margin-top:8px; font-size:12px; color:var(--sub)}
+  .credits{
+    line-height:1.8; text-align:center; color:#e5edff;
+  }
+  .flash{
+    animation:flash .2s 2;
+  }
+  @keyframes flash{
+    0%{filter:brightness(1)}
+    50%{filter:brightness(2)}
+    100%{filter:brightness(1)}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <div id="gameWrap">
+      <canvas id="game" width="960" height="600"></canvas>
+
+      <div id="titleOverlay" style="display:flex;">
+        <div class="modal center">
+          <h1 style="margin:6px 0 8px 0;color:#7dd3fc;">星屑の王冠</h1>
+          <div class="small" style="margin-bottom:12px;">1ファイルRPG / HTML + JavaScript</div>
+          <p>
+            魔王に砕かれた「星屑の王冠」を取り戻し、世界の夜を終わらせよう。<br>
+            探索・戦闘・装備・スキル・街機能・セーブ/ロード付き。
+          </p>
+          <div class="btns" style="max-width:420px;margin:16px auto;">
+            <button onclick="newGame()">はじめから</button>
+            <button onclick="loadGame(true)">つづきから</button>
+          </div>
+          <div class="footerHint">
+            操作: <span class="kbd">矢印</span>/<span class="kbd">WASD</span> 移動　
+            <span class="kbd">Enter</span>/<span class="kbd">Space</span> 決定　
+            <span class="kbd">Esc</span> 閉じる
+          </div>
+        </div>
+      </div>
+
+      <div id="menuOverlay">
+        <div class="modal">
+          <div class="row">
+            <div class="title">メニュー</div>
+            <button onclick="closeMenu()">閉じる</button>
+          </div>
+          <div class="grid2">
+            <div class="panel">
+              <div class="title">ステータス</div>
+              <div id="menuStatus"></div>
+            </div>
+            <div class="panel">
+              <div class="title">所持品</div>
+              <div id="menuInventory" class="list"></div>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="panel">
+              <div class="title">装備</div>
+              <div id="menuEquip" class="list"></div>
+            </div>
+            <div class="panel">
+              <div class="title">スキル</div>
+              <div id="menuSkills" class="list"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="title">システム</div>
+            <div class="btns">
+              <button onclick="saveGame()">セーブ</button>
+              <button onclick="loadGame()">ロード</button>
+              <button onclick="restAtCamp()">野営（HP/MP少回復）</button>
+              <button onclick="closeMenu()">戻る</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dialogOverlay">
+        <div class="modal">
+          <div class="title" id="dialogTitle">会話</div>
+          <div id="dialogBody" style="line-height:1.8; margin-bottom:12px;"></div>
+          <div id="dialogChoices" class="list"></div>
+          <div class="row" style="margin-top:12px;">
+            <div class="small">Enter / Space でも進められます</div>
+            <button onclick="closeDialog()">閉じる</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="battleOverlay">
+        <div class="modal">
+          <div class="row">
+            <div class="title">バトル</div>
+            <div id="battleTurnInfo" class="small"></div>
+          </div>
+          <div class="battleLayout">
+            <div class="enemyBox">
+              <div class="small">ENEMY</div>
+              <div id="enemyArea" class="center"></div>
+              <div id="enemyStatus"></div>
+            </div>
+            <div class="partyBox">
+              <div class="small">PLAYER</div>
+              <div id="partyStatus"></div>
+              <hr style="border-color:#33406d;opacity:.4">
+              <div class="title" style="font-size:14px;">コマンド</div>
+              <div id="battleActions" class="battleActions"></div>
+              <div class="title" style="font-size:14px;margin-top:10px;">戦闘ログ</div>
+              <div id="battleLog" class="log" style="height:180px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="endingOverlay">
+        <div class="modal credits">
+          <h1 style="color:#fbbf24;">エンディング</h1>
+          <div id="endingText"></div>
+          <div style="margin-top:18px;">
+            <button onclick="location.reload()">タイトルへ戻る</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="right">
+    <div class="panel">
+      <div class="title">主人公</div>
+      <div class="row"><div id="heroName">アスター</div><div class="gold" id="goldView">0G</div></div>
+      <div class="row"><div>Lv <span id="lvView">1</span></div><div>職業: 星冠の旅人</div></div>
+      <div class="row"><div>HP</div><div class="meter"><div id="hpBar" class="fill hp" style="width:100%"></div></div><div id="hpText">0/0</div></div>
+      <div class="row"><div>MP</div><div class="meter"><div id="mpBar" class="fill mp" style="width:100%"></div></div><div id="mpText">0/0</div></div>
+      <div class="row"><div>XP</div><div class="meter"><div id="xpBar" class="fill xp" style="width:0%"></div></div><div id="xpText">0/0</div></div>
+      <div id="buffView" class="small"></div>
+    </div>
+
+    <div class="panel">
+      <div class="title">ワールド情報</div>
+      <div class="row"><div>現在地</div><div id="placeView">-</div></div>
+      <div class="row"><div>時間帯</div><div id="timeView">昼</div></div>
+      <div class="row"><div>歩数</div><div id="stepView">0</div></div>
+      <div class="row"><div>進行度</div><div id="storyView">序章</div></div>
+      <div class="small" id="hintView">森の北に街があります。</div>
+    </div>
+
+    <div class="panel">
+      <div class="title">クエスト</div>
+      <div id="questView"></div>
+    </div>
+
+    <div class="panel">
+      <div class="title">操作</div>
+      <div class="btns">
+        <button onclick="openMenu()">メニュー</button>
+        <button onclick="interact()">調べる</button>
+        <button onclick="saveGame()">セーブ</button>
+        <button onclick="loadGame()">ロード</button>
+      </div>
+      <div class="footerHint">
+        ランダム戦闘は草原・森・山・洞窟で発生。<br>
+        街では宿屋・武器屋・教会・王の使者イベントがあります。
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="title">ログ</div>
+      <div id="log" class="log"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // =========================
+  // Utility
+  // =========================
+  const rand = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+  const deepClone = obj => JSON.parse(JSON.stringify(obj));
+
+  function el(id){ return document.getElementById(id); }
+  function log(msg){
+    const box = el('log');
+    const p = document.createElement('div');
+    p.innerHTML = `> ${msg}`;
+    box.appendChild(p);
+    box.scrollTop = box.scrollHeight;
+  }
+  function battleLog(msg){
+    const box = el('battleLog');
+    const p = document.createElement('div');
+    p.innerHTML = `> ${msg}`;
+    box.appendChild(p);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // =========================
+  // Data
+  // =========================
+  const TILE = 32;
+  const VIEW_W = 30;
+  const VIEW_H = 18;
+
+  const TILE_TYPES = {
+    grass: { id:0, color:"#244d35", encounter:0.09, name:"草原", pass:true },
+    forest:{ id:1, color:"#173323", encounter:0.15, name:"森", pass:true },
+    water: { id:2, color:"#173c68", encounter:0, name:"水辺", pass:false },
+    mount: { id:3, color:"#4a4a56", encounter:0.18, name:"山地", pass:true },
+    town:  { id:4, color:"#6f4d2d", encounter:0, name:"街", pass:true },
+    road:  { id:5, color:"#7b6a46", encounter:0.02, name:"街道", pass:true },
+    dungeon:{id:6, color:"#3b2744", encounter:0.22, name:"遺跡", pass:true },
+    castle:{ id:7, color:"#7f1d1d", encounter:0, name:"魔王城", pass:true },
+    shrine:{ id:8, color:"#8b5cf6", encounter:0, name:"聖域", pass:true },
+  };
+
+  const ITEMS = {
+    potion: { name:"ポーション", type:"consumable", desc:"HPを40回復", price:18, use:(s)=>{ heal(s.hero,40); return "HPが40回復した。"; } },
+    hiPotion: { name:"ハイポーション", type:"consumable", desc:"HPを100回復", price:55, use:(s)=>{ heal(s.hero,100); return "HPが100回復した。"; } },
+    ether: { name:"エーテル", type:"consumable", desc:"MPを25回復", price:35, use:(s)=>{ s.hero.mp = clamp(s.hero.mp+25,0,s.hero.maxMp); return "MPが25回復した。"; } },
+    antidote: { name:"解毒草", type:"consumable", desc:"毒を治す", price:20, use:(s)=>{ delete s.hero.status.poison; return "毒が治った。"; } },
+    bomb: { name:"火炎玉", type:"consumable", desc:"敵に固定45ダメージ", price:40, useBattle:(s,b)=>{ damageEnemy(b,45,false); return "火炎玉が炸裂した！"; } },
+    elixir: { name:"エリクサー", type:"consumable", desc:"HP/MP全回復", price:150, use:(s)=>{ s.hero.hp=s.hero.maxHp; s.hero.mp=s.hero.maxMp; return "HPとMPが全回復した。"; } },
+    moonShard: { name:"月光の欠片", type:"key", desc:"王冠修復に必要な欠片" },
+    crownCore: { name:"星冠の核", type:"key", desc:"聖域で得る王冠の核" },
+  };
+
+  const EQUIPS = {
+    woodSword:{ name:"木剣", slot:"weapon", atk:2, mag:0, def:0, spd:0, price:30, desc:"旅立ちの剣" },
+    ironSword:{ name:"鉄剣", slot:"weapon", atk:6, mag:0, def:0, spd:0, price:90, desc:"標準的な剣" },
+    silverBlade:{ name:"銀刃", slot:"weapon", atk:11, mag:2, def:0, spd:1, price:220, desc:"魔を断つ剣" },
+    starBlade:{ name:"星砕き", slot:"weapon", atk:18, mag:6, def:0, spd:2, price:0, desc:"星冠に選ばれし刃" },
+
+    cloth:{ name:"旅人の服", slot:"armor", atk:0, mag:0, def:2, spd:0, price:25, desc:"軽装" },
+    chain:{ name:"鎖かたびら", slot:"armor", atk:0, mag:0, def:5, spd:-1, price:85, desc:"そこそこ頑丈" },
+    knight:{ name:"騎士鎧", slot:"armor", atk:0, mag:0, def:9, spd:-1, price:210, desc:"堅牢な鎧" },
+    astral:{ name:"星衣", slot:"armor", atk:0, mag:4, def:12, spd:1, price:0, desc:"星の祝福を宿す" },
+
+    ringHp:{ name:"命の指輪", slot:"accessory", atk:0, mag:0, def:1, spd:0, hp:20, price:120, desc:"最大HP+20" },
+    ringMp:{ name:"蒼月の指輪", slot:"accessory", atk:0, mag:3, def:0, spd:0, mp:15, price:130, desc:"最大MP+15" },
+    ringSpd:{ name:"風の指輪", slot:"accessory", atk:0, mag:0, def:0, spd:3, price:140, desc:"素早さ+3" },
+  };
+
+  const SKILLS = {
+    slash:{ name:"スラッシュ", mp:0, unlock:1, desc:"威力1.1倍の物理攻撃", act:(s,b)=>skillSlash(s,b) },
+    fire:{ name:"ファイア", mp:6, unlock:2, desc:"魔法ダメージ", act:(s,b)=>skillFire(s,b) },
+    heal:{ name:"ヒール", mp:5, unlock:3, desc:"HP回復", act:(s,b)=>skillHeal(s,b) },
+    guardBreak:{ name:"ガードブレイク", mp:8, unlock:5, desc:"防御低下付与", act:(s,b)=>skillGuardBreak(s,b) },
+    thunder:{ name:"サンダー", mp:10, unlock:7, desc:"高威力魔法", act:(s,b)=>skillThunder(s,b) },
+    starfall:{ name:"スターフォール", mp:18, unlock:10, desc:"星の大魔法", act:(s,b)=>skillStarfall(s,b) },
+  };
+
+  const ENEMIES = {
+    slime:{
+      name:"スライム", maxHp:38, atk:7, def:2, mag:2, spd:4, xp:12, gold:8, color:"#6ee7b7",
+      skills:["tackle"], drops:["potion"],
+      ai:(s,b)=>enemyAttack(s,b, "ぷるんと体当たりした！", 0.95)
+    },
+    wolf:{
+      name:"ウルフ", maxHp:52, atk:10, def:3, mag:0, spd:9, xp:18, gold:14, color:"#cbd5e1",
+      skills:["bite"], drops:["potion","antidote"],
+      ai:(s,b)=>{
+        if(Math.random()<0.25 && !b.enemy.status.focus){
+          b.enemy.status.focus={turns:2};
+          battleLog("ウルフは牙をむき、狙いを定めた！");
+        }else{
+          enemyAttack(s,b, "鋭く噛みついた！", b.enemy.status.focus?1.35:1.0);
+        }
+      }
+    },
+    goblin:{
+      name:"ゴブリン", maxHp:65, atk:12, def:4, mag:2, spd:6, xp:24, gold:18, color:"#84cc16",
+      drops:["potion","ether"],
+      ai:(s,b)=>{
+        if(Math.random()<0.2){
+          battleLog("ゴブリンはいやらしく笑った。こちらの集中が乱れた！");
+          if(Math.random()<0.35) s.hero.status.weaken={turns:2, val:2};
+        }else enemyAttack(s,b,"棍棒を振り下ろした！",1.0);
+      }
+    },
+    skeleton:{
+      name:"スケルトン", maxHp:84, atk:15, def:7, mag:4, spd:5, xp:34, gold:24, color:"#e5e7eb",
+      drops:["hiPotion"],
+      ai:(s,b)=>{
+        if(Math.random()<0.22 && !s.hero.status.poison){
+          s.hero.status.poison={turns:4, dmg:6};
+          battleLog("スケルトンの呪いで毒を受けた！");
+        }else enemyAttack(s,b,"骨の剣で斬りつけた！",1.0);
+      }
+    },
+    mage:{
+      name:"闇術師", maxHp:90, atk:10, def:5, mag:16, spd:7, xp:42, gold:30, color:"#a78bfa",
+      drops:["ether","hiPotion"],
+      ai:(s,b)=>{
+        if(Math.random()<0.45) enemyMagic(s,b,"闇の火球を放った！",1.15);
+        else enemyAttack(s,b,"杖で殴りつけた！",0.9);
+      }
+    },
+    golem:{
+      name:"ストーンゴーレム", maxHp:148, atk:20, def:12, mag:0, spd:2, xp:62, gold:42, color:"#a8a29e",
+      drops:["hiPotion"],
+      ai:(s,b)=>{
+        if(Math.random()<0.28){
+          b.enemy.status.guard={turns:2, val:6};
+          battleLog("ゴーレムは岩の装甲を固めた！");
+        } else enemyAttack(s,b,"重い拳を叩きつけた！",1.1);
+      }
+    },
+    wyvern:{
+      name:"ワイバーン", maxHp:175, atk:24, def:10, mag:10, spd:12, xp:84, gold:60, color:"#fda4af",
+      drops:["elixir"],
+      ai:(s,b)=>{
+        if(Math.random()<0.35){
+          battleLog("ワイバーンは灼熱の息を吐いた！");
+          const dmg = Math.max(8, Math.floor((b.enemy.mag*1.2 + rand(6,12)) - getHeroStats().def/3));
+          applyHeroDamage(s,dmg);
+        } else enemyAttack(s,b,"鋭い爪で切り裂いた！",1.0);
+      }
+    },
+    shardKeeper:{
+      name:"欠片の守護者", maxHp:260, atk:28, def:12, mag:18, spd:10, xp:180, gold:120, color:"#67e8f9",
+      boss:true,
+      ai:(s,b)=>{
+        const hpRate = b.enemy.hp / b.enemy.maxHp;
+        if(hpRate < .45 && !b.enemy.status.enrage){
+          b.enemy.status.enrage={turns:999};
+          battleLog("守護者は砕け散る光をまとい、激昂した！");
+          return;
+        }
+        const r = Math.random();
+        if(r<0.3){
+          enemyMagic(s,b,"光刃の渦が襲いかかる！", b.enemy.status.enrage?1.6:1.25);
+        }else if(r<0.5){
+          b.enemy.status.guard={turns:2,val:5};
+          battleLog("守護者は結晶障壁を張った！");
+        }else{
+          enemyAttack(s,b,"光の槍で貫いた！", b.enemy.status.enrage?1.45:1.1);
+        }
+      }
+    },
+    darkLord:{
+      name:"魔王ネブラ", maxHp:420, atk:36, def:18, mag:28, spd:14, xp:999, gold:0, color:"#fb7185",
+      boss:true,
+      ai:(s,b)=>{
+        const hpRate = b.enemy.hp / b.enemy.maxHp;
+        const turn = b.turn;
+        if(hpRate < .6 && !b.enemy.status.phase2){
+          b.enemy.status.phase2={turns:999};
+          battleLog("魔王ネブラは第二形態へ移行した！");
+          b.enemy.atk += 6;
+          b.enemy.mag += 8;
+          b.enemy.spd += 4;
+          return;
+        }
+        if(turn % 4 === 0){
+          battleLog("魔王は星蝕の波動を放った！");
+          const dmg = Math.max(14, Math.floor((b.enemy.mag*1.5 + rand(8,16)) - getHeroStats().def/4));
+          applyHeroDamage(s,dmg);
+          if(Math.random()<0.4){
+            s.hero.status.poison={turns:3,dmg:10};
+            battleLog("瘴気で毒に侵された！");
+          }
+          return;
+        }
+        const r=Math.random();
+        if(r<0.28){
+          b.enemy.status.guard={turns:2,val:7};
+          battleLog("魔王は闇の障壁を展開した！");
+        }else if(r<0.62){
+          enemyMagic(s,b,"漆黒の雷を落とした！", b.enemy.status.phase2?1.6:1.25);
+        }else{
+          enemyAttack(s,b,"終焉の剣を振り下ろした！", b.enemy.status.phase2?1.5:1.15);
+        }
+      }
+    }
+  };
+
+  const SHOPS = {
+    town1: {
+      inn:20,
+      goods:["potion","ether","antidote","woodSword","cloth"],
+      dialogue:"ようこそ旅人さん。ここは始まりの街ルミア。"
+    },
+    town2: {
+      inn:45,
+      goods:["potion","hiPotion","ether","bomb","ironSword","chain","ringHp","ringMp"],
+      dialogue:"王都グランでは良い品が手に入るぞ。"
+    },
+    shrine: {
+      inn:0,
+      goods:["elixir","silverBlade","knight","ringSpd"],
+      dialogue:"聖域の光があなたを見守っています。"
+    }
+  };
+
+  // =========================
+  // World generation
+  // =========================
+  const MAP_W = 60;
+  const MAP_H = 60;
+
+  function generateWorld(){
+    const map = Array.from({length:MAP_H}, (_,y)=>
+      Array.from({length:MAP_W}, (_,x)=>"grass")
+    );
+
+    // Water strips
+    for(let x=0;x<MAP_W;x++){
+      const y = Math.floor(MAP_H*0.28 + Math.sin(x/4)*3 + rand(-1,1));
+      for(let dy=-1;dy<=1;dy++){
+        if(inMap(x,y+dy)) map[y+dy][x]="water";
+      }
+    }
+
+    // Forests
+    for(let i=0;i<10;i++){
+      let cx=rand(4,MAP_W-5), cy=rand(4,MAP_H-5), r=rand(3,7);
+      for(let y=cy-r;y<=cy+r;y++) for(let x=cx-r;x<=cx+r;x++){
+        if(inMap(x,y) && Math.hypot(x-cx,y-cy)<r+Math.random()*1.5 && map[y][x]!=="water") map[y][x]="forest";
+      }
+    }
+
+    // Mountains
+    for(let i=0;i<7;i++){
+      let cx=rand(6,MAP_W-6), cy=rand(6,MAP_H-6), r=rand(3,6);
+      for(let y=cy-r;y<=cy+r;y++) for(let x=cx-r;x<=cx+r;x++){
+        if(inMap(x,y) && Math.hypot(x-cx,y-cy)<r+Math.random()*1.2 && map[y][x]!=="water") map[y][x]="mount";
+      }
+    }
+
+    // Roads
+    const roads = [
+      [[6,8],[16,12],[28,16],[40,16],[50,12]],
+      [[28,16],[28,28],[30,40],[44,48]],
+      [[16,12],[10,22],[8,34]]
+    ];
+    for(const path of roads){
+      for(let i=0;i<path.length-1;i++) drawRoad(map,path[i],path[i+1]);
+    }
+
+    // fixed places
+    placeRect(map,6,8,3,3,"town");     // town1
+    placeRect(map,26,15,5,4,"town");   // town2
+    placeRect(map,43,47,4,4,"shrine"); // shrine
+    placeRect(map,49,6,5,5,"castle");  // dark castle
+    placeRect(map,8,33,4,4,"dungeon"); // ruin
+    placeRect(map,35,36,5,5,"dungeon");// crystal cave
+
+    // Ensure passable roads to bosses
+    for(let x=47;x<=52;x++) if(map[11][x]!=="water") map[11][x]="road";
+    for(let y=10;y<=11;y++) for(let x=47;x<=52;x++) if(map[y][x]!=="water") map[y][x]="road";
+
+    return map;
+  }
+  function inMap(x,y){ return x>=0&&y>=0&&x<MAP_W&&y<MAP_H; }
+  function placeRect(map,x,y,w,h,t){
+    for(let yy=y;yy<y+h;yy++) for(let xx=x;xx<x+w;xx++) if(inMap(xx,yy)) map[yy][xx]=t;
+  }
+  function drawRoad(map,a,b){
+    let [x1,y1]=a,[x2,y2]=b;
+    let x=x1,y=y1;
+    while(x!==x2){ if(inMap(x,y)&&map[y][x]!=="water") map[y][x]="road"; x += Math.sign(x2-x); }
+    while(y!==y2){ if(inMap(x,y)&&map[y][x]!=="water") map[y][x]="road"; y += Math.sign(y2-y); }
+    if(inMap(x,y)&&map[y][x]!=="water") map[y][x]="road";
+  }
+
+  // =========================
+  // Game State
+  // =========================
+  const defaultState = () => ({
+    world: generateWorld(),
+    hero: {
+      name: "アスター",
+      x: 8, y: 10,
+      lv: 1, xp: 0, gold: 50,
+      base:{ maxHp:80, maxMp:18, atk:8, def:5, mag:4, spd:6, crit:0.08 },
+      hp:80, mp:18,
+      status:{},
+      inventory: { potion:3, ether:1 },
+      equips: { weapon:"woodSword", armor:"cloth", accessory:null },
+      skills:["slash"],
+      steps:0,
+    },
+    story: {
+      phase:0,
+      shard1:false,
+      crownCore:false,
+      finalReady:false,
+      ending:false
+    },
+    quests: [
+      { id:"q1", title:"王の使者を探す", desc:"始まりの街ルミアで情報を集める", done:false },
+      { id:"q2", title:"遺跡で月光の欠片を得る", desc:"南西の遺跡を探索する", done:false },
+      { id:"q3", title:"聖域で星冠の核を得る", desc:"南東の聖域へ向かう", done:false },
+      { id:"q4", title:"魔王城へ向かう", desc:"北東の魔王城で決着をつける", done:false },
+    ],
+    flags: {
+      talkedMessenger:false,
+      talkedKing:false,
+      gotStarBlade:false,
+      openedTown2:false,
+      shrineBless:false,
+      innCount:0
+    },
+    worldTime: 0, // steps based
+    currentTown: null,
+    battle: null,
+  });
+
+  let S = defaultState();
+
+  // =========================
+  // Stats
+  // =========================
+  function getEquipStats(){
+    const e = S.hero.equips;
+    const total = {atk:0,def:0,mag:0,spd:0,hp:0,mp:0};
+    for(const slot of Object.keys(e)){
+      const id = e[slot];
+      if(id && EQUIPS[id]){
+        const it = EQUIPS[id];
+        total.atk += it.atk||0;
+        total.def += it.def||0;
+        total.mag += it.mag||0;
+        total.spd += it.spd||0;
+        total.hp += it.hp||0;
+        total.mp += it.mp||0;
+      }
+    }
+    return total;
+  }
+  function getHeroStats(){
+    const b = S.hero.base;
+    const e = getEquipStats();
+    let atk = b.atk + e.atk;
+    let def = b.def + e.def;
+    let mag = b.mag + e.mag;
+    let spd = b.spd + e.spd;
+    let maxHp = b.maxHp + e.hp;
+    let maxMp = b.maxMp + e.mp;
+    if(S.hero.status.weaken) atk -= S.hero.status.weaken.val;
+    return {atk,def,mag,spd,maxHp, maxMp, crit:b.crit};
+  }
+  function syncDerived(){
+    const st = getHeroStats();
+    S.hero.maxHp = st.maxHp;
+    S.hero.maxMp = st.maxMp;
+    S.hero.hp = clamp(S.hero.hp,0,S.hero.maxHp);
+    S.hero.mp = clamp(S.hero.mp,0,S.hero.maxMp);
+  }
+  function xpToNext(lv){ return 20 + Math.floor(lv*lv*12); }
+  function heal(hero, v){ syncDerived(); hero.hp = clamp(hero.hp+v,0,hero.maxHp); }
+
+  function addItem(id, n=1){
+    S.hero.inventory[id] = (S.hero.inventory[id]||0)+n;
+    log(`${ITEMS[id]?.name || EQUIPS[id]?.name || id} を${n}個入手。`);
+  }
+  function consumeItem(id, n=1){
+    if((S.hero.inventory[id]||0) < n) return false;
+    S.hero.inventory[id]-=n;
+    if(S.hero.inventory[id]<=0) delete S.hero.inventory[id];
+    return true;
+  }
+
+  function learnSkillsByLevel(){
+    for(const [id,sk] of Object.entries(SKILLS)){
+      if(S.hero.lv >= sk.unlock && !S.hero.skills.includes(id)){
+        S.hero.skills.push(id);
+        log(`新スキル習得: ${sk.name}`);
+      }
+    }
+  }
+
+  function gainXp(v){
+    S.hero.xp += v;
+    log(`経験値 ${v} を獲得。`);
+    let leveled = false;
+    while(S.hero.xp >= xpToNext(S.hero.lv)){
+      S.hero.xp -= xpToNext(S.hero.lv);
+      S.hero.lv++;
+      S.hero.base.maxHp += rand(10,15);
+      S.hero.base.maxMp += rand(3,5);
+      S.hero.base.atk += rand(2,3);
+      S.hero.base.def += rand(1,2);
+      S.hero.base.mag += rand(1,3);
+      S.hero.base.spd += rand(1,2);
+      S.hero.base.crit += 0.005;
+      leveled = true;
+      syncDerived();
+      S.hero.hp = S.hero.maxHp;
+      S.hero.mp = S.hero.maxMp;
+      log(`<span style="color:#fbbf24">レベルアップ！ Lv${S.hero.lv} になった。全回復！</span>`);
+      learnSkillsByLevel();
+    }
+    if(leveled) renderAll();
+  }
+
+  // =========================
+  // Story helpers
+  // =========================
+  function updateStoryPhase(){
+    if(S.story.ending) return;
+    if(!S.flags.talkedMessenger) {
+      S.story.phase=0;
+      setQuestDone("q1", false);
+      setQuestDone("q2", false);
+      setQuestDone("q3", false);
+      setQuestDone("q4", false);
+      return;
+    }
+    if(S.story.shard1 && !S.story.crownCore){
+      S.story.phase=2;
+      setQuestDone("q1", true);
+      setQuestDone("q2", true);
+      setQuestDone("q3", false);
+      return;
+    }
+    if(S.story.shard1 && S.story.crownCore && !S.story.finalReady){
+      S.story.phase=3;
+      S.story.finalReady = true;
+      setQuestDone("q3", true);
+      setQuestDone("q4", false);
+      if(!S.flags.gotStarBlade){
+        S.flags.gotStarBlade = true;
+        S.hero.equips.weapon = "starBlade";
+        S.hero.equips.armor = "astral";
+        syncDerived();
+        log("聖域の光が王冠を修復し、伝説装備『星砕き』『星衣』を授かった！");
+      }
+      return;
+    }
+    if(S.story.finalReady){
+      S.story.phase=4;
+      setQuestDone("q4", false);
+    }
+  }
+  function setQuestDone(id,val){
+    const q=S.quests.find(q=>q.id===id);
+    if(q) q.done=val;
+  }
+  function placeName(){
+    const t = S.world[S.hero.y][S.hero.x];
+    if(t==="town"){
+      if(inRect(S.hero.x,S.hero.y,6,8,3,3)) return "始まりの街 ルミア";
+      if(inRect(S.hero.x,S.hero.y,26,15,5,4)) return "王都 グラン";
+    }
+    if(t==="dungeon"){
+      if(inRect(S.hero.x,S.hero.y,8,33,4,4)) return "月影の遺跡";
+      if(inRect(S.hero.x,S.hero.y,35,36,5,5)) return "晶洞の洞窟";
+    }
+    if(t==="castle") return "魔王城ネブラ";
+    if(t==="shrine") return "星冠の聖域";
+    return TILE_TYPES[t]?.name || "荒野";
+  }
+  function storyName(){
+    switch(S.story.phase){
+      case 0: return "序章";
+      case 1: return "欠片探し";
+      case 2: return "核を求めて";
+      case 3: return "王冠修復";
+      case 4: return "最終決戦";
+      default: return "-";
+    }
+  }
+  function currentTimeName(){
+    const t = S.worldTime % 120;
+    if(t < 35) return "朝";
+    if(t < 75) return "昼";
+    if(t < 100) return "夕";
+    return "夜";
+  }
+  function inRect(x,y,rx,ry,rw,rh){
+    return x>=rx && y>=ry && x<rx+rw && y<ry+rh;
+  }
+
+  // =========================
+  // Rendering
+  // =========================
+  const canvas = el('game');
+  const ctx = canvas.getContext('2d');
+
+  function draw(){
+    syncDerived();
+    const cx = clamp(S.hero.x - Math.floor(VIEW_W/2), 0, MAP_W-VIEW_W);
+    const cy = clamp(S.hero.y - Math.floor(VIEW_H/2), 0, MAP_H-VIEW_H);
+
+    // background
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    for(let vy=0; vy<VIEW_H; vy++){
+      for(let vx=0; vx<VIEW_W; vx++){
+        const mx = cx + vx, my = cy + vy;
+        const t = S.world[my][mx];
+        const info = TILE_TYPES[t];
+        const x = vx*TILE, y = vy*TILE;
+        ctx.fillStyle = info.color;
+        ctx.fillRect(x,y,TILE,TILE);
+
+        // tile patterns
+        if(t==="grass"){
+          ctx.fillStyle="rgba(255,255,255,.05)";
+          for(let i=0;i<3;i++) ctx.fillRect(x+randSeed(mx,my,i)%20, y+randSeed(mx,my,i+4)%20, 2, 6);
+        } else if(t==="forest"){
+          ctx.fillStyle="rgba(0,0,0,.18)";
+          ctx.beginPath(); ctx.arc(x+10,y+12,8,0,Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(x+22,y+16,9,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle="rgba(42,109,69,.5)";
+          ctx.beginPath(); ctx.arc(x+10,y+12,6,0,Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(x+22,y+16,7,0,Math.PI*2); ctx.fill();
+        } else if(t==="water"){
+          ctx.fillStyle="rgba(255,255,255,.08)";
+          ctx.fillRect(x, y+((S.worldTime+vx+vy)%8), TILE, 2);
+        } else if(t==="mount"){
+          ctx.fillStyle="rgba(255,255,255,.09)";
+          tri(x+4,y+26,x+16,y+8,x+28,y+26);
+          ctx.fillStyle="rgba(0,0,0,.18)";
+          tri(x+8,y+26,x+16,y+12,x+24,y+26);
+        } else if(t==="town"){
+          ctx.fillStyle="#d6a56c";
+          ctx.fillRect(x+8,y+14,16,12);
+          ctx.fillStyle="#7c2d12";
+          tri(x+6,y+14,x+16,y+6,x+26,y+14);
+        } else if(t==="road"){
+          ctx.fillStyle="rgba(255,255,255,.08)";
+          ctx.fillRect(x+6,y+12,20,8);
+        } else if(t==="dungeon"){
+          ctx.fillStyle="#7c3aed";
+          ctx.fillRect(x+10,y+8,12,18);
+          ctx.fillStyle="#c4b5fd";
+          ctx.fillRect(x+14,y+12,4,10);
+        } else if(t==="castle"){
+          ctx.fillStyle="#2b0a0a";
+          ctx.fillRect(x+6,y+10,20,16);
+          ctx.fillStyle="#111";
+          ctx.fillRect(x+8,y+6,4,8); ctx.fillRect(x+20,y+6,4,8);
+        } else if(t==="shrine"){
+          ctx.fillStyle="#ddd6fe";
+          ctx.fillRect(x+8,y+12,16,12);
+          ctx.fillStyle="#8b5cf6";
+          tri(x+6,y+12,x+16,y+5,x+26,y+12);
+        }
+
+        // grid subtle
+        ctx.strokeStyle="rgba(255,255,255,.03)";
+        ctx.strokeRect(x,y,TILE,TILE);
+      }
+    }
+
+    // Events/NPC marks
+    drawSpecialMarker(cx,cy,7,9,"!");
+    drawSpecialMarker(cx,cy,28,16,"王");
+    drawSpecialMarker(cx,cy,44,48,"聖");
+
+    // hero
+    const hx = (S.hero.x-cx)*TILE, hy = (S.hero.y-cy)*TILE;
+    ctx.fillStyle="#fde68a";
+    ctx.fillRect(hx+10, hy+6, 12, 10);
+    ctx.fillStyle="#60a5fa";
+    ctx.fillRect(hx+8, hy+16, 16, 10);
+    ctx.fillStyle="#fff";
+    ctx.fillRect(hx+10, hy+26, 4, 4);
+    ctx.fillRect(hx+18, hy+26, 4, 4);
+    ctx.strokeStyle="#0b1022";
+    ctx.strokeRect(hx+8, hy+6, 16, 24);
+
+    // Mini map
+    drawMiniMap();
+
+    // day/night overlay
+    const time = currentTimeName();
+    if(time==="夕"){
+      ctx.fillStyle="rgba(255,120,50,.09)";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+    }else if(time==="夜"){
+      ctx.fillStyle="rgba(5,10,30,.22)";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+    }else if(time==="朝"){
+      ctx.fillStyle="rgba(255,230,180,.05)";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+
+    // hud
+    ctx.fillStyle="rgba(8,12,24,.65)";
+    roundRect(ctx,8,8,260,74,12,true,false);
+    ctx.fillStyle="#eaf1ff";
+    ctx.font="16px monospace";
+    ctx.fillText(placeName(), 18, 28);
+    ctx.font="13px monospace";
+    ctx.fillStyle="#bfd0ff";
+    ctx.fillText(`時間帯: ${time}   歩数: ${S.hero.steps}`, 18, 50);
+    ctx.fillText(`Enter:調べる  M:メニュー`, 18, 68);
+  }
+
+  function drawMiniMap(){
+    const mw=130,mh=130, sx=canvas.width-mw-12, sy=12;
+    ctx.fillStyle="rgba(9,13,25,.72)";
+    roundRect(ctx,sx,sy,mw,mh,10,true,false);
+    const scaleX = mw/MAP_W, scaleY = mh/MAP_H;
+    for(let y=0;y<MAP_H;y++){
+      for(let x=0;x<MAP_W;x++){
+        ctx.fillStyle = TILE_TYPES[S.world[y][x]].color;
+        ctx.fillRect(sx+x*scaleX, sy+y*scaleY, Math.ceil(scaleX), Math.ceil(scaleY));
+      }
+    }
+    ctx.fillStyle="#fff";
+    ctx.fillRect(sx+S.hero.x*scaleX-1, sy+S.hero.y*scaleY-1, 4, 4);
+    ctx.strokeStyle="rgba(255,255,255,.2)";
+    ctx.strokeRect(sx,sy,mw,mh);
+  }
+
+  function drawSpecialMarker(cx,cy,x,y,text){
+    if(x<cx||y<cy||x>=cx+VIEW_W||y>=cy+VIEW_H) return;
+    const px = (x-cx)*TILE, py=(y-cy)*TILE;
+    ctx.fillStyle="rgba(0,0,0,.4)";
+    roundRect(ctx,px+6,py+2,20,14,6,true,false);
+    ctx.fillStyle="#fef08a";
+    ctx.font="12px monospace";
+    ctx.fillText(text,px+12,py+13);
+  }
+
+  function tri(x1,y1,x2,y2,x3,y3){
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill();
+  }
+  function roundRect(ctx,x,y,w,h,r,fill,stroke){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    if(fill) ctx.fill();
+    if(stroke) ctx.stroke();
+  }
+  function randSeed(x,y,s){
+    return ((x*928371 + y*12377 + s*9187) ^ 0x9e3779b9) & 255;
+  }
+
+  // =========================
+  // UI render
+  // =========================
+  function renderUI(){
+    syncDerived();
+    const st = getHeroStats();
+    el('heroName').textContent = S.hero.name;
+    el('goldView').textContent = `${S.hero.gold}G`;
+    el('lvView').textContent = S.hero.lv;
+    el('hpText').textContent = `${S.hero.hp}/${S.hero.maxHp}`;
+    el('mpText').textContent = `${S.hero.mp}/${S.hero.maxMp}`;
+    el('xpText').textContent = `${S.hero.xp}/${xpToNext(S.hero.lv)}`;
+    el('hpBar').style.width = `${(S.hero.hp/S.hero.maxHp)*100}%`;
+    el('mpBar').style.width = `${(S.hero.mp/S.hero.maxMp)*100}%`;
+    el('xpBar').style.width = `${(S.hero.xp/xpToNext(S.hero.lv))*100}%`;
+    el('placeView').textContent = placeName();
+    el('timeView').textContent = currentTimeName();
+    el('stepView').textContent = S.hero.steps;
+    el('storyView').textContent = storyName();
+
+    const buffs = [];
+    for(const k of Object.keys(S.hero.status)){
+      const stv = S.hero.status[k];
+      if(k==="poison") buffs.push(`毒(${stv.turns})`);
+      if(k==="weaken") buffs.push(`弱体(${stv.turns})`);
+    }
+    el('buffView').textContent = buffs.length ? `状態: ${buffs.join(", ")}` : "状態: 正常";
+
+    let hint = "世界を探索しよう。";
+    if(!S.flags.talkedMessenger) hint = "ルミアの『!』地点で王の使者に会おう。";
+    else if(!S.story.shard1) hint = "南西の『月影の遺跡』で月光の欠片を探そう。";
+    else if(!S.story.crownCore) hint = "南東の『星冠の聖域』へ向かおう。";
+    else if(S.story.finalReady && !S.story.ending) hint = "北東の魔王城へ。王冠と星砕きが力を貸す。";
+    el('hintView').textContent = hint;
+
+    const qv = el('questView');
+    qv.innerHTML = "";
+    for(const q of S.quests){
+      const d = document.createElement('div');
+      d.className = 'quest';
+      d.innerHTML = `<div>${q.done ? "✅" : "⬜"} <b>${q.title}</b></div><div class="small">${q.desc}</div>`;
+      qv.appendChild(d);
+    }
+  }
+
+  function renderMenu(){
+    syncDerived();
+    const st = getHeroStats();
+    el('menuStatus').innerHTML = `
+      <div class="row"><div>名前</div><div>${S.hero.name}</div></div>
+      <div class="row"><div>Lv</div><div>${S.hero.lv}</div></div>
+      <div class="row"><div>HP</div><div>${S.hero.hp}/${S.hero.maxHp}</div></div>
+      <div class="row"><div>MP</div><div>${S.hero.mp}/${S.hero.maxMp}</div></div>
+      <div class="row"><div>攻撃</div><div>${st.atk}</div></div>
+      <div class="row"><div>防御</div><div>${st.def}</div></div>
+      <div class="row"><div>魔力</div><div>${st.mag}</div></div>
+      <div class="row"><div>素早</div><div>${st.spd}</div></div>
+      <div class="row"><div>所持金</div><div>${S.hero.gold}G</div></div>
+    `;
+
+    const inv = el('menuInventory');
+    inv.innerHTML = "";
+    const invKeys = Object.keys(S.hero.inventory);
+    if(invKeys.length===0){
+      inv.innerHTML = `<div class="small">何も持っていない。</div>`;
+    }else{
+      invKeys.forEach(id=>{
+        const item = ITEMS[id] || EQUIPS[id];
+        const btn = document.createElement('button');
+        btn.className='itemBtn';
+        btn.innerHTML = `<b>${item?.name||id}</b> x${S.hero.inventory[id]}<br><span class="small">${item?.desc||""}</span>`;
+        btn.onclick = ()=>useOrEquipFromMenu(id);
+        inv.appendChild(btn);
+      });
+    }
+
+    const eq = el('menuEquip');
+    eq.innerHTML = "";
+    for(const slot of ["weapon","armor","accessory"]){
+      const cur = S.hero.equips[slot];
+      const btn = document.createElement('button');
+      btn.className='itemBtn';
+      btn.innerHTML = `<b>${slotName(slot)}</b><br><span class="small">${cur?EQUIPS[cur].name:"なし"}</span>`;
+      btn.onclick = ()=>showEquipChoices(slot);
+      eq.appendChild(btn);
+    }
+
+    const sk = el('menuSkills');
+    sk.innerHTML = "";
+    for(const id of S.hero.skills){
+      const s = SKILLS[id];
+      const div = document.createElement('div');
+      div.className = "panel";
+      div.style.marginBottom = "0";
+      div.innerHTML = `<b>${s.name}</b> <span class="small">MP ${s.mp}</span><br><span class="small">${s.desc}</span>`;
+      sk.appendChild(div);
+    }
+  }
+
+  function slotName(slot){
+    return slot==="weapon"?"武器":slot==="armor"?"防具":"装飾";
+  }
+
+  function renderAll(){
+    renderUI();
+    if(el('menuOverlay').style.display==="flex") renderMenu();
+    draw();
+  }
+
+  // =========================
+  // Input
+  // =========================
+  let dialogState = null;
+
+  window.addEventListener('keydown', (e)=>{
+    if(el('titleOverlay').style.display==="flex"){
+      if(e.key==="Enter"||e.key===" ") newGame();
+      return;
+    }
+    if(el('battleOverlay').style.display==="flex"){
+      if(e.key==="Escape"){ /* no-op during battle */ }
+      return;
+    }
+    if(el('dialogOverlay').style.display==="flex"){
+      if(e.key==="Escape") closeDialog();
+      else if(e.key==="Enter"||e.key===" ") triggerFirstDialogChoice();
+      return;
+    }
+    if(el('menuOverlay').style.display==="flex"){
+      if(e.key==="Escape" || e.key.toLowerCase()==="m") closeMenu();
+      return;
+    }
+
+    const k = e.key.toLowerCase();
+    if(k==="arrowup"||k==="w") move(0,-1);
+    else if(k==="arrowdown"||k==="s") move(0,1);
+    else if(k==="arrowleft"||k==="a") move(-1,0);
+    else if(k==="arrowright"||k==="d") move(1,0);
+    else if(k==="enter"||k===" ") interact();
+    else if(k==="escape"||k==="m") openMenu();
+  });
+
+  // =========================
+  // Movement / exploration
+  // =========================
+  function move(dx,dy){
+    if(S.story.ending || S.battle) return;
+    const nx = S.hero.x + dx, ny = S.hero.y + dy;
+    if(!inMap(nx,ny)) return;
+    const t = S.world[ny][nx];
+    if(!TILE_TYPES[t].pass) return;
+    S.hero.x = nx; S.hero.y = ny;
+    S.hero.steps++;
+    S.worldTime++;
+    tickStatusesMap();
+    updateStoryPhase();
+    renderAll();
+    maybeEncounter(t);
+  }
+
+  function tickStatusesMap(){
+    if(S.hero.status.poison){
+      S.hero.status.poison.turns--;
+      S.hero.hp = Math.max(1, S.hero.hp - Math.max(1, Math.floor(S.hero.status.poison.dmg/2)));
+      if(S.hero.status.poison.turns<=0){
+        delete S.hero.status.poison;
+        log("移動中に毒が薄れた。");
+      }
+    }
+    if(S.hero.status.weaken){
+      S.hero.status.weaken.turns--;
+      if(S.hero.status.weaken.turns<=0) delete S.hero.status.weaken;
+    }
+  }
+
+  function maybeEncounter(tile){
+    const enc = TILE_TYPES[tile].encounter || 0;
+    let mod = currentTimeName()==="夜" ? 1.25 : 1.0;
+    if(Math.random() < enc * mod){
+      startRandomBattle(tile);
+    }
+  }
+
+  function enemyPoolByTile(tile){
+    if(tile==="grass") return ["slime","slime","wolf","goblin"];
+    if(tile==="forest") return ["slime","wolf","wolf","goblin","mage"];
+    if(tile==="mount") return ["wolf","goblin","skeleton","golem"];
+    if(tile==="dungeon") return ["skeleton","mage","golem","wyvern"];
+    return ["slime"];
+  }
+
+  function startRandomBattle(tile){
+    const pool = enemyPoolByTile(tile);
+    let id = pick(pool);
+    // region difficulty adjustment
+    if(S.hero.lv >= 6 && Math.random()<0.18 && tile!=="grass") id = "wyvern";
+    startBattle(id);
+  }
+
+  // =========================
+  // Interaction / Events / Town
+  // =========================
+  function interact(){
+    const x = S.hero.x, y = S.hero.y;
+    const p = placeName();
+
+    // Messenger
+    if(Math.abs(x-7)<=1 && Math.abs(y-9)<=1 && !S.flags.talkedMessenger){
+      return showDialog("王の使者", [
+        {
+          text:`旅人アスターよ。王都グランの王は、砕かれた「星屑の王冠」を修復できる者を探している。<br>
+          まずは南西の遺跡に眠る <b>月光の欠片</b> を手に入れてくれ。`,
+          choices:[
+            {label:"引き受ける", act:()=>{
+              S.flags.talkedMessenger=true;
+              S.story.phase=1;
+              log("王の使者から使命を受けた。");
+              closeDialog();
+              renderAll();
+            }},
+            {label:"少し考える", act:()=>closeDialog()}
+          ]
+        }
+      ]);
+    }
+
+    // King in town2 center
+    if(inRect(x,y,27,16,3,2) && S.flags.talkedMessenger){
+      return showKingDialog();
+    }
+
+    // town services
+    if(inRect(x,y,6,8,3,3)) return enterTown("town1");
+    if(inRect(x,y,26,15,5,4)) return enterTown("town2");
+    if(inRect(x,y,43,47,4,4)) return enterShrine();
+
+    // dungeons / castle
+    if(inRect(x,y,8,33,4,4)) return enterRuin();
+    if(inRect(x,y,35,36,5,5)) return enterCrystalCave();
+    if(inRect(x,y,49,6,5,5)) return enterDarkCastle();
+
+    log(`${p}を見渡した。特に変わったものはない。`);
+  }
+
+  function enterTown(id){
+    const shop = SHOPS[id];
+    const townName = id==="town1" ? "始まりの街 ルミア" : "王都 グラン";
+    showDialog(townName, [{
+      text:`${shop.dialogue}<br>どうする？`,
+      choices:[
+        {label:`宿屋 (${shop.inn}G)`, act:()=> {
+          if(S.hero.gold < shop.inn) return log("お金が足りない。"), closeDialog();
+          S.hero.gold -= shop.inn;
+          syncDerived();
+          S.hero.hp = S.hero.maxHp;
+          S.hero.mp = S.hero.maxMp;
+          delete S.hero.status.poison;
+          delete S.hero.status.weaken;
+          S.flags.innCount++;
+          log("宿屋で休んだ。HP/MP全回復。");
+          closeDialog(); renderAll();
+        }},
+        {label:"武器屋・道具屋", act:()=>openShop(id)},
+        {label:"教会", act:()=>{
+          delete S.hero.status.poison;
+          delete S.hero.status.weaken;
+          if(S.hero.hp<=0) S.hero.hp=1;
+          log("教会で祈りを捧げた。状態異常が回復した。");
+          closeDialog(); renderAll();
+        }},
+        {label:"話を聞く", act:()=>{
+          closeDialog();
+          const msg = id==="town1"
+          ? "遺跡は南西にあるらしい。夜は森の魔物が増えるから注意して。"
+          : "聖域は南東の果て。王は月光の欠片を持つ者を待っている。";
+          showDialog("住人", [{text:msg, choices:[{label:"戻る", act:()=>closeDialog()}]}]);
+        }},
+      ]
+    }]);
+  }
+
+  function openShop(id){
+    const shop = SHOPS[id];
+    closeDialog();
+    const goodsHtml = shop.goods.map(g=>{
+      const d = ITEMS[g]||EQUIPS[g];
+      return {
+        label:`${d.name} - ${d.price}G`,
+        act:()=>{
+          if(S.hero.gold < d.price){ log("お金が足りない。"); closeDialog(); return; }
+          S.hero.gold -= d.price;
+          addItem(g,1);
+          closeDialog();
+          renderAll();
+        }
+      };
+    });
+    showDialog("ショップ", [{
+      text:"何を買う？",
+      choices:[...goodsHtml, {label:"戻る", act:()=>closeDialog()}]
+    }]);
+  }
+
+  function showKingDialog(){
+    if(!S.story.shard1){
+      if(S.flags.talkedKing){
+        return showDialog("王グラン", [{
+          text:"月光の欠片を手に入れたら再び参れ。南西の遺跡の主は強敵だ。",
+          choices:[{label:"戻る", act:()=>closeDialog()}]
+        }]);
+      }
+      S.flags.talkedKing=true;
+      return showDialog("王グラン", [{
+        text:`よく来た、旅人アスター。<br>
+        星屑の王冠を修復するには、まず <b>月光の欠片</b>、そして <b>星冠の核</b> が必要だ。<br>
+        欠片は南西の遺跡、核は南東の聖域に眠る。`,
+        choices:[{label:"承知した", act:()=>closeDialog()}]
+      }]);
+    }
+    if(S.story.shard1 && !S.story.crownCore){
+      return showDialog("王グラン", [{
+        text:"月光の欠片は確かに本物だ。次は聖域で星冠の核を手に入れるのだ。",
+        choices:[{label:"向かう", act:()=>closeDialog()}]
+      }]);
+    }
+    if(S.story.crownCore && !S.story.ending){
+      return showDialog("王グラン", [{
+        text:"王冠は修復された。北東の魔王城へ向かい、この夜を終わらせてくれ。",
+        choices:[{label:"必ず勝つ", act:()=>closeDialog()}]
+      }]);
+    }
+  }
+
+  function enterRuin(){
+    if(!S.flags.talkedMessenger){
+      log("ただならぬ気配がする。先に街で情報を集めた方がよさそうだ。");
+      return;
+    }
+    if(S.story.shard1){
+      showDialog("月影の遺跡", [{
+        text:"遺跡の主はすでに倒されている。冷たい月光だけが残っている。",
+        choices:[{label:"戻る", act:()=>closeDialog()}]
+      }]);
+      return;
+    }
+    showDialog("月影の遺跡", [{
+      text:"深部から強い魔力を感じる。進むと守護者との戦いになる。",
+      choices:[
+        {label:"進む", act:()=>{ closeDialog(); startBattle("shardKeeper", {onWin: ruinWin}); }},
+        {label:"引き返す", act:()=>closeDialog()}
+      ]
+    }]);
+  }
+
+  function ruinWin(){
+    S.story.shard1 = true;
+    addItem("moonShard",1);
+    setQuestDone("q2", true);
+    log("<span style='color:#7dd3fc'>月光の欠片を手に入れた！</span>");
+    updateStoryPhase();
+    renderAll();
+  }
+
+  function enterCrystalCave(){
+    showDialog("晶洞の洞窟", [{
+      text:"結晶が脈打つ洞窟だ。探索すると魔物に遭遇するかもしれない。",
+      choices:[
+        {label:"探索する", act:()=>{
+          closeDialog();
+          if(Math.random()<0.55) startBattle(pick(["mage","golem","wyvern"]));
+          else{
+            const reward = pick(["hiPotion","ether","bomb","ringSpd"]);
+            addItem(reward,1);
+            log("洞窟で宝を見つけた。");
+          }
+        }},
+        {label:"戻る", act:()=>closeDialog()}
+      ]
+    }]);
+  }
+
+  function enterShrine(){
+    if(!S.story.shard1){
+      showDialog("星冠の聖域", [{
+        text:"透明な壁に阻まれている。月光の欠片がなければ入れないようだ。",
+        choices:[{label:"戻る", act:()=>closeDialog()}]
+      }]);
+      return;
+    }
+    if(!S.story.crownCore){
+      showDialog("星冠の聖域", [{
+        text:"月光の欠片が共鳴し、祭壇が開いた。星冠の核が眠っている。",
+        choices:[
+          {label:"核を受け取る", act:()=>{
+            S.story.crownCore = true;
+            addItem("crownCore",1);
+            S.flags.shrineBless=true;
+            S.hero.base.mag += 4;
+            S.hero.base.def += 3;
+            log("<span style='color:#fbbf24'>星冠の核を得た！ 祝福により能力上昇。</span>");
+            updateStoryPhase();
+            closeDialog();
+            renderAll();
+          }},
+          {label:"祈る", act:()=>{
+            S.hero.hp = S.hero.maxHp;
+            S.hero.mp = S.hero.maxMp;
+            log("聖域の光で全回復した。");
+            closeDialog(); renderAll();
+          }}
+        ]
+      }]);
+      return;
+    }
+    showDialog("星冠の聖域", [{
+      text:"清らかな光が満ちている。心身を休めることができそうだ。",
+      choices:[
+        {label:"祈る", act:()=>{
+          S.hero.hp = S.hero.maxHp;
+          S.hero.mp = S.hero.maxMp;
+          delete S.hero.status.poison;
+          delete S.hero.status.weaken;
+          log("聖域の加護で癒やされた。");
+          closeDialog(); renderAll();
+        }},
+        {label:"聖域の店を見る", act:()=>openShop("shrine")},
+        {label:"戻る", act:()=>closeDialog()}
+      ]
+    }]);
+  }
+
+  function enterDarkCastle(){
+    if(!S.story.finalReady){
+      showDialog("魔王城ネブラ", [{
+        text:"城門から圧倒的な瘴気が溢れている。今はまだ早い。",
+        choices:[{label:"戻る", act:()=>closeDialog()}]
+      }]);
+      return;
+    }
+    showDialog("魔王城ネブラ", [{
+      text:"玉座の間に、世界の夜を生む魔王ネブラが待っている。",
+      choices:[
+        {label:"最終決戦へ", act:()=>{ closeDialog(); startBattle("darkLord", {onWin: finalWin}); }},
+        {label:"引き返す", act:()=>closeDialog()}
+      ]
+    }]);
+  }
+
+  function finalWin(){
+    S.story.ending = true;
+    setQuestDone("q4", true);
+    renderEnding();
+  }
+
+  // =========================
+  // Dialog
+  // =========================
+  function showDialog(title, pages){
+    dialogState = {title, pages, index:0};
+    el('dialogTitle').innerHTML = title;
+    el('dialogOverlay').style.display = 'flex';
+    renderDialogPage();
+  }
+  function renderDialogPage(){
+    if(!dialogState) return;
+    const page = dialogState.pages[dialogState.index];
+    el('dialogBody').innerHTML = page.text;
+    const choices = el('dialogChoices');
+    choices.innerHTML = '';
+    for(const c of page.choices||[]){
+      const b=document.createElement('button');
+      b.className='itemBtn';
+      b.textContent = c.label;
+      b.onclick = c.act;
+      choices.appendChild(b);
+    }
+  }
+  function triggerFirstDialogChoice(){
+    const page = dialogState?.pages?.[dialogState.index];
+    if(page?.choices?.length) page.choices[0].act();
+    else closeDialog();
+  }
+  function closeDialog(){
+    dialogState = null;
+    el('dialogOverlay').style.display = 'none';
+    renderAll();
+  }
+
+  // =========================
+  // Menu
+  // =========================
+  window.openMenu = function(){
+    renderMenu();
+    el('menuOverlay').style.display='flex';
+  };
+  window.closeMenu = function(){
+    el('menuOverlay').style.display='none';
+  };
+
+  function useOrEquipFromMenu(id){
+    if(ITEMS[id]){
+      if(ITEMS[id].type==="consumable"){
+        const result = ITEMS[id].use?.(S);
+        if(result){
+          consumeItem(id,1);
+          log(result);
+          renderMenu(); renderAll();
+        } else {
+          log("今は使えない。");
+        }
+      } else {
+        log("これは重要アイテムだ。");
+      }
+    } else if(EQUIPS[id]){
+      const eq = EQUIPS[id];
+      equipItem(id, eq.slot);
+      consumeItem(id,1);
+      renderMenu(); renderAll();
+    }
+  }
+
+  function showEquipChoices(slot){
+    const owned = Object.keys(S.hero.inventory).filter(id=>EQUIPS[id]?.slot===slot);
+    showDialog(`${slotName(slot)}を選ぶ`, [{
+      text:`現在: <b>${S.hero.equips[slot]?EQUIPS[S.hero.equips[slot]].name:"なし"}</b>`,
+      choices:[
+        ...owned.map(id=>({
+          label:`${EQUIPS[id].name} 装備`,
+          act:()=>{ equipItem(id, slot); consumeItem(id,1); closeDialog(); renderMenu(); renderAll(); }
+        })),
+        ...(S.hero.equips[slot] ? [{
+          label:"外す",
+          act:()=>{
+            addItem(S.hero.equips[slot],1);
+            S.hero.equips[slot]=null;
+            syncDerived();
+            closeDialog(); renderMenu(); renderAll();
+          }
+        }] : []),
+        {label:"戻る", act:()=>closeDialog()}
+      ]
+    }]);
+  }
+
+  function equipItem(id, slot){
+    if(S.hero.equips[slot]) addItem(S.hero.equips[slot],1);
+    S.hero.equips[slot]=id;
+    syncDerived();
+    log(`${EQUIPS[id].name} を装備した。`);
+  }
+
+  window.restAtCamp = function(){
+    const h = Math.floor(S.hero.maxHp*0.35);
+    const m = Math.floor(S.hero.maxMp*0.35);
+    heal(S.hero,h);
+    S.hero.mp = clamp(S.hero.mp + m,0,S.hero.maxMp);
+    log(`野営した。HP+${h}, MP+${m}`);
+    renderAll();
+  };
+
+  // =========================
+  // Battle
+  // =========================
+  function startBattle(enemyId, opts={}){
+    const e = deepClone(ENEMIES[enemyId]);
+    e.id = enemyId;
+    e.hp = e.maxHp;
+    e.status = {};
+    S.battle = {
+      enemy: e,
+      turn: 1,
+      onWin: opts.onWin || null,
+      onLose: opts.onLose || null,
+      itemUsedTurn:false
+    };
+    el('battleOverlay').style.display='flex';
+    el('battleLog').innerHTML='';
+    battleLog(`${e.name} が現れた！`);
+    renderBattle();
+  }
+
+  function renderBattle(){
+    const b = S.battle;
+    if(!b) return;
+    syncDerived();
+    const e = b.enemy;
+    el('battleTurnInfo').textContent = `TURN ${b.turn}`;
+    el('enemyArea').innerHTML = enemySpriteSVG(e);
+    el('enemyStatus').innerHTML = `
+      <div class="row"><div><b>${e.name}</b> ${e.boss?'<span class="tag">BOSS</span>':''}</div></div>
+      <div class="row"><div>HP</div><div class="meter"><div class="fill hp" style="width:${(e.hp/e.maxHp)*100}%"></div></div><div>${e.hp}/${e.maxHp}</div></div>
+      <div class="small">${enemyStatusText(e)}</div>
+    `;
+    el('partyStatus').innerHTML = `
+      <div class="row"><div><b>${S.hero.name}</b> <span class="tag">Lv${S.hero.lv}</span></div><div>${S.hero.gold}G</div></div>
+      <div class="row"><div>HP</div><div class="meter"><div class="fill hp" style="width:${(S.hero.hp/S.hero.maxHp)*100}%"></div></div><div>${S.hero.hp}/${S.hero.maxHp}</div></div>
+      <div class="row"><div>MP</div><div class="meter"><div class="fill mp" style="width:${(S.hero.mp/S.hero.maxMp)*100}%"></div></div><div>${S.hero.mp}/${S.hero.maxMp}</div></div>
+      <div class="small">${heroStatusText()}</div>
+    `;
+    const actions = el('battleActions');
+    actions.innerHTML = "";
+    const btnData = [
+      {name:"たたかう", fn:()=>playerAttack()},
+      {name:"スキル", fn:()=>chooseBattleSkill()},
+      {name:"アイテム", fn:()=>chooseBattleItem()},
+      {name:"防御", fn:()=>playerGuard()},
+      {name:"逃げる", fn:()=>attemptEscape()},
+    ];
+    btnData.forEach(({name,fn})=>{
+      const bt = document.createElement('button');
+      bt.textContent = name;
+      bt.onclick = fn;
+      actions.appendChild(bt);
+    });
+  }
+
+  function enemySpriteSVG(e){
+    const c = e.color || "#fff";
+    const boss = e.boss;
+    const size = boss ? 220 : 180;
+    return `
+      <svg class="enemySprite" viewBox="0 0 220 220" width="${size}" height="${size}">
+        <defs>
+          <radialGradient id="g1" cx="50%" cy="40%">
+            <stop offset="0%" stop-color="${c}" stop-opacity="1"/>
+            <stop offset="100%" stop-color="#111827" stop-opacity="1"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="110" cy="180" rx="70" ry="18" fill="rgba(0,0,0,.35)"/>
+        ${
+          e.id==="slime" ? `
+            <path d="M55 150 Q65 80 110 70 Q155 80 165 150 Q110 175 55 150Z" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="92" cy="118" r="7" fill="#111"/>
+            <circle cx="128" cy="118" r="7" fill="#111"/>
+            <path d="M95 138 Q110 148 125 138" stroke="#111" stroke-width="4" fill="none" />
+          ` :
+          e.id==="wolf" ? `
+            <path d="M55 150 L70 95 L95 105 L110 75 L125 105 L150 95 L165 150 Z" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="90" cy="125" r="6" fill="#111"/><circle cx="130" cy="125" r="6" fill="#111"/>
+            <path d="M100 140 L110 155 L120 140" fill="#111"/>
+          ` :
+          e.id==="goblin" ? `
+            <circle cx="110" cy="92" r="34" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <rect x="72" y="126" width="76" height="52" rx="16" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <polygon points="76,92 54,84 68,104" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <polygon points="144,92 166,84 152,104" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="98" cy="90" r="5" fill="#111"/><circle cx="122" cy="90" r="5" fill="#111"/>
+          ` :
+          e.id==="skeleton" ? `
+            <circle cx="110" cy="85" r="28" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <rect x="86" y="115" width="48" height="58" rx="12" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="100" cy="84" r="5" fill="#111"/><circle cx="120" cy="84" r="5" fill="#111"/>
+            <rect x="97" y="98" width="26" height="6" fill="#111"/>
+          ` :
+          e.id==="mage" ? `
+            <path d="M60 158 L90 72 L130 72 L160 158 Z" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="110" cy="74" r="22" fill="#f5f3ff" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="102" cy="74" r="4" fill="#111"/><circle cx="118" cy="74" r="4" fill="#111"/>
+            <rect x="150" y="80" width="8" height="70" fill="#8b5cf6"/>
+          ` :
+          e.id==="golem" ? `
+            <rect x="68" y="58" width="84" height="96" rx="14" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <rect x="56" y="88" width="18" height="52" rx="8" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <rect x="146" y="88" width="18" height="52" rx="8" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="95" cy="96" r="5" fill="#111"/><circle cx="125" cy="96" r="5" fill="#111"/>
+          ` :
+          e.id==="wyvern" ? `
+            <path d="M40 140 Q75 75 110 105 Q145 75 180 140 Q145 155 110 150 Q75 155 40 140Z" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="110" cy="92" r="22" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <polygon points="102,78 110,62 118,78" fill="#111"/>
+            <circle cx="102" cy="92" r="4" fill="#111"/><circle cx="118" cy="92" r="4" fill="#111"/>
+          ` :
+          e.id==="shardKeeper" ? `
+            <polygon points="110,40 150,85 132,170 88,170 70,85" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="110" cy="105" r="16" fill="#fff"/>
+            <circle cx="110" cy="105" r="7" fill="#111"/>
+            <polygon points="58,116 86,96 86,136" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <polygon points="162,116 134,96 134,136" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+          ` :
+          `
+            <path d="M70 170 L50 90 L85 60 L110 80 L135 60 L170 90 L150 170 Z" fill="${c}" stroke="#0b1022" stroke-width="4"/>
+            <circle cx="110" cy="80" r="22" fill="#111827" stroke="#fb7185" stroke-width="4"/>
+            <circle cx="102" cy="80" r="4" fill="#fb7185"/><circle cx="118" cy="80" r="4" fill="#fb7185"/>
+            <path d="M88 110 Q110 132 132 110" stroke="#111" stroke-width="6" fill="none"/>
+            <polygon points="78,60 90,35 100,62" fill="#7c2d12"/><polygon points="120,62 130,35 142,60" fill="#7c2d12"/>
+          `
+        }
+      </svg>
+    `;
+  }
+
+  function heroStatusText(){
+    const arr = [];
+    if(S.hero.status.poison) arr.push(`毒(${S.hero.status.poison.turns})`);
+    if(S.hero.status.weaken) arr.push(`弱体(${S.hero.status.weaken.turns})`);
+    return arr.length ? arr.join(" / ") : "正常";
+  }
+  function enemyStatusText(e){
+    const arr = [];
+    if(e.status.guard) arr.push(`防御↑(${e.status.guard.turns})`);
+    if(e.status.break) arr.push(`防御↓(${e.status.break.turns})`);
+    if(e.status.focus) arr.push(`集中(${e.status.focus.turns})`);
+    if(e.status.enrage) arr.push(`激昂`);
+    if(e.status.phase2) arr.push(`第二形態`);
+    return arr.length ? arr.join(" / ") : "特に変化なし";
+  }
+
+  function playerAttack(mult=1.0){
+    if(!S.battle) return;
+    const b=S.battle;
+    const hs=getHeroStats();
+    let dmg = Math.max(1, Math.floor((hs.atk*mult + rand(4,10)) - enemyDef(b.enemy)));
+    if(Math.random()<hs.crit){
+      dmg = Math.floor(dmg*1.7);
+      battleLog("会心の一撃！");
+    }
+    damageEnemy(b,dmg,true);
+    afterPlayerAction();
+  }
+
+  function playerGuard(){
+    if(!S.battle) return;
+    S.hero.status.guardTemp = {turns:1, val:8};
+    battleLog("身構えてダメージに備えた。");
+    afterPlayerAction();
+  }
+
+  function chooseBattleSkill(){
+    const choices = S.hero.skills.map(id=>({
+      label:`${SKILLS[id].name} (MP ${SKILLS[id].mp})`,
+      act:()=>{
+        closeDialog();
+        if(S.hero.mp < SKILLS[id].mp){ battleLog("MPが足りない！"); renderBattle(); return; }
+        S.hero.mp -= SKILLS[id].mp;
+        SKILLS[id].act(S, S.battle);
+        afterPlayerAction();
+      }
+    }));
+    showDialog("スキル", [{
+      text:"使用するスキルを選んでください。",
+      choices:[...choices, {label:"戻る", act:()=>closeDialog()}]
+    }]);
+  }
+
+  function chooseBattleItem(){
+    const ids = Object.keys(S.hero.inventory).filter(id=>ITEMS[id]?.type==="consumable");
+    if(ids.length===0){
+      battleLog("使えるアイテムがない。");
+      return;
+    }
+    const choices = ids.map(id=>({
+      label:`${ITEMS[id].name} x${S.hero.inventory[id]}`,
+      act:()=>{
+        closeDialog();
+        if(!consumeItem(id,1)){ battleLog("アイテムがない。"); return; }
+        const item = ITEMS[id];
+        let msg = "使った。";
+        if(item.useBattle) msg = item.useBattle(S,S.battle);
+        else if(item.use) msg = item.use(S);
+        battleLog(`${item.name}を使用。 ${msg}`);
+        afterPlayerAction();
+      }
+    }));
+    showDialog("アイテム", [{
+      text:"戦闘で使うアイテムを選んでください。",
+      choices:[...choices,{label:"戻る", act:()=>closeDialog()}]
+    }]);
+  }
+
+  function attemptEscape(){
+    if(S.battle.enemy.boss){
+      battleLog("ボス戦では逃げられない！");
+      return;
+    }
+    const hs = getHeroStats();
+    const rate = 0.5 + (hs.spd - S.battle.enemy.spd)*0.04;
+    if(Math.random() < clamp(rate, 0.15, 0.9)){
+      battleLog("うまく逃げ切った！");
+      setTimeout(endBattle, 450);
+    }else{
+      battleLog("逃げられない！");
+      enemyTurn();
+    }
+  }
+
+  function skillSlash(s,b){
+    battleLog("スラッシュ！");
+    playerAttack(1.1);
+  }
+  function skillFire(s,b){
+    const hs=getHeroStats();
+    let dmg = Math.max(4, Math.floor((hs.mag*1.45 + rand(8,15)) - enemyMRes(b.enemy)));
+    damageEnemy(b,dmg,false);
+    battleLog("炎が敵を焼いた！");
+  }
+  function skillHeal(s,b){
+    const hs=getHeroStats();
+    const v = Math.floor(hs.mag*1.8 + rand(16,24));
+    heal(S.hero,v);
+    battleLog(`ヒール！ HPが${v}回復した。`);
+  }
+  function skillGuardBreak(s,b){
+    let dmg = Math.max(3, Math.floor((getHeroStats().atk*0.95 + rand(5,10)) - enemyDef(b.enemy)*0.8));
+    damageEnemy(b,dmg,true);
+    b.enemy.status.break = {turns:3, val:5};
+    battleLog("敵の守りを崩した！");
+  }
+  function skillThunder(s,b){
+    const hs=getHeroStats();
+    let dmg = Math.max(8, Math.floor((hs.mag*1.8 + rand(12,20)) - enemyMRes(b.enemy)*0.7));
+    damageEnemy(b,dmg,false);
+    if(Math.random()<0.2){
+      b.enemy.status.break = {turns:2, val:4};
+      battleLog("雷撃で敵の態勢が崩れた！");
+    } else battleLog("雷が炸裂した！");
+  }
+  function skillStarfall(s,b){
+    const hs=getHeroStats();
+    let dmg = Math.max(16, Math.floor((hs.mag*2.4 + hs.atk*0.8 + rand(18,26)) - (enemyDef(b.enemy)+enemyMRes(b.enemy))/2));
+    damageEnemy(b,dmg,false);
+    battleLog("天空から星群が降り注いだ！");
+  }
+
+  function enemyDef(e){
+    let d = e.def || 0;
+    if(e.status.guard) d += e.status.guard.val;
+    if(e.status.break) d -= e.status.break.val;
+    return Math.max(0,d);
+  }
+  function enemyMRes(e){
+    return Math.max(0, Math.floor((e.def||0)*0.6));
+  }
+
+  function damageEnemy(b,dmg,physical=true){
+    b.enemy.hp = Math.max(0, b.enemy.hp - dmg);
+    battleLog(`${b.enemy.name} に ${dmg} ダメージ！`);
+    animateBattleFlash();
+    renderBattle();
+    if(b.enemy.hp<=0) winBattle();
+  }
+
+  function applyHeroDamage(s,dmg){
+    if(S.hero.status.guardTemp) dmg = Math.max(1, dmg - S.hero.status.guardTemp.val);
+    S.hero.hp = Math.max(0, S.hero.hp - dmg);
+    battleLog(`${S.hero.name} は ${dmg} ダメージを受けた！`);
+    animateBattleFlash();
+    renderBattle();
+    if(S.hero.hp<=0) loseBattle();
+  }
+
+  function enemyAttack(s,b,msg,mult=1.0){
+    battleLog(`${b.enemy.name}の攻撃！ ${msg}`);
+    const hs = getHeroStats();
+    let dmg = Math.max(3, Math.floor((b.enemy.atk*mult + rand(4,10)) - hs.def));
+    applyHeroDamage(s,dmg);
+  }
+  function enemyMagic(s,b,msg,mult=1.0){
+    battleLog(`${b.enemy.name}は魔力を解き放った！ ${msg}`);
+    const hs = getHeroStats();
+    let dmg = Math.max(6, Math.floor((b.enemy.mag*mult + rand(8,14)) - hs.mag*0.35));
+    applyHeroDamage(s,dmg);
+  }
+
+  function afterPlayerAction(){
+    if(!S.battle || S.battle.enemy.hp<=0) return;
+    setTimeout(enemyTurn, 350);
+  }
+
+  function tickTurnStatuses(){
+    // hero
+    if(S.hero.status.poison){
+      S.hero.status.poison.turns--;
+      const dmg=S.hero.status.poison.dmg;
+      battleLog(`毒で ${dmg} ダメージ。`);
+      S.hero.hp = Math.max(0, S.hero.hp-dmg);
+      if(S.hero.status.poison.turns<=0){
+        delete S.hero.status.poison;
+        battleLog("毒が消えた。");
+      }
+      if(S.hero.hp<=0){ loseBattle(); return false; }
+    }
+    if(S.hero.status.weaken){
+      S.hero.status.weaken.turns--;
+      if(S.hero.status.weaken.turns<=0){
+        delete S.hero.status.weaken;
+        battleLog("弱体が解けた。");
+      }
+    }
+    if(S.hero.status.guardTemp){
+      S.hero.status.guardTemp.turns--;
+      if(S.hero.status.guardTemp.turns<=0) delete S.hero.status.guardTemp;
+    }
+
+    // enemy
+    for(const k of ["guard","break","focus"]){
+      if(S.battle.enemy.status[k]){
+        S.battle.enemy.status[k].turns--;
+        if(S.battle.enemy.status[k].turns<=0) delete S.battle.enemy.status[k];
+      }
+    }
+    return true;
+  }
+
+  function enemyTurn(){
+    if(!S.battle) return;
+    const hs = getHeroStats();
+    const e = S.battle.enemy;
+    const playerFirst = hs.spd >= e.spd ? true : false; // already used for flavor; player acted first
+    if(!playerFirst && Math.random()<0){/* placeholder */}
+    e.ai(S, S.battle);
+    if(S.hero.hp<=0 || !S.battle) return;
+    const ok = tickTurnStatuses();
+    if(!ok || !S.battle) return;
+    S.battle.turn++;
+    renderBattle();
+    renderUI();
+  }
+
+  function winBattle(){
+    const b=S.battle, e=b.enemy;
+    battleLog(`<span style="color:#86efac">${e.name} を倒した！</span>`);
+    gainXp(e.xp);
+    S.hero.gold += e.gold;
+    log(`${e.name}を倒した。 ${e.gold}G を得た。`);
+    if(e.drops && Math.random()<0.55){
+      const drop = pick(e.drops);
+      addItem(drop,1);
+    }
+    const cb = b.onWin;
+    setTimeout(()=>{
+      endBattle();
+      if(cb) cb();
+      renderAll();
+    }, 800);
+  }
+
+  function loseBattle(){
+    battleLog(`<span style="color:#f87171">力尽きた……</span>`);
+    setTimeout(()=>{
+      endBattle();
+      // penalty and revive at town1
+      S.hero.gold = Math.max(0, S.hero.gold - Math.floor(S.hero.gold*0.2));
+      S.hero.x = 7; S.hero.y = 9;
+      syncDerived();
+      S.hero.hp = Math.max(1, Math.floor(S.hero.maxHp*0.6));
+      S.hero.mp = Math.max(0, Math.floor(S.hero.maxMp*0.5));
+      delete S.hero.status.poison;
+      delete S.hero.status.weaken;
+      log("教会で目を覚ました…… 所持金の一部を失った。");
+      renderAll();
+    }, 900);
+  }
+
+  function endBattle(){
+    S.battle = null;
+    el('battleOverlay').style.display='none';
+    renderAll();
+  }
+
+  function animateBattleFlash(){
+    el('gameWrap').classList.add('flash');
+    setTimeout(()=>el('gameWrap').classList.remove('flash'), 180);
+  }
+
+  // =========================
+  // Save / Load
+  // =========================
+  window.saveGame = function(){
+    try{
+      localStorage.setItem("oneFileRPG_save", JSON.stringify(S));
+      log("セーブした。");
+      renderAll();
+    }catch(err){
+      log("セーブに失敗した。");
+    }
+  };
+
+  window.loadGame = function(fromTitle=false){
+    try{
+      const raw = localStorage.getItem("oneFileRPG_save");
+      if(!raw){
+        log("セーブデータがない。");
+        if(fromTitle) newGame();
+        return;
+      }
+      const data = JSON.parse(raw);
+      S = data;
+      syncDerived();
+      el('titleOverlay').style.display='none';
+      el('battleOverlay').style.display='none';
+      el('dialogOverlay').style.display='none';
+      el('menuOverlay').style.display='none';
+      log("ロードした。");
+      renderAll();
+    }catch(err){
+      log("ロードに失敗した。");
+      if(fromTitle) newGame();
+    }
+  };
+
+  window.newGame = function(){
+    S = defaultState();
+    syncDerived();
+    el('titleOverlay').style.display='none';
+    el('battleOverlay').style.display='none';
+    el('dialogOverlay').style.display='none';
+    el('menuOverlay').style.display='none';
+    el('endingOverlay').style.display='none';
+    el('log').innerHTML = "";
+    log("旅が始まった。ルミアの近くからスタート。");
+    renderAll();
+  };
+
+  // =========================
+  // Ending
+  // =========================
+  function renderEnding(){
+    el('endingOverlay').style.display='flex';
+    el('endingText').innerHTML = `
+      <p>魔王ネブラが滅びると、空を覆っていた永遠の夜はゆっくりと裂け、<br>世界に本当の朝が戻った。</p>
+      <p>砕かれたはずの <b>星屑の王冠</b> は、月光の欠片と星冠の核により再生し、<br>
+      その輝きは人々の行く先を照らす希望となった。</p>
+      <p>王はアスターを「星冠の継承者」と呼び、<br>
+      人々はその旅を長く語り継いだ。</p>
+      <p style="color:#fbbf24">クリアおめでとう！</p>
+      <p class="small">セーブデータを消さずに再開すれば、クリア後の世界を歩き回ることもできます。</p>
+    `;
+    log("世界に朝が戻った。");
+  }
+
+  // =========================
+  // expose for buttons
+  // =========================
+  window.interact = interact;
+
+  // =========================
+  // initial
+  // =========================
+  syncDerived();
+  renderAll();
+
+})();
+</script>
+</body>
+</html>

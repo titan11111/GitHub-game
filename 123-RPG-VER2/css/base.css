@@ -1,0 +1,73 @@
+/* ============================================
+   基本設定とテーマ変数
+   ============================================
+   
+   役割: ゲーム全体の基本設定とテーマ変数を定義
+   
+   含まれる内容:
+   - iOS・レスポンシブ対応の基本設定
+   - CSS変数（:root）
+   - html, body の基本リセット
+   ============================================ */
+
+/* ========== iOS・レスポンシブ（縦横・モバイル対応） ==========
+ * - viewport-fit=cover + env(safe-area-inset-*) … ノッチ・ホームインジケータ余白（index.html の meta viewport とセット）
+ * - 100dvh … 縦/横どちらでもビューポートに合わせる（アドレスバー出し入れ対応）
+ * - touch-action: manipulation … body, #control-panel, ボタン（ダブルタップ拡大・遅延防止）
+ * - -webkit-tap-highlight-color: transparent … タップ時のハイライト削除
+ * - orientation: portrait | landscape … 戦闘UI・コントロール高さの切り替え
+ * - max-height: 700px/580px … 画面高さが短いときの戦闘レイアウト圧縮
+ * ======================================== */
+
+/* ========== テーマ変数（共通色・サイズ） ========== */
+:root {
+    --ff-bg-top: #00008b;
+    --ff-bg-bottom: #000044;
+    --ff-border: #eee;
+    --ff-shadow: rgba(0, 150, 255, 0.3);
+    --control-bg: #ccc;
+    --control-border: #666;  /* より濃い色で境界線を明確に */
+    --control-border-top: #666;  /* コントロールパネル上部の境界線色 */
+    --btn-bg: #444;
+    --btn-shadow: #000;
+    --max-content: 620px;
+    --game-control-divider: 6px;  /* ゲーム画面とコントロールパネルの境界線の太さ */
+}
+
+/* 全体設定（PCで左右中央がずれないよう html もリセット / iOS: 縦横で1画面に収める） */
+html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+    height: 100%;
+    /* iOS Safari: アドレスバー出し入れに合わせた高さ・横持ちでもはみ出し防止 */
+    min-height: 100dvh;
+    height: 100dvh;
+    box-sizing: border-box;
+    overflow: hidden;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    background-color: #000;
+    color: #fff;
+    font-family: 'MS Gothic', 'Courier New', monospace;
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100%;
+    height: 100dvh;  /* iOS: 縦/横どちらでもビューポートに合わせる */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    /* iOS Safari: ダブルタップ拡大・遅延防止 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}

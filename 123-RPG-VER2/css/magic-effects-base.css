@@ -1,0 +1,26 @@
+/* ============================================
+   魔法エフェクト基本スタイル
+   ============================================
+   
+   役割: 魔法エフェクトの基本コンテナスタイル
+   
+   含まれる内容:
+   - エフェクトコンテナ（.magic-effect-container）
+   ============================================ */
+
+/* エフェクトコンテナ */
+.magic-effect-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 150;
+    overflow: visible; /* iOS: エフェクトが見切れないように visible に変更 */
+    /* iOS: レンダリング最適化 */
+    will-change: transform;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+

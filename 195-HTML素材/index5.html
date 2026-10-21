@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Voyager - 宇宙の旅</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            cursor: crosshair;
+        }
+
+        /* 宇宙の背景レイヤー */
+        .layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #stars-far { background: transparent; }
+        #stars-mid { background: transparent; }
+        #game-canvas { position: absolute; top: 0; left: 0; }
+
+        /* UI要素 */
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00f2ff;
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.7);
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .warp-bar-container {
+            width: 200px;
+            height: 10px;
+            background: rgba(0, 242, 255, 0.2);
+            border: 1px solid #00f2ff;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        #warp-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #00f2ff, #0066ff);
+            transition: width 0.1s linear;
+        }
+
+        /* ワープエフェクト */
+        #warp-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0;
+            background: radial-gradient(circle, transparent 30%, rgba(0, 242, 255, 0.2) 70%, #00f2ff 100%);
+            z-index: 50;
+            transition: opacity 0.3s;
+        }
+
+        .warp-line {
+            position: absolute;
+            background: white;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* モバイル操作用 */
+        .controls-hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            text-align: right;
+        }
+
+        #mobile-warp-btn {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 40px;
+            background: rgba(0, 242, 255, 0.2);
+            border: 2px solid #00f2ff;
+            color: #00f2ff;
+            border-radius: 30px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            pointer-events: auto;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            #mobile-warp-btn { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- 背景スターレイヤー -->
+    <canvas id="stars-far" class="layer"></canvas>
+    <canvas id="stars-mid" class="layer"></canvas>
+    
+    <!-- メインゲームキャンバス -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- ワープエフェクト -->
+    <div id="warp-effect"></div>
+
+    <!-- UI -->
+    <div class="ui-overlay">
+        <div class="text-2xl font-bold tracking-widest">STAR VOYAGER</div>
+        <div class="mt-2">DISTANCE: <span id="distance-val">0</span> LY</div>
+        <div class="mt-4">
+            WARP DRIVE STATUS: <span id="warp-status">CHARGING...</span>
+            <div class="warp-bar-container">
+                <div id="warp-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <button id="mobile-warp-btn">WARP</button>
+
+    <div class="controls-hint">
+        ARROWS / WASD: MOVE<br>
+        SPACE: WARP DRIVE
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const starFarCanvas = document.getElementById('stars-far');
+    const starMidCanvas = document.getElementById('stars-mid');
+    const warpEffect = document.getElementById('warp-effect');
+    const warpBar = document.getElementById('warp-bar');
+    const warpStatusText = document.getElementById('warp-status');
+    const distanceDisplay = document.getElementById('distance-val');
+
+    let width, height;
+    let distance = 0;
+    let isWarping = false;
+    let warpEnergy = 0;
+    const MAX_WARP_ENERGY = 100;
+
+    // 宇宙船の状態
+    const ship = {
+        x: 0,
+        y: 0,
+        angle: -Math.PI / 2,
+        velocity: 0,
+        maxVelocity: 5,
+        acceleration: 0.1,
+        friction: 0.98,
+        rotationSpeed: 0.05
+    };
+
+    // カメラ
+    const camera = {
+        x: 0,
+        y: 0
+    };
+
+    // キー入力管理
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    // 星（ドット）のデータ
+    const starLayers = [
+        { canvas: starFarCanvas, ctx: starFarCanvas.getContext('2d'), count: 400, speed: 0.1, size: 1 },
+        { canvas: starMidCanvas, ctx: starMidCanvas.getContext('2d'), count: 200, speed: 0.3, size: 2 }
+    ];
+
+    // 惑星データ
+    let objects = [];
+    const OBJECT_TYPES = {
+        PLANET_EARTH: 'earth',
+        PLANET_RED: 'red',
+        PLANET_RING: 'ring',
+        PLANET_ICE: 'ice',
+        SUN: 'sun'
+    };
+
+    // SVGアセットの生成（Off-screen Canvasとして保持）
+    const planetAssets = {};
+
+    function createPlanetAssets() {
+        const types = [
+            { id: 'earth', colors: ['#2244ff', '#33aa44', '#1122aa'], ring: false },
+            { id: 'red', colors: ['#aa3311', '#ff5533', '#661100'], ring: false },
+            { id: 'ring', colors: ['#eebb66', '#cc9944', '#886622'], ring: true },
+            { id: 'ice', colors: ['#88ffff', '#00cccc', '#008888'], ring: false },
+            { id: 'sun', colors: ['#ffff00', '#ffaa00', '#ff4400'], glow: true }
+        ];
+
+        types.forEach(t => {
+            const size = 200;
+            const c = document.createElement('canvas');
+            c.width = size * 2;
+            c.height = size * 2;
+            const xctx = c.getContext('2d');
+
+            if (t.glow) {
+                const grad = xctx.createRadialGradient(size, size, size*0.5, size, size, size);
+                grad.addColorStop(0, t.colors[0]);
+                grad.addColorStop(0.5, t.colors[1]);
+                grad.addColorStop(1, 'transparent');
+                xctx.fillStyle = grad;
+                xctx.beginPath();
+                xctx.arc(size, size, size, 0, Math.PI * 2);
+                xctx.fill();
+            }
+
+            // 本体
+            const mainGrad = xctx.createRadialGradient(size*0.7, size*0.7, size*0.1, size, size, size*0.6);
+            mainGrad.addColorStop(0, t.colors[0]);
+            mainGrad.addColorStop(1, t.colors[2] || '#000');
+            xctx.fillStyle = mainGrad;
+            xctx.beginPath();
+            xctx.arc(size, size, size*0.5, 0, Math.PI * 2);
+            xctx.fill();
+
+            // 模様（クレーター/大陸）
+            xctx.globalAlpha = 0.3;
+            xctx.fillStyle = t.colors[1];
+            for(let i=0; i<8; i++) {
+                xctx.beginPath();
+                xctx.arc(size + (Math.random()-0.5)*size*0.4, size + (Math.random()-0.5)*size*0.4, Math.random()*size*0.15, 0, Math.PI*2);
+                xctx.fill();
+            }
+            xctx.globalAlpha = 1.0;
+
+            // リング
+            if (t.ring) {
+                xctx.strokeStyle = 'rgba(238, 187, 102, 0.4)';
+                xctx.lineWidth = 15;
+                xctx.beginPath();
+                xctx.ellipse(size, size, size*0.9, size*0.2, Math.PI/6, 0, Math.PI*2);
+                xctx.stroke();
+            }
+
+            planetAssets[t.id] = c;
+        });
+    }
+
+    function init() {
+        resize();
+        createPlanetAssets();
+        ship.x = width / 2;
+        ship.y = height / 2;
+        camera.x = ship.x;
+        camera.y = ship.y;
+        
+        spawnInitialObjects();
+        animate();
+    }
+
+    function resize() {
+        // 幅や高さが0になるのを防ぐ (InvalidStateError 対策)
+        width = Math.max(1, window.innerWidth);
+        height = Math.max(1, window.innerHeight);
+        
+        canvas.width = width;
+        canvas.height = height;
+        starLayers.forEach(layer => {
+            if (layer.canvas) {
+                layer.canvas.width = width;
+                layer.canvas.height = height;
+                drawStarLayer(layer);
+            }
+        });
+    }
+
+    function drawStarLayer(layer) {
+        if (!layer.ctx || layer.canvas.width <= 0 || layer.canvas.height <= 0) return;
+        
+        layer.ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
+        layer.ctx.fillStyle = 'white';
+        for (let i = 0; i < layer.count; i++) {
+            const x = Math.random() * layer.canvas.width;
+            const y = Math.random() * layer.canvas.height;
+            const opacity = Math.random();
+            layer.ctx.globalAlpha = opacity;
+            layer.ctx.beginPath();
+            layer.ctx.arc(x, y, layer.size, 0, Math.PI * 2);
+            layer.ctx.fill();
+        }
+        layer.ctx.globalAlpha = 1;
+    }
+
+    function spawnInitialObjects() {
+        for (let i = 0; i < 15; i++) {
+            spawnObject(true);
+        }
+    }
+
+    function spawnObject(anywhere = false) {
+        const types = Object.values(OBJECT_TYPES);
+        const type = types[Math.floor(Math.random() * types.length)];
+        const scale = 0.5 + Math.random() * 1.5;
+        
+        let x, y;
+        if (anywhere) {
+            x = ship.x + (Math.random() - 0.5) * 10000;
+            y = ship.y + (Math.random() - 0.5) * 10000;
+        } else {
+            // 進行方向にスポーン
+            const angle = ship.angle + (Math.random() - 0.5) * Math.PI;
+            const dist = 3000 + Math.random() * 2000;
+            x = ship.x + Math.cos(angle) * dist;
+            y = ship.y + Math.sin(angle) * dist;
+        }
+
+        objects.push({ x, y, type, scale, id: Date.now() + Math.random() });
+    }
+
+    function update() {
+        if (isWarping) {
+            ship.velocity = 50;
+            distance += 5;
+        } else {
+            // 入力処理
+            if (keys['ArrowLeft'] || keys['KeyA']) ship.angle -= ship.rotationSpeed;
+            if (keys['ArrowRight'] || keys['KeyD']) ship.angle += ship.rotationSpeed;
+            if (keys['ArrowUp'] || keys['KeyW']) {
+                ship.velocity += ship.acceleration;
+                if (ship.velocity > ship.maxVelocity) ship.velocity = ship.maxVelocity;
+            } else {
+                ship.velocity *= ship.friction;
+            }
+
+            if (keys['Space']) triggerWarp();
+            
+            distance += ship.velocity / 100;
+            
+            // ワープエネルギー充電
+            if (warpEnergy < MAX_WARP_ENERGY) {
+                warpEnergy += 0.1;
+                warpStatusText.innerText = "CHARGING...";
+            } else {
+                warpStatusText.innerText = "READY FOR WARP";
+                warpStatusText.style.color = "#00f2ff";
+            }
+        }
+
+        // 位置更新
+        ship.x += Math.cos(ship.angle) * ship.velocity;
+        ship.y += Math.sin(ship.angle) * ship.velocity;
+
+        // カメラ追従 (緩やか)
+        camera.x += (ship.x - camera.x - width / 2) * 0.1;
+        camera.y += (ship.y - camera.y - height / 2) * 0.1;
+
+        // UI更新
+        warpBar.style.width = `${warpEnergy}%`;
+        distanceDisplay.innerText = Math.floor(distance);
+
+        // オブジェクトの維持
+        if (objects.length < 20) spawnObject();
+        // 遠すぎるオブジェクトの削除
+        objects = objects.filter(obj => {
+            const d = Math.hypot(obj.x - ship.x, obj.y - ship.y);
+            return d < 8000;
+        });
+    }
+
+    function triggerWarp() {
+        if (warpEnergy >= MAX_WARP_ENERGY && !isWarping) {
+            isWarping = true;
+            warpEnergy = 0;
+            warpEffect.style.opacity = 1;
+            createWarpLines();
+            
+            setTimeout(() => {
+                isWarping = false;
+                warpEffect.style.opacity = 0;
+                // ワープ後のランダムな位置へのジャンプ（演出上）
+                spawnInitialObjects();
+            }, 2000);
+        }
+    }
+
+    function createWarpLines() {
+        for(let i=0; i<50; i++) {
+            const line = document.createElement('div');
+            line.className = 'warp-line';
+            const angle = Math.random() * Math.PI * 2;
+            const length = 50 + Math.random() * 200;
+            line.style.width = length + 'px';
+            line.style.height = '2px';
+            line.style.left = '50%';
+            line.style.top = '50%';
+            line.style.transform = `rotate(${angle}rad) translateX(${width}px)`;
+            
+            const anim = line.animate([
+                { transform: `rotate(${angle}rad) translateX(${width}px)`, opacity: 0 },
+                { transform: `rotate(${angle}rad) translateX(0px)`, opacity: 1, offset: 0.5 },
+                { transform: `rotate(${angle}rad) translateX(-${width}px)`, opacity: 0 }
+            ], {
+                duration: 500 + Math.random() * 500,
+                iterations: Infinity
+            });
+            
+            warpEffect.appendChild(line);
+            setTimeout(() => line.remove(), 2000);
+        }
+    }
+
+    function draw() {
+        if (width <= 0 || height <= 0) return;
+        ctx.clearRect(0, 0, width, height);
+
+        // パララックススター背景の描画（スクロール）
+        starLayers.forEach(layer => {
+            if (!layer.canvas || layer.canvas.width <= 0 || layer.canvas.height <= 0) return;
+            
+            const offsetX = -(camera.x * layer.speed) % width;
+            const offsetY = -(camera.y * layer.speed) % height;
+            
+            ctx.drawImage(layer.canvas, offsetX, offsetY);
+            ctx.drawImage(layer.canvas, offsetX + width, offsetY);
+            ctx.drawImage(layer.canvas, offsetX - width, offsetY);
+            ctx.drawImage(layer.canvas, offsetX, offsetY + height);
+            ctx.drawImage(layer.canvas, offsetX, offsetY - height);
+        });
+
+        // 惑星の描画
+        objects.forEach(obj => {
+            const screenX = obj.x - camera.x;
+            const screenY = obj.y - camera.y;
+            
+            // 画面内にあるか簡易チェック
+            if (screenX > -400 && screenX < width + 400 && screenY > -400 && screenY < height + 400) {
+                const asset = planetAssets[obj.type];
+                if (asset && asset.width > 0 && asset.height > 0) {
+                    const size = 400 * obj.scale;
+                    ctx.drawImage(asset, screenX - size/2, screenY - size/2, size, size);
+                }
+            }
+        });
+
+        // 宇宙船の描画
+        ctx.save();
+        ctx.translate(ship.x - camera.x, ship.y - camera.y);
+        ctx.rotate(ship.angle + Math.PI / 2);
+
+        // 宇宙船の描画
+        ctx.fillStyle = '#eee';
+        ctx.beginPath();
+        ctx.moveTo(0, -20);
+        ctx.lineTo(15, 20);
+        ctx.lineTo(-15, 20);
+        ctx.closePath();
+        ctx.fill();
+
+        // 窓
+        ctx.fillStyle = '#333';
+        ctx.beginPath();
+        ctx.arc(0, -5, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // エンジン噴射
+        if (ship.velocity > 0.5 || isWarping) {
+            ctx.save();
+            ctx.fillStyle = isWarping ? '#00f2ff' : '#ffaa00';
+            const flameSize = isWarping ? 60 : 10 + Math.random() * 15;
+            ctx.beginPath();
+            ctx.moveTo(-10, 20);
+            ctx.lineTo(0, 20 + flameSize);
+            ctx.lineTo(10, 20);
+            ctx.fill();
+            
+            // グロー効果
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = ctx.fillStyle;
+            ctx.restore();
+        }
+
+        ctx.restore();
+    }
+
+    function animate() {
+        update();
+        draw();
+        requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', resize);
+    document.getElementById('mobile-warp-btn').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        triggerWarp();
+    });
+
+    window.onload = init;
+</script>
+</body>
+</html>

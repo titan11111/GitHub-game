@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>JS勇者伝説 ～失われしクリスタル～</title>
+<style>
+    body { margin:0; background:#000; font-family:'MS Gothic',sans-serif; overflow:hidden; }
+    canvas { display:block; margin:20px auto; image-rendering:pixelated; box-shadow:0 0 30px #0ff; }
+    #info {
+        position:absolute; top:10px; left:10px; color:#0ff; text-shadow:0 0 10px #0ff;
+        font-size:14px; pointer-events:none;
+    }
+</style>
+</head>
+<body>
+<div id="info">WASD/矢印:移動　Z:決定　X:メニュー</div>
+<canvas id="c" width="800" height="520"></canvas>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+const TILE = 32;
+const MAP_W = 25;
+const MAP_H = 16;
+
+let state = 'title';
+let message = '';
+let messageTimer = 0;
+
+let player = {
+    name: "勇者",
+    x: 3, y: 3,
+    hp: 120, maxHp: 120,
+    mp: 45, maxMp: 45,
+    atk: 18, def: 12,
+    level: 1, exp: 0, expNext: 60,
+    gold: 25,
+    inventory: [
+        {name:"ポーション", type:"heal", value:50, qty:5},
+        {name:"エーテル", type:"mpheal", value:30, qty:3}
+    ],
+    keys: 0
+};
+
+let currentMapId = 0;
+let maps = [
+    [
+        [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+        [3,5,5,5,5,5,3,1,1,1,1,2,2,2,1,1,1,3,3,3,3,3,3,3,3],
+        [3,5,0,0,0,5,3,1,0,0,0,2,0,2,0,0,1,3,4,4,4,4,4,3,3],
+        [3,5,0,7,0,5,3,1,0,1,0,2,0,2,0,1,1,3,4,0,0,0,4,3,3],
+        [3,5,5,5,5,5,2,2,2,2,2,2,2,2,2,2,2,2,4,0,8,0,4,3,3],
+        [3,1,1,1,1,2,2,1,1,1,1,0,1,1,1,1,1,2,4,0,0,0,4,3,3],
+        [3,1,0,0,0,2,0,0,0,0,1,0,1,0,0,0,1,2,4,4,4,4,4,3,3],
+        [3,1,0,1,0,2,0,9,0,0,1,0,1,0,1,0,1,2,3,3,3,3,3,3,3],
+        [3,1,0,0,0,2,0,0,0,0,2,2,2,2,2,2,2,2,3,1,1,1,1,1,3],
+        [3,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,3,1,0,0,0,1,3],
+        [3,3,3,3,3,2,3,3,3,3,3,3,3,3,3,3,3,2,3,1,0,10,0,1,3],
+        [3,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,3,2,3,1,0,0,0,1,3],
+        [3,0,1,1,0,2,0,1,1,1,1,1,1,1,1,0,3,2,3,1,1,1,1,1,3],
+        [3,0,1,0,0,2,0,0,0,0,0,0,0,0,1,0,3,2,3,3,3,3,3,3,3],
+        [3,0,1,0,1,2,1,1,1,1,1,1,1,0,1,0,3,2,3,3,3,3,3,3,3],
+        [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+    ],
+    [
+        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
+        [6,3,3,6,3,3,3,6,3,3,3,6,3,3,3,6,3,3,3,6,3,3,3,6,6],
+        [6,3,11,6,3,12,3,6,3,13,3,6,3,0,3,6,3,0,3,6,3,14,3,6,6],
+        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
+        [6,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,6],
+        [6,3,0,0,0,0,0,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,3,6],
+        [6,3,0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,3,6],
+        [6,3,0,3,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,3,0,3,6],
+        [6,3,0,3,6,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,6,3,0,3,6],
+        [6,3,0,3,6,3,0,0,0,0,0,0,0,0,0,0,0,0,0,3,6,3,0,3,6],
+        [6,3,0,3,6,3,0,3,3,3,3,16,3,3,3,3,3,3,0,3,6,3,0,3,6],
+        [6,3,0,3,6,3,0,3,6,6,6,6,6,6,6,6,6,3,0,3,6,3,0,3,6],
+        [6,3,0,0,0,0,0,3,6,3,3,3,3,3,3,3,6,3,0,0,0,0,0,3,6],
+        [6,3,3,3,3,3,3,3,6,3,0,0,0,0,0,3,6,3,3,3,3,3,3,3,6],
+        [6,6,6,6,6,6,6,6,6,6,6,17,6,6,6,6,6,6,6,6,6,6,6,6,6],
+        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6]
+    ]
+];
+
+const tileDef = {
+    0: {color:"#2e8b57", symbol:"🌿"},
+    1: {color:"#1e5f2b", symbol:"🌲", collide:true},
+    2: {color:"#8b5a2b", symbol:"🟫"},
+    3: {color:"#555555", symbol:"⬛", collide:true},
+    4: {color:"#d2b48c", symbol:"⬜"},
+    5: {color:"#deb887", symbol:"🏠"},
+    6: {color:"#444455", symbol:"🪨", collide:true},
+    7: {color:"#ffd700", symbol:"⛩️"},
+    8: {color:"#ffd700", symbol:"🕳️"},
+    9: {color:"#ffd700", symbol:"🧙"},
+    10:{color:"#ffd700", symbol:"🗡️"},
+    11:{color:"#aa0000", symbol:"🔥"},
+    12:{color:"#aa0000", symbol:"💀"},
+    13:{color:"#aa0000", symbol:"👹"},
+    14:{color:"#aa0000", symbol:"🐉"},
+    15:{color:"#666677", symbol:"🪨"},
+    16:{color:"#ff0000", symbol:"💎"},
+    17:{color:"#ff00ff", symbol:"🌀"}
+};
+
+let npcs = [
+    {map:0, x:7, y:7, name:"村長", text:"魔王がクリスタルを奪った…\n勇者よ、森の奥の洞窟へ向かうがよい。"},
+    {map:0, x:10, y:3, name:"商人", text:"ポーションをあげよう。\n旅の無事を祈っているぞ。", shop:true}
+];
+
+const enemies = {
+    goblin: {name:"ゴブリン", hp:45, atk:14, def:6, exp:25, gold:12, symbol:"👺", color:"#0f0"},
+    wolf:   {name:"森の狼",   hp:65, atk:20, def:9, exp:35, gold:18, symbol:"🐺", color:"#aaa"},
+    skel:   {name:"スケルトン",hp:80,atk:18, def:15,exp:45, gold:22, symbol:"💀", color:"#ddd"},
+    mage:   {name:"闇魔導士", hp:55, atk:25, def:8, exp:50, gold:30, symbol:"🧙‍♂️", color:"#f0f"},
+    dragon: {name:"守護竜",   hp:220,atk:32, def:22,exp:180,gold:120,symbol:"🐉", color:"#f44", isBoss:true}
+};
+
+let combat = {
+    enemy: null,
+    enemyHp: 0,
+    enemyMaxHp: 0,
+    turn: "player",
+    log: [],
+    selected: 0,
+    menu: ["たたかう","まほう","アイテム","にげる"]
+};
+
+let menuMode = "main";
+let menuSelect = 0;
+let keys = {};
+window.onkeydown = e => { keys[e.key.toLowerCase()] = true; handleKey(e.key); e.preventDefault(); };
+window.onkeyup = e => { keys[e.key.toLowerCase()] = false; };
+
+let lastInput = 0;
+
+function draw() {
+    ctx.fillStyle = "#0a0a1f";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (state === 'title') {
+        ctx.font = "bold 48px sans-serif";
+        ctx.fillStyle = "#ff0";
+        ctx.textAlign = "center";
+        ctx.fillText("JS勇者伝説", 400, 160);
+        ctx.fillStyle = "#0ff";
+        ctx.font = "28px sans-serif";
+        ctx.fillText("～失われしクリスタル～", 400, 210);
+        ctx.font = "22px sans-serif";
+        ctx.fillStyle = "#fff";
+        ctx.fillText("Zキーで冒険を始める", 400, 320);
+        ctx.textAlign = "left";
+        return;
+    }
+
+    if (state === 'explore') {
+        drawMap();
+        drawPlayer();
+        drawHUD();
+        npcs.forEach(npc => {
+            if (npc.map === currentMapId) {
+                ctx.font = "24px sans-serif";
+                ctx.fillText(npc.symbol || "🧍", npc.x * TILE + 4, npc.y * TILE + 26);
+            }
+        });
+    }
+
+    if (state === 'combat') drawCombat();
+    if (state === 'menu') drawMenu();
+    if (state === 'dialogue') drawDialogue();
+
+    if (state === 'victory') {
+        ctx.fillStyle = "#000820";
+        ctx.fillRect(0,0,800,520);
+        ctx.textAlign="center";
+        ctx.fillStyle="#ffd700";
+        ctx.font="bold 48px sans-serif";
+        ctx.fillText("クリスタルを取り戻した！",400,200);
+        ctx.fillStyle="#fff";
+        ctx.font="24px sans-serif";
+        ctx.fillText("世界に平和が戻った！",400,270);
+        ctx.fillText("Zで最初から",400,340);
+        ctx.textAlign="left";
+    }
+
+    if (state === 'gameover') {
+        ctx.fillStyle="#1a0000";
+        ctx.fillRect(0,0,800,520);
+        ctx.textAlign="center";
+        ctx.fillStyle="#f00";
+        ctx.font="bold 60px sans-serif";
+        ctx.fillText("GAME OVER",400,220);
+        ctx.fillStyle="#fff";
+        ctx.font="22px sans-serif";
+        ctx.fillText("Zで最初から",400,300);
+        ctx.textAlign="left";
+    }
+
+    if (message && messageTimer > 0) {
+        ctx.fillStyle = "rgba(0,0,0,0.75)";
+        ctx.fillRect(50, 420, 700, 80);
+        ctx.strokeStyle = "#0ff";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(50, 420, 700, 80);
+        ctx.fillStyle = "#fff";
+        ctx.font = "20px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(message, 400, 468);
+        ctx.textAlign = "left";
+        messageTimer--;
+    }
+}
+
+function drawMap() {
+    const map = maps[currentMapId];
+    for (let y = 0; y < Math.min(MAP_H, map.length); y++) {
+        for (let x = 0; x < Math.min(MAP_W, map[y].length); x++) {
+            const t = map[y][x];
+            const def = tileDef[t] || tileDef[0];
+            ctx.fillStyle = def.color;
+            ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
+            if (def.symbol) {
+                ctx.font = "22px sans-serif";
+                ctx.fillText(def.symbol, x*TILE+6, y*TILE+26);
+            }
+        }
+    }
+}
+
+function drawPlayer() {
+    ctx.font = "28px sans-serif";
+    ctx.shadowColor = "#0ff";
+    ctx.shadowBlur = 15;
+    ctx.fillText("🧙", player.x * TILE + 2, player.y * TILE + 30);
+    ctx.shadowBlur = 0;
+}
+
+function drawHUD() {
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 460, 800, 60);
+    ctx.fillStyle = "#0f0";
+    ctx.font = "18px sans-serif";
+    ctx.fillText(`${player.name}  Lv.${player.level}`, 20, 490);
+    ctx.fillStyle = "#333"; ctx.fillRect(180, 475, 200, 12);
+    ctx.fillStyle = "#0f0"; ctx.fillRect(180, 475, 200*(player.hp/player.maxHp), 12);
+    ctx.fillStyle = "#fff"; ctx.fillText(`HP ${player.hp}/${player.maxHp}`, 190, 505);
+    ctx.fillStyle = "#003"; ctx.fillRect(420, 475, 160, 12);
+    ctx.fillStyle = "#66f"; ctx.fillRect(420, 475, 160*(player.mp/player.maxMp), 12);
+    ctx.fillStyle = "#fff"; ctx.fillText(`MP ${player.mp}/${player.maxMp}`, 430, 505);
+    ctx.fillStyle = "#ff0"; ctx.fillText(`所持金 ${player.gold}G`, 620, 490);
+}
+
+function drawCombat() {
+    ctx.fillStyle = "#110022";
+    ctx.fillRect(0, 0, 800, 520);
+    ctx.font = "80px sans-serif";
+    ctx.fillText(combat.enemy.symbol || "👾", 520, 200);
+    ctx.fillStyle = "#fff";
+    ctx.font = "24px sans-serif";
+    ctx.fillText(combat.enemy.name, 520, 90);
+    const eh = Math.max(0, combat.enemyHp / combat.enemyMaxHp);
+    ctx.fillStyle="#300"; ctx.fillRect(500,100,240,18);
+    ctx.fillStyle=eh>0.3?"#0f0":"#f00"; ctx.fillRect(500,100,240*eh,18);
+    ctx.fillStyle="#0ff"; ctx.font="50px sans-serif"; ctx.fillText("🧙",100,320);
+    ctx.fillStyle="#fff"; ctx.font="22px sans-serif";
+    ctx.fillText(player.name, 80, 380);
+    ctx.fillText(`HP ${player.hp}/${player.maxHp}`, 80, 410);
+    ctx.fillText(`MP ${player.mp}/${player.maxMp}`, 80, 440);
+    ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(20,450,760,60);
+    ctx.fillStyle = "#ff0"; ctx.font = "17px sans-serif";
+    for (let i=0; i<Math.min(combat.log.length,3); i++) ctx.fillText(combat.log[i], 30, 470+i*17);
+    ctx.fillStyle="rgba(0,20,40,0.9)"; ctx.fillRect(20,300,240,130);
+    ctx.strokeStyle="#0ff"; ctx.lineWidth=3; ctx.strokeRect(20,300,240,130);
+    ctx.fillStyle="#fff"; ctx.font="20px sans-serif";
+    for (let i=0; i<combat.menu.length; i++) {
+        ctx.fillStyle = i===combat.selected ? "#ff0" : "#fff";
+        ctx.fillText((i===combat.selected?"▶ ":"　")+combat.menu[i], 40, 330+i*28);
+    }
+}
+
+function drawMenu() {
+    ctx.fillStyle="rgba(10,10,30,0.95)"; ctx.fillRect(150,80,500,360);
+    ctx.strokeStyle="#0ff"; ctx.lineWidth=6; ctx.strokeRect(150,80,500,360);
+    ctx.fillStyle="#0ff"; ctx.font="28px sans-serif"; ctx.textAlign="center";
+    ctx.fillText("メニュー",400,120);
+    const items=["ステータス","インベントリ","閉じる"];
+    ctx.textAlign="left"; ctx.font="22px sans-serif";
+    for(let i=0;i<items.length;i++){
+        ctx.fillStyle=menuSelect===i?"#ff0":"#ccc";
+        ctx.fillText((menuSelect===i?"▶ ":"　")+items[i],200,170+i*45);
+    }
+    ctx.fillStyle="#fff"; ctx.font="17px sans-serif";
+    ctx.fillText(`Lv.${player.level} ${player.name}`,200,300);
+    ctx.fillText(`HP: ${player.hp}/${player.maxHp}  MP: ${player.mp}/${player.maxMp}`,200,325);
+    ctx.fillText(`ATK: ${player.atk}  DEF: ${player.def}`,200,350);
+    ctx.fillText(`EXP: ${player.exp}/${player.expNext}  Gold: ${player.gold}G`,200,375);
+    player.inventory.forEach((item,i)=>ctx.fillText(`${item.name} ×${item.qty}`,200,410+i*22));
+}
+
+function drawDialogue() {
+    ctx.fillStyle="rgba(0,0,0,0.85)"; ctx.fillRect(40,340,720,150);
+    ctx.strokeStyle="#ff0"; ctx.strokeRect(40,340,720,150);
+    ctx.fillStyle="#ff0"; ctx.font="bold 20px sans-serif"; ctx.textAlign="left";
+    ctx.fillText(currentNPC.name+"「",70,375);
+    ctx.fillStyle="#fff"; ctx.font="18px sans-serif";
+    const lines=currentNPC.text.split('\n');
+    lines.forEach((l,i)=>ctx.fillText(l,80,400+i*24));
+    ctx.fillStyle="#0ff"; ctx.fillText("Zで閉じる",620,468);
+}
+
+let currentNPC = null;
+
+function handleKey(key) {
+    const now = Date.now();
+    if (now - lastInput < 100) return;
+    lastInput = now;
+
+    if (state==='title' && (key==='z'||key==='Enter')) { state='explore'; return; }
+    if (state==='victory'||state==='gameover') { if(key==='z'||key==='Enter') location.reload(); return; }
+
+    if (state==='explore') {
+        let nx=player.x, ny=player.y;
+        if (key==='ArrowLeft'||key==='a') nx--;
+        else if (key==='ArrowRight'||key==='d') nx++;
+        else if (key==='ArrowUp'||key==='w') ny--;
+        else if (key==='ArrowDown'||key==='s') ny++;
+        else if (key==='x'||key==='X') { state='menu'; menuSelect=0; return; }
+        else if ((key==='z'||key==='Enter') && currentNPC) { state='dialogue'; return; }
+
+        if (nx!==player.x || ny!==player.y) {
+            const map=maps[currentMapId];
+            if (ny<0||ny>=map.length||nx<0||nx>=map[ny].length) return;
+            const t=map[ny][nx];
+            const def=tileDef[t]||tileDef[0];
+            if (def.collide) return;
+            player.x=nx; player.y=ny;
+
+            const npc=npcs.find(n=>n.map===currentMapId&&n.x===nx&&n.y===ny);
+            if (npc) { currentNPC=npc; state='dialogue'; return; }
+
+            if (t===8) { currentMapId=1; player.x=5; player.y=5; message="洞窟に入った…"; messageTimer=90; }
+            if (t===7) { currentMapId=0; player.x=4; player.y=3; message="村に戻った"; messageTimer=60; }
+            if (t===16) { message="クリスタルを手に入れた！"; messageTimer=120; player.keys++; map[ny][nx]=0; }
+            if (t===17) startCombat(enemies.dragon);
+
+            if (Math.random()<0.18 && (t===0||t===1||(currentMapId===1&&t===0))) {
+                const pool=currentMapId===0?[enemies.goblin,enemies.wolf]:[enemies.skel,enemies.mage];
+                startCombat(pool[Math.floor(Math.random()*pool.length)]);
+            }
+            currentNPC=null;
+        }
+    }
+
+    else if (state==='combat') {
+        if (key==='ArrowDown'||key==='s') combat.selected=(combat.selected+1)%4;
+        if (key==='ArrowUp'||key==='w') combat.selected=(combat.selected+3)%4;
+        if ((key==='z'||key==='Enter') && combat.turn==='player') executePlayerAction(combat.selected);
+    }
+
+    else if (state==='menu') {
+        if (key==='ArrowDown'||key==='s') menuSelect=(menuSelect+1)%3;
+        if (key==='ArrowUp'||key==='w') menuSelect=(menuSelect+2)%3;
+        if (key==='x'||key==='Escape'||(key==='z'&&menuSelect===2)) state='explore';
+    }
+
+    else if (state==='dialogue') {
+        if (key==='z'||key==='Enter') {
+            if (currentNPC&&currentNPC.shop) {
+                player.inventory[0].qty+=2;
+                message="ポーションをもらった！"; messageTimer=80;
+            }
+            currentNPC=null; state='explore';
+        }
+    }
+}
+
+function executePlayerAction(act) {
+    if (act===0) {
+        const dmg=Math.max(4,player.atk-Math.floor(combat.enemy.def/2)+Math.floor(Math.random()*6));
+        combat.enemyHp-=dmg;
+        combat.log.push(`勇者の攻撃！ ${dmg}ダメージ！`);
+    } else if (act===1) {
+        if (player.mp<12) { combat.log.push("MPが足りない！"); return; }
+        player.mp-=12;
+        const dmg=28+Math.floor(Math.random()*12);
+        combat.enemyHp-=dmg;
+        combat.log.push(`ファイア！ ${dmg}ダメージ！`);
+    } else if (act===2) {
+        if (player.inventory[0].qty>0) {
+            player.hp=Math.min(player.maxHp,player.hp+50);
+            player.inventory[0].qty--;
+            combat.log.push("ポーションを使った！ HP回復！");
+        } else { combat.log.push("アイテムがない！"); return; }
+    } else if (act===3) {
+        if (combat.enemy.isBoss || Math.random()<0.4) {
+            combat.log.push("逃げられなかった！");
+        } else {
+            combat.log.push("逃げた！");
+            setTimeout(()=>{ state='explore'; },800); return;
+        }
+    }
+    if (combat.log.length>3) combat.log.shift();
+    checkCombatEnd();
+    if (combat.enemyHp>0) setTimeout(enemyTurn,600);
+}
+
+function enemyTurn() {
+    if (combat.enemyHp<=0||state!=='combat') return;
+    const dmg=Math.max(3,combat.enemy.atk-Math.floor(player.def/2)+Math.floor(Math.random()*5));
+    player.hp-=dmg;
+    combat.log.push(`${combat.enemy.name}の攻撃！ ${dmg}ダメージ！`);
+    if (combat.log.length>3) combat.log.shift();
+    combat.turn="player";
+    checkCombatEnd();
+}
+
+function checkCombatEnd() {
+    if (combat.enemyHp<=0) {
+        combat.log.push(`${combat.enemy.name}を倒した！`);
+        player.exp+=combat.enemy.exp; player.gold+=combat.enemy.gold;
+        if (player.exp>=player.expNext) {
+            player.level++; player.maxHp+=25; player.hp=player.maxHp;
+            player.atk+=6; player.def+=4; player.expNext=Math.floor(player.expNext*1.7);
+            message=`レベルアップ！ Lv.${player.level}`; messageTimer=120;
+        }
+        setTimeout(()=>{ state=combat.enemy.isBoss?'victory':'explore'; },1400);
+        return;
+    }
+    if (player.hp<=0) { player.hp=0; state='gameover'; }
+}
+
+function startCombat(enemyData) {
+    state='combat';
+    combat.enemy={...enemyData};
+    combat.enemyHp=enemyData.hp;
+    combat.enemyMaxHp=enemyData.hp;
+    combat.log=[`${enemyData.name}が現れた！`];
+    combat.turn="player"; combat.selected=0;
+}
+
+function gameLoop() { draw(); requestAnimationFrame(gameLoop); }
+gameLoop();
+</script>
+</body>
+</html>

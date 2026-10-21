@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frost Climb - 険しき雪山</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050a14;
+            font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+            color: #e0eaff;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            background: linear-gradient(to bottom, #000510 0%, #10203a 100%);
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #stamina-bar-container {
+            width: 200px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        #stamina-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            transition: width 0.1s;
+        }
+
+        #altitude-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: right;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #wind-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+            display: none;
+        }
+
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 5, 15, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        #game-over h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            color: #a0b0ff;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            background: transparent;
+            border: 2px solid #e0eaff;
+            color: #e0eaff;
+            cursor: pointer;
+            font-size: 18px;
+            margin-top: 20px;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background: #e0eaff;
+            color: #050a14;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div class="stat-label">STAMINA</div>
+        <div id="stamina-bar-container">
+            <div id="stamina-bar"></div>
+        </div>
+    </div>
+
+    <div id="altitude-display">
+        標高: <span id="height-val">0</span>m
+    </div>
+
+    <div id="wind-warning">強風警報</div>
+
+    <div id="game-over">
+        <h1>遭難</h1>
+        <p id="final-score">到達標高: 0m</p>
+        <button class="btn" onclick="resetGame()">再挑戦</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const staminaBar = document.getElementById('stamina-bar');
+    const heightVal = document.getElementById('height-val');
+    const windWarning = document.getElementById('wind-warning');
+    const gameOverScreen = document.getElementById('game-over');
+    const finalScoreText = document.getElementById('final-score');
+
+    // Canvas Size
+    function resize() {
+        canvas.width = Math.min(window.innerWidth, 500);
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Game Constants
+    const GRAVITY = 0.45;
+    const FRICTION = 0.85;
+    const ICE_FRICTION = 0.98;
+    const JUMP_FORCE = -14.3; // 11 * 1.3 = 14.3 (Jump force increased)
+    const ACCEL = 0.6;
+    const MAX_STAMINA = 100;
+    const STAMINA_RECOVERY = 0.2;
+    const STAMINA_COST_MOVE = 0.05;
+    const STAMINA_COST_JUMP = 15;
+
+    // Game State
+    let player, platforms, particles, cameraY, maxAltitude, gameActive, windForce, windTimer;
+    let keys = {};
+
+    class Player {
+        constructor() {
+            this.width = 24;
+            this.height = 36;
+            this.x = canvas.width / 2 - this.width / 2;
+            this.y = canvas.height - 100;
+            this.vx = 0;
+            this.vy = 0;
+            this.stamina = MAX_STAMINA;
+            this.onGround = false;
+            this.isIcy = false;
+        }
+
+        update() {
+            // Apply Wind
+            this.vx += windForce;
+
+            // Movement Input
+            if (this.stamina > 0) {
+                if (keys['ArrowLeft'] || keys['a']) {
+                    this.vx -= ACCEL;
+                    this.stamina -= STAMINA_COST_MOVE;
+                }
+                if (keys['ArrowRight'] || keys['d']) {
+                    this.vx += ACCEL;
+                    this.stamina -= STAMINA_COST_MOVE;
+                }
+                if ((keys['ArrowUp'] || keys['w'] || keys[' ']) && this.onGround) {
+                    this.vy = JUMP_FORCE;
+                    this.stamina -= STAMINA_COST_JUMP;
+                    this.onGround = false;
+                }
+            }
+
+            // Stamina Recovery
+            if (this.onGround && !keys['ArrowLeft'] && !keys['ArrowRight'] && !keys['a'] && !keys['d']) {
+                this.stamina = Math.min(MAX_STAMINA, this.stamina + STAMINA_RECOVERY);
+            }
+
+            // Physics
+            this.vy += GRAVITY;
+            this.vx *= (this.isIcy ? ICE_FRICTION : FRICTION);
+            
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // Boundaries
+            if (this.x < 0) this.x = 0;
+            if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+
+            // Collision Detection
+            this.onGround = false;
+            this.isIcy = false;
+            for (let p of platforms) {
+                if (this.vy > 0 && 
+                    this.x + this.width > p.x && 
+                    this.x < p.x + p.w &&
+                    this.y + this.height >= p.y &&
+                    this.y + this.height <= p.y + p.h + this.vy) {
+                    
+                    this.y = p.y - this.height;
+                    this.vy = 0;
+                    this.onGround = true;
+                    if (p.type === 'ice') this.isIcy = true;
+                }
+            }
+
+            // Fall off screen
+            if (this.y - cameraY > canvas.height) {
+                endGame();
+            }
+
+            // Stamina UI
+            staminaBar.style.width = `${Math.max(0, (this.stamina / MAX_STAMINA) * 100)}%`;
+            if (this.stamina < 20) {
+                staminaBar.style.background = '#ff4b2b';
+            } else {
+                staminaBar.style.background = 'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)';
+            }
+        }
+
+        draw() {
+            ctx.save();
+            // Character Body
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(this.x, this.y - cameraY, this.width, this.height);
+            // Hood/Head
+            ctx.fillStyle = '#2e3b5e';
+            ctx.fillRect(this.x + 2, this.y - 4 - cameraY, this.width - 4, 10);
+            // Eyes
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(this.x + 14, this.y + 2 - cameraY, 4, 2);
+            // Stamina warning glow
+            if (this.stamina < 20) {
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x - 2, this.y - 2 - cameraY, this.width + 4, this.height + 4);
+            }
+            ctx.restore();
+        }
+    }
+
+    class Platform {
+        constructor(x, y, w, type = 'normal') {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = 14;
+            this.type = type;
+        }
+
+        draw() {
+            ctx.save();
+            const grad = ctx.createLinearGradient(this.x, this.y - cameraY, this.x, this.y + this.h - cameraY);
+            
+            if (this.type === 'ice') {
+                grad.addColorStop(0, '#a5f3fc');
+                grad.addColorStop(1, '#0891b2');
+            } else {
+                grad.addColorStop(0, '#e2e8f0');
+                grad.addColorStop(1, '#475569');
+            }
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.roundRect(this.x, this.y - cameraY, this.w, this.h, 4);
+            ctx.fill();
+
+            // Snow cap
+            ctx.fillStyle = 'white';
+            ctx.fillRect(this.x + 2, this.y - cameraY, this.w - 4, 3);
+            
+            ctx.restore();
+        }
+    }
+
+    class SnowParticle {
+        constructor() {
+            this.reset();
+        }
+        reset() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.size = Math.random() * 2 + 1;
+            this.speedY = Math.random() * 2 + 1;
+            this.speedX = (Math.random() - 0.5) * 1 + windForce * 10;
+        }
+        update() {
+            this.y += this.speedY;
+            this.x += this.speedX + windForce * 5;
+            if (this.y > canvas.height) this.y = -10;
+            if (this.x > canvas.width) this.x = 0;
+            if (this.x < 0) this.x = canvas.width;
+        }
+        draw() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    function init() {
+        player = new Player();
+        platforms = [];
+        particles = [];
+        cameraY = 0;
+        maxAltitude = 0;
+        gameActive = true;
+        windForce = 0;
+        windTimer = 100;
+
+        platforms.push(new Platform(0, canvas.height - 40, canvas.width, 'normal'));
+        
+        for (let i = 0; i < 15; i++) {
+            generatePlatform();
+        }
+
+        for (let i = 0; i < 100; i++) {
+            particles.push(new SnowParticle());
+        }
+
+        gameOverScreen.style.display = 'none';
+        loop();
+    }
+
+    function generatePlatform() {
+        const lastP = platforms[platforms.length - 1];
+        const spacing = 70 + Math.random() * 30;
+        const width = 80 + Math.random() * 60;
+        const x = Math.random() * (canvas.width - width);
+        const type = Math.random() > 0.7 ? 'ice' : 'normal';
+        platforms.push(new Platform(x, lastP.y - spacing, width, type));
+    }
+
+    function updateWind() {
+        windTimer--;
+        if (windTimer <= 0) {
+            if (windForce === 0) {
+                const direction = Math.random() > 0.5 ? 1 : -1;
+                windForce = direction * (0.15 + Math.random() * 0.2);
+                windTimer = 180 + Math.random() * 120;
+                windWarning.style.display = 'block';
+                windWarning.innerText = windForce > 0 ? '強風 →' : '← 強風';
+            } else {
+                windForce = 0;
+                windTimer = 200 + Math.random() * 200;
+                windWarning.style.display = 'none';
+            }
+        }
+    }
+
+    function loop() {
+        if (!gameActive) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        let targetCameraY = player.y - canvas.height * 0.6;
+        if (targetCameraY < cameraY) {
+            cameraY += (targetCameraY - cameraY) * 0.1;
+        }
+
+        updateWind();
+
+        const altitude = Math.floor(Math.abs(player.y - (canvas.height - 100)) / 10);
+        if (altitude > maxAltitude) maxAltitude = altitude;
+        heightVal.innerText = maxAltitude;
+
+        particles.forEach(p => {
+            p.update();
+            p.draw();
+        });
+
+        for (let i = platforms.length - 1; i >= 0; i--) {
+            let p = platforms[i];
+            p.draw();
+            if (p.y - cameraY > canvas.height + 100) {
+                platforms.splice(i, 1);
+            }
+        }
+
+        if (platforms[platforms.length - 1].y > player.y - canvas.height) {
+            generatePlatform();
+        }
+
+        player.update();
+        player.draw();
+
+        if (windForce !== 0) {
+            ctx.fillStyle = `rgba(200, 230, 255, ${Math.abs(windForce) * 0.2})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    function endGame() {
+        gameActive = false;
+        gameOverScreen.style.display = 'flex';
+        finalScoreText.innerText = `到達標高: ${maxAltitude}m`;
+    }
+
+    function resetGame() {
+        init();
+    }
+
+    window.addEventListener('keydown', e => keys[e.key] = true);
+    window.addEventListener('keyup', e => keys[e.key] = false);
+
+    window.onload = init;
+
+</script>
+</body>
+</html>

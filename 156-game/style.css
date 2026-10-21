@@ -1,0 +1,149 @@
+/* ===========================
+   ゲーム雛形 CSS
+   このフォルダを複製してゲーム開発に使用してください
+   =========================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+html, body {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: #1a1a2e;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  color: #fff;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+
+/* --- ゲームコンテナ --- */
+#gameContainer {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  max-width: 600px;
+  max-height: 900px;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* --- Canvas --- */
+#gameCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #0f0f1a;
+}
+
+/* --- 画面共通 --- */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.85);
+  text-align: center;
+  padding: 32px;
+}
+
+.screen.hidden {
+  display: none;
+}
+
+/* --- テキスト --- */
+h1 {
+  font-size: clamp(24px, 6vw, 48px);
+  font-weight: bold;
+  color: #f0c040;
+  text-shadow: 0 0 20px rgba(240, 192, 64, 0.5);
+  letter-spacing: 0.05em;
+}
+
+h2 {
+  font-size: clamp(20px, 5vw, 36px);
+  font-weight: bold;
+  color: #ff6b6b;
+}
+
+p {
+  font-size: clamp(14px, 3vw, 18px);
+  color: #ccc;
+  line-height: 1.6;
+}
+
+/* --- ボタン --- */
+.btn-primary {
+  margin-top: 8px;
+  padding: 14px 40px;
+  font-size: clamp(16px, 4vw, 22px);
+  font-weight: bold;
+  color: #1a1a2e;
+  background: linear-gradient(135deg, #f0c040, #ff8c00);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  box-shadow: 0 4px 12px rgba(240, 192, 64, 0.4);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.btn-primary:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 6px rgba(240, 192, 64, 0.3);
+}
+
+/* --- モバイルコントロール --- */
+#mobileControls {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 24px;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  pointer-events: none;
+}
+
+#mobileControls.hidden {
+  display: none;
+}
+
+.mobile-btn {
+  width: clamp(56px, 14vw, 72px);
+  height: clamp(56px, 14vw, 72px);
+  font-size: clamp(20px, 5vw, 28px);
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  pointer-events: all;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.08s ease, background 0.1s;
+}
+
+.mobile-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.35);
+}

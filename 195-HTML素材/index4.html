@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>擬似3D ボクシングバトル - 高知能AI版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #1a202c;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 4 / 3;
+            background: radial-gradient(circle, #4a5568 0%, #2d3748 100%);
+            border: 4px solid #718096;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .hp-bar-container {
+            width: 300px;
+            height: 20px;
+            background: #4a5568;
+            border: 2px solid #edf2f7;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .hp-bar {
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s ease-out;
+        }
+        #player-hp { background: #48bb78; }
+        #enemy-hp { background: #f56565; }
+        
+        .message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #f6ad55;
+            display: none;
+            pointer-events: auto;
+        }
+        .controls-guide {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #cbd5e0;
+            background: rgba(0,0,0,0.4);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="ui-overlay">
+        <div class="flex justify-between items-start">
+            <div>
+                <div class="text-sm font-bold mb-1">PLAYER</div>
+                <div class="hp-bar-container">
+                    <div id="player-hp" class="hp-bar"></div>
+                </div>
+            </div>
+            <div class="text-center">
+                <div id="timer" class="text-2xl font-mono">03:00</div>
+                <div id="round" class="text-xs">ROUND 1</div>
+            </div>
+            <div class="text-right">
+                <div class="text-sm font-bold mb-1">PRO-BOXER NPC</div>
+                <div class="hp-bar-container">
+                    <div id="enemy-hp" class="hp-bar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-screen" class="message-box">
+        <h2 id="message-title" class="text-4xl font-black mb-4 text-yellow-400">READY?</h2>
+        <p id="message-body" class="mb-6">プロ級のAIを打ち破れるか！？</p>
+        <button id="start-btn" class="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-8 rounded-full transition pointer-events-auto">
+            START FIGHT
+        </button>
+    </div>
+
+    <div class="controls-guide">
+        [A][D] パンチ | [←][→] 回避 | [↓] ガード | 敵がガード中は隙を待て！
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const playerHpBar = document.getElementById('player-hp');
+    const enemyHpBar = document.getElementById('enemy-hp');
+    const timerDisplay = document.getElementById('timer');
+    const messageScreen = document.getElementById('message-screen');
+    const messageTitle = document.getElementById('message-title');
+    const messageBody = document.getElementById('message-body');
+    const startBtn = document.getElementById('start-btn');
+
+    const CANVAS_WIDTH = 800;
+    const CANVAS_HEIGHT = 600;
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+
+    let gameState = 'START';
+    let timeLeft = 180;
+    let lastTime = 0;
+    let shakeAmount = 0;
+
+    // --- 迫力140%演出用ステート ---
+    let flashAmount = 0;        // 画面フラッシュ強度(0-1)
+    let flashColor = '255,255,255';
+    let hitStop = 0;            // ヒットストップ(フレーム)
+    let particles = [];         // 衝撃の火花
+    let impactRings = [];       // 衝撃波リング
+    let speedLines = 0;         // パンチ時の集中線強度(0-1)
+
+    function spawnImpact(x, y, color, power = 1) {
+        const count = Math.round(14 * power);
+        for (let i = 0; i < count; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const sp = (3 + Math.random() * 7) * power;
+            particles.push({
+                x, y,
+                vx: Math.cos(a) * sp,
+                vy: Math.sin(a) * sp - 2,
+                life: 1,
+                size: (2 + Math.random() * 5) * power,
+                color
+            });
+        }
+        impactRings.push({ x, y, r: 10, max: 80 * power, life: 1, color });
+    }
+
+    function triggerImpact(x, y, opts) {
+        // 命中の総合演出: 火花・衝撃波・フラッシュ・ヒットストップ・揺れ
+        spawnImpact(x, y, opts.color, opts.power);
+        flashAmount = Math.max(flashAmount, opts.flash);
+        flashColor = opts.flashColor;
+        hitStop = Math.max(hitStop, opts.stop);
+        shakeAmount = Math.max(shakeAmount, opts.shake);
+    }
+
+    const player = {
+        hp: 100,
+        maxHp: 100,
+        state: 'IDLE',
+        stateTimer: 0
+    };
+
+    const enemy = {
+        hp: 100,
+        maxHp: 100,
+        x: CANVAS_WIDTH / 2,
+        y: 350,
+        state: 'IDLE', // IDLE, WINDUP, ATTACK, BLOCK, HIT, KO
+        stateTimer: 0,
+        nextActionTime: 800,
+        aggression: 0.5,
+        comboCount: 0,
+        intelligence: 0.8 // プレイヤーの動きに反応する確率
+    };
+
+    window.addEventListener('keydown', e => handleInput(e.code));
+
+    function handleInput(code) {
+        if (gameState !== 'PLAYING') return;
+        if (player.state !== 'IDLE') return;
+
+        if (code === 'KeyA' || code === 'KeyD') {
+            player.state = code === 'KeyA' ? 'PUNCH_L' : 'PUNCH_R';
+            player.stateTimer = 15;
+            speedLines = 1; // 繰り出す瞬間の集中線
+            
+            // AIの反応：プレイヤーのパンチに合わせて即座にガードを試みる
+            if (enemy.state === 'IDLE' && Math.random() < enemy.intelligence) {
+                enemy.state = 'BLOCK';
+                enemy.stateTimer = 20 + Math.random() * 20;
+            }
+            
+            checkHit();
+        } else if (code === 'ArrowLeft') {
+            player.state = 'DODGE_L';
+            player.stateTimer = 22;
+        } else if (code === 'ArrowRight') {
+            player.state = 'DODGE_R';
+            player.stateTimer = 22;
+        } else if (code === 'ArrowDown') {
+            player.state = 'BLOCK';
+            player.stateTimer = 15;
+        }
+    }
+
+    function checkHit() {
+        // ヒット判定はパンチのアニメーション後半で行うための猶予
+        setTimeout(() => {
+            if (gameState !== 'PLAYING') return;
+            damageEnemy(5);
+        }, 50);
+    }
+
+    function damageEnemy(amount) {
+        if (enemy.state === 'KO') return;
+
+        if (enemy.state === 'BLOCK') {
+            amount = 1;
+            // ガード弾き: 小さめだが鋭い火花
+            triggerImpact(enemy.x, enemy.y - 70, {
+                color: '#cbd5e0', power: 0.6, flash: 0.18,
+                flashColor: '200,220,255', stop: 2, shake: 3
+            });
+            // ガード成功時、AIは即座にカウンターの準備をする
+            enemy.nextActionTime = 100;
+        } else if (enemy.state === 'DODGE') {
+            return;
+        } else {
+            enemy.state = 'HIT';
+            enemy.stateTimer = 12;
+            // クリーンヒット: 黄色い火花が弾ける強烈な一撃
+            triggerImpact(enemy.x, enemy.y - 60, {
+                color: '#ffd24a', power: 1.6, flash: 0.55,
+                flashColor: '255,235,140', stop: 5, shake: 14
+            });
+        }
+
+        enemy.hp -= amount;
+        if (enemy.hp <= 0) {
+            enemy.hp = 0;
+            winGame();
+        }
+        updateUI();
+    }
+
+    function damagePlayer(amount) {
+        if (player.state === 'BLOCK') {
+            amount = Math.floor(amount * 0.2);
+            // プレイヤーがガードした場合、敵はコンビネーションを止めることがある
+            if (Math.random() > 0.5) enemy.comboCount = 0;
+        } else if (player.state === 'DODGE_L' || player.state === 'DODGE_R') {
+            // 回避成功時、敵に隙ができる
+            enemy.state = 'IDLE';
+            enemy.nextActionTime = 800;
+            return;
+        }
+        
+        player.hp -= amount;
+        player.state = 'HIT';
+        player.stateTimer = 15;
+        // 被弾: 画面が赤く弾け、強く揺れる
+        triggerImpact(CANVAS_WIDTH / 2, CANVAS_HEIGHT - 120, {
+            color: '#ff6b6b', power: 1.5, flash: 0.6,
+            flashColor: '255,70,70', stop: 5, shake: 21
+        });
+        if (player.hp <= 0) {
+            player.hp = 0;
+            loseGame();
+        }
+        updateUI();
+    }
+
+    function updateUI() {
+        playerHpBar.style.width = `${(player.hp / player.maxHp) * 100}%`;
+        enemyHpBar.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
+        const mins = Math.floor(timeLeft / 60);
+        const secs = Math.floor(timeLeft % 60);
+        timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function winGame() {
+        gameState = 'WON';
+        enemy.state = 'KO';
+        messageTitle.innerText = "T.K.O. VICTOR!";
+        messageBody.innerText = "プロの壁を越えた！伝説のボクサーの誕生だ。";
+        messageScreen.style.display = 'block';
+        startBtn.innerText = "REPLAY";
+    }
+
+    function loseGame() {
+        gameState = 'LOST';
+        messageTitle.innerText = "K.O. LOSS";
+        messageBody.innerText = "相手のカウンターが鋭すぎた...修行し直そう。";
+        messageScreen.style.display = 'block';
+        startBtn.innerText = "RETRY";
+    }
+
+    function resetGame() {
+        player.hp = 100;
+        enemy.hp = 100;
+        timeLeft = 180;
+        player.state = 'IDLE';
+        enemy.state = 'IDLE';
+        enemy.nextActionTime = 1000;
+        enemy.comboCount = 0;
+        gameState = 'PLAYING';
+        particles = [];
+        impactRings = [];
+        flashAmount = 0;
+        speedLines = 0;
+        hitStop = 0;
+        shakeAmount = 0;
+        messageScreen.style.display = 'none';
+        updateUI();
+    }
+
+    startBtn.onclick = resetGame;
+    messageScreen.style.display = 'block';
+
+    function drawGlove(x, y, scale, isLeft, color = '#e53e3e', stroke = '#822727') {
+        ctx.save();
+        ctx.translate(x, y);
+        if (!isLeft) ctx.scale(-1, 1);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(-40, -50, 80, 100, [30, 30, 10, 10]);
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(30, -10, 20, 30, Math.PI/4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawEnemy() {
+        const x = enemy.x + (Math.random() - 0.5) * shakeAmount;
+        const y = enemy.y + (Math.random() - 0.5) * shakeAmount;
+        ctx.save();
+        ctx.translate(x, y);
+        
+        if (enemy.state === 'IDLE') ctx.translate(0, Math.sin(Date.now() / 200) * 5);
+
+        let skinColor = '#ed8936';
+        let gloveColor = '#4a5568';
+        if (enemy.state === 'HIT') skinColor = '#feb2b2';
+        if (enemy.state === 'KO') { ctx.rotate(Math.PI / 4); ctx.translate(0, 100); }
+
+        // 胴体
+        ctx.fillStyle = '#2d3748';
+        ctx.beginPath(); ctx.ellipse(0, 50, 80, 120, 0, 0, Math.PI * 2); ctx.fill();
+        // 頭
+        ctx.fillStyle = skinColor;
+        ctx.beginPath(); ctx.arc(0, -80, 50, 0, Math.PI * 2); ctx.fill();
+        
+        // 顔
+        ctx.fillStyle = '#000';
+        if (enemy.state === 'WINDUP' || enemy.state === 'ATTACK') {
+            ctx.fillRect(-25, -95, 18, 6); ctx.fillRect(8, -95, 18, 6);
+        } else {
+            ctx.fillRect(-20, -85, 10, 10); ctx.fillRect(10, -85, 10, 10);
+        }
+
+        // 敵のグローブ描画
+        if (enemy.state === 'BLOCK') {
+            drawGlove(-30, -70, 0.85, true, gloveColor, '#1a202c');
+            drawGlove(30, -70, 0.85, false, gloveColor, '#1a202c');
+        } else if (enemy.state === 'ATTACK') {
+            const attackProgress = (10 - enemy.stateTimer) / 10;
+            const punchZ = Math.sin(attackProgress * Math.PI);
+            drawGlove(0, -50 + punchZ * 120, 1 + punchZ * 1.8, true, gloveColor, '#1a202c');
+        } else if (enemy.state !== 'KO') {
+            drawGlove(-65, 25, 0.75, true, gloveColor, '#1a202c');
+            drawGlove(65, 25, 0.75, false, gloveColor, '#1a202c');
+        }
+        ctx.restore();
+    }
+
+    function updateEffects() {
+        // フラッシュ・集中線の減衰
+        if (flashAmount > 0) flashAmount = Math.max(0, flashAmount - 0.06);
+        if (speedLines > 0) speedLines = Math.max(0, speedLines - 0.08);
+        // 火花の更新
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy;
+            p.vy += 0.45;      // 重力
+            p.vx *= 0.96;
+            p.life -= 0.04;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+        // 衝撃波リングの更新
+        for (let i = impactRings.length - 1; i >= 0; i--) {
+            const r = impactRings[i];
+            r.r += (r.max - r.r) * 0.25;
+            r.life -= 0.06;
+            if (r.life <= 0) impactRings.splice(i, 1);
+        }
+    }
+
+    function update(timestamp) {
+        // ヒットストップ中はゲーム進行を止めて衝撃を強調（描画は継続）
+        if (hitStop > 0) {
+            hitStop--;
+            updateEffects();
+            if (shakeAmount > 0) shakeAmount *= 0.85;
+            lastTime = timestamp;
+            draw();
+            requestAnimationFrame(update);
+            return;
+        }
+
+        if (gameState === 'PLAYING') {
+            if (lastTime) {
+                const dt = timestamp - lastTime;
+                timeLeft -= dt / 1000;
+                if (timeLeft <= 0) { timeLeft = 0; if (player.hp > enemy.hp) winGame(); else loseGame(); }
+            }
+            
+            if (player.stateTimer > 0) player.stateTimer--; else player.state = 'IDLE';
+
+            // --- 強化された敵AIロジック ---
+            if (enemy.state === 'IDLE') {
+                enemy.nextActionTime -= 16;
+                
+                // プレイヤーが硬直中（HIT状態など）なら積極的に攻める
+                if (player.state === 'HIT') enemy.nextActionTime -= 20;
+
+                if (enemy.nextActionTime <= 0) {
+                    const roll = Math.random();
+                    if (roll < 0.25) { // 戦略的ガード
+                        enemy.state = 'BLOCK';
+                        enemy.stateTimer = 30 + Math.random() * 50;
+                    } else { // 攻撃開始
+                        enemy.state = 'WINDUP';
+                        enemy.stateTimer = 25; // プロは予備動作が短い
+                    }
+                }
+            } else if (enemy.state === 'BLOCK') {
+                enemy.stateTimer--;
+                // プレイヤーが攻撃していないなら、ガードを解いてカウンターを狙う
+                if (player.state === 'IDLE' && enemy.stateTimer < 10) {
+                    enemy.state = 'IDLE';
+                    enemy.nextActionTime = 100;
+                }
+                if (enemy.stateTimer <= 0) enemy.state = 'IDLE';
+            } else if (enemy.state === 'WINDUP') {
+                enemy.stateTimer--;
+                if (enemy.stateTimer <= 0) {
+                    enemy.state = 'ATTACK';
+                    enemy.stateTimer = 10;
+                    setTimeout(() => { if (enemy.state === 'ATTACK') damagePlayer(12); }, 80);
+                }
+            } else if (enemy.state === 'ATTACK') {
+                enemy.stateTimer--;
+                if (enemy.stateTimer <= 0) {
+                    // コンビネーション判定
+                    if (enemy.comboCount < 1 && Math.random() < 0.6) {
+                        enemy.comboCount++;
+                        enemy.state = 'WINDUP';
+                        enemy.stateTimer = 10; // 2撃目は非常に速い
+                    } else {
+                        enemy.comboCount = 0;
+                        enemy.state = 'IDLE';
+                        enemy.nextActionTime = 600 + Math.random() * 800;
+                    }
+                }
+            } else if (enemy.state === 'HIT') {
+                enemy.stateTimer--;
+                if (enemy.stateTimer <= 0) {
+                    enemy.state = 'IDLE';
+                    enemy.nextActionTime = 200; // ダメージ後はすぐに立て直す
+                }
+            }
+
+            if (shakeAmount > 0) shakeAmount *= 0.85;
+        }
+
+        updateEffects();
+        lastTime = timestamp;
+        draw();
+        requestAnimationFrame(update);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        // 画面全体のシェイク（迫力の核）
+        ctx.save();
+        const gShake = shakeAmount * 0.9;
+        ctx.translate((Math.random() - 0.5) * gShake, (Math.random() - 0.5) * gShake);
+
+        // 背景とリング
+        ctx.fillStyle = '#2d3748'; ctx.fillRect(0,0,CANVAS_WIDTH, 400);
+        ctx.fillStyle = '#2b6cb0'; ctx.beginPath();
+        ctx.moveTo(0, 400); ctx.lineTo(CANVAS_WIDTH, 400);
+        ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT); ctx.lineTo(0, CANVAS_HEIGHT); ctx.fill();
+
+        drawEnemy();
+
+        // プレイヤー描画
+        let pOff = 0, pY = 500;
+        if (player.state === 'DODGE_L') pOff = 160;
+        if (player.state === 'DODGE_R') pOff = -160;
+        if (player.state === 'HIT') pY += 25;
+
+        ctx.save();
+        ctx.translate(pOff, 0);
+        
+        // 左グローブ
+        let lX = 200, lY = pY, lS = 1.9;
+        if (player.state === 'PUNCH_L') {
+            const p = (15 - player.stateTimer) / 15;
+            lY -= Math.sin(p * Math.PI) * 220; lX += Math.sin(p * Math.PI) * 60; lS -= Math.sin(p * Math.PI) * 0.6;
+        } else if (player.state === 'BLOCK') { lX = 350; lY = 360; lS = 1.6; }
+        drawGlove(lX, lY, lS, true);
+
+        // 右グローブ
+        let rX = 600, rY = pY, rS = 1.9;
+        if (player.state === 'PUNCH_R') {
+            const p = (15 - player.stateTimer) / 15;
+            rY -= Math.sin(p * Math.PI) * 220; rX -= Math.sin(p * Math.PI) * 60; rS -= Math.sin(p * Math.PI) * 0.6;
+        } else if (player.state === 'BLOCK') { rX = 450; rY = 360; rS = 1.6; }
+        drawGlove(rX, rY, rS, false);
+
+        ctx.restore();
+
+        // --- エフェクト描画（シェイク座標系の中）---
+        drawSpeedLines();
+        drawImpactRings();
+        drawParticles();
+
+        ctx.restore(); // 画面シェイク解除
+
+        // --- フラッシュ（最前面・シェイク非依存）---
+        if (flashAmount > 0) {
+            ctx.fillStyle = `rgba(${flashColor}, ${flashAmount})`;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        }
+
+        updateUI();
+    }
+
+    function drawParticles() {
+        for (const p of particles) {
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    function drawImpactRings() {
+        for (const r of impactRings) {
+            ctx.globalAlpha = Math.max(0, r.life) * 0.8;
+            ctx.strokeStyle = r.color;
+            ctx.lineWidth = 6 * r.life + 1;
+            ctx.beginPath();
+            ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    function drawSpeedLines() {
+        if (speedLines <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = speedLines * 0.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        const cx = CANVAS_WIDTH / 2, cy = 320;
+        for (let i = 0; i < 16; i++) {
+            const a = (i / 16) * Math.PI * 2 + Math.random() * 0.1;
+            const r1 = 240 + Math.random() * 60;
+            const r2 = 460;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+            ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+    requestAnimationFrame(update);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,27 @@
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hatGradient" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#48BB78"/>
+      <stop offset="1" stop-color="#2F855A"/>
+    </linearGradient>
+    <linearGradient id="clothesGradient" x1="50" y1="40" x2="50" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A0AEC0"/>
+      <stop offset="1" stop-color="#718096"/>
+    </linearGradient>
+  </defs>
+  <g id="view-right">
+    <path d="M40 75 L35 95 L45 95 L48 75 Z" fill="#2D3748"/>
+    <path d="M32 95 H48 V96 Q48 98 40 98 Q32 98 32 96 Z" fill="#5D350D"/>
+    <path d="M50 75 L55 95 L65 95 L60 75 Z" fill="#4A5568"/>
+    <path d="M52 95 H68 V96 Q68 98 60 98 Q52 98 52 96 Z" fill="#744210"/>
+    <path d="M35 40 Q55 40 60 45 L62 80 Q45 82 38 78 Z" fill="url(#clothesGradient)"/>
+    <path d="M45 45 Q55 60 65 55" stroke="#FBD38D" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="65" cy="55" r="5" fill="#FBD38D"/>
+    <path d="M25 45 Q35 45 35 75 L25 70 Z" fill="#975A16"/>
+    <circle cx="50" cy="35" r="18" fill="#FBD38D"/>
+    <ellipse cx="60" cy="38" rx="2" ry="3.5" fill="#1A202C"/>
+    <circle cx="63" cy="45" r="2.5" fill="#F687B3" opacity="0.6"/>
+    <path d="M25 30 Q50 5 75 30 L85 35 Q50 25 15 35 Z" fill="url(#hatGradient)"/>
+    <path d="M80 32 Q83 20 77 10 L75 12 L80 32" fill="#E53E3E"/>
+  </g>
+</svg>

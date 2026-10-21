@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>RPG仕様書ビルダー | タイタンズ</title>
+<style>
+:root{
+  --bg:#0f1420; --panel:#1a2233; --panel2:#212b42; --line:#2e3b5c;
+  --text:#e8ecf5; --text2:#9aa7c4; --text3:#5f6c8c;
+  --accent:#f59e0b; --accent2:#38bdf8; --ok:#34d399; --warn:#f87171;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;line-height:1.6;padding-bottom:60px;}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px;}
+header{border-bottom:2px solid var(--accent);padding:18px 0 14px;margin-bottom:8px;}
+header h1{font-size:22px;letter-spacing:1px;}
+header h1 span{color:var(--accent);}
+header p{color:var(--text2);font-size:13px;margin-top:4px;}
+
+/* 近接: ブロック間は大きな余白、ブロック内は詰める */
+.block{margin-top:34px;}
+.block-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;}
+.block-num{background:var(--accent);color:#111;font-weight:bold;font-size:13px;padding:2px 10px;border-radius:4px;}
+.block-head h2{font-size:17px;}
+.block-head small{color:var(--text3);font-size:12px;}
+
+/* 閉合: カードの背景と枠でまとまりを作る */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:12px;}
+.card.premise{border-left:4px solid var(--accent);}
+.chapter{border-left:4px solid var(--line);}
+.chapter.filled{border-left-color:var(--ok);}
+.ch-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ch-no{color:var(--accent2);font-weight:bold;font-size:14px;min-width:52px;}
+.ch-head h3{font-size:15px;flex:1;}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--panel2);color:var(--text3);}
+.chapter.filled .badge{background:rgba(52,211,153,.15);color:var(--ok);}
+
+/* 類同: 同じ種類の入力は同じ見た目 */
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+.field{flex:1;min-width:200px;}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;}
+select,input[type=text],textarea{
+  width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+  color:var(--text);font-size:14px;padding:9px 10px;font-family:inherit;
+}
+textarea{min-height:64px;resize:vertical;}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent2);}
+.hint{font-size:11px;color:var(--text3);margin-top:4px;}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text);}
+.check input{width:18px;height:18px;accent-color:var(--accent);}
+
+/* 出力ブロック */
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+button{cursor:pointer;border:none;border-radius:8px;font-size:14px;font-weight:bold;padding:12px 18px;font-family:inherit;}
+.btn-main{background:var(--accent);color:#111;}
+.btn-sub{background:var(--accent2);color:#062032;}
+.btn-ghost{background:var(--panel2);color:var(--text2);border:1px solid var(--line);}
+button:active{transform:translateY(1px);}
+#output{min-height:220px;font-family:Menlo,Consolas,monospace;font-size:12px;white-space:pre;overflow-x:auto;}
+.out-meta{display:flex;justify-content:space-between;align-items:center;margin:8px 0;font-size:12px;color:var(--text3);}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ok);color:#06281c;
+  font-weight:bold;font-size:13px;padding:10px 22px;border-radius:20px;opacity:0;transition:opacity .25s;pointer-events:none;}
+.toast.show{opacity:1;}
+footer{margin-top:44px;color:var(--text3);font-size:11px;text-align:center;}
+@media (max-width:520px){ .field{min-width:100%;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>🗡 RPG<span>仕様書</span>ビルダー</h1>
+  <p>10章の仕様書と、Claudeに一貫性を保って学習させるプロンプト一式を生成します。埋めた章だけが出力されます。</p>
+</header>
+
+<!-- ブロックA: 前提（制約になる質問を先頭に置く） -->
+<div class="block">
+  <div class="block-head"><span class="block-num">A</span><h2>前提・制約</h2><small>最初に決める。ここが全章の土台</small></div>
+  <div class="card premise">
+    <div class="row">
+      <div class="field"><label>ゲームタイトル（仮でOK）</label><input type="text" id="p-title" placeholder="例: 暁の勇者クエスト"></div>
+      <div class="field"><label>ジャンル・雰囲気</label>
+        <select id="p-genre">
+          <option value="">未定</option><option>王道中世ファンタジー</option><option>和風ファンタジー</option>
+          <option>SF・宇宙</option><option>現代・学園</option><option>ポストアポカリプス</option><option>ホラー・ダーク</option><option>コメディ・ほのぼの</option>
+        </select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>プラットフォーム</label>
+        <select id="p-platform">
+          <option>単一HTML・iPhone縦持ち（iOS Safari）</option><option>単一HTML・PCブラウザ横画面</option><option>単一HTML・レスポンシブ両対応</option>
+        </select></div>
+      <div class="field"><label>容量上限</label>
+        <select id="p-size"><option>3MB以下（モバイル鉄則）</option><option>1MB以下</option><option>制限なし（PC前提）</option></select></div>
+      <div class="field"><label>想定プレイ時間</label>
+        <select id="p-time"><option value="">未定</option><option>3分（短編）</option><option>10〜15分</option><option>30分〜1時間</option><option>数時間（セーブ前提）</option></select></div>
+    </div>
+    <div class="row">
+      <label class="check"><input type="checkbox" id="p-retro" checked>レトロ様式の文法10条を適用する（FC風の様式ゲート）</label>
+    </div>
+    <div class="hint">※ 外部依存ゼロ・音声ファイルゼロ（WebAudio内製）・固有IP素材不使用は既定で仕様書に入ります。</div>
+  </div>
+</div>
+
+<!-- ブロックB: 10章（常時表示。隠すと存在しない機能に見える） -->
+<div class="block">
+  <div class="block-head"><span class="block-num">B</span><h2>仕様 10章</h2><small>埋めた章だけ出力に入る（未記入章は「未定」として学習時に質問させる）</small></div>
+  <div id="chapters"></div>
+</div>
+
+<!-- ブロックC: 出力 -->
+<div class="block">
+  <div class="block-head"><span class="block-num">C</span><h2>出力</h2><small>コピーしてClaudeに貼るだけ</small></div>
+  <div class="card">
+    <div class="btns">
+      <button class="btn-main" id="btn-prompt">📋 学習プロンプト一式を生成</button>
+      <button class="btn-sub" id="btn-spec">📄 仕様書Markdownのみ生成</button>
+      <button class="btn-ghost" id="btn-copy">コピー</button>
+      <button class="btn-ghost" id="btn-dl">.mdダウンロード</button>
+      <button class="btn-ghost" id="btn-clear">全消去</button>
+    </div>
+    <div class="out-meta"><span id="out-info">まだ生成していません</span><span id="save-info"></span></div>
+    <textarea id="output" readonly placeholder="ここに生成結果が出ます"></textarea>
+  </div>
+</div>
+
+<footer>191-rpg-spec-builder ／ タイタンズ・エンジニアリング部 ／ 入力は端末内(localStorage)にのみ保存されます</footer>
+</div>
+<div class="toast" id="toast">コピーしました</div>
+
+<script>
+"use strict";
+
+// ===== 10章の定義（select=型の選択、text=自由記述。選んだ分だけ注入） =====
+const CHAPTERS = [
+  {id:"world", no:"第1章", name:"世界観", fields:[
+    {k:"setting", t:"text", label:"舞台・時代・世界のルール", ph:"例: 魔王復活から100年後の辺境。魔力は日光で減衰する"},
+    {k:"story", t:"text", label:"あらすじ（起承転結ざっくり）", ph:"例: 旅立ち→仲間集め→裏切り→魔王戦"},
+    {k:"tone", t:"select", label:"物語のトーン", opts:["王道・熱血","切ない・哀愁","コミカル","シリアス・重厚"]},
+  ]},
+  {id:"ui", no:"第2章", name:"UI", fields:[
+    {k:"layout", t:"select", label:"画面レイアウト", opts:["上:ゲーム画面/下:コマンド（DQ型）","フルスクリーン+オーバーレイ窓","メッセージウィンドウ主体（ノベル型）"]},
+    {k:"control", t:"select", label:"操作方式", opts:["タップのみ（4択ボタン）","仮想十字キー+ボタン","スワイプ+タップ"]},
+    {k:"uinote", t:"text", label:"UI補足（フォント・ウィンドウ様式など）", ph:"例: 5×7ドットフォント内製・白枠黒背景ウィンドウ"},
+  ]},
+  {id:"field", no:"第3章", name:"フィールド", fields:[
+    {k:"maptype", t:"select", label:"マップ方式", opts:["タイル式2Dマップ（歩行移動）","地点選択式（マップ画面から選ぶ）","一本道イベント進行（マップなし）"]},
+    {k:"encounter", t:"select", label:"エンカウント", opts:["シンボルエンカウント","ランダムエンカウント","固定戦闘のみ"]},
+    {k:"fieldnote", t:"text", label:"フィールド補足（ダンジョン・ギミックなど）", ph:"例: 洞窟は視界制限（CaveDarkness式）"},
+  ]},
+  {id:"chara", t:"text", no:"第4章", name:"キャラクター", fields:[
+    {k:"party", t:"select", label:"パーティ構成", opts:["1人旅","4人パーティ（共有HP/MP方式）","4人パーティ（個別管理）","仲間が増えていく"]},
+    {k:"growth", t:"select", label:"成長システム", opts:["レベル制（経験値）","戦闘ごとに全回復+強化選択","装備・アイテムでのみ強化","成長なし（短編向け）"]},
+    {k:"charanote", t:"text", label:"主要キャラ（名前・役割）", ph:"例: 勇者アル（バランス）/僧侶ミア（回復）/魔王ゾルド"},
+  ]},
+  {id:"battle", no:"第5章", name:"戦闘", fields:[
+    {k:"btype", t:"select", label:"戦闘方式", opts:["ターン制コマンド（たたかう/まほう/ぼうぎょ/にげる）","次行動予告つきターン制（STRIKE/POWER HIT/WARD式）","アクティブゲージ制","オートバトル+介入"]},
+    {k:"formula", t:"text", label:"ダメージ計算式・バランス方針", ph:"例: 攻撃力×(0.9〜1.1) − 防御÷2。ボスは4連戦で計180秒"},
+    {k:"battlenote", t:"text", label:"戦闘補足（属性・状態異常など）", ph:"例: 属性なし・状態異常は毒のみ"},
+  ]},
+  {id:"item", no:"第6章", name:"アイテム", fields:[
+    {k:"inv", t:"select", label:"インベントリ方式", opts:["個数制限なしリスト","スロット制（持てる数固定）","消費アイテムなし（スキルのみ）"]},
+    {k:"itemnote", t:"text", label:"主要アイテム・装備の方針", ph:"例: 回復薬/エーテル/鍵アイテム3種。装備は武器のみ"},
+  ]},
+  {id:"event", no:"第7章", name:"イベント", fields:[
+    {k:"flag", t:"select", label:"フラグ管理", opts:["フラグ2層（章進行+個別フラグ）","単純な直列進行","状態オブジェクト1つで管理"]},
+    {k:"eventnote", t:"text", label:"主要イベント・分岐", ph:"例: 中盤に仲間の離脱イベント。エンディング2種"},
+  ]},
+  {id:"save", no:"第8章", name:"セーブ", fields:[
+    {k:"savetype", t:"select", label:"セーブ方式", opts:["localStorage自動セーブ","localStorage手動（宿屋等の拠点）","セーブなし（短編）"]},
+    {k:"savenote", t:"text", label:"セーブ補足（何を保存するか）", ph:"例: 章進行・レベル・所持品・フラグ配列"},
+  ]},
+  {id:"sound", no:"第9章", name:"音", fields:[
+    {k:"stype", t:"select", label:"サウンド方式", opts:["WebAudio内製（矩形波2声+三角波ベース+ノイズ）","WebAudio内製（シンプルSEのみ）","音なし"]},
+    {k:"soundnote", t:"text", label:"曲・SEの方針", ph:"例: フィールド/戦闘/ボス/勝利の4曲。iOS初回タップでunlock"},
+  ]},
+  {id:"code", no:"第10章", name:"ソースコード構成", fields:[
+    {k:"struct", t:"select", label:"コード構成", opts:["単一HTML内にセクションコメントで分割","データはJSONオブジェクトとして先頭に集約（外部化風）","titans-ui / titans-core を利用"]},
+    {k:"codenote", t:"text", label:"実装補足（命名規則・禁止事項など）", ph:"例: グローバルはGSオブジェクトのみ。ES2024構文はポリフィル必須"},
+  ]},
+];
+
+// ===== DOM生成（類同: 全章おなじ構造） =====
+const chWrap = document.getElementById("chapters");
+CHAPTERS.forEach(ch => {
+  const card = document.createElement("div");
+  card.className = "card chapter"; card.id = "ch-" + ch.id;
+  let inner = `<div class="ch-head"><span class="ch-no">${ch.no}</span><h3>${ch.name}</h3><span class="badge">未記入</span></div><div class="row">`;
+  ch.fields.forEach(f => {
+    inner += `<div class="field"><label>${f.label}</label>`;
+    if (f.t === "select") {
+      inner += `<select data-ch="${ch.id}" data-k="${f.k}"><option value="">未定（学習時に質問させる）</option>`;
+      f.opts.forEach(o => inner += `<option>${o}</option>`);
+      inner += `</select>`;
+    } else {
+      inner += `<textarea data-ch="${ch.id}" data-k="${f.k}" placeholder="${f.ph || ""}"></textarea>`;
+    }
+    inner += `</div>`;
+  });
+  inner += `</div>`;
+  card.innerHTML = inner;
+  chWrap.appendChild(card);
+});
+
+// ===== 入力収集・記入状態バッジ =====
+function collect() {
+  const d = { premise: {
+    title: v("p-title") || "（タイトル未定）",
+    genre: v("p-genre"), platform: v("p-platform"), size: v("p-size"),
+    time: v("p-time"), retro: document.getElementById("p-retro").checked,
+  }, chapters: {} };
+  CHAPTERS.forEach(ch => {
+    const vals = {};
+    let filled = false;
+    document.querySelectorAll(`[data-ch="${ch.id}"]`).forEach(el => {
+      vals[el.dataset.k] = el.value.trim();
+      if (el.value.trim()) filled = true;
+    });
+    d.chapters[ch.id] = { filled, vals };
+    const card = document.getElementById("ch-" + ch.id);
+    card.classList.toggle("filled", filled);
+    card.querySelector(".badge").textContent = filled ? "記入あり" : "未記入";
+  });
+  return d;
+}
+function v(id){ return document.getElementById(id).value.trim(); }
+
+// ===== 仕様書Markdown生成 =====
+function buildSpec(d) {
+  const p = d.premise;
+  let md = `# ${p.title} 仕様書\n\n`;
+  md += `## 第0章 前提・制約（最優先）\n\n`;
+  md += `- プラットフォーム: ${p.platform}\n- 容量上限: ${p.size}\n`;
+  if (p.genre) md += `- ジャンル・雰囲気: ${p.genre}\n`;
+  if (p.time) md += `- 想定プレイ時間: ${p.time}\n`;
+  md += `- 外部依存: ゼロ（CDN・外部フォント・音声ファイル禁止。音はWebAudio内製）\n`;
+  md += `- 素材: 固有IPの名称・キャラ・楽曲は使用しない（独自作品として設計）\n`;
+  if (p.retro) md += `- 様式: レトロ様式の文法10条を適用（正本: GitHub-game/docs/retro-style-guide.md）\n`;
+  md += `\n`;
+  CHAPTERS.forEach(ch => {
+    const c = d.chapters[ch.id];
+    md += `## ${ch.no} ${ch.name}\n\n`;
+    if (!c.filled) { md += `（未定。学習時に必要な確認質問を挙げること）\n\n`; return; }
+    ch.fields.forEach(f => {
+      const val = c.vals[f.k];
+      if (val) md += `- **${f.label}**: ${val}\n`;
+    });
+    md += `\n`;
+  });
+  return md;
+}
+
+// ===== 学習プロンプト一式生成 =====
+const PART_LIMIT = 6000; // 文字。超えたらPart分割
+function buildPrompt(d) {
+  const spec = buildSpec(d);
+  const p = d.premise;
+  let out = `【使い方】以下を上から順にClaudeへ貼ってください。長い場合はPartごとに分けて送り、最後に統合指示を送ります。\n`;
+  out += `${"=".repeat(60)}\n\n`;
+  out += `# Role\nあなたは20年以上の経験を持つRPGゲームディレクター兼システムアーキテクトです。\n\n`;
+  out += `# Context\nこれから私が制作中の「${p.title}」の仕様書を渡します。この仕様書を今後の唯一の正（Single Source of Truth）とし、一貫性を維持してください。\n\n`;
+  out += `# 学習ルール\n- 仕様書を最優先する。勝手に設定・仕様を創作しない\n- 矛盾を見つけたら一覧化して報告する\n- 不明点は推測せず質問する（「未定」項目は確認質問を挙げる）\n- コードは依頼されるまで書かない\n- 仕様変更が決まったら変更履歴として記録する\n- 章をまたぐ整合性（例: 戦闘方式とUIの整合）を常に確認する\n\n`;
+  out += `# 学習後の返答フォーマット（毎回この形式）\n## 要約\n## 矛盾点\n## 不明点（質問）\n## 改善提案\n## 理解率（%）\n\n`;
+  out += `${"=".repeat(60)}\n\n`;
+
+  // Part分割
+  if (spec.length > PART_LIMIT) {
+    const sections = spec.split(/\n(?=## )/);
+    let part = 1, buf = "";
+    const parts = [];
+    sections.forEach(s => {
+      if ((buf + s).length > PART_LIMIT && buf) { parts.push(buf); buf = ""; }
+      buf += (buf ? "\n" : "") + s;
+    });
+    if (buf) parts.push(buf);
+    parts.forEach((pt, i) => {
+      out += `--- Part${String(i+1).padStart(2,"0")} / ${String(parts.length).padStart(2,"0")}（ここから次の区切りまでを1回で送る） ---\n\n${pt}\n\n`;
+    });
+  } else {
+    out += `--- 仕様書（1回で送れるサイズです） ---\n\n${spec}\n`;
+  }
+
+  out += `${"=".repeat(60)}\n\n`;
+  out += `# 統合指示（全Part送信後に送る）\nここまで学習した内容を統合してください。\n\n- 世界観 / ゲームシステム / キャラクター / UI / データ構造 / イベント / コード構成\n\nを統合して要約し、矛盾の最終一覧と、実装前に決めるべき残論点をリスト化してください。\n今後の開発では、この統合結果と仕様書を最優先してください。\n`;
+  return out;
+}
+
+// ===== 出力・コピー・保存 =====
+const output = document.getElementById("output");
+const outInfo = document.getElementById("out-info");
+function gen(kind) {
+  const d = collect();
+  const text = kind === "spec" ? buildSpec(d) : buildPrompt(d);
+  output.value = text;
+  const filled = Object.values(d.chapters).filter(c => c.filled).length;
+  outInfo.textContent = `${kind === "spec" ? "仕様書" : "学習プロンプト一式"} ／ ${text.length.toLocaleString()}文字 ／ 記入 ${filled}/10章`;
+  save();
+}
+document.getElementById("btn-prompt").addEventListener("click", () => gen("prompt"));
+document.getElementById("btn-spec").addEventListener("click", () => gen("spec"));
+
+document.getElementById("btn-copy").addEventListener("click", () => {
+  if (!output.value) { gen("prompt"); }
+  const done = () => toast("コピーしました");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(output.value).then(done, () => { output.select(); document.execCommand("copy"); done(); });
+  } else { output.select(); document.execCommand("copy"); done(); }
+});
+document.getElementById("btn-dl").addEventListener("click", () => {
+  if (!output.value) gen("prompt");
+  const blob = new Blob([output.value], {type:"text/markdown"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (v("p-title") || "rpg-spec") + ".md";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById("btn-clear").addEventListener("click", () => {
+  if (!confirm("入力を全て消去します。よろしいですか？")) return;
+  document.querySelectorAll("input[type=text],textarea,select").forEach(el => { if(el.id!=="output") el.value=""; });
+  document.getElementById("p-retro").checked = true;
+  output.value = ""; outInfo.textContent = "まだ生成していません";
+  localStorage.removeItem(LS_KEY); collect();
+  document.getElementById("save-info").textContent = "";
+});
+
+// ===== localStorage 自動保存 =====
+const LS_KEY = "rpg-spec-builder-v1";
+function save() {
+  const state = {};
+  document.querySelectorAll("input[type=text],textarea,select").forEach(el => {
+    if (el.id === "output") return;
+    const key = el.id || (el.dataset.ch + "." + el.dataset.k);
+    state[key] = el.value;
+  });
+  state["p-retro"] = document.getElementById("p-retro").checked;
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e) {}
+  document.getElementById("save-info").textContent = "自動保存済み";
+}
+function load() {
+  let state;
+  try { state = JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch(e) { state = null; }
+  if (!state) return;
+  document.querySelectorAll("input[type=text],textarea,select").forEach(el => {
+    if (el.id === "output") return;
+    const key = el.id || (el.dataset.ch + "." + el.dataset.k);
+    if (key in state) el.value = state[key];
+  });
+  if ("p-retro" in state) document.getElementById("p-retro").checked = !!state["p-retro"];
+}
+let saveTimer = null;
+document.addEventListener("input", () => {
+  collect();
+  clearTimeout(saveTimer); saveTimer = setTimeout(save, 400);
+});
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1400);
+}
+
+load(); collect();
+</script>
+</body>
+</html>

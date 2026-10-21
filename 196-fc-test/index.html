@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TITANS QUEST — game-fc スキルテスト</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* ===== NESカラーパレット ===== */
+:root {
+  --fc-bg:     #000000;
+  --fc-panel:  #1a1a2e;
+  --fc-border: #7878f8;
+  --fc-white:  #fcfcfc;
+  --fc-yellow: #f8b800;
+  --fc-red:    #e83800;
+  --fc-green:  #00a800;
+  --fc-blue:   #0058f8;
+  --fc-purple: #6844fc;
+  --fc-gray:   #888888;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Press Start 2P', monospace;
+  background: var(--fc-bg);
+  color: var(--fc-white);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  image-rendering: pixelated;
+}
+
+/* スキャンライン */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ウィンドウ */
+.fc-window {
+  background: var(--fc-panel);
+  border: 3px solid var(--fc-border);
+  box-shadow: 4px 4px 0 #000;
+  padding: 16px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.fc-title {
+  font-size: 10px;
+  color: var(--fc-yellow);
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.fc-label {
+  font-size: 8px;
+  color: var(--fc-white);
+  opacity: 0.7;
+  margin-bottom: 12px;
+}
+
+/* HPバー（10ブロック）*/
+.bar-container { display: flex; gap: 2px; margin: 4px 0 8px; }
+.bar-block { flex: 1; height: 14px; border: 1px solid #000; }
+
+/* ステータスグリッド */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 12px 0; }
+.stat-box {
+  background: var(--fc-bg);
+  border: 2px solid var(--fc-border);
+  box-shadow: 3px 3px 0 #000;
+  padding: 8px 4px;
+  text-align: center;
+}
+.stat-val { font-size: 14px; color: var(--fc-yellow); display: block; }
+.stat-lbl { font-size: 6px; color: var(--fc-white); opacity: 0.7; margin-top: 4px; display: block; }
+
+/* ボタン */
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.fc-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  padding: 10px 8px;
+  border: 3px solid var(--fc-white);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 4px 4px 0 #000;
+  transition: none;
+}
+.fc-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 #000; }
+.btn-blue   { background: var(--fc-blue);   color: var(--fc-white); }
+.btn-gold   { background: var(--fc-yellow); color: #000; }
+.btn-red    { background: var(--fc-red);    color: var(--fc-white); }
+.btn-ghost  { background: transparent;      color: var(--fc-white); border-color: var(--fc-border); }
+
+/* メッセージボックス */
+.fc-message {
+  background: #000;
+  border: 3px solid var(--fc-white);
+  box-shadow: 4px 4px 0 #000;
+  padding: 12px 16px;
+  font-size: 8px;
+  color: var(--fc-white);
+  line-height: 2.2;
+  min-height: 60px;
+  position: relative;
+  margin-top: 12px;
+}
+.msg-cursor {
+  color: var(--fc-yellow);
+  animation: fc-blink 0.8s step-end infinite;
+  float: right;
+}
+
+/* バッジ */
+.fc-badge {
+  display: inline-block;
+  font-size: 7px;
+  padding: 3px 6px;
+  border: 2px solid #000;
+  box-shadow: 2px 2px 0 #000;
+  margin-right: 4px;
+}
+.badge-lv   { background: var(--fc-yellow); color: #000; }
+.badge-boss { background: var(--fc-red);    color: var(--fc-white); border-color: var(--fc-yellow); }
+.badge-rare { background: var(--fc-purple); color: var(--fc-white); border-color: var(--fc-white); }
+
+@keyframes fc-blink {
+  0%,49%{opacity:1} 50%,100%{opacity:0}
+}
+@keyframes shake {
+  0%,100%{transform:translate(0)} 25%{transform:translate(-3px,0)} 75%{transform:translate(3px,0)}
+}
+.shake { animation: shake 0.3s step-end; }
+
+/* セクション間スペース */
+.divider {
+  border: none;
+  border-top: 2px solid var(--fc-border);
+  margin: 12px 0;
+}
+
+/* ゲームオーバー・クリア */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 100;
+  display: none;
+}
+.overlay.show { display: flex; }
+.overlay-title { font-size: 20px; letter-spacing: 4px; margin-bottom: 24px; }
+.overlay-sub   { font-size: 8px;  color: var(--fc-gray); margin-bottom: 32px; animation: fc-blink 1s step-end infinite; }
+</style>
+</head>
+<body>
+
+<!-- ===== バトル画面 ===== -->
+<div class="fc-window" id="battle-screen">
+
+  <!-- 敵 -->
+  <div style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span class="fc-badge badge-boss">BOSS</span>
+      <span class="fc-title" style="margin:0">竜王バハムート</span>
+    </div>
+    <div class="bar-container" id="enemy-hp-bar"></div>
+    <div style="font-size:7px;color:var(--fc-gray)">HP: <span id="enemy-hp-val">80</span>/80</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- プレイヤー -->
+  <div style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span class="fc-badge badge-lv">LV.42</span>
+      <span style="font-size:9px">HERO</span>
+    </div>
+    <div class="bar-container" id="player-hp-bar"></div>
+    <div style="font-size:7px;color:var(--fc-gray);margin-bottom:4px">
+      HP: <span id="player-hp-val">72</span>/100
+    </div>
+    <div class="bar-container" id="player-mp-bar"></div>
+    <div style="font-size:7px;color:var(--fc-gray)">
+      MP: <span id="player-mp-val">45</span>/100
+    </div>
+  </div>
+
+  <!-- ステータス -->
+  <div class="stat-grid">
+    <div class="stat-box"><span class="stat-val">284</span><span class="stat-lbl">ATK</span></div>
+    <div class="stat-box"><span class="stat-val">156</span><span class="stat-lbl">DEF</span></div>
+    <div class="stat-box" style="border-color:var(--fc-yellow)">
+      <span class="stat-val" style="color:var(--fc-white)">99</span>
+      <span class="stat-lbl">SPD</span>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- コマンド -->
+  <div style="font-size:7px;color:var(--fc-border);letter-spacing:2px;margin-bottom:8px">▶ COMMAND</div>
+  <div class="btn-row">
+    <button class="fc-btn btn-blue"  onclick="action('attack')">⚔ ATTACK</button>
+    <button class="fc-btn btn-gold"  onclick="action('magic')">✦ MAGIC</button>
+    <button class="fc-btn btn-ghost" onclick="action('item')">🧪 ITEM</button>
+    <button class="fc-btn btn-red"   onclick="action('escape')">↩ ESCAPE</button>
+  </div>
+
+  <!-- メッセージ -->
+  <div class="fc-message" id="message-box">
+    バハムートが現れた！<br>
+    どうする？<span class="msg-cursor">▼</span>
+  </div>
+
+</div>
+
+<!-- ゲームオーバー -->
+<div class="overlay" id="gameover">
+  <div class="overlay-title" style="color:var(--fc-red)">GAME OVER</div>
+  <div class="overlay-sub">PRESS ANY KEY</div>
+  <button class="fc-btn btn-red" onclick="resetGame()">RETRY</button>
+</div>
+
+<!-- クリア -->
+<div class="overlay" id="clear">
+  <div class="overlay-title" style="color:var(--fc-yellow)">YOU WIN!</div>
+  <div style="font-size:7px;color:var(--fc-gray);margin-bottom:8px">SCORE: <span id="final-score">0</span></div>
+  <div class="overlay-sub">PRESS ANY KEY</div>
+  <button class="fc-btn btn-gold" onclick="resetGame()">PLAY AGAIN</button>
+</div>
+
+<script>
+let playerHP = 72, playerMP = 45;
+let enemyHP  = 80;
+let score    = 0;
+let busy     = false;
+
+function renderBar(containerId, current, max, fillColor, emptyColor) {
+  const el = document.getElementById(containerId);
+  const blocks = 10;
+  const filled = Math.max(0, Math.round((current / max) * blocks));
+  el.innerHTML = Array.from({length: blocks}, (_, i) =>
+    `<div class="bar-block" style="background:${i < filled ? fillColor : emptyColor}"></div>`
+  ).join('');
+}
+
+function updateBars() {
+  renderBar('player-hp-bar', playerHP, 100, '#e83800', '#3c1010');
+  renderBar('player-mp-bar', playerMP, 100, '#0058f8', '#101030');
+  renderBar('enemy-hp-bar',  enemyHP,  80,  '#e83800', '#3c1010');
+  document.getElementById('player-hp-val').textContent = playerHP;
+  document.getElementById('player-mp-val').textContent = playerMP;
+  document.getElementById('enemy-hp-val').textContent  = enemyHP;
+}
+
+function setMsg(html) {
+  document.getElementById('message-box').innerHTML =
+    html + '<span class="msg-cursor">▼</span>';
+}
+
+function action(type) {
+  if (busy || enemyHP <= 0 || playerHP <= 0) return;
+  busy = true;
+
+  let msg = '';
+  let dmgToEnemy = 0;
+  let dmgToPlayer = 0;
+
+  if (type === 'attack') {
+    dmgToEnemy = 8 + Math.floor(Math.random() * 12);
+    msg = `HEROの攻撃！<br>${dmgToEnemy}のダメージ！`;
+  } else if (type === 'magic') {
+    if (playerMP < 15) { msg = 'MPが足りない！'; busy = false; return; }
+    dmgToEnemy = 20 + Math.floor(Math.random() * 15);
+    playerMP = Math.max(0, playerMP - 15);
+    msg = `★ ファイアー！<br>${dmgToEnemy}のダメージ！`;
+  } else if (type === 'item') {
+    const heal = 20 + Math.floor(Math.random() * 10);
+    playerHP = Math.min(100, playerHP + heal);
+    msg = `回復薬を使った！<br>HP +${heal}`;
+    updateBars();
+    setTimeout(() => { enemyTurn(); }, 900);
+    setMsg(msg); return;
+  } else if (type === 'escape') {
+    if (Math.random() < 0.4) {
+      msg = '逃げ出した！';
+      setMsg(msg);
+      setTimeout(resetGame, 1200);
+      return;
+    } else {
+      msg = '逃げられなかった！';
+      dmgToEnemy = 0;
+    }
+  }
+
+  enemyHP = Math.max(0, enemyHP - dmgToEnemy);
+  score  += dmgToEnemy;
+  updateBars();
+  setMsg(msg);
+
+  setTimeout(() => {
+    if (enemyHP <= 0) {
+      document.getElementById('final-score').textContent = score;
+      document.getElementById('clear').classList.add('show');
+      busy = false;
+      return;
+    }
+    enemyTurn();
+  }, 900);
+}
+
+function enemyTurn() {
+  const dmg = 6 + Math.floor(Math.random() * 10);
+  playerHP = Math.max(0, playerHP - dmg);
+  updateBars();
+
+  const msgs = [
+    `バハムートの爪攻撃！<br>${dmg}のダメージ！`,
+    `バハムートが炎を吐いた！<br>${dmg}のダメージ！`,
+    `バハムートの尻尾攻撃！<br>${dmg}のダメージ！`,
+  ];
+  setMsg(msgs[Math.floor(Math.random() * msgs.length)]);
+
+  document.getElementById('battle-screen').classList.add('shake');
+  setTimeout(() => {
+    document.getElementById('battle-screen').classList.remove('shake');
+    if (playerHP <= 0) {
+      setTimeout(() => {
+        document.getElementById('gameover').classList.add('show');
+      }, 500);
+    }
+    busy = false;
+  }, 300);
+}
+
+function resetGame() {
+  playerHP = 72; playerMP = 45; enemyHP = 80; score = 0; busy = false;
+  document.getElementById('gameover').classList.remove('show');
+  document.getElementById('clear').classList.remove('show');
+  setMsg('バハムートが現れた！<br>どうする？');
+  updateBars();
+}
+
+// 初期化
+updateBars();
+</script>
+</body>
+</html>

@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>DRUAGA NO TOU</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root {
+  --fc-bg:      #000000;
+  --fc-panel:   #1a1a2e;
+  --fc-surface: #0a0a1a;
+  --fc-border:  #7878f8;
+  --fc-border2: #3838b8;
+  --fc-white:   #fcfcfc;
+  --fc-yellow:  #f8b800;
+  --fc-red:     #e83800;
+  --fc-green:   #00a800;
+  --fc-blue:    #0058f8;
+  --fc-cyan:    #00e8d8;
+  --fc-purple:  #6844fc;
+  --fc-orange:  #f87858;
+  --fc-gray:    #888888;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Press Start 2P', monospace;
+  background: var(--fc-bg);
+  color: var(--fc-white);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  overflow-x: hidden;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.15) 2px,rgba(0,0,0,0.15) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+@keyframes fc-blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+@keyframes fc-flash { 0%,100%{opacity:1} 50%{opacity:0.2} }
+@keyframes fc-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+.blink { animation: fc-blink 0.8s step-end infinite; }
+.flash { animation: fc-flash 0.15s step-end 4; }
+
+.screen { display: none; width: 100%; max-width: 480px; flex-direction: column; align-items: center; }
+.screen.active { display: flex; }
+
+.fc-window {
+  background: var(--fc-panel);
+  border: 3px solid var(--fc-border);
+  box-shadow: 4px 4px 0 #000;
+  padding: 10px 12px;
+  width: 100%;
+}
+.fc-btn {
+  font-family: 'Press Start 2P', monospace;
+  border: 3px solid var(--fc-white);
+  padding: 10px 16px;
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+.fc-btn:active { transform: translate(2px,2px); }
+.fc-btn-gold  { background: var(--fc-yellow); color: #000; box-shadow: 4px 4px 0 #000; border-color: #000; }
+.fc-btn-blue  { background: var(--fc-blue);   color: var(--fc-white); box-shadow: 4px 4px 0 #000; }
+.fc-btn-red   { background: var(--fc-red);    color: var(--fc-white); box-shadow: 4px 4px 0 #000; }
+.fc-btn-ghost { background: transparent; color: var(--fc-white); border-color: var(--fc-border); box-shadow: 4px 4px 0 #000; }
+
+.hp-bar { display: flex; gap: 2px; flex: 1; }
+.hp-block { flex: 1; height: 12px; border: 1px solid #000; }
+
+.item-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; min-height: 20px; }
+.item-chip {
+  background: var(--fc-surface);
+  border: 2px solid var(--fc-border2);
+  padding: 3px 5px;
+  font-size: 6px;
+  letter-spacing: 1px;
+}
+
+#gameCanvas {
+  display: block;
+  border: 3px solid var(--fc-border);
+  box-shadow: 4px 4px 0 #000;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.touch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
+  gap: 3px;
+  margin-top: 8px;
+}
+.t-btn {
+  font-family: 'Press Start 2P', monospace;
+  background: var(--fc-panel);
+  border: 3px solid var(--fc-border);
+  box-shadow: 3px 3px 0 #000;
+  color: var(--fc-white);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: none;
+}
+.t-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 #000; background: var(--fc-border2); }
+.t-btn.center { font-size: 7px; color: var(--fc-yellow); border-color: var(--fc-border2); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ TITLE ═══════════════ -->
+<div id="titleScreen" class="screen active">
+  <div style="margin:20px 0 12px; width:100%; max-width:480px;">
+    <div class="fc-window" style="text-align:center; padding:20px 16px;">
+      <div style="font-size:7px; color:var(--fc-gray); letter-spacing:3px; margin-bottom:10px;">NAMCO  1984</div>
+
+      <!-- Tower pixel art -->
+      <div style="display:inline-block; margin-bottom:14px;">
+        <canvas id="titleCanvas" width="80" height="88" style="image-rendering:pixelated;"></canvas>
+      </div>
+
+      <div style="font-size:16px; color:var(--fc-yellow); letter-spacing:2px; line-height:1.8;">
+        DRUAGA<br>NO TOU
+      </div>
+      <div style="font-size:7px; color:var(--fc-cyan); margin-top:6px; letter-spacing:2px;">ドルアガの塔</div>
+      <div style="font-size:7px; color:var(--fc-gray); margin-top:10px;">60F DUNGEON QUEST</div>
+
+      <div class="blink" style="font-size:9px; margin-top:20px;">▶ PRESS  START ◀</div>
+    </div>
+
+    <div style="border:3px solid var(--fc-border2); padding:8px 10px; margin-top:8px;
+                background:var(--fc-surface); font-size:7px; color:var(--fc-gray);
+                line-height:2.2; letter-spacing:1px; box-shadow:4px 4px 0 #000;">
+      ↑↓←→ / WASD : 移動・攻撃<br>
+      敵に体当たり → 攻撃<br>
+      全敵撃破 → 宝箱出現<br>
+      宝箱GET → 階段出現 → SU踏む
+    </div>
+
+    <button class="fc-btn fc-btn-gold" onclick="startGame()" style="margin-top:10px;">
+      ▶ GAME  START
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════ GAME ═══════════════ -->
+<div id="gameScreen" class="screen">
+  <!-- Status bar -->
+  <div class="fc-window" style="margin-bottom:5px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; font-size:7px; margin-bottom:5px;">
+      <div>
+        <div style="color:var(--fc-gray);">FLOOR</div>
+        <div style="color:var(--fc-yellow); font-size:10px; margin-top:2px;" id="floorDisp">01</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="color:var(--fc-gray);">SCORE</div>
+        <div style="color:var(--fc-cyan); font-size:9px; margin-top:2px;" id="scoreDisp">000000</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="color:var(--fc-gray);">ATK / DEF</div>
+        <div style="margin-top:2px;">
+          <span style="color:var(--fc-orange); font-size:9px;" id="atkDisp">1</span>
+          <span style="color:var(--fc-gray); font-size:7px;"> / </span>
+          <span style="color:var(--fc-blue); font-size:9px;" id="defDisp">0</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="font-size:7px; color:var(--fc-red); white-space:nowrap;">HP</span>
+      <div class="hp-bar" id="hpBar"></div>
+      <span style="font-size:7px; color:var(--fc-red); white-space:nowrap;" id="hpText">10/10</span>
+    </div>
+    <div class="item-row" id="itemRow">
+      <div class="item-chip" style="color:var(--fc-gray);">NO ITEMS</div>
+    </div>
+  </div>
+
+  <canvas id="gameCanvas" width="450" height="360"></canvas>
+
+  <!-- Message box -->
+  <div style="background:#000; border:3px solid var(--fc-white); box-shadow:4px 4px 0 #000;
+              padding:8px 10px; font-size:8px; color:var(--fc-white); line-height:2;
+              min-height:46px; width:100%; letter-spacing:1px; margin-top:5px;" id="msgBox">
+    GIL ENTERS THE TOWER...
+  </div>
+
+  <!-- Touch controls -->
+  <div class="touch-grid">
+    <div></div>
+    <div class="t-btn" id="tUp">▲</div>
+    <div></div>
+    <div class="t-btn" id="tLeft">◄</div>
+    <div class="t-btn center">GIL</div>
+    <div class="t-btn" id="tRight">►</div>
+    <div></div>
+    <div class="t-btn" id="tDown">▼</div>
+    <div></div>
+  </div>
+</div>
+
+<!-- ═══════════════ FLOOR CLEAR ═══════════════ -->
+<div id="clearScreen" class="screen">
+  <div style="margin:24px 0; width:100%;">
+    <div class="fc-window" style="text-align:center; padding:20px 16px;">
+      <div style="font-size:13px; color:var(--fc-yellow); letter-spacing:2px; margin-bottom:12px;">
+        FLOOR  CLEAR!
+      </div>
+      <div style="font-size:9px; color:var(--fc-green); margin-bottom:14px;" id="clearFloorNum">FLOOR 1 CLEARED</div>
+      <div style="font-size:8px; color:var(--fc-cyan); margin-bottom:8px;" id="clearItemMsg"></div>
+      <div style="font-size:8px; color:var(--fc-gray); margin-bottom:4px;">FLOOR BONUS</div>
+      <div style="font-size:14px; color:var(--fc-yellow); margin-bottom:16px;" id="clearBonus">+1000</div>
+      <div class="blink" style="font-size:8px; color:var(--fc-gray);">TAP OR ANY KEY</div>
+    </div>
+    <button class="fc-btn fc-btn-blue" onclick="nextFloor()" style="margin-top:10px;">
+      ▶ NEXT  FLOOR
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════ GAME OVER ═══════════════ -->
+<div id="gameoverScreen" class="screen">
+  <div style="margin:24px 0; width:100%;">
+    <div class="fc-window" style="text-align:center; padding:20px 16px;">
+      <div style="font-size:16px; color:var(--fc-red); letter-spacing:2px; margin-bottom:12px;
+                  animation:fc-flash 0.5s step-end infinite;">GAME  OVER</div>
+      <div style="font-size:8px; color:var(--fc-gray); margin-bottom:16px;">GIL FELL IN THE TOWER</div>
+      <div style="font-size:8px; margin-bottom:6px;">
+        <span style="color:var(--fc-gray);">FLOOR REACHED:  </span>
+        <span style="color:var(--fc-yellow);" id="goFloor">1</span>
+      </div>
+      <div style="font-size:8px; margin-bottom:16px;">
+        <span style="color:var(--fc-gray);">FINAL SCORE:  </span>
+        <span style="color:var(--fc-cyan);" id="goScore">0</span>
+      </div>
+    </div>
+    <button class="fc-btn fc-btn-red" onclick="startGame()" style="margin-top:10px;">▶ TRY AGAIN</button>
+    <button class="fc-btn fc-btn-ghost" onclick="showScreen('titleScreen')" style="margin-top:8px;">TITLE</button>
+  </div>
+</div>
+
+<!-- ═══════════════ GAME CLEAR ═══════════════ -->
+<div id="winScreen" class="screen">
+  <div style="margin:24px 0; width:100%;">
+    <div class="fc-window" style="text-align:center; padding:20px 16px;">
+      <div style="font-size:9px; color:var(--fc-cyan); letter-spacing:2px; margin-bottom:12px;">
+        CONGRATULATIONS!
+      </div>
+      <div style="font-size:8px; color:var(--fc-yellow); margin-bottom:10px;">
+        ★ GIL SAVED PRINCESS KI! ★
+      </div>
+      <div style="font-size:8px; color:var(--fc-green); margin-bottom:16px;">
+        THE TOWER IS CONQUERED!
+      </div>
+      <div style="font-size:8px; color:var(--fc-gray); margin-bottom:4px;">FINAL SCORE</div>
+      <div style="font-size:16px; color:var(--fc-yellow);" id="winScore">000000</div>
+    </div>
+    <button class="fc-btn fc-btn-gold" onclick="startGame()" style="margin-top:10px;">▶ PLAY AGAIN</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+const TILE = 30;
+const COLS = 15;
+const ROWS = 12;
+const CW = TILE * COLS; // 450
+const CH = TILE * ROWS; // 360
+const MAX_FLOOR = 8;
+
+// Tile types
+const TL = { FLOOR:0, WALL:1 };
+
+// Enemy definitions
+const EDEF = {
+  SLIME:  { name:'SLIME',  color:'#00a800', hp:2, atk:1, score:100, spd:3 },
+  GHOUL:  { name:'GHOUL',  color:'#888888', hp:3, atk:2, score:200, spd:2 },
+  WIZARD: { name:'WIZARD', color:'#6844fc', hp:2, atk:2, score:300, spd:2 },
+  KNIGHT: { name:'KNIGHT', color:'#f87858', hp:4, atk:3, score:400, spd:1 },
+  DRAGON: { name:'DRAGON', color:'#e83800', hp:6, atk:4, score:800, spd:1 },
+};
+
+// Floor configs: enemies array = [type, count]
+const FLOORS = [
+  { en:[['SLIME',2]],                      chest:'SWORD+1', chestFn: g=>{g.p.atk++;}            },
+  { en:[['SLIME',3],['GHOUL',1]],           chest:'HP+3',    chestFn: g=>{g.p.hp=Math.min(g.p.hp+3,g.p.mhp);} },
+  { en:[['GHOUL',2],['WIZARD',1]],          chest:'ARMOR+1', chestFn: g=>{g.p.def++;}            },
+  { en:[['WIZARD',2],['GHOUL',2]],          chest:'HP+5',    chestFn: g=>{g.p.hp=Math.min(g.p.hp+5,g.p.mhp);} },
+  { en:[['KNIGHT',2],['WIZARD',1]],         chest:'SWORD+1', chestFn: g=>{g.p.atk++;}            },
+  { en:[['KNIGHT',2],['DRAGON',1]],         chest:'ARMOR+1', chestFn: g=>{g.p.def++;}            },
+  { en:[['DRAGON',2],['KNIGHT',1]],         chest:'ELIXIR',  chestFn: g=>{g.p.hp=g.p.mhp;}       },
+  { en:[['DRAGON',3]],                      chest:'PRINCESS',chestFn: g=>{}                       },
+];
+
+// ═══════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════
+let G = null;
+let canvas, ctx;
+let rafId = null;
+
+function mkGame() {
+  return {
+    floor: 0,
+    score: 0,
+    p: { x:1, y:ROWS-2, hp:10, mhp:10, atk:1, def:0, items:[], shield:false, dir:'r' },
+    grid: null,
+    enemies: [],
+    chest: null,
+    stairs: null,
+    stairsOn: false,
+    chestOn: false,
+    running: false,
+    flash: false,
+    msg: '',
+    turnTimer: 0,
+  };
+}
+
+// ═══════════════════════════════════════
+// DUNGEON GENERATION
+// ═══════════════════════════════════════
+function genGrid() {
+  const g = Array.from({length:ROWS}, ()=>Array(COLS).fill(TL.FLOOR));
+  // Outer walls
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
+    if(r===0||r===ROWS-1||c===0||c===COLS-1) g[r][c]=TL.WALL;
+  }
+  // Inner pillars (checkerboard pattern, random density)
+  for(let r=2;r<ROWS-2;r+=2) {
+    for(let c=2;c<COLS-2;c+=3) {
+      if(Math.random()<0.4) g[r][c]=TL.WALL;
+    }
+  }
+  return g;
+}
+
+function freePos(grid, exclude=[]) {
+  let r,c,tries=0;
+  do {
+    r = 1+Math.floor(Math.random()*(ROWS-2));
+    c = 1+Math.floor(Math.random()*(COLS-2));
+    tries++;
+  } while(
+    (grid[r][c]!==TL.FLOOR || exclude.find(e=>e[0]===r&&e[1]===c) || (r>ROWS-4&&c<3))
+    && tries<200
+  );
+  return tries<200 ? [r,c] : [2,2];
+}
+
+function spawnEnemies(floorIdx, grid) {
+  const es = [];
+  const def = FLOORS[floorIdx];
+  const taken = [[ROWS-2,1],[1,COLS-2]];
+  def.en.forEach(([type,count])=>{
+    for(let i=0;i<count;i++){
+      const [r,c] = freePos(grid, taken.concat(es.map(e=>[e.y,e.x])));
+      const d = EDEF[type];
+      es.push({type, ...d, maxHp:d.hp, hp:d.hp, x:c, y:r, timer:0, id:Math.random()});
+      taken.push([r,c]);
+    }
+  });
+  return es;
+}
+
+// ═══════════════════════════════════════
+// FLOOR INIT
+// ═══════════════════════════════════════
+function initFloor(floorIdx) {
+  const d = FLOORS[floorIdx];
+  const grid = genGrid();
+  G.floor = floorIdx+1;
+  G.grid = grid;
+  G.enemies = spawnEnemies(floorIdx, grid);
+  G.stairs = {r:1, c:COLS-2};
+  G.stairsOn = false;
+
+  // Place chest in center area
+  const [cr,cc] = freePos(grid, [[ROWS-2,1],[1,COLS-2]]);
+  G.chest = {r:cr, c:cc, open:false};
+  G.chestDef = d;
+  G.chestOn = false;
+
+  // Player position
+  G.p.x = 1;
+  G.p.y = ROWS-2;
+  G.p.dir = 'r';
+  G.flash = false;
+  G.running = true;
+
+  setMsg('FLOOR ' + String(G.floor).padStart(2,'0') + ' — DEFEAT ALL ENEMIES!');
+  updateUI();
+}
+
+// ═══════════════════════════════════════
+// GAME ACTIONS
+// ═══════════════════════════════════════
+function tryMove(dx, dy) {
+  if(!G||!G.running) return;
+  const nx = G.p.x+dx, ny = G.p.y+dy;
+
+  // Direction
+  if(dx>0) G.p.dir='r';
+  else if(dx<0) G.p.dir='l';
+  else if(dy<0) G.p.dir='u';
+  else G.p.dir='d';
+
+  if(nx<0||nx>=COLS||ny<0||ny>=ROWS) return;
+  if(G.grid[ny][nx]===TL.WALL) return;
+
+  // Stairs
+  if(G.stairsOn && nx===G.stairs.c && ny===G.stairs.r) {
+    doFloorClear();
+    return;
+  }
+
+  // Enemy attack
+  const enemy = G.enemies.find(e=>e.x===nx&&e.y===ny);
+  if(enemy) {
+    hitEnemy(enemy);
+    enemyPhase();
+    updateUI();
+    return;
+  }
+
+  // Move
+  G.p.x = nx;
+  G.p.y = ny;
+
+  // Open chest
+  if(G.chestOn && !G.chest.open && G.p.x===G.chest.c && G.p.y===G.chest.r) {
+    openChest();
+  }
+
+  enemyPhase();
+  updateUI();
+}
+
+function hitEnemy(e) {
+  const dmg = Math.max(1, G.p.atk);
+  e.hp -= dmg;
+  if(e.hp<=0) {
+    G.enemies = G.enemies.filter(x=>x!==e);
+    G.score += e.score;
+    setMsg(e.name+' DEFEATED!  +'+e.score+' PTS');
+    if(G.enemies.length===0 && !G.chest.open) {
+      G.chestOn = true;
+      setTimeout(()=>{ if(G&&G.running) setMsg('ALL ENEMIES DEFEATED!  CHEST APPEARED!'); },600);
+    }
+  } else {
+    setMsg('HIT '+e.name+'!  DMG:'+dmg+'  HP:'+e.hp+'/'+e.maxHp);
+  }
+}
+
+function enemyPhase() {
+  G.enemies.forEach(e => {
+    e.timer++;
+    if(e.timer < e.spd) return;
+    e.timer = 0;
+
+    const dx = G.p.x - e.x;
+    const dy = G.p.y - e.y;
+    const dirs = [];
+
+    // Prefer direction toward player
+    if(Math.abs(dx)>=Math.abs(dy)) {
+      dirs.push([Math.sign(dx),0],[0,Math.sign(dy)]);
+    } else {
+      dirs.push([0,Math.sign(dy)],[Math.sign(dx),0]);
+    }
+    // Add random dirs
+    [[0,1],[0,-1],[1,0],[-1,0]].forEach(d=>{
+      if(!dirs.find(x=>x[0]===d[0]&&x[1]===d[1])) dirs.push(d);
+    });
+
+    for(const [mx,my] of dirs) {
+      if(mx===0&&my===0) continue;
+      const nx=e.x+mx, ny=e.y+my;
+      if(nx<1||nx>COLS-2||ny<1||ny>ROWS-2) continue;
+      if(G.grid[ny][nx]===TL.WALL) continue;
+      if(G.enemies.find(o=>o!==e&&o.x===nx&&o.y===ny)) continue;
+
+      if(nx===G.p.x&&ny===G.p.y) {
+        hitPlayer(e);
+        break;
+      }
+      e.x=nx; e.y=ny;
+      break;
+    }
+  });
+}
+
+function hitPlayer(e) {
+  const dmg = Math.max(0, e.atk - G.p.def);
+  if(G.p.shield) {
+    G.p.shield = false;
+    G.p.items = G.p.items.filter(i=>i!=='SHIELD');
+    setMsg(e.name+' ATTACKS!  SHIELD BLOCKED!');
+    return;
+  }
+  if(dmg>0) {
+    G.p.hp = Math.max(0, G.p.hp-dmg);
+    G.flash = true;
+    setTimeout(()=>{ if(G) G.flash=false; }, 350);
+    setMsg(e.name+' ATTACKS!  -'+dmg+' HP!');
+  }
+  if(G.p.hp<=0) doGameOver();
+}
+
+function openChest() {
+  G.chest.open = true;
+  const d = G.chestDef;
+  d.chestFn(G);
+
+  if(d.chest==='PRINCESS') {
+    G.score += 5000;
+    setMsg('★ PRINCESS KI FOUND!  +5000 PTS ★');
+    setTimeout(doWin, 2000);
+    return;
+  }
+
+  if(!G.p.items.includes(d.chest)) G.p.items.push(d.chest);
+  if(d.chest==='SHIELD') G.p.shield = true;
+  G.score += 500;
+  setMsg('CHEST OPENED!  GOT '+d.chest+'!  +500 PTS');
+  G.stairsOn = true;
+  setTimeout(()=>{ if(G&&G.running) setMsg('STAIRS [SU] APPEARED AT TOP-RIGHT! GO THERE!'); },1500);
+  updateUI();
+}
+
+// ═══════════════════════════════════════
+// SCREEN TRANSITIONS
+// ═══════════════════════════════════════
+function doFloorClear() {
+  G.running = false;
+  const bonus = G.floor * 1000;
+  G.score += bonus;
+  document.getElementById('clearFloorNum').textContent = 'FLOOR '+G.floor+' CLEARED';
+  document.getElementById('clearBonus').textContent = '+'+bonus+' PTS';
+  const im = G.p.items.length>0 ? 'ITEMS: '+G.p.items.join(' / ') : 'NO ITEMS THIS FLOOR';
+  document.getElementById('clearItemMsg').textContent = im;
+  showScreen('clearScreen');
+}
+
+function nextFloor() {
+  if(G.floor>=MAX_FLOOR) { doWin(); return; }
+  initFloor(G.floor);
+  showScreen('gameScreen');
+}
+
+function doGameOver() {
+  G.running = false;
+  document.getElementById('goFloor').textContent = G.floor;
+  document.getElementById('goScore').textContent = String(G.score).padStart(6,'0');
+  setTimeout(()=>showScreen('gameoverScreen'), 500);
+}
+
+function doWin() {
+  G.running = false;
+  document.getElementById('winScore').textContent = String(G.score).padStart(6,'0');
+  showScreen('winScreen');
+}
+
+function startGame() {
+  G = mkGame();
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+  showScreen('gameScreen');
+  initFloor(0);
+  if(rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(loop);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ═══════════════════════════════════════
+// UI
+// ═══════════════════════════════════════
+function setMsg(m) {
+  if(document.getElementById('msgBox')) document.getElementById('msgBox').textContent = m;
+}
+
+function updateUI() {
+  if(!G) return;
+  document.getElementById('floorDisp').textContent = String(G.floor).padStart(2,'0');
+  document.getElementById('scoreDisp').textContent = String(G.score).padStart(6,'0');
+  document.getElementById('atkDisp').textContent = G.p.atk;
+  document.getElementById('defDisp').textContent = G.p.def;
+  document.getElementById('hpText').textContent = G.p.hp+'/'+G.p.mhp;
+
+  const bar = document.getElementById('hpBar');
+  bar.innerHTML='';
+  const filled = Math.round((G.p.hp/G.p.mhp)*10);
+  for(let i=0;i<10;i++){
+    const d=document.createElement('div');
+    d.className='hp-block';
+    d.style.background = i<filled ? (G.p.hp<=3?'#e83800':'#e83800') : '#3c1010';
+    if(i<filled && G.p.hp<=3) d.classList.add('blink');
+    bar.appendChild(d);
+  }
+
+  const ir = document.getElementById('itemRow');
+  if(G.p.items.length>0) {
+    ir.innerHTML = G.p.items.map(n=>{
+      const col = n.includes('SWORD')?'#fcfcfc':n.includes('ARMOR')?'#7878f8':n.includes('HP')?'#00a800':n==='SHIELD'?'#00e8d8':'#f8b800';
+      return `<div class="item-chip" style="color:${col}">${n}</div>`;
+    }).join('');
+  } else {
+    ir.innerHTML='<div class="item-chip" style="color:var(--fc-gray)">NO ITEMS</div>';
+  }
+}
+
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
+function loop() {
+  rafId = requestAnimationFrame(loop);
+  if(!G) return;
+  render();
+}
+
+function render() {
+  if(!ctx) return;
+  ctx.fillStyle='#000';
+  ctx.fillRect(0,0,CW,CH);
+
+  drawGrid();
+  if(G.stairsOn) drawStairs();
+  if(G.chestOn) drawChest();
+  G.enemies.forEach(drawEnemy);
+  drawPlayer();
+  if(G.flash) {
+    ctx.fillStyle='rgba(232,56,0,0.35)';
+    ctx.fillRect(0,0,CW,CH);
+  }
+}
+
+function drawGrid() {
+  for(let r=0;r<ROWS;r++) {
+    for(let c=0;c<COLS;c++) {
+      const x=c*TILE, y=r*TILE;
+      if(G.grid[r][c]===TL.WALL) {
+        // Wall
+        ctx.fillStyle='#1a1a2e';
+        ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle='#7878f8';
+        ctx.fillRect(x,y,TILE,2);
+        ctx.fillRect(x,y,2,TILE);
+        ctx.fillRect(x+TILE-2,y,2,TILE);
+        ctx.fillRect(x,y+TILE-2,TILE,2);
+        ctx.fillStyle='#3838b8';
+        ctx.fillRect(x+3,y+3,TILE-6,TILE-6);
+        // Brick lines
+        ctx.fillStyle='#111128';
+        ctx.fillRect(x+3,y+TILE/2,TILE-6,1);
+        if(r%2===0) ctx.fillRect(x+TILE/2,y+3,1,TILE/2-2);
+        else ctx.fillRect(x+TILE/4,y+TILE/2+1,1,TILE/2-3);
+      } else {
+        // Floor
+        ctx.fillStyle='#080818';
+        ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle='#0d0d22';
+        ctx.fillRect(x+TILE-1,y,1,TILE);
+        ctx.fillRect(x,y+TILE-1,TILE,1);
+      }
+    }
+  }
+}
+
+function drawStairs() {
+  const x=G.stairs.c*TILE, y=G.stairs.r*TILE;
+  // Glow
+  const t = Date.now();
+  const glow = (Math.sin(t/300)+1)/2;
+  ctx.fillStyle=`rgba(0,232,216,${0.1+glow*0.15})`;
+  ctx.fillRect(x,y,TILE,TILE);
+  // Steps
+  const colors=['#00e8d8','#009890','#005858'];
+  for(let i=0;i<3;i++){
+    ctx.fillStyle=colors[i];
+    ctx.fillRect(x+2+i*4, y+TILE-8-i*6, TILE-4-i*8, 5);
+  }
+  // Label SU
+  ctx.fillStyle='#000';
+  ctx.font='bold 7px "Press Start 2P",monospace';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText('SU',x+TILE/2,y+TILE/2);
+}
+
+function drawChest() {
+  const x=G.chest.c*TILE, y=G.chest.r*TILE;
+  if(G.chest.open) {
+    ctx.fillStyle='#3c2800'; ctx.fillRect(x+4,y+12,TILE-8,TILE-16);
+    ctx.fillStyle='#6c4800'; ctx.fillRect(x+4,y+6,TILE-8,7);
+    ctx.fillStyle='#888888'; ctx.fillRect(x+TILE/2-1,y+8,2,4);
+  } else {
+    const glow=(Math.sin(Date.now()/400)+1)/2;
+    // Body
+    ctx.fillStyle='#c87000'; ctx.fillRect(x+3,y+10,TILE-6,TILE-13);
+    ctx.fillStyle='#f8b800'; ctx.fillRect(x+3,y+6,TILE-6,6);
+    ctx.fillStyle='#c87000'; ctx.fillRect(x+3,y+10,TILE-6,3);
+    // Straps
+    ctx.fillStyle='#3c2800'; ctx.fillRect(x+3,y+10,TILE-6,2);
+    // Lock
+    ctx.fillStyle='#fcfcfc'; ctx.fillRect(x+TILE/2-2,y+12,4,5);
+    ctx.fillStyle='#888'; ctx.fillRect(x+TILE/2-1,y+15,2,3);
+    // Glow
+    ctx.fillStyle=`rgba(248,184,0,${0.05+glow*0.2})`;
+    ctx.fillRect(x,y,TILE,TILE);
+  }
+}
+
+// ─── Player sprite ───
+function drawPlayer() {
+  const p = G.p;
+  const x=p.x*TILE, y=p.y*TILE;
+  const P=TILE;
+
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.4)';
+  ctx.fillRect(x+5,y+P-4,P-10,3);
+
+  const bodyCol = G.flash ? '#e83800' : '#0058f8';
+  const helmCol = G.flash ? '#e83800' : '#f8b800';
+
+  // Boots
+  ctx.fillStyle='#3c2800'; ctx.fillRect(x+5,y+P-7,8,6); ctx.fillRect(x+P-13,y+P-7,8,6);
+  // Legs
+  ctx.fillStyle=bodyCol; ctx.fillRect(x+6,y+P-13,7,8); ctx.fillRect(x+P-13,y+P-13,7,8);
+  // Body/armor
+  ctx.fillStyle=bodyCol; ctx.fillRect(x+4,y+P-21,P-8,10);
+  // Shoulder guards
+  ctx.fillStyle='#003898'; ctx.fillRect(x+2,y+P-21,4,5); ctx.fillRect(x+P-6,y+P-21,4,5);
+  // Helmet
+  ctx.fillStyle=helmCol; ctx.fillRect(x+5,y+P-29,P-10,9);
+  // Visor
+  ctx.fillStyle='#000'; ctx.fillRect(x+7,y+P-25,P-14,4);
+  // Eyes
+  ctx.fillStyle='#fcfcfc'; ctx.fillRect(x+8,y+P-24,3,2); ctx.fillRect(x+P-11,y+P-24,3,2);
+  // Crest
+  ctx.fillStyle='#e83800'; ctx.fillRect(x+P/2-2,y+P-30,4,3);
+
+  // Sword direction
+  ctx.fillStyle='#fcfcfc';
+  ctx.fillStyle='#c0c0c0';
+  if(p.dir==='r')     { ctx.fillRect(x+P-5,y+P-24,7,2); ctx.fillStyle='#f8b800'; ctx.fillRect(x+P-7,y+P-22,5,3); }
+  else if(p.dir==='l'){ ctx.fillRect(x-2,y+P-24,7,2);   ctx.fillStyle='#f8b800'; ctx.fillRect(x+2,y+P-22,5,3); }
+  else if(p.dir==='u'){ ctx.fillRect(x+P/2-1,y+P-37,2,9); ctx.fillStyle='#f8b800'; ctx.fillRect(x+P/2-4,y+P-30,8,3); }
+  else                { ctx.fillRect(x+P/2-1,y+P-7,2,9);  ctx.fillStyle='#f8b800'; ctx.fillRect(x+P/2-4,y+P-9,8,3); }
+
+  // Shield
+  if(p.shield) {
+    ctx.fillStyle='#00e8d8'; ctx.fillRect(x,y+P-22,5,10);
+    ctx.fillStyle='#007878'; ctx.fillRect(x+1,y+P-20,3,6);
+  }
+}
+
+// ─── Enemy sprites ───
+function drawEnemy(e) {
+  const x=e.x*TILE, y=e.y*TILE;
+  // HP minibar
+  const rat=e.hp/e.maxHp;
+  ctx.fillStyle='#3c1010'; ctx.fillRect(x+1,y+1,TILE-2,3);
+  ctx.fillStyle=rat>0.5?'#00a800':'#e83800';
+  ctx.fillRect(x+1,y+1,Math.floor((TILE-2)*rat),3);
+
+  switch(e.type) {
+    case 'SLIME':  drawSlime(x,y,e.color);  break;
+    case 'GHOUL':  drawGhoul(x,y,e.color);  break;
+    case 'WIZARD': drawWizard(x,y,e.color); break;
+    case 'KNIGHT': drawKnight(x,y,e.color); break;
+    case 'DRAGON': drawDragon(x,y,e.color); break;
+  }
+}
+
+function drawSlime(x,y,c) {
+  const T=TILE;
+  ctx.fillStyle=c;
+  ctx.fillRect(x+5,y+T-15,T-10,11);   // body
+  ctx.fillRect(x+8,y+T-20,T-16,7);    // top bump
+  ctx.fillStyle='rgba(255,255,255,0.25)';
+  ctx.fillRect(x+9,y+T-19,5,4);       // shine
+  ctx.fillStyle='#fcfcfc';
+  ctx.fillRect(x+8,y+T-13,4,4);       // left eye
+  ctx.fillRect(x+T-12,y+T-13,4,4);    // right eye
+  ctx.fillStyle='#000';
+  ctx.fillRect(x+9,y+T-12,2,2);
+  ctx.fillRect(x+T-11,y+T-12,2,2);
+  // Droplets on base
+  ctx.fillStyle=c;
+  ctx.fillRect(x+4,y+T-5,3,3);
+  ctx.fillRect(x+T-7,y+T-5,3,3);
+}
+
+function drawGhoul(x,y,c) {
+  const T=TILE;
+  ctx.fillStyle=c;
+  ctx.fillRect(x+8,y+T-25,T-16,10);   // head
+  ctx.fillRect(x+10,y+T-16,T-20,12);  // torso
+  // Rib stripes
+  ctx.fillStyle='rgba(0,0,0,0.4)';
+  for(let i=0;i<3;i++) ctx.fillRect(x+10,y+T-14+i*3,T-20,2);
+  // Eyes
+  ctx.fillStyle='#e83800';
+  ctx.fillRect(x+9,y+T-23,4,4);
+  ctx.fillRect(x+T-13,y+T-23,4,4);
+  ctx.fillStyle='#ff8888';
+  ctx.fillRect(x+10,y+T-22,2,2);
+  ctx.fillRect(x+T-12,y+T-22,2,2);
+  // Claws
+  ctx.fillStyle=c;
+  ctx.fillRect(x+3,y+T-18,6,3);
+  ctx.fillRect(x+T-9,y+T-18,6,3);
+  ctx.fillStyle='#fcfcfc';
+  ctx.fillRect(x+3,y+T-15,2,5); ctx.fillRect(x+6,y+T-15,2,5);
+  ctx.fillRect(x+T-9,y+T-15,2,5); ctx.fillRect(x+T-6,y+T-15,2,5);
+}
+
+function drawWizard(x,y,c) {
+  const T=TILE;
+  // Robe
+  ctx.fillStyle=c;
+  ctx.fillRect(x+4,y+T-19,T-8,15);
+  ctx.fillRect(x+8,y+T-24,T-16,8);    // body
+  ctx.fillRect(x+9,y+T-30,T-18,8);    // head
+  // Hat
+  ctx.fillStyle='#4422bc';
+  ctx.fillRect(x+11,y+T-36,T-22,8);
+  ctx.fillRect(x+13,y+T-38,T-26,4);
+  ctx.fillRect(x+15,y+T-40,T-30,3);
+  // Face
+  ctx.fillStyle='#f8b800';
+  ctx.fillRect(x+10,y+T-28,T-20,5);
+  // Eyes
+  ctx.fillStyle='#fcfcfc';
+  ctx.fillRect(x+11,y+T-27,3,3); ctx.fillRect(x+T-14,y+T-27,3,3);
+  // Staff
+  ctx.fillStyle='#c87000';
+  ctx.fillRect(x+T-7,y+T-34,3,20);
+  ctx.fillStyle='#00e8d8';
+  ctx.fillRect(x+T-9,y+T-36,7,5);
+  ctx.fillStyle='#fff';
+  ctx.fillRect(x+T-8,y+T-35,3,2);
+}
+
+function drawKnight(x,y,c) {
+  const T=TILE;
+  ctx.fillStyle='#666';
+  ctx.fillRect(x+7,y+T-29,T-14,11);   // helmet
+  ctx.fillStyle='#888';
+  ctx.fillRect(x+6,y+T-20,T-12,13);   // armor body
+  // Shoulder plates
+  ctx.fillStyle='#777';
+  ctx.fillRect(x+2,y+T-22,6,7); ctx.fillRect(x+T-8,y+T-22,6,7);
+  // Visor
+  ctx.fillStyle='#000';
+  ctx.fillRect(x+9,y+T-25,T-18,5);
+  // Eye slits
+  ctx.fillStyle=c;
+  ctx.fillRect(x+10,y+T-24,4,2); ctx.fillRect(x+T-14,y+T-24,4,2);
+  // Belt
+  ctx.fillStyle='#3c2800';
+  ctx.fillRect(x+6,y+T-10,T-12,3);
+  // Sword
+  ctx.fillStyle='#c0c0c0';
+  ctx.fillRect(x+T-6,y+T-32,3,22);
+  ctx.fillStyle='#f8b800';
+  ctx.fillRect(x+T-10,y+T-24,10,3);
+  ctx.fillStyle='#888';
+  ctx.fillRect(x+T-5,y+T-10,2,4); // pommel
+}
+
+function drawDragon(x,y,c) {
+  const T=TILE;
+  // Body
+  ctx.fillStyle=c;
+  ctx.fillRect(x+3,y+T-20,T-6,14);
+  // Head
+  ctx.fillRect(x+2,y+T-30,T-8,12);
+  // Snout
+  ctx.fillRect(x,y+T-26,8,8);
+  // Teeth
+  ctx.fillStyle='#fcfcfc';
+  for(let i=0;i<3;i++) ctx.fillRect(x+1+i*3,y+T-19,2,3);
+  // Eyes
+  ctx.fillStyle='#f8b800';
+  ctx.fillRect(x+8,y+T-29,5,5); ctx.fillRect(x+T-11,y+T-29,5,5);
+  ctx.fillStyle='#000';
+  ctx.fillRect(x+10,y+T-27,2,3); ctx.fillRect(x+T-9,y+T-27,2,3);
+  // Horns
+  ctx.fillStyle='#c82000';
+  ctx.fillRect(x+7,y+T-34,3,6); ctx.fillRect(x+T-10,y+T-34,3,6);
+  // Wing
+  ctx.fillStyle='#c82000';
+  ctx.fillRect(x+T-10,y+T-25,T/2,10);
+  ctx.fillStyle='rgba(200,32,0,0.5)';
+  ctx.fillRect(x+T-8,y+T-23,8,7);
+  // Tail
+  ctx.fillStyle=c;
+  ctx.fillRect(x+T-5,y+T-10,7,5);
+  ctx.fillRect(x+T-3,y+T-6,5,5);
+  // Spines on back
+  ctx.fillStyle='#f8b800';
+  for(let i=0;i<3;i++) ctx.fillRect(x+5+i*6,y+T-34+i*2,3,5);
+}
+
+// ═══════════════════════════════════════
+// RESIZE
+// ═══════════════════════════════════════
+function resizeCanvas() {
+  canvas = document.getElementById('gameCanvas');
+  if(!canvas) return;
+  const maxW = Math.min(window.innerWidth-16, 480);
+  const scale = maxW/CW;
+  canvas.style.width  = Math.floor(CW*scale)+'px';
+  canvas.style.height = Math.floor(CH*scale)+'px';
+  ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ═══════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  const k=e.key;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) e.preventDefault();
+
+  // Clear screen shortcut
+  if(document.getElementById('clearScreen').classList.contains('active')) { nextFloor(); return; }
+
+  switch(k) {
+    case 'ArrowUp':    case 'w': case 'W': tryMove(0,-1); break;
+    case 'ArrowDown':  case 's': case 'S': tryMove(0, 1); break;
+    case 'ArrowLeft':  case 'a': case 'A': tryMove(-1,0); break;
+    case 'ArrowRight': case 'd': case 'D': tryMove( 1,0); break;
+    case 'Enter': case ' ':
+      if(document.getElementById('titleScreen').classList.contains('active')) startGame();
+      break;
+  }
+});
+
+// Touch buttons
+function addTouch(id, fn) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('touchstart', e=>{ e.preventDefault(); fn(); }, {passive:false});
+  el.addEventListener('mousedown', e=>{ fn(); });
+}
+
+window.addEventListener('load', () => {
+  addTouch('tUp',    ()=>tryMove(0,-1));
+  addTouch('tDown',  ()=>tryMove(0, 1));
+  addTouch('tLeft',  ()=>tryMove(-1,0));
+  addTouch('tRight', ()=>tryMove( 1,0));
+
+  // Title canvas pixel art tower
+  const tc = document.getElementById('titleCanvas');
+  if(tc) {
+    const c = tc.getContext('2d');
+    const PX = 8;
+    // Tower silhouette
+    const tower = [
+      '  YYYYYY  ',
+      ' YBBBBBY ',
+      ' B......B',
+      ' B.PP..B ',
+      ' B......B',
+      ' B.PP..B ',
+      ' B......B',
+      ' BBBBBBB ',
+      'BBBBBBBB ',
+      'B......BB',
+    ];
+    const pal={'Y':'#f8b800','B':'#7878f8','.':'#0a0a1a','P':'#6844fc',' ':'transparent'};
+    tower.forEach((row,r)=>{
+      [...row].forEach((ch,cc)=>{
+        if(ch!==' '){ c.fillStyle=pal[ch]||'#888'; c.fillRect(cc*PX,r*PX,PX,PX); }
+      });
+    });
+    // Stars around
+    c.fillStyle='#fcfcfc';
+    [[2,2],[72,8],[12,68],[60,72],[38,4],[10,44],[65,40]].forEach(([sx,sy])=>{
+      c.fillRect(sx,sy,2,2);
+    });
+  }
+
+  resizeCanvas();
+  rafId = requestAnimationFrame(loop);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>小鳥のエサやり落ち物ゲーム</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* パクパクアニメーション */
+    @keyframes chomp {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(-25deg); }
+    }
+    @keyframes chomp-bottom {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(25deg); }
+    }
+    .beak-top-active {
+      animation: chomp 0.15s infinite alternate;
+      transform-origin: bottom left;
+    }
+    .beak-bottom-active {
+      animation: chomp-bottom 0.15s infinite alternate;
+      transform-origin: top left;
+    }
+
+    /* パクッ効果テキストのアニメーション */
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+    }
+    .pop-text {
+      animation: floatUp 0.6s ease-out forwards;
+    }
+
+    /* タッチ・ドラッグ選択の無効化 */
+    body {
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body class="bg-sky-100 min-h-screen flex flex-col items-center justify-between font-sans overflow-hidden">
+
+  <!-- ヘッダー / スコアボード -->
+  <header class="w-full max-w-md p-4 flex justify-between items-center bg-white/80 backdrop-blur rounded-b-2xl shadow-md z-10">
+    <div>
+      <h1 class="text-xl font-bold text-amber-600 flex items-center gap-1">
+        🐥 パクパク小鳥
+      </h1>
+      <p class="text-xs text-gray-500">タップして首をのばそう！</p>
+    </div>
+    <div class="text-right">
+      <div class="text-xs text-gray-500 font-bold">目標: <span id="target-score">20</span> 個</div>
+      <div class="text-2xl font-black text-amber-500">
+        <span id="current-score">0</span> <span class="text-sm text-gray-400">/ 20</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインゲームエリア -->
+  <main id="game-container" class="relative w-full max-w-md flex-1 bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-100 overflow-hidden cursor-pointer shadow-inner">
+    
+    <!-- エサが落ちてくるレイヤー -->
+    <div id="food-layer" class="absolute inset-0 pointer-events-none"></div>
+
+    <!-- ポップテキストレイヤー -->
+    <div id="effect-layer" class="absolute inset-0 pointer-events-none z-20"></div>
+
+    <!-- 6列の背景ガイドライン -->
+    <div class="absolute inset-0 grid grid-cols-6 pointer-events-none opacity-10">
+      <div class="border-r border-sky-900"></div>
+      <div class="border-r border-sky-900"></div>
+      <div class="border-r border-sky-900"></div>
+      <div class="border-r border-sky-900"></div>
+      <div class="border-r border-sky-900"></div>
+      <div></div>
+    </div>
+
+    <!-- 下部の6羽の鳥たち -->
+    <div id="birds-container" class="absolute bottom-0 left-0 right-0 h-full grid grid-cols-6 items-end">
+      <!-- 6つの鳥レーンがJSで生成されます -->
+    </div>
+  </main>
+
+  <!-- ゲームスタート・クリアダイアログ -->
+  <div id="modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-30 p-4">
+    <div id="modal-content" class="bg-white rounded-3xl p-6 text-center shadow-2xl max-w-xs w-full transform transition-all scale-100">
+      <div class="text-5xl mb-3" id="modal-emoji">🐥</div>
+      <h2 class="text-2xl font-black text-gray-800 mb-2" id="modal-title">エサやりゲーム</h2>
+      <p class="text-sm text-gray-600 mb-6" id="modal-desc">
+        上から落ちてくるエサを、小鳥をタップして伸ばして食べさせよう！<br>20個食べさせたらクリア！
+      </p>
+      <button id="start-btn" class="w-full py-3 bg-amber-400 hover:bg-amber-500 active:scale-95 text-amber-950 font-black rounded-2xl shadow-lg transition duration-150">
+        ゲームスタート！
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // エサのデータ定義
+    const FOOD_TYPES = [
+      { name: 'みみず', emoji: '🪱', pts: 1 },
+      { name: 'きのみ', emoji: '🍒', pts: 1 },
+      { name: 'ハエ',   emoji: '🪰', pts: 1 },
+      { name: '果物',   emoji: '🍎', pts: 1 },
+      { name: 'バッタ', emoji: '🦗', pts: 1 },
+      { name: '草',     emoji: '🌿', pts: 1 }
+    ];
+
+    const LANE_COUNT = 6;
+    const TARGET_SCORE = 20;
+
+    // ゲーム状態
+    let score = 0;
+    let isPlaying = false;
+    let foods = [];
+    let birds = [];
+    let animationFrameId = null;
+    let spawnTimer = null;
+
+    // サウンドエフェクト (Web Audio API)
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function playSound(type) {
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'eat') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else if (type === 'stretch') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(250, now);
+        osc.frequency.linearRampToValueAtTime(500, now + 0.08);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } else if (type === 'clear') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+        osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+        osc.frequency.setValueAtTime(1046.50, now + 0.3); // C6
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      }
+    }
+
+    // 鳥のコンポーネント作成
+    const birdsContainer = document.getElementById('birds-container');
+
+    function initBirds() {
+      birdsContainer.innerHTML = '';
+      birds = [];
+
+      const colors = ['#FBBF24', '#F472B6', '#60A5FA', '#34D399', '#A78BFA', '#FB923C'];
+
+      for (let i = 0; i < LANE_COUNT; i++) {
+        const laneEl = document.createElement('div');
+        laneEl.className = 'relative h-full flex items-end justify-center cursor-pointer';
+
+        // 鳥エレメント
+        const birdEl = document.createElement('div');
+        birdEl.className = 'relative w-full flex flex-col items-center transition-all duration-150 ease-out origin-bottom';
+        birdEl.style.height = '70px'; // 通常時の高さ
+
+        // 鳥のグラフィック (SVG)
+        const color = colors[i % colors.length];
+        birdEl.innerHTML = `
+          <!-- 頭部と口 -->
+          <div class="relative w-10 h-10 z-10">
+            <!-- 上くちばし -->
+            <div class="beak-top absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[12px] border-b-amber-500"></div>
+            <!-- 下くちばし -->
+            <div class="beak-bottom absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-amber-600"></div>
+            
+            <!-- 頭（目含む） -->
+            <div class="w-10 h-10 rounded-full flex items-center justify-around px-1 shadow-md" style="background-color: ${color};">
+              <div class="w-2.5 h-2.5 bg-black rounded-full relative">
+                <div class="w-1 h-1 bg-white rounded-full absolute top-0.5 right-0.5"></div>
+              </div>
+              <div class="w-2.5 h-2.5 bg-black rounded-full relative">
+                <div class="w-1 h-1 bg-white rounded-full absolute top-0.5 right-0.5"></div>
+              </div>
+            </div>
+            <!-- ほっぺ -->
+            <div class="absolute bottom-2 left-1 w-2 h-1.5 bg-red-300 rounded-full opacity-60"></div>
+            <div class="absolute bottom-2 right-1 w-2 h-1.5 bg-red-300 rounded-full opacity-60"></div>
+          </div>
+
+          <!-- 首・体（伸びる部分） -->
+          <div class="w-7 flex-1 -mt-2 rounded-b-xl shadow-inner border-t-2 border-white/40" style="background-color: ${color};"></div>
+        `;
+
+        laneEl.appendChild(birdEl);
+        birdsContainer.appendChild(laneEl);
+
+        const birdData = {
+          lane: i,
+          element: birdEl,
+          beakTop: birdEl.querySelector('.beak-top'),
+          beakBottom: birdEl.querySelector('.beak-bottom'),
+          isStretching: false,
+          stretchTimer: null,
+          currentHeight: 70
+        };
+
+        // タップ/クリックイベント設定
+        const triggerStretch = (e) => {
+          e.preventDefault();
+          if (!isPlaying) return;
+          stretchBird(birdData);
+        };
+
+        laneEl.addEventListener('pointerdown', triggerStretch);
+
+        birds.push(birdData);
+      }
+    }
+
+    // 鳥を伸び上がらせる
+    function stretchBird(bird) {
+      if (bird.isStretching) return;
+
+      bird.isStretching = true;
+      playSound('stretch');
+
+      // 見た目の更新（高く伸ばし、口をぱくぱくさせる）
+      const containerHeight = document.getElementById('game-container').clientHeight;
+      const stretchHeight = Math.min(containerHeight * 0.65, 320); // コンテナに応じた高さ
+
+      bird.element.style.height = `${stretchHeight}px`;
+      bird.currentHeight = stretchHeight;
+
+      bird.beakTop.classList.add('beak-top-active');
+      bird.beakBottom.classList.add('beak-bottom-active');
+
+      // 一定時間（600ms）後に元に戻る
+      clearTimeout(bird.stretchTimer);
+      bird.stretchTimer = setTimeout(() => {
+        bird.element.style.height = '70px';
+        bird.currentHeight = 70;
+        bird.beakTop.classList.remove('beak-top-active');
+        bird.beakBottom.classList.remove('beak-bottom-active');
+        bird.isStretching = false;
+      }, 650);
+    }
+
+    // エサの生成
+    const foodLayer = document.getElementById('food-layer');
+
+    function spawnFood() {
+      if (!isPlaying) return;
+
+      const lane = Math.floor(Math.random() * LANE_COUNT);
+      const foodType = FOOD_TYPES[Math.floor(Math.random() * FOOD_TYPES.length)];
+
+      const foodEl = document.createElement('div');
+      foodEl.className = 'absolute text-3xl transform -translate-x-1/2 -translate-y-1/2 pointer-events-none filter drop-shadow';
+      foodEl.innerText = foodType.emoji;
+
+      const containerWidth = document.getElementById('game-container').clientWidth;
+      const laneWidth = containerWidth / LANE_COUNT;
+      const x = laneWidth * lane + laneWidth / 2;
+      const y = -20; // 画面上方からスタート
+
+      foodEl.style.left = `${x}px`;
+      foodEl.style.top = `${y}px`;
+
+      foodLayer.appendChild(foodEl);
+
+      foods.push({
+        element: foodEl,
+        lane: lane,
+        x: x,
+        y: y,
+        speed: 2 + Math.random() * 1.5, // 落下速度
+        pts: foodType.pts
+      });
+    }
+
+    // エフェクト表示 (パクッ！等のテキスト)
+    const effectLayer = document.getElementById('effect-layer');
+
+    function showEatEffect(x, y, text) {
+      const el = document.createElement('div');
+      el.className = 'absolute text-amber-600 font-black text-lg pop-text pointer-events-none transform -translate-x-1/2';
+      el.innerText = text;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      effectLayer.appendChild(el);
+
+      setTimeout(() => el.remove(), 600);
+    }
+
+    // ゲームループ（描画・衝突判定）
+    function gameLoop() {
+      if (!isPlaying) return;
+
+      const containerHeight = document.getElementById('game-container').clientHeight;
+
+      for (let i = foods.length - 1; i >= 0; i--) {
+        const food = foods[i];
+        food.y += food.speed;
+        food.element.style.top = `${food.y}px`;
+
+        const bird = birds[food.lane];
+        // 口の位置のY座標（伸びている高さに基づく）
+        const birdMouthY = containerHeight - bird.currentHeight;
+
+        // 衝突判定：鳥が伸びていて、エサが口の近辺（±25px）にあるか
+        if (bird.isStretching && Math.abs(food.y - birdMouthY) < 30) {
+          // エサを食べた！
+          score += food.pts;
+          document.getElementById('current-score').innerText = score;
+          playSound('eat');
+          showEatEffect(food.x, birdMouthY, 'パクッ！');
+
+          // エサ削除
+          food.element.remove();
+          foods.splice(i, 1);
+
+          // クリア判定
+          if (score >= TARGET_SCORE) {
+            gameClear();
+            return;
+          }
+          continue;
+        }
+
+        // 画面外に落ちたら削除
+        if (food.y > containerHeight + 30) {
+          food.element.remove();
+          foods.splice(i, 1);
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // ゲームクリア処理
+    function gameClear() {
+      isPlaying = false;
+      cancelAnimationFrame(animationFrameId);
+      clearInterval(spawnTimer);
+
+      playSound('clear');
+
+      // クリアモーダル表示
+      document.getElementById('modal-emoji').innerText = '🎉';
+      document.getElementById('modal-title').innerText = 'ゲームクリア！';
+      document.getElementById('modal-desc').innerText = `おめでとう！小鳥たちにエサを ${score} 個食べさせました！`;
+      document.getElementById('start-btn').innerText = 'もう一度あそぶ';
+      document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+
+    // ゲームスタート処理
+    function startGame() {
+      // 状態リセット
+      score = 0;
+      document.getElementById('current-score').innerText = '0';
+      foods.forEach(f => f.element.remove());
+      foods = [];
+      effectLayer.innerHTML = '';
+
+      initBirds();
+
+      isPlaying = true;
+      document.getElementById('modal-overlay').classList.add('hidden');
+
+      // ループとエサスポーンの開始
+      gameLoop();
+      clearInterval(spawnTimer);
+      spawnTimer = setInterval(spawnFood, 750); // 0.75秒ごとにエサ出現
+    }
+
+    // イベント設定
+    document.getElementById('start-btn').addEventListener('click', () => {
+      startGame();
+    });
+
+    // 初期化表示
+    initBirds();
+  </script>
+</body>
+</html>

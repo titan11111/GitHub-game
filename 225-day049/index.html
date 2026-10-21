@@ -1,0 +1,498 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2575.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="ja"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1">&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1">&lt;title&gt;キャッチ・ザ・スマホ！&lt;/title&gt;</p>
+<p class="p1">&lt;style&gt;</p>
+<p class="p1">body{margin:0;overflow:hidden;font-family:"Hiragino Kaku Gothic ProN","Meiryo",sans-serif;background:#000}</p>
+<p class="p1">#hud{position:fixed;top:10px;left:10px;color:#fff;font-size:15px;text-shadow:0 0 4px #000,0 0 2px #000;pointer-events:none;line-height:1.7}</p>
+<p class="p1">#stamina{width:180px;height:8px;background:#333;margin-top:4px;border-radius:4px;overflow:hidden}</p>
+<p class="p1">#staminaFill{height:100%;background:#3cf}</p>
+<p class="p1">#minilog{position:fixed;right:10px;top:10px;width:340px;color:#fff;font-size:13px;text-shadow:0 0 4px #000;pointer-events:none;text-align:right;line-height:1.6}</p>
+<p class="p1">#bubbles{position:fixed;inset:0;pointer-events:none;overflow:hidden}</p>
+<p class="p1">.bubble{position:absolute;transform:translate(-50%,-100%);background:#fff;color:#222;padding:4px 10px;border-radius:12px;font-size:14px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4)}</p>
+<p class="p1">.bubble.angry{background:#ff3b3b;color:#fff;font-weight:bold}</p>
+<p class="p1">.bubble.sys{background:#ffe600;color:#000;font-size:20px;font-weight:bold}</p>
+<p class="p1">#qte{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);width:440px;display:none;text-align:center;color:#fff;font-size:18px;font-weight:bold;text-shadow:0 0 4px #000}</p>
+<p class="p1">#bar{position:relative;height:28px;background:#333;border:3px solid #fff;border-radius:8px;margin-top:8px;overflow:hidden}</p>
+<p class="p1">#graze{position:absolute;top:0;height:100%;background:#e8b400}</p>
+<p class="p1">#perfect{position:absolute;top:0;height:100%;background:#2ecc40}</p>
+<p class="p1">#cursor{position:absolute;top:0;width:5px;height:100%;background:#fff;box-shadow:0 0 6px #fff}</p>
+<p class="p1">#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}</p>
+<p class="p1">#overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.8);color:#fff;text-align:center;padding:20px;box-sizing:border-box}</p>
+<p class="p1">#overlay h1{font-size:42px;margin:0 0 12px}</p>
+<p class="p1">#overlay table{margin:10px auto;border-collapse:collapse;font-size:14px}</p>
+<p class="p1">#overlay td{padding:3px 12px;border-bottom:1px solid #555}</p>
+<p class="p1">#overlay button{font-size:20px;padding:12px 34px;margin-top:18px;border:none;border-radius:30px;background:#ff3b8d;color:#fff;cursor:pointer;font-weight:bold}</p>
+<p class="p1">&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p1">&lt;div id="hud"&gt;&lt;/div&gt;</p>
+<p class="p1">&lt;div id="minilog"&gt;&lt;/div&gt;</p>
+<p class="p1">&lt;div id="bubbles"&gt;&lt;/div&gt;</p>
+<p class="p1">&lt;div id="qte"&gt;&lt;div id="qteText"&gt;&lt;/div&gt;&lt;div id="bar"&gt;&lt;div id="graze"&gt;&lt;/div&gt;&lt;div id="perfect"&gt;&lt;/div&gt;&lt;div id="cursor"&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;</p>
+<p class="p1">&lt;div id="flash"&gt;&lt;/div&gt;</p>
+<p class="p1">&lt;div id="overlay"&gt;&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;script type="importmap"&gt;{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}&lt;/script&gt;</p>
+<p class="p1">&lt;script type="module"&gt;</p>
+<p class="p1">import * as THREE from 'three';</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== ステージ（スマホ率：電車のみ実測、他は推定） =====</p>
+<p class="p1">const STAGES=[</p>
+<p class="p1"><span class="Apple-converted-space"> </span>{name:'市役所',rate:.45,count:40,len:110,w:22,sky:0xdfe6ea,floor:0xcfc6b4,wall:0xece6d8,pillars:true,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>weights:{salary:2,granny:3,mom:3,student:1,worker:2,tourist:.2,streamer:.3}},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>{name:'病院（待合）',rate:.48,count:46,len:120,w:20,sky:0xe8f2f2,floor:0xdde8e6,wall:0xf7fbfb,pillars:true,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>weights:{granny:6,mom:3,salary:1,student:1,worker:1,tourist:.1,streamer:.2}},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>{name:'港（フェリーターミナル）',rate:.52,count:50,len:140,w:26,sky:0x9fc9e8,floor:0x8e9aa3,wall:0x5f86a8,pillars:true,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>weights:{tourist:3,granny:2,mom:2,salary:1,student:2,worker:2,streamer:.6}},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>{name:'博多駅',rate:.55,count:85,len:170,w:26,sky:0xcfd5dc,floor:0xb9b3a8,wall:0x8c8478,pillars:true,tactile:true,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>weights:{salary:4,student:3,tourist:2,mom:2,granny:1.5,worker:1.5,streamer:.8}},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>{name:'電車（ホーム）',rate:.71,count:70,len:150,w:11,sky:0x9aa4ad,floor:0x7d7f80,wall:0x3d6b4f,pillars:false,tactile:true,data:true,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>weights:{salary:5,student:4,mom:1.5,worker:1.5,granny:1,tourist:1,streamer:.6}},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>{name:'空港（出発ロビー）',rate:.70,count:100,len:200,w:30,sky:0xd9ecff,floor:0xe9e9ea,wall:0xbfd3e6,pillars:true,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>weights:{tourist:5,salary:4,student:2,mom:2,granny:1,worker:.5,streamer:1}},</p>
+<p class="p1">];</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== キャラクター =====</p>
+<p class="p1">const TYPES={</p>
+<p class="p1"><span class="Apple-converted-space"> </span>salary:{short:'田中',name:'営業サラリーマン 田中(34)',h:1.76,speed:7.6,body:[0x1f2a44,0x2b2b2b,0x3b4250],legs:[0x1c1f26],skin:0xf0c8a0,hair:[0x111111],acc:'bag',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chaseBroken:.7,chaseSafe:.2,giveUp:9,repair:38000,stun:1.6,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>hit:'あっ携帯が…！',broken:'ちょ、これ会社のなんですけど！？',safe:'…セーフか。気をつけてくださいよ',thanks:'あ、どうも…助かりました',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chase:['待ってください！名刺ください！','ちょっと！そこのあなた！','逃げる気ですか！？'],giveup:'くそ…商談に遅れる…',caught:'会社に請求書送りますからね！'},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>student:{short:'りな',name:'大学生 りな(20)',h:1.6,speed:8.2,body:[0xf4a6c6,0xe9dcc9,0xffffff,0xb7d3f2],legs:[0x2d3a5a,0xc9b79c],skin:0xf6d3b8,hair:[0x5a3a22,0x2a1a10,0xc89c5a],acc:'tote',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chaseBroken:.8,chaseSafe:.3,giveUp:7,repair:45000,stun:1.4,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>hit:'あっ携帯が！！',broken:'は？最新機種なんやけど！？',safe:'マジびびった…',thanks:'え、ありがと…優しっ',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chase:['ちょっと待ってって！！','逃げんなし！','動画撮ってるけんね！？'],giveup:'…もういい、ストーリーに上げる',caught:'修理代、PayPayで送って'},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>granny:{short:'節子',name:'おばあちゃん 節子(78)',h:1.48,speed:3.4,body:[0x7a5c8e,0x8a6f55,0x5d6b7a],legs:[0x4a4038],skin:0xe9c4a4,hair:[0xcfcfcf,0xe8e8e8],acc:'bent',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chaseBroken:.35,chaseSafe:.05,giveUp:28,repair:15000,stun:3.0,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>hit:'あらっ、携帯が…',broken:'孫の写真が入っとったとに…',safe:'あらあら、無事やったわ',thanks:'まあ、ご親切にどうも。飴ちゃんいる？',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chase:['ちょっと〜、そこのあんた〜','待ちんしゃい〜','若い人は足が速かねぇ…'],giveup:'…まあ、急いどったんやろうねぇ',caught:'あんた、そこ座り。話があるけん'},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>mom:{short:'由美',name:'主婦 由美(41)',h:1.6,speed:6.2,body:[0xd8c3a5,0x8a9a6a,0xc96a6a],legs:[0x3a3a4a,0xe0d8c8],skin:0xf2cfb0,hair:[0x3a2416,0x1d140e],acc:'shop',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chaseBroken:.55,chaseSafe:.1,giveUp:10,repair:25000,stun:2.0,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>hit:'あっ携帯が！',broken:'ちょっと！学校から連絡来とったのに！',safe:'危ないやろ！前見て歩き！',thanks:'あら、ありがとうございます',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chase:['待ちなさい！！','ちゃんと謝りなさい！','どこの子ね！'],giveup:'もう…警備員さんに言うけんね',caught:'まず目を見て謝りなさい'},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>worker:{short:'剛',name:'現場作業員 剛(45)',h:1.82,speed:7.0,body:[0xff8c1a,0x2f4a6b],legs:[0x3b3b2f,0x2f3b4a],skin:0xd9a77f,hair:[0x111111],acc:'helmet',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chaseBroken:.85,chaseSafe:.4,giveUp:12,repair:20000,stun:2.6,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>hit:'おわっ、携帯が！',broken:'おいコラ、どこ見て歩きよっとか！',safe:'…次はなかぞ',thanks:'お、おう…悪いな兄ちゃん',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chase:['逃げんなオラァ！','待たんかコラァ！','現場で鍛えた足なめんなよ！'],giveup:'ハァ…ハァ…今日はこの辺にしといたる',caught:'ちょっとツラ貸せや'},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>tourist:{short:'Mike',name:'観光客 マイク(29)',h:1.88,speed:6.8,body:[0xd23b3b,0x2a9d8f,0x3a6fd0],legs:[0xc2a878,0x3a3a3a],skin:0xf5d6c0,hair:[0xd8b060,0x6b4a2a],acc:'backpack',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chaseBroken:.5,chaseSafe:.05,giveUp:8,repair:42000,stun:1.5,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>hit:'Oh no! My phone!',broken:'Seriously!? My Google Maps!!',safe:'Phew... daijoubu desu.',thanks:'Wow! Arigatou gozaimasu!',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chase:['Hey! Stop! Sumimasen!!','Wait! Chotto matte!','You owe me a phone!'],giveup:'Japanese people... so fast...',caught:'Insurance... you pay, OK?'},</p>
+<p class="p1"><span class="Apple-converted-space"> </span>streamer:{short:'ケンジ',name:'配信者 ケンジ(26)',h:1.72,speed:8.8,body:[0x111111,0x6b2bd8],legs:[0x222222],skin:0xf0c8a0,hair:[0xe0e0e0,0x3fa0ff],acc:'selfie',alwaysPhone:true,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chaseBroken:.95,chaseSafe:.6,giveUp:15,repair:55000,stun:2.2,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>hit:'あっ携帯が！配信中なんやけど！？',broken:'配信落ちた！同接500人おったとに！',safe:'今のバズるわ…追いかけよ！',thanks:'え、神対応やん…配信乗せていい？',</p>
+<p class="p1"><span class="Apple-converted-space">  </span>chase:['みんな見てる？今こいつ追ってまーす！','逃げても切り抜かれるよ〜！','コメ欄「草」で埋まっとる！'],giveup:'…これは切り抜き確定っすね',caught:'顔出しNGとかないっすよね？'},</p>
+<p class="p1">};</p>
+<p class="p1">const PLAYER_T={h:1.72,body:[0xffd400],legs:[0x2a2a3a],skin:0xf2cfb0,hair:[0x3a2416],acc:'none'};</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== 基本セットアップ =====</p>
+<p class="p1">const renderer=new THREE.WebGLRenderer({antialias:true});</p>
+<p class="p1">renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));</p>
+<p class="p1">renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;</p>
+<p class="p1">document.body.appendChild(renderer.domElement);</p>
+<p class="p1">const scene=new THREE.Scene();</p>
+<p class="p1">const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,400);</p>
+<p class="p1">scene.add(new THREE.HemisphereLight(0xffffff,0x667788,1.1));</p>
+<p class="p1">const sun=new THREE.DirectionalLight(0xffffff,1.4);</p>
+<p class="p1">sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);</p>
+<p class="p1">Object.assign(sun.shadow.camera,{left:-30,right:30,top:30,bottom:-30,near:1,far:100});</p>
+<p class="p1">scene.add(sun,sun.target);</p>
+<p class="p1">addEventListener('resize',()=&gt;{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});</p>
+<p class="p2"><br></p>
+<p class="p1">const $=id=&gt;document.getElementById(id);</p>
+<p class="p1">const hud=$('hud'),minilog=$('minilog'),bubblesEl=$('bubbles'),overlay=$('overlay');</p>
+<p class="p1">const qteEl=$('qte'),qteText=$('qteText'),perfectEl=$('perfect'),grazeEl=$('graze'),cursorEl=$('cursor'),flashEl=$('flash');</p>
+<p class="p1">const pick=a=&gt;a[Math.floor(Math.random()*a.length)];</p>
+<p class="p1">const std=c=&gt;new THREE.MeshStandardMaterial({color:c,roughness:.85});</p>
+<p class="p1">const lerpAngle=(a,b,t)=&gt;{let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return a+d*t;};</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== テクスチャ =====</p>
+<p class="p1">function tileTex(hex){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');</p>
+<p class="p1"><span class="Apple-converted-space"> </span>x.fillStyle='#'+new THREE.Color(hex).getHexString();x.fillRect(0,0,128,128);x.strokeStyle='rgba(0,0,0,.12)';x.lineWidth=3;x.strokeRect(0,0,128,128);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;return t;}</p>
+<p class="p1">function emojiTex(e){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');</p>
+<p class="p1"><span class="Apple-converted-space"> </span>x.font='96px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(e,64,70);return new THREE.CanvasTexture(c);}</p>
+<p class="p1">function textSprite(txt,bg,fg='#fff'){const w=512,h=128,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');</p>
+<p class="p1"><span class="Apple-converted-space"> </span>x.fillStyle=bg;x.beginPath();x.roundRect(4,4,w-8,h-8,30);x.fill();x.fillStyle=fg;x.font='bold 60px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(txt,w/2,h/2+4);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t}));s.scale.set(8,2,1);return s;}</p>
+<p class="p1">const rageMat=new THREE.SpriteMaterial({map:emojiTex('💢'),depthTest:false});</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== 人モデル =====</p>
+<p class="p1">const G={leg:new THREE.BoxGeometry(.18,.8,.2),torso:new THREE.BoxGeometry(.5,.66,.3),arm:new THREE.BoxGeometry(.12,.62,.12),</p>
+<p class="p1"><span class="Apple-converted-space"> </span>hand:new THREE.BoxGeometry(.1,.1,.1),head:new THREE.SphereGeometry(.16,16,12),hair:new THREE.SphereGeometry(.17,16,12,0,Math.PI*2,0,Math.PI*.55),</p>
+<p class="p1"><span class="Apple-converted-space"> </span>eye:new THREE.BoxGeometry(.035,.035,.02)};</p>
+<p class="p1">const black=std(0x111111);</p>
+<p class="p1">function makePerson(t){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const g=new THREE.Group();</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const body=std(pick(t.body)),legsM=std(pick(t.legs)),skin=std(t.skin),hairM=std(pick(t.hair));</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const mk=(geo,m,x,y,z,parent)=&gt;{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;(parent||g).add(o);return o;};</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const pivot=(x,y,z)=&gt;{const p=new THREE.Group();p.position.set(x,y,z);g.add(p);return p;};</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const legL=pivot(-.13,.8,0),legR=pivot(.13,.8,0);mk(G.leg,legsM,0,-.4,0,legL);mk(G.leg,legsM,0,-.4,0,legR);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const torso=mk(G.torso,body,0,1.12,0);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const armL=pivot(-.32,1.42,0),armR=pivot(.32,1.42,0);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>mk(G.arm,body,0,-.31,0,armL);mk(G.arm,body,0,-.31,0,armR);mk(G.hand,skin,0,-.66,0,armL);mk(G.hand,skin,0,-.66,0,armR);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const head=pivot(0,1.5,0);mk(G.head,skin,0,.14,0,head);mk(G.hair,hairM,0,.16,-.01,head);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>mk(G.eye,black,-.055,.16,.15,head);mk(G.eye,black,.055,.16,.15,head);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(t.acc==='bag')mk(new THREE.BoxGeometry(.38,.26,.1),std(0x3b2414),0,-.8,0,armL);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(t.acc==='tote')mk(new THREE.BoxGeometry(.3,.34,.08),std(0xe8dcc0),0,-.82,0,armL);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(t.acc==='shop')mk(new THREE.BoxGeometry(.3,.36,.16),std(0xffffff),0,-.84,0,armL);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(t.acc==='backpack')mk(new THREE.BoxGeometry(.4,.48,.22),std(0x2d4a2d),0,1.12,-.26);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(t.acc==='helmet'){const hm=mk(G.hair,std(0xffd21a),0,.17,0,head);hm.scale.setScalar(1.15);}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(t.acc==='bent'){torso.rotation.x=.25;head.position.z=.1;}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const rage=new THREE.Sprite(rageMat);rage.scale.set(.6,.6,1);rage.position.y=2.1;rage.visible=false;g.add(rage);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>g.scale.setScalar(t.h/1.76);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>return {g,legL,legR,armL,armR,head,torso,rage};</p>
+<p class="p1">}</p>
+<p class="p1">function makePhone(selfie){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const g=new THREE.Group();</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const b=new THREE.Mesh(new THREE.BoxGeometry(.12,.22,.015),std(0x222222));b.castShadow=true;g.add(b);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const scr=new THREE.Mesh(new THREE.PlaneGeometry(.1,.19),new THREE.MeshBasicMaterial({color:0x9fe0ff}));</p>
+<p class="p1"><span class="Apple-converted-space"> </span>scr.position.z=-.009;scr.rotation.y=Math.PI;g.add(scr);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(selfie){g.position.set(.15,1.75,.55);g.rotation.x=.1;}else{g.position.set(.06,1.18,.34);g.rotation.x=.9;}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>g.userData={scr,p:g.position.clone(),r:g.rotation.clone()};</p>
+<p class="p1"><span class="Apple-converted-space"> </span>return g;</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== 状態 =====</p>
+<p class="p1">let stageIndex=0,S=null,world=null,pillars=[],npcs=[],event=null,timeScale=1,state='title';</p>
+<p class="p1">let stats=null,timers=[],shards=[],bubbles=[],logs=[];</p>
+<p class="p1">let total={time:0,catches:0,broken:0,damage:0,caught:0};</p>
+<p class="p1">const player={dir:new THREE.Vector3(0,0,-1),stun:0,slow:0,stamina:1,speedNow:0,phase:0};</p>
+<p class="p1">const pp0=makePerson(PLAYER_T);player.mesh=pp0.g;player.parts=pp0;scene.add(player.mesh);</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== UI系 =====</p>
+<p class="p1">function say(anchor,html,cls='',dur=2.2){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>for(const b of bubbles)if(b.anchor===anchor){b.el.remove();b.t=0;}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const el=document.createElement('div');el.className='bubble '+cls;el.innerHTML=html;bubblesEl.appendChild(el);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>bubbles.push({anchor,el,t:dur});</p>
+<p class="p1">}</p>
+<p class="p1">const sayN=(n,text,cls='',dur=2.4)=&gt;say(n.mesh,`&lt;b&gt;${n.T.short}&lt;/b&gt;「${text}」`,cls,dur);</p>
+<p class="p1">const tmpV=new THREE.Vector3();</p>
+<p class="p1">function updateBubbles(dt){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>for(const b of bubbles){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>b.t-=dt;if(b.t&lt;=0){b.el.remove();continue;}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(b.anchor.isVector3)tmpV.copy(b.anchor).y+=.5;else tmpV.copy(b.anchor.position).y+=2.3*b.anchor.scale.y;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>tmpV.project(camera);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(tmpV.z&gt;1){b.el.style.display='none';continue;}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>b.el.style.display='block';</p>
+<p class="p1"><span class="Apple-converted-space">  </span>b.el.style.left=(tmpV.x*.5+.5)*innerWidth+'px';b.el.style.top=(-tmpV.y*.5+.5)*innerHeight+'px';</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>bubbles=bubbles.filter(b=&gt;b.t&gt;0);</p>
+<p class="p1">}</p>
+<p class="p1">function log(t){logs.unshift(t);logs=logs.slice(0,6);minilog.innerHTML=logs.join('&lt;br&gt;');}</p>
+<p class="p1">function flash(c='#fff'){flashEl.style.background=c;flashEl.style.opacity=.45;setTimeout(()=&gt;flashEl.style.opacity=0,80);}</p>
+<p class="p1">const later=(t,fn)=&gt;timers.push({t,fn});</p>
+<p class="p1">function updateTimers(dt){for(const tm of timers){tm.t-=dt;if(tm.t&lt;=0&amp;&amp;!tm.done){tm.done=true;tm.fn();}}timers=timers.filter(t=&gt;!t.done);}</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== ステージ構築 =====</p>
+<p class="p1">function buildStage(i){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(world)scene.remove(world);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>for(const b of bubbles)b.el.remove();bubbles=[];timers=[];shards=[];pillars=[];npcs=[];event=null;timeScale=1;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>stageIndex=i;S=STAGES[i];</p>
+<p class="p1"><span class="Apple-converted-space"> </span>world=new THREE.Group();scene.add(world);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>scene.background=new THREE.Color(S.sky);scene.fog=new THREE.Fog(S.sky,35,110);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const L=S.len+25,cz=(-S.len-5)/2;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const tex=tileTex(S.floor);tex.repeat.set(S.w/2,L/2);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const floor=new THREE.Mesh(new THREE.PlaneGeometry(S.w,L),new THREE.MeshStandardMaterial({map:tex,roughness:.9}));</p>
+<p class="p1"><span class="Apple-converted-space"> </span>floor.rotation.x=-Math.PI/2;floor.position.z=cz;floor.receiveShadow=true;world.add(floor);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>for(const s of[-1,1]){const wall=new THREE.Mesh(new THREE.BoxGeometry(.5,4,L),std(S.wall));wall.position.set(s*(S.w/2+.25),2,cz);wall.receiveShadow=true;world.add(wall);}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(S.tactile){const t=new THREE.Mesh(new THREE.PlaneGeometry(.35,L),new THREE.MeshStandardMaterial({color:0xf2c200}));t.rotation.x=-Math.PI/2;t.position.set(S.w/2-1.3,.01,cz);world.add(t);}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(S.pillars){for(let z=-15;z&gt;-S.len+5;z-=18)for(const s of[-1,1]){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const x=s*S.w*.28,p=new THREE.Mesh(new THREE.BoxGeometry(1.1,4,1.1),std(0xd0ccc4));p.position.set(x,2,z);p.castShadow=p.receiveShadow=true;world.add(p);pillars.push({x,z,r:.75});}}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const gm=new THREE.MeshStandardMaterial({color:0x2ecc40,emissive:0x1a8a2a});</p>
+<p class="p1"><span class="Apple-converted-space"> </span>for(const s of[-1,1]){const post=new THREE.Mesh(new THREE.BoxGeometry(.5,4.5,.5),gm);post.position.set(s*(S.w/2-.6),2.25,-S.len);world.add(post);}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const glow=new THREE.Mesh(new THREE.PlaneGeometry(S.w,2),new THREE.MeshBasicMaterial({color:0x5dff7a,transparent:true,opacity:.5}));</p>
+<p class="p1"><span class="Apple-converted-space"> </span>glow.rotation.x=-Math.PI/2;glow.position.set(0,.02,-S.len);world.add(glow);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const gs=textSprite('🏁 GOAL','#2ecc40');gs.position.set(0,5,-S.len);world.add(gs);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const ss=textSprite('📍 '+S.name,'#ff3b8d');ss.position.set(0,5,-8);world.add(ss);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const keys=Object.keys(S.weights),tot=keys.reduce((a,k)=&gt;a+S.weights[k],0);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const pickType=()=&gt;{let r=Math.random()*tot;for(const k of keys){if((r-=S.weights[k])&lt;=0)return k;}return keys[0];};</p>
+<p class="p1"><span class="Apple-converted-space"> </span>for(let k=0;k&lt;S.count;k++){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const T=TYPES[pickType()],parts=makePerson(T);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const n={T,parts,mesh:parts.g,phone:null,hasPhone:T.alwaysPhone||Math.random()&lt;S.rate,target:new THREE.Vector3(),</p>
+<p class="p1"><span class="Apple-converted-space">   </span>speed:1,timer:0,standing:false,phase:Math.random()*6,cool:0,angryTime:0,bark:0,pose:'free',rageSpeed:1};</p>
+<p class="p1"><span class="Apple-converted-space">  </span>n.state=n.hasPhone?'phone':'walk';</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(n.hasPhone){n.phone=makePhone(T.acc==='selfie');n.mesh.add(n.phone);}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>n.mesh.position.set((Math.random()-.5)*(S.w-2),0,-10-Math.random()*(S.len-14));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>n.mesh.rotation.y=Math.random()*Math.PI*2;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>world.add(n.mesh);newTarget(n);setPose(n);npcs.push(n);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>player.mesh.position.set(0,0,4);player.mesh.rotation.y=Math.PI;player.dir.set(0,0,-1);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>player.stun=0;player.slow=0;player.stamina=1;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>camera.position.set(0,9,15);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== NPC =====</p>
+<p class="p1">function newTarget(n){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const p=n.mesh.position;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>n.standing=n.state==='phone'?Math.random()&lt;.55:Math.random()&lt;.15;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>n.target.set(THREE.MathUtils.clamp(p.x+(Math.random()-.5)*12,-S.w/2+1,S.w/2-1),0,THREE.MathUtils.clamp(p.z+(Math.random()-.5)*16,-S.len-8,-4));</p>
+<p class="p1"><span class="Apple-converted-space"> </span>n.timer=3+Math.random()*5;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>n.speed=n.state==='phone'?.5+Math.random()*.6:1.1+Math.random()*.7;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(n.T===TYPES.granny)n.speed*=.6;</p>
+<p class="p1">}</p>
+<p class="p1">function setPose(n){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const P=n.parts;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>P.rage.visible=n.state==='angry';</p>
+<p class="p1"><span class="Apple-converted-space"> </span>P.torso.material.emissive.setHex(n.state==='angry'?0x661010:0);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(n.state==='shock'){P.armL.rotation.x=P.armR.rotation.x=-2.8;P.head.rotation.x=-.2;n.pose='fixed';return;}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(n.hasPhone&amp;&amp;n.state==='phone'){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(n.T.acc==='selfie'){P.armR.rotation.x=-1.9;P.head.rotation.x=0;}else{P.armR.rotation.x=-1.2;P.head.rotation.x=.55;}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>P.armL.rotation.x=0;n.pose='phone';return;}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>P.head.rotation.x=(n.state==='sulk'&amp;&amp;!n.hasPhone)?.35:0;n.pose='free';</p>
+<p class="p1">}</p>
+<p class="p1">const dirV=new THREE.Vector3(),awayV=new THREE.Vector3();</p>
+<p class="p1">function updateNPC(n,dt){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const p=n.mesh.position,pp=player.mesh.position;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>n.cool=Math.max(0,n.cool-dt);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>let sp=0,dir=null;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(n.state==='phone'||n.state==='walk'){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>n.timer-=dt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(n.timer&lt;=0||p.distanceTo(n.target)&lt;.5)newTarget(n);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(!n.standing){dir=dirV.subVectors(n.target,p).setY(0).normalize();sp=n.speed;}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(n.state==='walk'){</p>
+<p class="p1"><span class="Apple-converted-space">   </span>const d=p.distanceTo(pp);</p>
+<p class="p1"><span class="Apple-converted-space">   </span>if(d&lt;3){awayV.subVectors(p,pp).setY(0).normalize();dir=dir?dir.add(awayV.multiplyScalar(1.5)).normalize():awayV;sp=Math.max(sp,1.6);}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}else if(n.state==='angry'){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>n.angryTime+=dt;n.bark-=dt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>dir=dirV.subVectors(pp,p).setY(0);const d=dir.length();dir.normalize();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>sp=n.T.speed*n.rageSpeed;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(n.bark&lt;=0){sayN(n,pick(n.T.chase),'angry',2.2);n.bark=3+Math.random()*2;}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(d&lt;.75&amp;&amp;player.stun&lt;=0)caughtBy(n);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>else if(n.angryTime&gt;n.T.giveUp||d&gt;45)giveUp(n);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}else if(n.state==='sulk'){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>n.timer-=dt;if(n.timer&lt;=0){n.state=n.hasPhone?'phone':'walk';setPose(n);newTarget(n);}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(dir&amp;&amp;sp&gt;0){p.addScaledVector(dir,sp*dt);n.mesh.rotation.y=lerpAngle(n.mesh.rotation.y,Math.atan2(dir.x,dir.z),1-Math.exp(-10*dt));}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>p.x=THREE.MathUtils.clamp(p.x,-S.w/2+.4,S.w/2-.4);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>pushOut(p,.3);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>animate(n,sp,dt);</p>
+<p class="p1">}</p>
+<p class="p1">function animate(o,sp,dt){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const P=o.parts;o.phase+=sp*dt*2.4;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const sw=Math.sin(o.phase)*Math.min(1,sp/2)*.6;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>P.legL.rotation.x=sw;P.legR.rotation.x=-sw;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(o.pose==='free'){P.armL.rotation.x=-sw*.8;P.armR.rotation.x=sw*.8;}</p>
+<p class="p1">}</p>
+<p class="p1">function pushOut(p,r){for(const c of pillars){const dx=p.x-c.x,dz=p.z-c.z,d=Math.hypot(dx,dz),m=c.r+r;if(d&lt;m&amp;&amp;d&gt;1e-4){p.x=c.x+dx/d*m;p.z=c.z+dz/d*m;}}}</p>
+<p class="p1">function separate(){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>for(let i=0;i&lt;npcs.length;i++){const a=npcs[i].mesh.position;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for(let j=i+1;j&lt;npcs.length;j++){const b=npcs[j].mesh.position,dx=a.x-b.x,dz=a.z-b.z,d2=dx*dx+dz*dz;</p>
+<p class="p1"><span class="Apple-converted-space">   </span>if(d2&lt;.3&amp;&amp;d2&gt;1e-6){const d=Math.sqrt(d2),m=(.55-d)/2;a.x+=dx/d*m;a.z+=dz/d*m;b.x-=dx/d*m;b.z-=dz/d*m;}}}</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== プレイヤー =====</p>
+<p class="p1">const keys={};</p>
+<p class="p1">addEventListener('keydown',e=&gt;{keys[e.code]=true;if(e.code==='Space'){e.preventDefault();if(!e.repeat)onSpace();}});</p>
+<p class="p1">addEventListener('keyup',e=&gt;keys[e.code]=false);</p>
+<p class="p1">addEventListener('pointerdown',()=&gt;onSpace());</p>
+<p class="p1">const moveV=new THREE.Vector3();</p>
+<p class="p1">function updatePlayer(dt){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const P=player,pos=P.mesh.position;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>P.stun=Math.max(0,P.stun-dt);P.slow=Math.max(0,P.slow-dt);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const ix=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const iz=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>moveV.set(ix,0,iz);let sp=0,dashing=false;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(P.stun&lt;=0&amp;&amp;moveV.lengthSq()&gt;0){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>moveV.normalize();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>dashing=(keys.ShiftLeft||keys.ShiftRight)&amp;&amp;P.stamina&gt;.05;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>sp=dashing?11.5:7.5;if(P.slow&gt;0)sp*=.5;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>P.dir.copy(moveV);pos.addScaledVector(moveV,sp*dt);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>P.mesh.rotation.y=lerpAngle(P.mesh.rotation.y,Math.atan2(moveV.x,moveV.z),1-Math.exp(-14*dt));</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>P.stamina=dashing?Math.max(0,P.stamina-dt*.35):Math.min(1,P.stamina+dt*.18);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>P.speedNow=sp;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>pos.x=THREE.MathUtils.clamp(pos.x,-S.w/2+.4,S.w/2-.4);pos.z=Math.min(pos.z,8);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>pushOut(pos,.3);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>player.pose='free';animate(player,sp,dt);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>P.parts.head.rotation.x=P.stun&gt;0?.45:0;</p>
+<p class="p1">}</p>
+<p class="p1">function collide(){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const pp=player.mesh.position;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>for(const n of npcs){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const p=n.mesh.position,dx=p.x-pp.x,dz=p.z-pp.z,d=Math.hypot(dx,dz);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(d&lt;.6&amp;&amp;d&gt;1e-6){</p>
+<p class="p1"><span class="Apple-converted-space">   </span>if(!event&amp;&amp;n.hasPhone&amp;&amp;n.state==='phone'&amp;&amp;n.cool&lt;=0&amp;&amp;player.speedNow&gt;2)startEvent(n);</p>
+<p class="p1"><span class="Apple-converted-space">   </span>else if(n.state==='walk'&amp;&amp;n.cool&lt;=0){sayN(n,'おっと…','',1.2);n.cool=2;player.slow=.4;}</p>
+<p class="p1"><span class="Apple-converted-space">   </span>const m=.6-d;p.x+=dx/d*m*.7;p.z+=dz/d*m*.7;pp.x-=dx/d*m*.3;pp.z-=dz/d*m*.3;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== スマホ吹っ飛びイベント =====</p>
+<p class="p1">function startEvent(n){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const ph=n.phone;world.attach(ph);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>n.phone=null;n.hasPhone=false;n.state='shock';setPose(n);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const vel=player.dir.clone().multiplyScalar(4+Math.random()*2);vel.x+=(Math.random()-.5)*3;vel.y=6+Math.random()*1.5;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>event={npc:n,phone:ph,vel,spin:new THREE.Vector3(8+Math.random()*8,Math.random()*6,6+Math.random()*8),</p>
+<p class="p1"><span class="Apple-converted-space">  </span>real:0,c:.2+Math.random()*.6,cs:1.3+stageIndex*.15,cursor:0,resolved:false,landed:false,caught:false,broken:false};</p>
+<p class="p1"><span class="Apple-converted-space"> </span>timeScale=.15;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>sayN(n,n.T.hit,'',2.5);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>qteText.textContent=`📱 ${n.T.short}のスマホが飛んだ！ SPACEでキャッチ！`;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>perfectEl.style.left=(event.c-.05)*100+'%';perfectEl.style.width='10%';</p>
+<p class="p1"><span class="Apple-converted-space"> </span>grazeEl.style.left=(event.c-.15)*100+'%';grazeEl.style.width='30%';</p>
+<p class="p1"><span class="Apple-converted-space"> </span>qteEl.style.display='block';</p>
+<p class="p1">}</p>
+<p class="p1">function onSpace(){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(state!=='play'||!event||event.resolved)return;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const d=Math.abs(event.cursor-event.c);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>resolve(d&lt;=.05?'perfect':d&lt;=.15?'graze':'miss');</p>
+<p class="p1">}</p>
+<p class="p1">function updateEvent(rdt,gdt){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const E=event;if(!E)return;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(!E.caught&amp;&amp;!E.landed){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>E.vel.y-=18*gdt;E.phone.position.addScaledVector(E.vel,gdt);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>E.phone.rotation.x+=E.spin.x*gdt;E.phone.rotation.y+=E.spin.y*gdt;E.phone.rotation.z+=E.spin.z*gdt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(E.phone.position.y&lt;=.03&amp;&amp;E.vel.y&lt;0){</p>
+<p class="p1"><span class="Apple-converted-space">   </span>E.phone.position.y=.03;E.landed=true;E.phone.rotation.set(-Math.PI/2,0,Math.random()*6);</p>
+<p class="p1"><span class="Apple-converted-space">   </span>if(E.resolved)finishOutcome(E,'miss');</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(!E.resolved){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>E.real+=rdt;const p=(E.real*E.cs)%2;E.cursor=p&lt;1?p:2-p;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>cursorEl.style.left=`calc(${E.cursor*100}% - 2px)`;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(E.real&gt;1.8)resolve('miss');</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1">}</p>
+<p class="p1">function resolve(r){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const E=event;E.resolved=true;qteEl.style.display='none';timeScale=1;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(r!=='miss'){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>E.caught=true;E.broken=r==='graze'&amp;&amp;Math.random()&lt;.25;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>say(player.mesh,r==='perfect'?'✨キャッチ！すみません！':'あぶなっ…！','sys',1.6);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>player.stun=r==='perfect'?1.0:.6;stats.catches++;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>finishOutcome(E,r);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}else{</p>
+<p class="p1"><span class="Apple-converted-space">  </span>say(player.mesh,'あっ…','',1);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(E.landed)finishOutcome(E,'miss');</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1">}</p>
+<p class="p1">function giveBack(n,ph){const u=ph.userData;n.mesh.add(ph);ph.position.copy(u.p);ph.rotation.copy(u.r);ph.scale.set(1,1,1);n.phone=ph;n.hasPhone=true;setPose(n);}</p>
+<p class="p1">function finishOutcome(E,r){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const n=E.npc,ph=E.phone,pp=player.mesh.position;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(r==='miss')E.broken=Math.random()&lt;.5;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(E.broken){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(r!=='miss'){ph.position.set(pp.x+.3,.03,pp.z-.4);ph.rotation.set(-Math.PI/2,0,1);}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ph.userData.scr.material.color.setHex(0x151515);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>stats.broken++;stats.damage+=n.T.repair;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>spawnShards(ph.position);say(ph.position.clone(),'パリーン💥','sys',1.6);flash('#fff');</p>
+<p class="p1"><span class="Apple-converted-space">  </span>later(.7,()=&gt;sayN(n,n.T.broken,'angry',2.6));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>log(`💥 ${n.T.name}のスマホ破損（修理代 ¥${n.T.repair.toLocaleString()}）`);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}else{</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(r==='miss'){say(ph.position.clone(),'セーフ✨','sys',1.4);later(1.0,()=&gt;giveBack(n,ph));}else giveBack(n,ph);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>later(.5,()=&gt;sayN(n,r==='perfect'?n.T.thanks:n.T.safe,'',2.4));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>log(r==='perfect'?`🙌 ${n.T.short}のスマホをキャッチ！`:`😮‍💨 ${n.T.short}のスマホ無事`);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>let ch=E.broken?n.T.chaseBroken:n.T.chaseSafe;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(r==='perfect')ch=0;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(r==='graze'&amp;&amp;!E.broken)ch*=.5;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>n.state='sulk';n.cool=4;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(Math.random()&lt;ch){n.timer=99;setPose(n);later(1.3,()=&gt;startChase(n));}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>else{n.timer=2.5;setPose(n);}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>event=null;</p>
+<p class="p1">}</p>
+<p class="p1">function startChase(n){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>n.state='angry';n.angryTime=0;n.bark=2.5;n.rageSpeed=.92+Math.random()*.16;setPose(n);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>sayN(n,pick(n.T.chase),'angry',2.4);flash('#ff0000');</p>
+<p class="p1"><span class="Apple-converted-space"> </span>log(`🏃 &lt;span style="color:#ff6060"&gt;${n.T.name}が追いかけてきた！&lt;/span&gt;`);</p>
+<p class="p1">}</p>
+<p class="p1">function endChase(n){n.state='sulk';n.timer=3;setPose(n);}</p>
+<p class="p1">function caughtBy(n){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>sayN(n,n.T.caught,'angry',3);say(player.mesh,'すみませんすみません…','',2.2);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>player.stun=n.T.stun;stats.caught++;stats.damage+=5000;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>log(`🫨 ${n.T.short}に捕まった！（迷惑料 ¥5,000＋時間ロス）`);endChase(n);</p>
+<p class="p1">}</p>
+<p class="p1">function giveUp(n){sayN(n,n.T.giveup,'',2.6);log(`💨 ${n.T.short}が諦めた`);endChase(n);}</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== 破片 =====</p>
+<p class="p1">const shardGeo=new THREE.BoxGeometry(.05,.01,.05),shardMat=new THREE.MeshBasicMaterial({color:0xbfe8ff});</p>
+<p class="p1">function spawnShards(pos){for(let i=0;i&lt;18;i++){const m=new THREE.Mesh(shardGeo,shardMat);m.position.copy(pos).setY(Math.max(pos.y,.05));world.add(m);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>shards.push({m,v:new THREE.Vector3((Math.random()-.5)*5,2+Math.random()*3,(Math.random()-.5)*5)});}}</p>
+<p class="p1">function updateShards(dt){for(const s of shards){if(s.m.position.y&gt;.01){s.v.y-=15*dt;s.m.position.addScaledVector(s.v,dt);s.m.rotation.x+=dt*10;}else s.m.position.y=.01;}}</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== HUD・カメラ =====</p>
+<p class="p1">function updateHUD(){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const pp=player.mesh.position,ch=npcs.filter(n=&gt;n.state==='angry').length;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>hud.innerHTML=`📍 &lt;b&gt;${S.name}&lt;/b&gt;（スマホ率 ${Math.round(S.rate*100)}%・${S.data?'実測データ':'推定'}）&lt;br&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>⏱ ${stats.time.toFixed(1)}秒　🏁 残り ${Math.max(0,Math.ceil(S.len+pp.z))}m&lt;br&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>📱 キャッチ ${stats.catches}　💥 破損 ${stats.broken}　🫨 捕まった ${stats.caught}&lt;br&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>🏃 追っ手 &lt;b style="color:${ch?'#ff5050':'#fff'}"&gt;${ch}人&lt;/b&gt;　💸 被害額 ¥${stats.damage.toLocaleString()}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>&lt;div id="stamina"&gt;&lt;div id="staminaFill" style="width:${player.stamina*100}%"&gt;&lt;/div&gt;&lt;/div&gt;`;</p>
+<p class="p1">}</p>
+<p class="p1">const camGoal=new THREE.Vector3();</p>
+<p class="p1">function updateCamera(dt){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const pp=player.mesh.position,slow=event&amp;&amp;!event.resolved;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>camGoal.set(pp.x,pp.y+(slow?5.5:8.5),pp.z+(slow?7:10.5));</p>
+<p class="p1"><span class="Apple-converted-space"> </span>camera.position.lerp(camGoal,1-Math.exp(-5*dt));</p>
+<p class="p1"><span class="Apple-converted-space"> </span>camera.lookAt(pp.x,pp.y+1,pp.z-5);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>sun.position.set(pp.x+12,30,pp.z+12);sun.target.position.copy(pp);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== 画面遷移 =====</p>
+<p class="p1">function rankOf(s){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(s.broken===0&amp;&amp;s.caught===0)return '✨ 神回避ギャル ✨';</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(s.damage&lt;50000)return '😅 まぁまぁ迷惑な人';</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(s.damage&lt;150000)return '🌪 歩く災害';</p>
+<p class="p1"><span class="Apple-converted-space"> </span>return '💀 博多の伝説（悪い意味で）';</p>
+<p class="p1">}</p>
+<p class="p1">function showTitle(){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const rows=STAGES.map((s,i)=&gt;`&lt;tr&gt;&lt;td&gt;${i+1}. ${s.name}&lt;/td&gt;&lt;td&gt;スマホ率 ${Math.round(s.rate*100)}%&lt;/td&gt;&lt;td&gt;${s.data?'実測':'推定'}&lt;/td&gt;&lt;/tr&gt;`).join('');</p>
+<p class="p1"><span class="Apple-converted-space"> </span>overlay.innerHTML=`&lt;h1&gt;📱 キャッチ・ザ・スマホ！&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>&lt;p&gt;あなたは超急いでる。でもみんなスマホ見てて前を見てない。&lt;br&gt;ぶつかったら「あっ携帯が！」→ スマホが吹っ飛ぶ！&lt;br&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>SPACEで&lt;b style="color:#2ecc40"&gt;緑&lt;/b&gt;に合わせればキャッチ（破損0%）、&lt;b style="color:#e8b400"&gt;黄&lt;/b&gt;はギリ（25%）、失敗は50%で破損…&lt;br&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>壊された人はキレて追いかけてくる。捕まると謝罪タイムで足止め！&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>&lt;p style="opacity:.85"&gt;移動：WASD / 矢印　ダッシュ：Shift　キャッチ：SPACE / クリック&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>&lt;table&gt;${rows}&lt;/table&gt;&lt;button id="go"&gt;スタート&lt;/button&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>overlay.style.display='flex';$('go').onclick=()=&gt;{total={time:0,catches:0,broken:0,damage:0,caught:0};startStage(0);};</p>
+<p class="p1">}</p>
+<p class="p1">function startStage(i){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>buildStage(i);stats={time:0,catches:0,broken:0,damage:0,caught:0,hits:0};</p>
+<p class="p1"><span class="Apple-converted-space"> </span>logs=[];minilog.innerHTML='';qteEl.style.display='none';overlay.style.display='none';state='play';</p>
+<p class="p1">}</p>
+<p class="p1">function stageClear(){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>state='clear';qteEl.style.display='none';</p>
+<p class="p1"><span class="Apple-converted-space"> </span>for(const k in total)total[k]+=stats[k];</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const last=stageIndex===STAGES.length-1,s=last?total:stats;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>overlay.innerHTML=`&lt;h1&gt;${last?'🎉 全ステージ制覇！':'🏁 '+S.name+' クリア！'}&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>&lt;p style="font-size:18px;line-height:1.9"&gt;⏱ タイム ${s.time.toFixed(1)}秒&lt;br&gt;📱 キャッチ ${s.catches}回　💥 破損 ${s.broken}台　🫨 捕まった ${s.caught}回&lt;br&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>💸 被害額 ¥${s.damage.toLocaleString()}&lt;/p&gt;&lt;h2&gt;称号：${rankOf(s)}&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>&lt;button id="go"&gt;${last?'最初から':'次へ：'+STAGES[stageIndex+1].name}&lt;/button&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space"> </span>overlay.style.display='flex';</p>
+<p class="p1"><span class="Apple-converted-space"> </span>$('go').onclick=()=&gt;last?showTitle():startStage(stageIndex+1);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// ===== メインループ =====</p>
+<p class="p1">const clock=new THREE.Clock();</p>
+<p class="p1">function loop(){</p>
+<p class="p1"><span class="Apple-converted-space"> </span>requestAnimationFrame(loop);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>const rdt=Math.min(clock.getDelta(),.05);</p>
+<p class="p1"><span class="Apple-converted-space"> </span>if(state==='play'){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const gdt=rdt*timeScale;stats.time+=gdt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>updatePlayer(gdt);for(const n of npcs)updateNPC(n,gdt);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>separate();collide();updateEvent(rdt,gdt);updateShards(gdt);updateTimers(rdt);updateHUD();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if(player.mesh.position.z&lt;-S.len)stageClear();</p>
+<p class="p1"><span class="Apple-converted-space"> </span>}</p>
+<p class="p1"><span class="Apple-converted-space"> </span>updateCamera(rdt);updateBubbles(rdt);renderer.render(scene,camera);</p>
+<p class="p1">}</p>
+<p class="p1">buildStage(0);showTitle();loop();</p>
+<p class="p1">&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>

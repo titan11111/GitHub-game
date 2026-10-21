@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カスタムルーレット</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🎰 カスタムルーレット 🎰</h1>
+        
+        <!-- ルーレット項目の設定 -->
+        <div class="settings">
+            <h2>📝 項目を設定しよう！</h2>
+            <div class="input-group">
+                <input type="text" id="itemInput" placeholder="項目を入力してね（例：りんご）" maxlength="150">
+                <button id="addBtn">追加</button>
+            </div>
+            
+            <div class="items-list">
+                <h3>現在の項目：</h3>
+                <div id="currentItems"></div>
+            </div>
+        </div>
+
+        <!-- ルーレット -->
+        <div class="roulette-container">
+            <div class="roulette-wrapper">
+                <canvas id="rouletteCanvas" width="300" height="300"></canvas>
+                <div class="pointer">▲</div>
+            </div>
+            <button id="spinBtn" disabled>🎯 ルーレットを回す！</button>
+        </div>
+
+        <!-- 結果表示 -->
+        <div class="result" id="result"></div>
+        
+        <!-- 操作説明 -->
+        <div class="instructions">
+            <h3>📱 使い方</h3>
+            <p>1. 上の入力欄に項目を入力して「追加」を押してね</p>
+            <p>2. 項目が2つ以上になったら「ルーレットを回す！」ボタンが押せるよ</p>
+            <p>3. 音を出すために最初にどこかをタップしてね</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

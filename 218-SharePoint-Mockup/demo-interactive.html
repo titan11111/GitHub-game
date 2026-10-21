@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>営業支援ダッシュボード - インタラクティブデモ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .navbar {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .navbar-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            color: #666;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .content-section {
+            display: none;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            min-height: 600px;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .demo-frame {
+            width: 100%;
+            height: 800px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .interactive-demo {
+            padding: 0;
+        }
+
+        .demo-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .demo-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #f5f7fa;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+
+        .interactive-controls {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e2e7;
+        }
+
+        .demo-output {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 300px;
+        }
+
+        .output-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .metrics-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-card.alt {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .metric-card.success {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .action-list {
+            list-style: none;
+            margin-top: 12px;
+        }
+
+        .action-item {
+            padding: 10px;
+            background: #f5f7fa;
+            border-left: 3px solid #667eea;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .action-item.urgent {
+            border-left-color: #ff6b6b;
+            background: #fff5f5;
+        }
+
+        .action-item.completed {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 12px;
+        }
+
+        .comparison-table th {
+            background: #f0f2f5;
+            padding: 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .comparison-table td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .comparison-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .comparison-table tr.highlight {
+            background: #fffacd;
+            font-weight: bold;
+        }
+
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #4facfe;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 16px;
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .interactive-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .demo-frame {
+                height: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ナビバー -->
+        <div class="navbar">
+            <div class="navbar-title">🎯 営業支援ダッシュボード - インタラクティブデモ</div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('a')">
+                    📊 A案 - シンプル・モダン型
+                </button>
+                <button class="tab-btn" onclick="switchTab('b')">
+                    📈 B案 - データ重視型
+                </button>
+                <button class="tab-btn" onclick="switchTab('c')">
+                    🎨 C案 - ビジュアル重視型
+                </button>
+            </div>
+        </div>
+
+        <!-- A案 -->
+        <div class="content-section active" id="tab-a">
+            <div class="demo-title">✨ A案：シンプル・モダン型</div>
+            <div class="demo-subtitle">
+                最初の5秒で情報を把握できる。営業サポーター全員向けのバランス型デザイン。
+            </div>
+
+            <div class="interactive-controls">
+                <div class="control-group">
+                    <label class="control-label">売上目標（万円）</label>
+                    <input type="number" id="a-target" class="control-input" value="1000" onchange="updateDemoA()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">売上実績（万円）</label>
+                    <input type="number" id="a-actual" class="control-input" value="850" onchange="updateDemoA()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">チーム内順位</label>
+                    <input type="number" id="a-rank" class="control-input" value="3" min="1" max="12" onchange="updateDemoA()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">顧客評価</label>
+                    <input type="number" id="a-rating" class="control-input" value="4.7" min="1" max="5" step="0.1" onchange="updateDemoA()">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="completeActionA()">✓ アクション完了を試す</button>
+                <button class="btn btn-secondary" onclick="resetDemoA()">リセット</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="output-title">ダッシュボード プレビュー</div>
+
+                <div class="metrics-display">
+                    <div class="metric-card">
+                        <div class="metric-value" id="a-achievement">85%</div>
+                        <div class="metric-label">達成率</div>
+                    </div>
+                    <div class="metric-card alt">
+                        <div class="metric-value" id="a-cases">48</div>
+                        <div class="metric-label">案件数</div>
+                    </div>
+                    <div class="metric-card success">
+                        <div class="metric-value" id="a-rating-display">4.7/5</div>
+                        <div class="metric-label">顧客評価</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="a-rank-display">3位</div>
+                        <div class="metric-label">チーム順位</div>
+                    </div>
+                </div>
+
+                <div class="output-title" style="margin-top: 20px;">次のアクション</div>
+                <ul class="action-list">
+                    <li class="action-item urgent">🔴 〇〇産業とのフォローアップ - 明日 10:00</li>
+                    <li class="action-item">📅 提案資料の提出 - 3日後</li>
+                    <li class="action-item">💬 新規リードの初回ヒアリング - 1週間後</li>
+                </ul>
+
+                <div class="info-box">
+                    💡 A案の特徴：情報がシンプルで、営業現場でも1目で理解できる。次のアクションが優先順位順に表示される。
+                </div>
+            </div>
+        </div>
+
+        <!-- B案 -->
+        <div class="content-section" id="tab-b">
+            <div class="demo-title">📊 B案：データ重視型</div>
+            <div class="demo-subtitle">
+                Excelライクな詳細データ表示。数字を重視するユーザー・管理者向け。
+            </div>
+
+            <div class="interactive-controls">
+                <div class="control-group">
+                    <label class="control-label">新規案件数</label>
+                    <input type="number" id="b-new" class="control-input" value="12" onchange="updateDemoB()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">継続案件数</label>
+                    <input type="number" id="b-ongoing" class="control-input" value="28" onchange="updateDemoB()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">クローズ案件数</label>
+                    <input type="number" id="b-closed" class="control-input" value="8" onchange="updateDemoB()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">期限超過案件</label>
+                    <input type="number" id="b-overdue" class="control-input" value="2" onchange="updateDemoB()">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="exportDataB()">📥 データエクスポート</button>
+                <button class="btn btn-secondary" onclick="resetDemoB()">リセット</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="output-title">チーム業績比較表</div>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>順位</th>
+                            <th>名前</th>
+                            <th>売上</th>
+                            <th>達成率</th>
+                            <th>案件数</th>
+                            <th>評価</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1位</td>
+                            <td>佐藤花子</td>
+                            <td>¥950万</td>
+                            <td>95%</td>
+                            <td>52件</td>
+                            <td>4.9/5</td>
+                        </tr>
+                        <tr>
+                            <td>2位</td>
+                            <td>鈴木一郎</td>
+                            <td>¥900万</td>
+                            <td>90%</td>
+                            <td>48件</td>
+                            <td>4.8/5</td>
+                        </tr>
+                        <tr class="highlight">
+                            <td>3位</td>
+                            <td>山田太郎（あなた）</td>
+                            <td id="b-sales">¥850万</td>
+                            <td id="b-achievement">85%</td>
+                            <td id="b-total">48件</td>
+                            <td>4.7/5</td>
+                        </tr>
+                        <tr>
+                            <td>4位</td>
+                            <td>田中花子</td>
+                            <td>¥800万</td>
+                            <td>80%</td>
+                            <td>45件</td>
+                            <td>4.6/5</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="info-box" style="margin-top: 20px;">
+                    📌 B案の特徴：詳細なテーブル形式で、チーム全体の業績が一覧で比較できる。管理者や詳細派向け。
+                </div>
+            </div>
+        </div>
+
+        <!-- C案 -->
+        <div class="content-section" id="tab-c">
+            <div class="demo-title">🎨 C案：ビジュアル重視型</div>
+            <div class="demo-subtitle">
+                グラフ・チャート多用で直感的に理解できる。ビジュアルインパクト重視。
+            </div>
+
+            <div class="interactive-controls">
+                <div class="control-group">
+                    <label class="control-label">売上実績（万円）</label>
+                    <input type="number" id="c-sales" class="control-input" value="850" min="0" max="2000" onchange="updateDemoC()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">先月比（%）</label>
+                    <input type="number" id="c-growth" class="control-input" value="-3" min="-50" max="50" onchange="updateDemoC()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">顧客満足度（%）</label>
+                    <input type="number" id="c-satisfaction" class="control-input" value="94" min="0" max="100" onchange="updateDemoC()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">テーマ</label>
+                    <select class="control-input" onchange="updateDemoC()">
+                        <option value="light">ライト</option>
+                        <option value="dark">ダーク</option>
+                        <option value="colorful">カラフル</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="shareVisualsC()">🔗 ビジュアル共有</button>
+                <button class="btn btn-secondary" onclick="resetDemoC()">リセット</button>
+            </div>
+
+            <div class="demo-output">
+                <div class="output-title">📊 売上トレンド</div>
+                <div style="margin: 20px 0;">
+                    <div style="display: flex; align-items: flex-end; gap: 8px; height: 150px;">
+                        <div style="width: 40px; height: 60px; background: #667eea; border-radius: 4px; display: flex; align-items: flex-end; justify-content: center; color: white; font-size: 10px;">3月</div>
+                        <div style="width: 40px; height: 75px; background: #667eea; border-radius: 4px; display: flex; align-items: flex-end; justify-content: center; color: white; font-size: 10px;">4月</div>
+                        <div style="width: 40px; height: 80px; background: #667eea; border-radius: 4px; display: flex; align-items: flex-end; justify-content: center; color: white; font-size: 10px;">5月</div>
+                        <div style="width: 40px; height: 82px; background: #667eea; border-radius: 4px; display: flex; align-items: flex-end; justify-content: center; color: white; font-size: 10px;">6月</div>
+                        <div style="width: 40px; height: 88px; background: #667eea; border-radius: 4px; display: flex; align-items: flex-end; justify-content: center; color: white; font-size: 10px;">7月</div>
+                        <div style="width: 40px; height: 85px; background: #764ba2; border-radius: 4px; display: flex; align-items: flex-end; justify-content: center; color: white; font-size: 10px;">8月</div>
+                    </div>
+                    <div id="c-growth-indicator" style="margin-top: 12px; font-size: 14px; font-weight: bold;">
+                        📉 先月比 -3% （要改善）
+                    </div>
+                </div>
+
+                <div class="metrics-display" style="margin-top: 20px;">
+                    <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <div class="metric-value" id="c-sales-display">¥850万</div>
+                        <div class="metric-label">売上実績</div>
+                    </div>
+                    <div id="c-satisfaction-card" class="metric-card success">
+                        <div class="metric-value">94%</div>
+                        <div class="metric-label">顧客満足度</div>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top: 20px;">
+                    🎨 C案の特徴：グラフやチャートで視覚的に情報を表現。トレンドや比較が直感的に分かる。説明会やデモに最適。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // A案の更新
+        function updateDemoA() {
+            const target = parseFloat(document.getElementById('a-target').value) || 1000;
+            const actual = parseFloat(document.getElementById('a-actual').value) || 850;
+            const rank = parseInt(document.getElementById('a-rank').value) || 3;
+            const rating = parseFloat(document.getElementById('a-rating').value) || 4.7;
+
+            const achievement = Math.round((actual / target) * 100);
+            document.getElementById('a-achievement').textContent = achievement + '%';
+            document.getElementById('a-rank-display').textContent = rank + '位';
+            document.getElementById('a-rating-display').textContent = rating.toFixed(1) + '/5';
+        }
+
+        function completeActionA() {
+            alert('✓ アクション「〇〇産業とのフォローアップ」を完了しました！');
+            document.querySelector('#tab-a .action-item').classList.add('completed');
+        }
+
+        function resetDemoA() {
+            document.getElementById('a-target').value = 1000;
+            document.getElementById('a-actual').value = 850;
+            document.getElementById('a-rank').value = 3;
+            document.getElementById('a-rating').value = 4.7;
+            document.querySelectorAll('#tab-a .action-item').forEach(el => el.classList.remove('completed'));
+            updateDemoA();
+        }
+
+        // B案の更新
+        function updateDemoB() {
+            const newCases = parseInt(document.getElementById('b-new').value) || 12;
+            const ongoing = parseInt(document.getElementById('b-ongoing').value) || 28;
+            const closed = parseInt(document.getElementById('b-closed').value) || 8;
+            const total = newCases + ongoing + closed;
+
+            document.getElementById('b-total').textContent = total + '件';
+            document.getElementById('b-achievement').textContent = '85%';
+            document.getElementById('b-sales').textContent = '¥850万';
+        }
+
+        function exportDataB() {
+            alert('📥 データをCSV形式でエクスポートしました。');
+        }
+
+        function resetDemoB() {
+            document.getElementById('b-new').value = 12;
+            document.getElementById('b-ongoing').value = 28;
+            document.getElementById('b-closed').value = 8;
+            document.getElementById('b-overdue').value = 2;
+            updateDemoB();
+        }
+
+        // C案の更新
+        function updateDemoC() {
+            const sales = parseFloat(document.getElementById('c-sales').value) || 850;
+            const growth = parseFloat(document.getElementById('c-growth').value) || -3;
+
+            document.getElementById('c-sales-display').textContent = '¥' + sales.toLocaleString() + '万';
+
+            const growthEl = document.getElementById('c-growth-indicator');
+            if (growth > 0) {
+                growthEl.textContent = '📈 先月比 +' + growth + '% （好調）';
+                growthEl.style.color = '#43e97b';
+            } else {
+                growthEl.textContent = '📉 先月比 ' + growth + '% （要改善）';
+                growthEl.style.color = '#ff6b6b';
+            }
+        }
+
+        function shareVisualsC() {
+            alert('🔗 ビジュアルをSlack・Teamsで共有しました。');
+        }
+
+        function resetDemoC() {
+            document.getElementById('c-sales').value = 850;
+            document.getElementById('c-growth').value = -3;
+            document.getElementById('c-satisfaction').value = 94;
+            updateDemoC();
+        }
+
+        // 初期化
+        updateDemoA();
+        updateDemoB();
+        updateDemoC();
+    </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+/* ============================================
+   コントロールパネル関連スタイル
+   ============================================
+   
+   役割: コントロールパネル、方向パッド、アクションボタンのスタイル
+   
+   含まれる内容:
+   - コントロールパネル（#control-panel）
+   - 方向パッド（.d-pad, .pad-btn）
+   - アクションボタン（.action-group, .circle-btn）
+   - レスポンシブ対応（メディアクエリ）
+   ============================================ */
+
+    }
+    
+    /* コマンドボタンをタッチ操作に最適化 */
+    .command-box li {
+        /* タッチ操作で直接選択可能にする */
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);
+    }
+}
+
+.d-pad {
+    display: grid;
+    grid-template-areas: 
+        ". up ."
+        "left . right"
+        ". down .";
+    gap: 2px;
+}
+
+.pad-btn {
+    width: 55px;
+    height: 55px;
+    background: var(--btn-bg);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 4px var(--btn-shadow);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.pad-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px var(--btn-shadow);
+    background: #222;
+}
+
+.up { grid-area: up; } 
+.down { grid-area: down; } 
+.left { grid-area: left; } 
+.right { grid-area: right; }
+
+.action-group { 
+    display: flex; 
+    gap: 15px; 
+    transform: rotate(-5deg); 
+}
+
+.circle-btn {
+    width: 70px;
+    height: 70px;
+    background: #a00;
+    border: 2px solid #500;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    box-shadow: 0 4px var(--btn-shadow);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.circle-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px var(--btn-shadow); 
+    background: #700; 
+}
+
+.btn-a { margin-top: -10px; }
+.btn-b { 
+    margin-top: 20px; 
+    background: #444; 
+    border-color: #222; 
+}
+

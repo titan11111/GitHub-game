@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚔️ クロノ・ブレイド RPG</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+  }
+  #gameWrapper {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    border: 3px solid #4a9eff;
+    box-shadow: 0 0 40px #4a9eff66, 0 0 80px #4a9eff33;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  canvas { display: block; }
+  #ui {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  #hud {
+    position: absolute;
+    top: 8px; left: 8px;
+    color: #fff;
+    font-size: 13px;
+    text-shadow: 1px 1px 3px #000;
+    pointer-events: none;
+  }
+  .hud-panel {
+    background: rgba(0,0,20,0.82);
+    border: 1.5px solid #4a9eff88;
+    border-radius: 6px;
+    padding: 7px 12px;
+    margin-bottom: 5px;
+    min-width: 180px;
+  }
+  .hud-name { color: #ffd700; font-weight: bold; font-size: 15px; margin-bottom: 3px; }
+  .bar-label { color: #aaa; font-size: 11px; margin-bottom: 1px; }
+  .bar-bg { background: #111; border-radius: 4px; height: 10px; width: 160px; margin-bottom: 3px; overflow: hidden; }
+  .bar-hp { height: 10px; background: linear-gradient(90deg,#e74c3c,#ff6b6b); border-radius: 4px; transition: width 0.3s; }
+  .bar-mp { height: 10px; background: linear-gradient(90deg,#2980b9,#74b9ff); border-radius: 4px; transition: width 0.3s; }
+  .bar-xp { height: 10px; background: linear-gradient(90deg,#f39c12,#fdcb6e); border-radius: 4px; transition: width 0.3s; }
+  #msgBox {
+    position: absolute;
+    bottom: 8px; left: 8px; right: 8px;
+    background: rgba(0,0,20,0.92);
+    border: 1.5px solid #4a9eff88;
+    border-radius: 6px;
+    padding: 10px 15px;
+    color: #fff;
+    font-size: 14px;
+    min-height: 58px;
+    pointer-events: none;
+    display: none;
+  }
+  #msgBox .msg-title { color: #ffd700; font-size: 12px; margin-bottom: 4px; }
+  #battleUI {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,20,0.97);
+    border-top: 2px solid #4a9eff;
+    height: 200px;
+    display: none;
+    pointer-events: all;
+  }
+  #battleLog {
+    position: absolute;
+    top: 8px; left: 10px; right: 10px;
+    height: 70px;
+    overflow-y: auto;
+    font-size: 13px;
+    color: #ddd;
+    line-height: 1.5;
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+    padding: 4px 8px;
+  }
+  #battleLog .log-dmg { color: #ff6b6b; }
+  #battleLog .log-heal { color: #55efc4; }
+  #battleLog .log-skill { color: #74b9ff; }
+  #battleLog .log-info { color: #fdcb6e; }
+  #battleButtons {
+    position: absolute;
+    bottom: 10px; left: 10px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .btn {
+    background: linear-gradient(135deg, #1a1a3e, #2d2d5e);
+    color: #fff;
+    border: 1.5px solid #4a9eff;
+    border-radius: 5px;
+    padding: 7px 14px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    transition: all 0.15s;
+    pointer-events: all;
+  }
+  .btn:hover { background: linear-gradient(135deg,#2a2a5e,#4040a0); box-shadow: 0 0 10px #4a9eff88; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-attack { border-color: #e74c3c; }
+  .btn-skill  { border-color: #74b9ff; }
+  .btn-item   { border-color: #55efc4; }
+  .btn-run    { border-color: #fdcb6e; }
+  #enemyStatus {
+    position: absolute;
+    top: 8px; right: 10px;
+    color: #fff; font-size: 13px; text-align: right;
+  }
+  .enemy-name { color: #ff6b6b; font-weight: bold; font-size: 15px; }
+  #skillMenu, #itemMenu {
+    position: absolute;
+    bottom: 10px; left: 10px;
+    background: rgba(0,0,30,0.98);
+    border: 1.5px solid #74b9ff;
+    border-radius: 6px;
+    padding: 8px;
+    display: none;
+    pointer-events: all;
+    z-index: 10;
+  }
+  .menu-title { color: #ffd700; font-size: 12px; margin-bottom: 6px; border-bottom: 1px solid #444; padding-bottom: 3px; }
+  .skill-btn, .item-btn {
+    display: block; width: 100%;
+    background: rgba(255,255,255,0.05);
+    color: #fff; border: 1px solid #555;
+    border-radius: 4px; padding: 5px 10px;
+    margin-bottom: 4px; cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 12px; text-align: left;
+    transition: background 0.1s;
+    pointer-events: all;
+  }
+  .skill-btn:hover, .item-btn:hover { background: rgba(74,158,255,0.2); border-color: #4a9eff; }
+  #menuScreen {
+    position: absolute; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,20,0.97);
+    display: none;
+    pointer-events: all;
+    z-index: 20;
+  }
+  #menuScreen h2 { color: #ffd700; text-align: center; margin: 20px 0 15px; font-size: 22px; letter-spacing: 3px; }
+  .menu-section { padding: 10px 30px; border-top: 1px solid #333; }
+  .menu-section h3 { color: #4a9eff; font-size: 14px; margin-bottom: 8px; }
+  .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat-row { display: flex; justify-content: space-between; color: #ccc; font-size: 13px; padding: 2px 0; }
+  .stat-val { color: #ffd700; }
+  #menuBtns { display: flex; gap: 10px; justify-content: center; margin-top: 15px; padding: 0 30px; flex-wrap: wrap; }
+  #titleScreen {
+    position: absolute; top:0; left:0; right:0; bottom:0;
+    background: linear-gradient(180deg, #000010, #0a0a2a, #000010);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    pointer-events: all; z-index: 30;
+  }
+  #titleScreen h1 {
+    font-size: 52px; color: #ffd700;
+    text-shadow: 0 0 30px #ffd70088, 0 0 60px #ffd70044;
+    letter-spacing: 4px; margin-bottom: 10px;
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  #titleScreen .subtitle { color: #74b9ff; font-size: 16px; margin-bottom: 50px; letter-spacing: 2px; }
+  @keyframes glow {
+    from { text-shadow: 0 0 20px #ffd70088; }
+    to   { text-shadow: 0 0 50px #ffd700cc, 0 0 100px #ffd70066; }
+  }
+  .title-btn {
+    background: linear-gradient(135deg, #1a1a4e, #2d2d7e);
+    color: #fff; border: 2px solid #ffd700;
+    border-radius: 8px; padding: 12px 40px;
+    font-size: 18px; cursor: pointer;
+    font-family: 'Courier New', monospace;
+    margin: 8px; transition: all 0.2s;
+    letter-spacing: 2px;
+  }
+  .title-btn:hover { background: linear-gradient(135deg,#2a2a7e,#4040c0); box-shadow: 0 0 20px #ffd70088; transform: scale(1.05); }
+  #gameOverScreen {
+    position: absolute; top:0; left:0; right:0; bottom:0;
+    background: rgba(10,0,0,0.97);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    pointer-events: all; z-index: 25;
+  }
+  #gameOverScreen h1 { font-size: 60px; color: #e74c3c; text-shadow: 0 0 30px #e74c3caa; margin-bottom: 20px; }
+  #gameOverScreen p { color: #aaa; margin-bottom: 30px; font-size: 16px; }
+  #shopScreen {
+    position: absolute; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,5,20,0.98);
+    display: none; pointer-events: all; z-index: 22;
+    overflow-y: auto;
+  }
+  #shopScreen h2 { color: #ffd700; text-align: center; padding: 20px 0 10px; font-size: 22px; }
+  .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px 20px; }
+  .shop-item {
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid #4a9eff55;
+    border-radius: 8px; padding: 12px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .shop-item:hover { border-color: #ffd700; background: rgba(255,215,0,0.08); }
+  .shop-item-name { color: #fff; font-weight: bold; font-size: 14px; }
+  .shop-item-desc { color: #888; font-size: 12px; margin: 4px 0; }
+  .shop-item-price { color: #ffd700; font-size: 14px; }
+  #shopGold { text-align: center; color: #ffd700; font-size: 15px; padding: 5px; }
+  #notif {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    background: rgba(0,0,20,0.95);
+    border: 2px solid #ffd700;
+    border-radius: 8px; padding: 15px 30px;
+    color: #fff; font-size: 16px; text-align: center;
+    display: none; pointer-events: none; z-index: 50;
+    animation: fadeInOut 2s forwards;
+  }
+  @keyframes fadeInOut {
+    0%{opacity:0;transform:translate(-50%,-60%)}
+    15%{opacity:1;transform:translate(-50%,-50%)}
+    70%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-40%)}
+  }
+  #minimap {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(0,0,20,0.85);
+    border: 1.5px solid #4a9eff88;
+    border-radius: 4px;
+    pointer-events: none;
+  }
+  .stars { position: absolute; top:0;left:0;right:0;bottom:0; pointer-events:none; overflow:hidden; }
+</style>
+</head>
+<body>
+<div id="gameWrapper">
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <div id="ui">
+
+    <!-- HUD -->
+    <div id="hud">
+      <div class="hud-panel">
+        <div class="hud-name" id="hudName">勇者アリア Lv.1</div>
+        <div class="bar-label">HP</div>
+        <div class="bar-bg"><div class="bar-hp" id="barHp" style="width:100%"></div></div>
+        <span id="hudHp" style="font-size:11px;color:#ff6b6b">100/100</span>
+        <div class="bar-label">MP</div>
+        <div class="bar-bg"><div class="bar-mp" id="barMp" style="width:100%"></div></div>
+        <span id="hudMp" style="font-size:11px;color:#74b9ff">50/50</span>
+        <div class="bar-label">EXP</div>
+        <div class="bar-bg"><div class="bar-xp" id="barXp" style="width:0%"></div></div>
+        <div style="font-size:11px;color:#fdcb6e">
+          <span id="hudGold">💰 0G</span>
+          &nbsp;&nbsp;<span id="hudStep">🗺 FIELD</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimap -->
+    <canvas id="minimap" width="120" height="120"></canvas>
+
+    <!-- Message Box (field) -->
+    <div id="msgBox">
+      <div class="msg-title">📜 メッセージ</div>
+      <div id="msgText"></div>
+    </div>
+
+    <!-- Battle UI -->
+    <div id="battleUI">
+      <div id="battleLog"></div>
+      <div id="enemyStatus">
+        <div class="enemy-name" id="eName">スライム</div>
+        <div class="bar-label">HP</div>
+        <div class="bar-bg" style="margin-left:auto">
+          <div class="bar-hp" id="eBarHp" style="width:100%"></div>
+        </div>
+        <span id="eHp" style="font-size:11px;color:#ff6b6b">30/30</span>
+      </div>
+      <div id="battleButtons">
+        <button class="btn btn-attack" id="btnAtk" onclick="battleAction('attack')">⚔️ 攻撃</button>
+        <button class="btn btn-skill"  id="btnSkill" onclick="toggleSkillMenu()">✨ スキル</button>
+        <button class="btn btn-item"   id="btnItem" onclick="toggleItemMenu()">🎒 アイテム</button>
+        <button class="btn btn-run"    id="btnRun" onclick="battleAction('run')">💨 逃げる</button>
+      </div>
+      <!-- Skill Menu -->
+      <div id="skillMenu">
+        <div class="menu-title">✨ スキル選択 (MP消費)</div>
+        <div id="skillList"></div>
+        <button class="skill-btn" onclick="closeSubMenus()" style="color:#aaa;margin-top:4px">← 戻る</button>
+      </div>
+      <!-- Item Menu -->
+      <div id="itemMenu">
+        <div class="menu-title">🎒 アイテム使用</div>
+        <div id="itemList"></div>
+        <button class="item-btn" onclick="closeSubMenus()" style="color:#aaa;margin-top:4px">← 戻る</button>
+      </div>
+    </div>
+
+    <!-- Menu Screen -->
+    <div id="menuScreen">
+      <h2>⚔ メニュー ⚔</h2>
+      <div class="menu-section">
+        <h3>📊 ステータス</h3>
+        <div class="menu-grid" id="menuStats"></div>
+      </div>
+      <div class="menu-section">
+        <h3>🎒 所持品</h3>
+        <div id="menuItems" style="color:#ccc;font-size:13px"></div>
+      </div>
+      <div class="menu-section">
+        <h3>✨ スキル</h3>
+        <div id="menuSkills" style="color:#ccc;font-size:13px"></div>
+      </div>
+      <div id="menuBtns">
+        <button class="btn" onclick="openShop()">🏪 ショップ</button>
+        <button class="btn" onclick="saveGame()">💾 セーブ</button>
+        <button class="btn" onclick="loadGame()">📂 ロード</button>
+        <button class="btn" onclick="closeMenu()">✖ 閉じる</button>
+      </div>
+    </div>
+
+    <!-- Shop Screen -->
+    <div id="shopScreen">
+      <h2>🏪 ショップへようこそ！</h2>
+      <div id="shopGold"></div>
+      <div class="shop-grid" id="shopItems"></div>
+      <div style="text-align:center;margin:15px">
+        <button class="btn" onclick="closeShop()">← 戻る</button>
+      </div>
+    </div>
+
+    <!-- Title Screen -->
+    <div id="titleScreen">
+      <h1>⚔ クロノ・ブレイド</h1>
+      <div class="subtitle">～ 時の刃 ～</div>
+      <button class="title-btn" onclick="startNewGame()">🗡 新しい冒険</button>
+      <button class="title-btn" onclick="loadGame(true)">📂 続きから</button>
+      <div style="color:#555;font-size:12px;margin-top:30px">
+        矢印キー：移動 &nbsp;|&nbsp; Space/Enter：決定 &nbsp;|&nbsp; Esc：メニュー
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameOverScreen">
+      <h1>GAME OVER</h1>
+      <p id="goMsg">力尽きてしまった…</p>
+      <button class="title-btn" onclick="respawn()">🔄 復活する</button>
+      <button class="title-btn" onclick="showTitle()">🏠 タイトルへ</button>
+    </div>
+
+    <!-- Notification -->
+    <div id="notif" id="notif"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  ⚔  CHRONO BLADE RPG  ⚔
+//  Complete Single-File JavaScript RPG
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx    = canvas.getContext('2d');
+const mmCanvas = document.getElementById('minimap');
+const mmCtx    = mmCanvas.getContext('2d');
+
+// ─────────────────────────────────────────────
+//  CONSTANTS
+// ─────────────────────────────────────────────
+const TILE = 40;
+const COLS = 20, ROWS = 15;
+const W = 800, H = 600;
+const VIEW_COLS = Math.floor(W / TILE); // 20
+const VIEW_ROWS = Math.floor((H - 0) / TILE); // 15
+
+// ─────────────────────────────────────────────
+//  TILE TYPES
+// ─────────────────────────────────────────────
+const T = {
+  GRASS:1, WATER:2, TREE:3, WALL:4, PATH:5,
+  TOWN:6,  DUNGEON:7, CHEST:8, FLOWER:9, SAND:10,
+  MOUNTAIN:11, CAVE:12, SHOP:13, INN:14
+};
+
+const TILE_COLORS = {
+  [T.GRASS]:   ['#2d5a1b','#3a7a25'],
+  [T.WATER]:   ['#1a4a8a','#2060b0'],
+  [T.TREE]:    ['#1a3a0a','#2a5015'],
+  [T.WALL]:    ['#555','#666'],
+  [T.PATH]:    ['#8a7050','#a08060'],
+  [T.TOWN]:    ['#8a6030','#a07840'],
+  [T.DUNGEON]: ['#300a0a','#400a0a'],
+  [T.CHEST]:   ['#8a6010','#c09020'],
+  [T.FLOWER]:  ['#2d5a1b','#3a7a25'],
+  [T.SAND]:    ['#c0a050','#d0b060'],
+  [T.MOUNTAIN]:['#5a5060','#706878'],
+  [T.CAVE]:    ['#2a1818','#3a2020'],
+  [T.SHOP]:    ['#5a2a6a','#7a3a8a'],
+  [T.INN]:     ['#2a5a3a','#3a7a4a'],
+};
+
+// ─────────────────────────────────────────────
+//  WORLD MAP (20x15 tiles)
+// ─────────────────────────────────────────────
+// Legend: 1=grass,2=water,3=tree,4=wall,5=path,
+//         6=town,7=dungeon,8=chest,9=flower,10=sand,
+//         11=mountain,12=cave,13=shop,14=inn
+const WORLD_MAP = [
+// 0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
+  [3,  3,  3,  3,  3, 11, 11,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3],//0
+  [3,  1,  1,  1,  5,  5,  5,  5,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  3,  3],//1
+  [3,  1,  9,  1,  5,  3,  3,  5,  1,  9,  1, 11, 11,  1,  1,  9,  1,  1,  2,  2],//2
+  [3,  1,  1,  1,  5,  3,  3,  5,  1,  1,  1, 11,  3,  1,  1,  1,  1,  2,  2, 10],//3
+  [3,  5,  5,  6,  5,  3,  3,  5,  5,  5,  5,  5,  5,  5,  5, 14,  5,  2, 10, 10],//4
+  [3,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  2,  2, 10,  3],//5
+  [3,  1,  2,  2,  1,  9,  1,  1,  9,  1,  1,  1,  9,  1,  2,  2,  2, 10, 10,  3],//6
+  [3,  1,  2,  2,  1,  1,  1,  1,  1,  1,  5,  1,  1,  2,  2, 10, 10,  3,  3,  3],//7
+  [3,  1,  1,  1,  1,  3,  3,  1,  1,  5,  5,  5,  1,  1,  8,  1,  1,  3,  3,  3],//8
+  [3,  1,  1,  9,  1,  3,  3,  1,  5,  5,  3,  5,  5,  1,  1,  1,  3,  3,  3,  3],//9
+  [3,  1,  1,  1,  3,  3,  1,  5,  5,  3,  3,  3,  5,  5,  1,  1,  3,  3,  3,  3],//10
+  [3,  3,  1,  1,  3,  1,  5,  5,  3,  3,  7,  3,  3,  5,  5,  1,  1,  3,  3,  3],//11
+  [3,  3,  3,  1,  1,  5,  5,  3,  3,  3,  7,  3,  3,  3,  5,  5,  1,  1,  3,  3],//12
+  [3,  3,  3,  3,  5,  5,  3,  3,  3,  3, 12,  3,  3,  3,  3,  5,  5,  3,  3,  3],//13
+  [3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3],//14
+];
+
+// Events on specific tiles
+const TILE_EVENTS = {};
+// Town (3,4)
+TILE_EVENTS['3,4'] = { type:'town', msg:'🏘 始まりの村へようこそ！\n[Esc]でメニューを開けます。' };
+// Shop (13,4)→ actually inn at 15,4
+TILE_EVENTS['15,4'] = { type:'inn', msg:'🏨 宿屋です。休んでいきませんか？ [Space]で回復 (30G)' };
+// Chest (14,8)
+TILE_EVENTS['14,8'] = { type:'chest', id:'chest1', reward:{ gold:80, item:'エーテル' }, msg:'宝箱を発見！ [Space]で開ける' };
+// Dungeon entrance
+TILE_EVENTS['10,11'] = { type:'dungeon_enter', msg:'⚠️ ダンジョンの入口です。危険！ [Space]で入る' };
+// Cave
+TILE_EVENTS['10,13'] = { type:'cave', msg:'🌑 古代の洞窟。強敵が待ち受ける…' };
+
+// ─────────────────────────────────────────────
+//  DUNGEON MAP (separate zone)
+// ─────────────────────────────────────────────
+const DUNGEON_MAP = [
+  [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
+  [4,5,5,5,4,5,5,5,5,4,4,5,5,5,5,5,5,5,5,4],
+  [4,5,4,5,4,5,4,4,5,4,4,5,4,4,4,4,4,4,5,4],
+  [4,5,4,5,5,5,4,8,5,5,5,5,4,5,5,5,4,4,5,4],
+  [4,5,4,4,4,5,4,4,4,4,4,5,4,5,4,5,4,4,5,4],
+  [4,5,5,5,4,5,5,5,5,5,4,5,5,5,4,5,5,5,5,4],
+  [4,4,4,5,4,4,4,4,4,5,4,4,4,5,4,4,4,4,5,4],
+  [4,5,5,5,5,5,5,4,4,5,5,5,5,5,4,8,4,4,5,4],
+  [4,5,4,4,4,4,5,4,4,4,4,4,4,5,4,4,4,4,5,4],
+  [4,5,5,5,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,4],
+  [4,4,4,5,4,5,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
+  [4,5,5,5,4,5,5,5,5,5,5,5,5,5,4,4,4,4,5,4],
+  [4,5,4,4,4,4,4,4,4,4,4,5,4,5,4,4,4,4,5,4],
+  [4,5,5,5,5,5,5,5,5,5,5,5,4,7,4,4,4,4,5,4],
+  [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
+];
+const DUNGEON_EVENTS = {};
+DUNGEON_EVENTS['7,3']  = { type:'chest', id:'dchest1', reward:{ gold:150, item:'賢者の石' }, msg:'宝箱！ [Space]で開ける' };
+DUNGEON_EVENTS['15,7'] = { type:'chest', id:'dchest2', reward:{ gold:200, item:'エリクサー' }, msg:'宝箱！ [Space]で開ける' };
+DUNGEON_EVENTS['13,13']= { type:'boss',  msg:'⚠️ ボスがいる！ [Space]で戦う' };
+DUNGEON_EVENTS['0,0']  = { type:'dungeon_exit', msg:'[Space]でフィールドに戻る' };// overridden by entrance
+
+// ─────────────────────────────────────────────
+//  ITEMS DATABASE
+// ─────────────────────────────────────────────
+const ITEMS_DB = {
+  'ポーション':    { type:'heal',   hp:50,  mp:0,   desc:'HPを50回復',    icon:'🧪' },
+  'ハイポーション':{ type:'heal',   hp:150, mp:0,   desc:'HPを150回復',   icon:'💊' },
+  'エーテル':      { type:'heal',   hp:0,   mp:30,  desc:'MPを30回復',    icon:'💧' },
+  'エリクサー':    { type:'heal',   hp:999, mp:999, desc:'HP/MPを全回復',  icon:'✨' },
+  '賢者の石':      { type:'passive',desc:'魔法攻撃力+10',            icon:'🔮', magicBoost:10 },
+  '力の薬':        { type:'buff',   stat:'atk', val:5, desc:'攻撃力を5上げる', icon:'💪' },
+  '守りの薬':      { type:'buff',   stat:'def', val:5, desc:'防御力を5上げる', icon:'🛡' },
+};
+
+// ─────────────────────────────────────────────
+//  SKILLS DATABASE
+// ─────────────────────────────────────────────
+const SKILLS_DB = {
+  'ファイア':    { mp:8,  dmg:1.8, type:'magic', element:'fire',  desc:'炎の魔法 (DMG×1.8)', icon:'🔥', learnLv:1  },
+  'ヒール':      { mp:10, dmg:0,   type:'heal',  heals:60,        desc:'HPを60回復',          icon:'💚', learnLv:1  },
+  'サンダー':    { mp:15, dmg:2.5, type:'magic', element:'thunder',desc:'雷魔法 (DMG×2.5)',   icon:'⚡', learnLv:4  },
+  'アイスブレイク':{ mp:18,dmg:2.2,type:'magic', element:'ice',   desc:'氷魔法 (DMG×2.2)',   icon:'❄️', learnLv:6  },
+  'ダブルアタック':{ mp:12,dmg:2.0,type:'physical',              desc:'2倍攻撃 (ATK×2)',     icon:'⚔️', learnLv:3  },
+  'プロテクト':  { mp:8,  dmg:0,   type:'buff',  stat:'def',val:8, desc:'防御力を8上げる',    icon:'🛡', learnLv:5  },
+  'メガブレイズ':{ mp:30, dmg:4.0, type:'magic', element:'fire',  desc:'超炎魔法 (DMG×4)',    icon:'🌋', learnLv:8  },
+  'フルリカバリー':{ mp:25,dmg:0,  type:'heal',  heals:999,       desc:'HPを全回復',          icon:'💖', learnLv:10 },
+};
+
+// ─────────────────────────────────────────────
+//  ENEMY DATABASE
+// ─────────────────────────────────────────────
+const ENEMIES_DB = {
+  slime:      { name:'スライム',    hp:40,  atk:8,  def:2,  exp:15, gold:8,  icon:'🟢', color:'#4ecdc4', weak:'thunder' },
+  goblin:     { name:'ゴブリン',    hp:65,  atk:14, def:5,  exp:25, gold:15, icon:'👺', color:'#a8e063', weak:'fire'    },
+  wolf:       { name:'ダークウルフ',hp:80,  atk:18, def:7,  exp:35, gold:20, icon:'🐺', color:'#636e72', weak:'fire'    },
+  zombie:     { name:'ゾンビ',      hp:90,  atk:12, def:10, exp:40, gold:18, icon:'🧟', color:'#00b894', weak:'fire'    },
+  skeleton:   { name:'スケルトン',  hp:100, atk:20, def:12, exp:55, gold:30, icon:'💀', color:'#dfe6e9', weak:'thunder' },
+  darkKnight: { name:'暗黒騎士',    hp:160, atk:30, def:18, exp:90, gold:55, icon:'🗡', color:'#6c5ce7', weak:'ice'     },
+  dragon:     { name:'ドラゴン',    hp:250, atk:45, def:25, exp:200,gold:120,icon:'🐉', color:'#e17055', weak:'ice'     },
+  boss:       { name:'魔王ダークロス',hp:400,atk:55,def:30, exp:500,gold:300,icon:'👹', color:'#d63031', weak:'thunder', boss:true },
+};
+
+const FIELD_ENEMIES  = ['slime','goblin','wolf'];
+const DUNGEON_ENEMIES= ['zombie','skeleton','darkKnight'];
+
+// ─────────────────────────────────────────────
+//  SHOP ITEMS
+// ─────────────────────────────────────────────
+const SHOP_CATALOG = [
+  { name:'ポーション',     price:30  },
+  { name:'ハイポーション', price:120 },
+  { name:'エーテル',       price:80  },
+  { name:'エリクサー',     price:500 },
+  { name:'力の薬',         price:200 },
+  { name:'守りの薬',       price:200 },
+];
+
+// ─────────────────────────────────────────────
+//  PLAYER STATE
+// ─────────────────────────────────────────────
+let player = {
+  x:3, y:4, // tile position
+  hp:100, maxHp:100,
+  mp:50,  maxMp:50,
+  atk:18, def:8, mag:15, spd:10,
+  lv:1, exp:0, expNext:100,
+  gold:50,
+  items: { 'ポーション':3 },
+  skills: ['ファイア','ヒール'],
+  openedChests: [],
+  zone: 'field', // 'field' or 'dungeon'
+  fieldX:3, fieldY:4,
+  dungeonX:1, dungeonY:1,
+  name:'勇者アリア',
+  magicBoost:0,
+  defBuff:0,
+};
+
+// Camera
+let cam = { x:0, y:0 };
+
+// ─────────────────────────────────────────────
+//  GAME STATE
+// ─────────────────────────────────────────────
+let gameState   = 'title'; // title,field,battle,menu,shop,gameover
+let battleState = null;
+let inputLock   = false;
+let msgTimeout  = null;
+let animFrame   = 0;
+let keys        = {};
+let lastKey     = 0;
+let particles   = [];
+let battleAnim  = { shake:0, flash:0, flashColor:'#fff' };
+let notifTimer  = null;
+let heroAnim    = 0; // walk frame
+let stepCount   = 0;
+
+// ─────────────────────────────────────────────
+//  AUDIO (Web Audio API)
+// ─────────────────────────────────────────────
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playTone(freq, duration, type='square', vol=0.12, detune=0) {
+  try {
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = type; o.frequency.value = freq; o.detune.value = detune;
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    o.start(); o.stop(audioCtx.currentTime + duration);
+  } catch(e){}
+}
+function sfxStep()    { playTone(200, 0.05, 'square', 0.05); }
+function sfxAttack()  { playTone(300, 0.1,'sawtooth',0.12); setTimeout(()=>playTone(200,0.08,'sawtooth',0.1),-0); }
+function sfxHeal()    { playTone(523,0.15,'sine',0.12); setTimeout(()=>playTone(659,0.15,'sine',0.1),100); setTimeout(()=>playTone(784,0.2,'sine',0.12),200); }
+function sfxSkill()   { playTone(880,0.08,'sawtooth',0.1); setTimeout(()=>playTone(1100,0.1,'sawtooth',0.12),80); }
+function sfxLevelUp() { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.2,'sine',0.15),i*120)); }
+function sfxDamage()  { playTone(180,0.12,'sawtooth',0.15,100); }
+function sfxDie()     { [440,330,220,110].forEach((f,i)=>setTimeout(()=>playTone(f,0.15,'sawtooth',0.12),i*100)); }
+function sfxChest()   { [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>playTone(f,0.18,'sine',0.13),i*80)); }
+function sfxRun()     { playTone(300,0.05,'square',0.08); setTimeout(()=>playTone(250,0.05,'square',0.07),80); }
+function sfxBoss()    { [110,98,87,82].forEach((f,i)=>setTimeout(()=>playTone(f,0.25,'sawtooth',0.18),i*150)); }
+function sfxBuy()     { playTone(600,0.1,'sine',0.12); setTimeout(()=>playTone(800,0.12,'sine',0.1),100); }
+
+// ─────────────────────────────────────────────
+//  UTILITY
+// ─────────────────────────────────────────────
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function currentMap()    { return player.zone === 'dungeon' ? DUNGEON_MAP : WORLD_MAP; }
+function currentEvents() { return player.zone === 'dungeon' ? DUNGEON_EVENTS : TILE_EVENTS; }
+function px() { return player.zone === 'dungeon' ? player.dungeonX : player.fieldX; }
+function py() { return player.zone === 'dungeon' ? player.dungeonY : player.fieldY; }
+function setPX(v) { if(player.zone==='dungeon') player.dungeonX=v; else player.fieldX=v; }
+function setPY(v) { if(player.zone==='dungeon') player.dungeonY=v; else player.fieldY=v; }
+function tileAt(x, y) {
+  const map = currentMap();
+  if(y<0||y>=map.length||x<0||x>=map[0].length) return T.WALL;
+  return map[y][x];
+}
+function isWalkable(t) { return ![T.WATER,T.TREE,T.WALL,T.MOUNTAIN].includes(t); }
+
+// ─────────────────────────────────────────────
+//  CAMERA
+// ─────────────────────────────────────────────
+function updateCamera() {
+  cam.x = clamp(px() - Math.floor(VIEW_COLS/2), 0, currentMap()[0].length - VIEW_COLS);
+  cam.y = clamp(py() - Math.floor(VIEW_ROWS/2), 0, currentMap().length - VIEW_ROWS);
+}
+
+// ─────────────────────────────────────────────
+//  DRAWING
+// ─────────────────────────────────────────────
+function drawTile(x, y, tileType, sx, sy) {
+  const c = TILE_COLORS[tileType] || ['#333','#444'];
+  ctx.fillStyle = (x+y)%2===0 ? c[0] : c[1];
+  ctx.fillRect(sx, sy, TILE, TILE);
+
+  // Details
+  if(tileType === T.WATER) {
+    ctx.fillStyle = `rgba(100,180,255,${0.18 + 0.1*Math.sin(animFrame*0.05+x+y)})`;
+    ctx.fillRect(sx, sy, TILE, TILE);
+  }
+  if(tileType === T.TREE) {
+    ctx.fillStyle = '#1a5c0a';
+    ctx.beginPath(); ctx.arc(sx+TILE/2, sy+TILE/2, 14, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#0d3a05';
+    ctx.beginPath(); ctx.arc(sx+TILE/2, sy+TILE/2-4, 10, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#4a2';
+    ctx.beginPath(); ctx.arc(sx+TILE/2, sy+TILE/2, 12, 0, Math.PI*2); ctx.fill();
+  }
+  if(tileType === T.FLOWER) {
+    ctx.fillStyle = ['#ff6b9d','#ffd93d','#ff6b6b','#a29bfe'][((x*3+y*7)%4)];
+    ctx.beginPath(); ctx.arc(sx+TILE/2, sy+TILE/2, 4, 0, Math.PI*2); ctx.fill();
+  }
+  if(tileType === T.MOUNTAIN) {
+    ctx.fillStyle = '#8a8090';
+    ctx.beginPath(); ctx.moveTo(sx+TILE/2,sy+4); ctx.lineTo(sx+TILE-4,sy+TILE-4); ctx.lineTo(sx+4,sy+TILE-4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.moveTo(sx+TILE/2,sy+4); ctx.lineTo(sx+TILE/2+8,sy+14); ctx.lineTo(sx+TILE/2-8,sy+14); ctx.closePath(); ctx.fill();
+  }
+  if(tileType === T.CHEST) {
+    ctx.fillStyle = '#c0922a'; ctx.fillRect(sx+8,sy+12,TILE-16,TILE-18);
+    ctx.fillStyle = '#8a6010'; ctx.fillRect(sx+8,sy+12,TILE-16,6);
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.arc(sx+TILE/2,sy+TILE/2,4,0,Math.PI*2); ctx.fill();
+  }
+  if(tileType === T.TOWN) {
+    ctx.fillStyle = '#c09040'; ctx.fillRect(sx+4,sy+14,TILE-8,TILE-18);
+    ctx.fillStyle = '#8a5028'; ctx.beginPath(); ctx.moveTo(sx,sy+14); ctx.lineTo(sx+TILE/2,sy+4); ctx.lineTo(sx+TILE,sy+14); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#3a2010'; ctx.fillRect(sx+14,sy+22,12,TILE-26);
+  }
+  if(tileType === T.DUNGEON) {
+    ctx.fillStyle = '#200a0a'; ctx.fillRect(sx,sy,TILE,TILE);
+    ctx.fillStyle = '#500a0a'; ctx.fillRect(sx+6,sy+6,TILE-12,TILE-12);
+    ctx.fillStyle = '#ff0000'; ctx.font='bold 16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('⚠',sx+TILE/2,sy+TILE/2);
+  }
+  if(tileType === T.SHOP) {
+    ctx.fillStyle = '#7a2a8a'; ctx.fillRect(sx+4,sy+12,TILE-8,TILE-16);
+    ctx.fillStyle = '#5a1a6a'; ctx.beginPath(); ctx.moveTo(sx,sy+12); ctx.lineTo(sx+TILE/2,sy+2); ctx.lineTo(sx+TILE,sy+12); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffd700'; ctx.font='14px serif'; ctx.textAlign='center'; ctx.fillText('💰',sx+TILE/2,sy+TILE/2+6);
+  }
+  if(tileType === T.INN) {
+    ctx.fillStyle = '#3a7a4a'; ctx.fillRect(sx+4,sy+12,TILE-8,TILE-16);
+    ctx.fillStyle = '#2a5a3a'; ctx.beginPath(); ctx.moveTo(sx,sy+12); ctx.lineTo(sx+TILE/2,sy+2); ctx.lineTo(sx+TILE,sy+12); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font='14px serif'; ctx.textAlign='center'; ctx.fillText('🏨',sx+TILE/2,sy+TILE/2+6);
+  }
+  if(tileType === T.CAVE) {
+    ctx.fillStyle = '#1a0a0a'; ctx.fillRect(sx,sy,TILE,TILE);
+    ctx.fillStyle = '#2a1010';
+    ctx.beginPath(); ctx.ellipse(sx+TILE/2,sy+TILE-6,12,16,0,Math.PI,0,true); ctx.fill();
+  }
+  if(tileType === T.WALL) {
+    ctx.strokeStyle = '#333'; ctx.lineWidth=1;
+    ctx.strokeRect(sx,sy,TILE,TILE);
+    ctx.fillStyle = '#3a3a3a';
+    ctx.fillRect(sx+2,sy+2,TILE/2-4,TILE/2-4);
+    ctx.fillRect(sx+TILE/2+2,sy+TILE/2+2,TILE/2-4,TILE/2-4);
+  }
+}
+
+function drawHero(sx, sy) {
+  const bob = Math.sin(animFrame*0.15)*2;
+  const walkPhase = Math.floor(animFrame/8)%4;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(sx+20,sy+36,10,4,0,0,Math.PI*2); ctx.fill();
+
+  // Body
+  ctx.fillStyle = '#4a9eff';
+  ctx.fillRect(sx+12,sy+14+bob,16,16);
+  // Cape
+  ctx.fillStyle = '#2d5ee0';
+  ctx.fillRect(sx+10,sy+16+bob,4,12);
+  ctx.fillRect(sx+26,sy+16+bob,4,12);
+  // Head
+  ctx.fillStyle = '#ffd9a0';
+  ctx.beginPath(); ctx.arc(sx+20,sy+10+bob,8,0,Math.PI*2); ctx.fill();
+  // Hair
+  ctx.fillStyle = '#c0780a';
+  ctx.fillRect(sx+12,sy+3+bob,16,6);
+  ctx.beginPath(); ctx.arc(sx+20,sy+6+bob,8,Math.PI,0); ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#333';
+  ctx.fillRect(sx+16,sy+9+bob,3,3);
+  ctx.fillRect(sx+21,sy+9+bob,3,3);
+  // Sword
+  ctx.fillStyle = '#aaa'; ctx.fillRect(sx+30,sy+10+bob,3,18);
+  ctx.fillStyle = '#c8a000'; ctx.fillRect(sx+27,sy+17+bob,9,3);
+  // Legs
+  ctx.fillStyle = '#2244aa';
+  if(walkPhase===0||walkPhase===2) {
+    ctx.fillRect(sx+13,sy+29+bob,7,9); ctx.fillRect(sx+20,sy+29+bob,7,9);
+  } else if(walkPhase===1) {
+    ctx.fillRect(sx+13,sy+27+bob,7,11); ctx.fillRect(sx+20,sy+31+bob,7,7);
+  } else {
+    ctx.fillRect(sx+13,sy+31+bob,7,7); ctx.fillRect(sx+20,sy+27+bob,7,11);
+  }
+  // Boots
+  ctx.fillStyle = '#552200';
+  ctx.fillRect(sx+11,sy+37+bob,9,4); ctx.fillRect(sx+18,sy+37+bob,9,4);
+}
+
+function drawEnemy(enemy, sx, sy, hpRatio) {
+  const b = Math.sin(animFrame*0.12)*3;
+  const e = ENEMIES_DB[enemy];
+  if(!e) return;
+
+  if(battleAnim.shake > 0) { sx += (Math.random()-0.5)*8; }
+
+  ctx.save();
+  if(battleAnim.flash > 0) {
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = battleAnim.flashColor;
+  }
+
+  // Draw enemy based on type
+  if(enemy==='slime'||enemy==='boss_slime') {
+    ctx.fillStyle = e.color;
+    ctx.beginPath(); ctx.ellipse(sx+40,sy+50+b,28,20,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(sx+28,sy+38+b,8,8); ctx.fillRect(sx+44,sy+38+b,8,8);
+    ctx.fillStyle = '#333'; ctx.fillRect(sx+30,sy+40+b,4,4); ctx.fillRect(sx+46,sy+40+b,4,4);
+  } else if(enemy==='goblin') {
+    ctx.fillStyle = e.color; ctx.fillRect(sx+26,sy+24+b,28,30);
+    ctx.beginPath(); ctx.arc(sx+40,sy+18+b,16,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#888'; ctx.fillRect(sx+22,sy+30+b,6,20); ctx.fillRect(sx+52,sy+30+b,6,20);
+    ctx.fillStyle='#555'; ctx.fillRect(sx+28,sy+52+b,10,14); ctx.fillRect(sx+42,sy+52+b,10,14);
+    ctx.fillStyle='#ff0'; ctx.fillRect(sx+32,sy+14+b,5,8); ctx.fillRect(sx+43,sy+14+b,5,8);
+    ctx.fillStyle='#333'; ctx.fillRect(sx+32,sy+16+b,5,5); ctx.fillRect(sx+43,sy+16+b,5,5);
+  } else if(enemy==='wolf') {
+    ctx.fillStyle = e.color;
+    ctx.fillRect(sx+16,sy+28+b,48,22); ctx.beginPath(); ctx.arc(sx+55,sy+28+b,14,0,Math.PI*2); ctx.fill();
+    ctx.fillRect(sx+10,sy+22+b,16,14);
+    ctx.fillStyle='#ccc'; ctx.fillRect(sx+24,sy+48+b,8,16); ctx.fillRect(sx+38,sy+48+b,8,16); ctx.fillRect(sx+50,sy+48+b,8,16);
+    ctx.fillStyle='#ff0000'; ctx.fillRect(sx+58,sy+24+b,6,5); ctx.fillRect(sx+64,sy+24+b,6,5);
+    ctx.fillStyle='#333'; ctx.fillRect(sx+59,sy+25+b,4,3); ctx.fillRect(sx+65,sy+25+b,4,3);
+  } else if(enemy==='zombie') {
+    ctx.fillStyle = e.color; ctx.fillRect(sx+28,sy+24+b,24,32);
+    ctx.beginPath(); ctx.arc(sx+40,sy+18+b,14,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#555'; ctx.fillRect(sx+16,sy+28+b,14,22); ctx.fillRect(sx+50,sy+28+b,14,22);
+    ctx.fillStyle='#888'; ctx.fillRect(sx+28,sy+54+b,10,14); ctx.fillRect(sx+42,sy+54+b,10,14);
+    ctx.fillStyle='#f00'; ctx.fillRect(sx+33,sy+14+b,6,6); ctx.fillRect(sx+41,sy+14+b,6,6);
+    ctx.fillStyle='#400'; ctx.fillRect(sx+34,sy+15+b,4,4); ctx.fillRect(sx+42,sy+15+b,4,4);
+  } else if(enemy==='skeleton') {
+    ctx.fillStyle='#dfe6e9'; ctx.fillRect(sx+30,sy+28+b,20,28);
+    ctx.beginPath(); ctx.arc(sx+40,sy+18+b,12,0,Math.PI*2); ctx.fill();
+    ctx.fillRect(sx+20,sy+30+b,12,4); ctx.fillRect(sx+48,sy+30+b,12,4);
+    ctx.fillRect(sx+22,sy+33+b,4,20); ctx.fillRect(sx+54,sy+33+b,4,20);
+    ctx.fillRect(sx+30,sy+54+b,8,16); ctx.fillRect(sx+42,sy+54+b,8,16);
+    ctx.fillStyle='#222'; ctx.fillRect(sx+34,sy+14+b,6,7); ctx.fillRect(sx+40,sy+14+b,6,7);
+    ctx.fillStyle='#000'; ctx.fillRect(sx+35,sy+15+b,4,5); ctx.fillRect(sx+41,sy+15+b,4,5);
+  } else if(enemy==='darkKnight') {
+    ctx.fillStyle='#2c2c4e'; ctx.fillRect(sx+24,sy+20+b,32,36);
+    ctx.fillStyle='#3d3d6b'; ctx.beginPath(); ctx.arc(sx+40,sy+14+b,18,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#6c5ce7'; ctx.fillRect(sx+14,sy+24+b,12,30); ctx.fillRect(sx+54,sy+24+b,12,30);
+    ctx.fillStyle='#2c2c4e'; ctx.fillRect(sx+28,sy+54+b,12,16); ctx.fillRect(sx+40,sy+54+b,12,16);
+    ctx.fillStyle='#ff0000'; ctx.fillRect(sx+34,sy+10+b,12,8);
+    ctx.fillStyle='#aaa'; ctx.fillRect(sx+60,sy+18+b,4,30); ctx.fillRect(sx+52,sy+26+b,16,4);
+  } else if(enemy==='dragon') {
+    ctx.fillStyle=e.color;
+    ctx.fillRect(sx+24,sy+20+b,48,32); ctx.beginPath(); ctx.arc(sx+65,sy+24+b,18,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#c0392b'; ctx.beginPath(); ctx.moveTo(sx+8,sy+10+b); ctx.lineTo(sx+30,sy+24+b); ctx.lineTo(sx+20,sy+44+b); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(sx+72,sy+10+b); ctx.lineTo(sx+60,sy+24+b); ctx.lineTo(sx+70,sy+44+b); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#ff6348'; ctx.fillRect(sx+24,sy+50+b,14,16); ctx.fillRect(sx+42,sy+50+b,14,16);
+    ctx.fillStyle='#ffd700'; ctx.fillRect(sx+68,sy+20+b,8,6); ctx.fillRect(sx+72,sy+20+b,8,6);
+    ctx.fillStyle='#ff4444'; ctx.fillRect(sx+69,sy+21+b,6,4); ctx.fillRect(sx+73,sy+21+b,6,4);
+    ctx.fillStyle='#ff8c00'; ctx.font='16px serif'; ctx.fillText('🔥',sx+74,sy+36+b);
+  } else { // boss
+    ctx.fillStyle='#d63031';
+    ctx.fillRect(sx+20,sy+16+b,40,44);
+    ctx.fillStyle='#c0392b'; ctx.beginPath(); ctx.arc(sx+40,sy+10+b,22,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#2d3436'; ctx.fillRect(sx+10,sy+20+b,14,36); ctx.fillRect(sx+56,sy+20+b,14,36);
+    ctx.fillStyle='#ff0000'; ctx.fillRect(sx+28,sy+6+b,8,14); ctx.fillRect(sx+44,sy+6+b,8,14);
+    ctx.fillStyle='#fdcb6e'; ctx.fillRect(sx+28,sy+4+b,4,12); ctx.fillRect(sx+48,sy+4+b,4,12);
+    ctx.fillStyle='#ffd700'; ctx.fillRect(sx+32,sy+1+b,16,8);
+    ctx.fillStyle='#ff0'; ctx.fillRect(sx+30,sy+6+b,9,6); ctx.fillRect(sx+41,sy+6+b,9,6);
+    ctx.fillStyle='#200'; ctx.fillRect(sx+31,sy+7+b,7,4); ctx.fillRect(sx+42,sy+7+b,7,4);
+    ctx.fillStyle='#ff4444'; ctx.fillRect(sx+30,sy+60+b,14,18); ctx.fillRect(sx+46,sy+60+b,14,18);
+    ctx.fillStyle='#ffd700'; ctx.font='bold 20px serif';
+    ctx.fillText('👑',sx+26,sy+0+b);
+    // Aura
+    ctx.strokeStyle = `rgba(255,0,0,${0.4+0.3*Math.sin(animFrame*0.1)})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(sx+40,sy+36+b,42,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawScene() {
+  ctx.clearRect(0, 0, W, H);
+  const map = currentMap();
+
+  // Background
+  if(player.zone==='dungeon') {
+    ctx.fillStyle = '#0a0005';
+  } else {
+    const sky1 = '#1a2a4a', sky2 = '#0a1a3a';
+    ctx.fillStyle = sky1;
+  }
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw tiles
+  for(let ty=0; ty<VIEW_ROWS; ty++) {
+    for(let tx=0; tx<VIEW_COLS; tx++) {
+      const mx = tx + cam.x, my = ty + cam.y;
+      const tileType = (my>=0&&my<map.length&&mx>=0&&mx<map[0].length) ? map[my][mx] : T.WALL;
+      const sx = tx * TILE, sy = ty * TILE;
+      drawTile(mx, my, tileType, sx, sy);
+    }
+  }
+
+  // Draw particles
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.life / p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+
+  // Draw hero
+  const hsx = (px() - cam.x) * TILE - 4;
+  const hsy = (py() - cam.y) * TILE - 4;
+  drawHero(hsx, hsy);
+
+  // Hero name tag
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(hsx+4, hsy-14, 60, 14);
+  ctx.fillStyle = '#ffd700'; ctx.font = '10px Courier New'; ctx.textAlign = 'left';
+  ctx.fillText(player.name, hsx+7, hsy-3);
+
+  // Zone indicator (dungeon darkness overlay)
+  if(player.zone === 'dungeon') {
+    const cx = (px()-cam.x)*TILE+20, cy = (py()-cam.y)*TILE+20;
+    const gradient = ctx.createRadialGradient(cx,cy,60,cx,cy,300);
+    gradient.addColorStop(0,'rgba(0,0,0,0)');
+    gradient.addColorStop(1,'rgba(0,0,0,0.85)');
+    ctx.fillStyle = gradient; ctx.fillRect(0,0,W,H);
+  }
+}
+
+function drawMinimap() {
+  const map = currentMap();
+  const mW = mmCanvas.width, mH = mmCanvas.height;
+  const tW = mW/map[0].length, tH = mH/map.length;
+  mmCtx.clearRect(0,0,mW,mH);
+  for(let y=0;y<map.length;y++) {
+    for(let x=0;x<map[y].length;x++) {
+      const t = map[y][x];
+      const c = TILE_COLORS[t]?.[0] || '#333';
+      mmCtx.fillStyle = c;
+      mmCtx.fillRect(x*tW,y*tH,tW,tH);
+    }
+  }
+  // Player dot
+  mmCtx.fillStyle = '#ffd700';
+  mmCtx.beginPath(); mmCtx.arc(px()*tW+tW/2, py()*tH+tH/2, 3, 0, Math.PI*2); mmCtx.fill();
+  // View rect
+  mmCtx.strokeStyle = 'rgba(255,255,255,0.4)'; mmCtx.lineWidth=1;
+  mmCtx.strokeRect(cam.x*tW, cam.y*tH, VIEW_COLS*tW, VIEW_ROWS*tH);
+}
+
+// ─────────────────────────────────────────────
+//  PARTICLES
+// ─────────────────────────────────────────────
+function spawnParticles(x, y, color, count=12) {
+  for(let i=0;i<count;i++) {
+    const angle = Math.random()*Math.PI*2;
+    const speed = 1+Math.random()*3;
+    particles.push({
+      x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed-1,
+      r: 2+Math.random()*4, color,
+      life: 40+Math.random()*20, maxLife: 60
+    });
+  }
+}
+
+function updateParticles() {
+  particles = particles.filter(p => {
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life--;
+    return p.life>0;
+  });
+}
+
+// ─────────────────────────────────────────────
+//  HUD UPDATE
+// ─────────────────────────────────────────────
+function updateHUD() {
+  document.getElementById('hudName').textContent = `${player.name} Lv.${player.lv}`;
+  const hpPct = (player.hp/player.maxHp*100)+'%';
+  const mpPct = (player.mp/player.maxMp*100)+'%';
+  const xpPct = (player.exp/player.expNext*100)+'%';
+  document.getElementById('barHp').style.width = hpPct;
+  document.getElementById('barMp').style.width = mpPct;
+  document.getElementById('barXp').style.width = xpPct;
+  document.getElementById('hudHp').textContent = `${player.hp}/${player.maxHp}`;
+  document.getElementById('hudMp').textContent = `${player.mp}/${player.maxMp}`;
+  document.getElementById('hudGold').textContent = `💰 ${player.gold}G`;
+  document.getElementById('hudStep').textContent = player.zone==='dungeon' ? '🌑 DUNGEON' : '🗺 FIELD';
+}
+
+// ─────────────────────────────────────────────
+//  MESSAGE BOX
+// ─────────────────────────────────────────────
+function showMsg(text) {
+  const box = document.getElementById('msgBox');
+  document.getElementById('msgText').textContent = text;
+  box.style.display = 'block';
+  if(msgTimeout) clearTimeout(msgTimeout);
+  msgTimeout = setTimeout(() => { box.style.display='none'; }, 4000);
+}
+function hideMsg() {
+  document.getElementById('msgBox').style.display = 'none';
+  if(msgTimeout) clearTimeout(msgTimeout);
+}
+
+// ─────────────────────────────────────────────
+//  NOTIFICATION POPUP
+// ─────────────────────────────────────────────
+function showNotif(text) {
+  const el = document.getElementById('notif');
+  el.textContent = text;
+  el.style.display = 'block';
+  el.style.animation = 'none'; el.offsetHeight; // reflow
+  el.style.animation = 'fadeInOut 2.2s forwards';
+  if(notifTimer) clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => { el.style.display='none'; }, 2300);
+}
+
+// ─────────────────────────────────────────────
+//  MOVEMENT & EVENTS
+// ─────────────────────────────────────────────
+function tryMove(dx, dy) {
+  if(gameState !== 'field') return;
+  const nx = px()+dx, ny = py()+dy;
+  const t = tileAt(nx, ny);
+  if(!isWalkable(t)) { return; }
+  setPX(nx); setPY(ny);
+  updateCamera();
+  stepCount++;
+  if(stepCount%2===0) sfxStep();
+
+  const ev = currentEvents()[nx+','+ny];
+  if(ev) showMsg(ev.msg);
+  else hideMsg();
+
+  // Random encounter
+  const inDungeon = player.zone==='dungeon';
+  const encounterRate = inDungeon ? 0.2 : 0.12;
+  if([T.GRASS,T.FLOWER,T.PATH,T.SAND].includes(t) || (inDungeon && t===T.PATH)) {
+    if(Math.random() < encounterRate) {
+      const pool = inDungeon ? DUNGEON_ENEMIES : FIELD_ENEMIES;
+      startBattle(pool[rand(0,pool.length-1)]);
+    }
+  }
+}
+
+function handleInteract() {
+  if(gameState !== 'field') return;
+  const ev = currentEvents()[px()+','+py()];
+  if(!ev) return;
+
+  if(ev.type === 'chest') {
+    if(player.openedChests.includes(ev.id)) { showMsg('宝箱はもう空です…'); return; }
+    player.openedChests.push(ev.id);
+    const r = ev.reward;
+    player.gold += r.gold;
+    addItem(r.item, 1);
+    sfxChest();
+    spawnParticles((px()-cam.x)*TILE+20, (py()-cam.y)*TILE+20, '#ffd700', 20);
+    showNotif(`宝箱GET！ +${r.gold}G ＆ ${r.item}！`);
+  }
+  else if(ev.type === 'town') {
+    showMsg('🏘 始まりの村。旅人よ、武運を！\n[Esc]でメニュー・ショップへ');
+  }
+  else if(ev.type === 'inn') {
+    if(player.gold >= 30) {
+      player.gold -= 30;
+      player.hp = player.maxHp; player.mp = player.maxMp;
+      sfxHeal();
+      spawnParticles((px()-cam.x)*TILE+20,(py()-cam.y)*TILE+20,'#55efc4',15);
+      showNotif('💚 HP/MPが全回復した！ (-30G)');
+      updateHUD();
+    } else {
+      showMsg('ゴールドが足りない… (30G必要)');
+    }
+  }
+  else if(ev.type === 'dungeon_enter') {
+    player.zone = 'dungeon';
+    player.dungeonX = 1; player.dungeonY = 1;
+    updateCamera();
+    showMsg('🌑 ダンジョンに入った！');
+    document.getElementById('hudStep').textContent = '🌑 DUNGEON';
+  }
+  else if(ev.type === 'boss') {
+    startBattle('boss');
+  }
+  else if(ev.type === 'cave') {
+    showMsg('古代の洞窟…まだ深部は謎に包まれている。');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  LEVEL UP
+// ─────────────────────────────────────────────
+function checkLevelUp() {
+  while(player.exp >= player.expNext) {
+    player.exp -= player.expNext;
+    player.lv++;
+    player.expNext = Math.floor(100 * Math.pow(1.4, player.lv-1));
+    player.maxHp += 20 + rand(0,10);
+    player.maxMp += 8  + rand(0,5);
+    player.atk   += 3  + rand(0,2);
+    player.def   += 2  + rand(0,1);
+    player.mag   += 3  + rand(0,2);
+    player.spd   += 1;
+    player.hp = player.maxHp;
+    player.mp = player.maxMp;
+    sfxLevelUp();
+    // Learn skills
+    let learned = [];
+    Object.entries(SKILLS_DB).forEach(([name, s]) => {
+      if(s.learnLv === player.lv && !player.skills.includes(name)) {
+        player.skills.push(name);
+        learned.push(name);
+      }
+    });
+    const learnedMsg = learned.length ? `\n✨ ${learned.join(',')} を覚えた！` : '';
+    showNotif(`🎉 Lv.${player.lv} に上がった！${learnedMsg}`);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  ITEM MANAGEMENT
+// ─────────────────────────────────────────────
+function addItem(name, count=1) {
+  if(!player.items[name]) player.items[name]=0;
+  player.items[name]+=count;
+}
+function removeItem(name) {
+  if(player.items[name]>0) player.items[name]--;
+  if(player.items[name]<=0) delete player.items[name];
+}
+function getItemList() {
+  return Object.entries(player.items).filter(([,c])=>c>0);
+}
+
+// ─────────────────────────────────────────────
+//  BATTLE SYSTEM
+// ─────────────────────────────────────────────
+function startBattle(enemyKey) {
+  ensureAudio();
+  const eData = ENEMIES_DB[enemyKey];
+  if(!eData) return;
+  if(eData.boss) sfxBoss();
+
+  battleState = {
+    enemyKey,
+    enemyHp: eData.hp,
+    enemyMaxHp: eData.hp,
+    enemyAtk: eData.atk,
+    enemyDef: eData.def,
+    turn: 'player',
+    busy: false,
+    playerDefBuff: player.defBuff || 0,
+  };
+
+  gameState = 'battle';
+  document.getElementById('battleUI').style.display='block';
+  document.getElementById('hud').style.display='block';
+
+  document.getElementById('eName').textContent = eData.name+' '+eData.icon;
+  updateEnemyHUD();
+  clearBattleLog();
+  addBattleLog(`⚔️ ${eData.name} が現れた！`, 'log-info');
+  if(eData.boss) addBattleLog('👹 ボス戦闘開始！全力で挑め！', 'log-info');
+  setBattleButtons(true);
+}
+
+function updateEnemyHUD() {
+  const bs = battleState;
+  const pct = (bs.enemyHp / bs.enemyMaxHp * 100)+'%';
+  document.getElementById('eBarHp').style.width = pct;
+  document.getElementById('eHp').textContent = `${bs.enemyHp}/${bs.enemyMaxHp}`;
+}
+
+function clearBattleLog() {
+  document.getElementById('battleLog').innerHTML='';
+}
+function addBattleLog(msg, cls='') {
+  const log = document.getElementById('battleLog');
+  const div = document.createElement('div');
+  div.className = cls; div.textContent = msg;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setBattleButtons(on) {
+  ['btnAtk','btnSkill','btnItem','btnRun'].forEach(id=>{
+    document.getElementById(id).disabled = !on;
+  });
+}
+
+function battleAction(action) {
+  if(!battleState || battleState.busy || battleState.turn!=='player') return;
+  closeSubMenus();
+  battleState.busy = true;
+  setBattleButtons(false);
+
+  if(action === 'attack') {
+    playerAttack();
+  } else if(action === 'run') {
+    const chance = 0.55 + (player.spd - battleState.enemyAtk*0.1)*0.02;
+    if(Math.random() < clamp(chance,0.2,0.9)) {
+      sfxRun();
+      addBattleLog('💨 逃げた！', 'log-info');
+      setTimeout(()=>endBattle(false), 800);
+    } else {
+      sfxDamage();
+      addBattleLog('💢 逃げ切れなかった！', 'log-info');
+      setTimeout(()=>enemyTurn(), 600);
+    }
+  }
+}
+
+function playerAttack() {
+  const enemy = ENEMIES_DB[battleState.enemyKey];
+  const dmg = Math.max(1, player.atk - Math.floor(battleState.enemyDef*0.5) + rand(-3,3));
+  battleState.enemyHp -= dmg;
+  sfxAttack();
+  battleAnim.shake = 8;
+  battleAnim.flash = 5; battleAnim.flashColor='#ff6b6b';
+  spawnParticles(500, 200, '#ff4444', 15);
+  addBattleLog(`⚔️ ${player.name}の攻撃！ ${enemy.name}に${dmg}ダメージ！`, 'log-dmg');
+  updateEnemyHUD();
+  if(battleState.enemyHp <= 0) { setTimeout(()=>winBattle(), 700); return; }
+  setTimeout(()=>enemyTurn(), 900);
+}
+
+function useSkill(skillName) {
+  closeSubMenus();
+  if(!battleState || battleState.busy) return;
+  const sk = SKILLS_DB[skillName];
+  if(!sk) return;
+  if(player.mp < sk.mp) { addBattleLog('MPが足りない！','log-info'); setBattleButtons(true); battleState.busy=false; return; }
+
+  player.mp -= sk.mp;
+  updateHUD();
+  sfxSkill();
+
+  if(sk.type==='heal') {
+    const healed = Math.min(sk.heals, player.maxHp - player.hp);
+    player.hp = Math.min(player.maxHp, player.hp + sk.heals);
+    sfxHeal();
+    spawnParticles(120,320,'#55efc4',15);
+    addBattleLog(`${sk.icon} ${skillName}！ HPが${healed}回復！`, 'log-heal');
+    updateHUD();
+    setTimeout(()=>enemyTurn(), 900);
+  } else if(sk.type==='magic') {
+    const enemy = ENEMIES_DB[battleState.enemyKey];
+    let dmg = Math.max(1, Math.floor((player.mag + player.magicBoost) * sk.dmg) + rand(-5,5) - Math.floor(battleState.enemyDef*0.3));
+    if(enemy.weak === sk.element) { dmg = Math.floor(dmg*1.5); addBattleLog('🎯 弱点攻撃！', 'log-skill'); }
+    battleState.enemyHp -= dmg;
+    battleAnim.shake=8; battleAnim.flash=6;
+    battleAnim.flashColor = sk.element==='fire'?'#ff6348':sk.element==='thunder'?'#fdcb6e':'#74b9ff';
+    spawnParticles(500,200,battleAnim.flashColor,20);
+    addBattleLog(`${sk.icon} ${skillName}！ ${enemy.name}に${dmg}ダメージ！`, 'log-skill');
+    updateEnemyHUD();
+    if(battleState.enemyHp<=0){ setTimeout(()=>winBattle(),700); return; }
+    setTimeout(()=>enemyTurn(),900);
+  } else if(sk.type==='physical') {
+    const enemy = ENEMIES_DB[battleState.enemyKey];
+    const dmg = Math.max(1, Math.floor(player.atk * sk.dmg) + rand(-3,3) - Math.floor(battleState.enemyDef*0.5));
+    battleState.enemyHp -= dmg;
+    battleAnim.shake=12; battleAnim.flash=5; battleAnim.flashColor='#ff6b6b';
+    spawnParticles(500,200,'#ff4444',20);
+    addBattleLog(`${sk.icon} ${skillName}！ ${enemy.name}に${dmg}ダメージ！`, 'log-dmg');
+    updateEnemyHUD();
+    if(battleState.enemyHp<=0){ setTimeout(()=>winBattle(),700); return; }
+    setTimeout(()=>enemyTurn(),900);
+  } else if(sk.type==='buff') {
+    battleState.playerDefBuff = (battleState.playerDefBuff||0) + sk.val;
+    addBattleLog(`${sk.icon} ${skillName}！ 防御力が${sk.val}上がった！`, 'log-skill');
+    spawnParticles(120,320,'#74b9ff',12);
+    setTimeout(()=>enemyTurn(),900);
+  }
+}
+
+function useItemInBattle(itemName) {
+  closeSubMenus();
+  if(!battleState || battleState.busy) return;
+  const item = ITEMS_DB[itemName];
+  if(!item || !player.items[itemName]) { battleState.busy=false; setBattleButtons(true); return; }
+
+  removeItem(itemName);
+  if(item.type==='heal') {
+    if(item.hp>0) { player.hp = Math.min(player.maxHp, player.hp+item.hp); }
+    if(item.mp>0) { player.mp = Math.min(player.maxMp, player.mp+item.mp); }
+    sfxHeal();
+    spawnParticles(120,320,'#55efc4',15);
+    addBattleLog(`${item.icon} ${itemName}使用！ HP+${item.hp} MP+${item.mp}`, 'log-heal');
+    updateHUD();
+  } else if(item.type==='buff') {
+    player[item.stat] += item.val;
+    addBattleLog(`${item.icon} ${itemName}使用！ ${item.desc}`, 'log-skill');
+    updateHUD();
+  } else if(item.type==='passive') {
+    player.magicBoost = (player.magicBoost||0) + (item.magicBoost||0);
+    addBattleLog(`${item.icon} ${itemName}使用！ ${item.desc}`, 'log-skill');
+  }
+  setTimeout(()=>enemyTurn(),900);
+}
+
+function enemyTurn() {
+  if(!battleState) return;
+  const enemy = ENEMIES_DB[battleState.enemyKey];
+  const defTotal = player.def + (battleState.playerDefBuff||0);
+  let dmg = Math.max(1, battleState.enemyAtk - Math.floor(defTotal*0.5) + rand(-3,3));
+
+  // Boss special attack
+  if(enemy.boss && Math.random()<0.3) {
+    dmg = Math.floor(dmg * 1.5);
+    addBattleLog(`👹 ${enemy.name}の必殺技！ ${dmg}ダメージ！！`, 'log-dmg');
+  } else {
+    addBattleLog(`${enemy.icon} ${enemy.name}の攻撃！ ${dmg}ダメージ！`, 'log-dmg');
+  }
+  player.hp -= dmg;
+  sfxDamage();
+  spawnParticles(120,320,'#ff4444',12);
+  updateHUD();
+
+  if(player.hp <= 0) {
+    player.hp = 0; updateHUD();
+    setTimeout(()=>gameOver(), 700);
+    return;
+  }
+  battleState.busy = false;
+  battleState.turn = 'player';
+  setBattleButtons(true);
+}
+
+function winBattle() {
+  const enemy = ENEMIES_DB[battleState.enemyKey];
+  player.exp  += enemy.exp;
+  player.gold += enemy.gold;
+  sfxChest();
+  spawnParticles(500,200,'#ffd700',25);
+  addBattleLog(`✨ ${enemy.name}を倒した！ EXP+${enemy.exp} G+${enemy.gold}`, 'log-info');
+
+  if(enemy.boss) {
+    showNotif('🎊 魔王を倒した！ 世界に平和が戻った！');
+  }
+
+  updateHUD(); checkLevelUp(); updateHUD();
+  setTimeout(()=>endBattle(true), 1200);
+}
+
+function endBattle(won) {
+  gameState = 'field';
+  battleState = null;
+  document.getElementById('battleUI').style.display='none';
+  document.getElementById('skillMenu').style.display='none';
+  document.getElementById('itemMenu').style.display='none';
+}
+
+function gameOver() {
+  sfxDie();
+  gameState = 'gameover';
+  document.getElementById('battleUI').style.display='none';
+  document.getElementById('gameOverScreen').style.display='flex';
+}
+
+function respawn() {
+  player.hp = Math.floor(player.maxHp*0.5);
+  player.mp = Math.floor(player.maxMp*0.5);
+  player.zone = 'field';
+  player.fieldX = 3; player.fieldY = 4;
+  updateCamera();
+  gameState = 'field';
+  document.getElementById('gameOverScreen').style.display='none';
+  showNotif('🔄 村の広場で目を覚ました…');
+  updateHUD();
+}
+
+// ─────────────────────────────────────────────
+//  MENU SYSTEM
+// ─────────────────────────────────────────────
+function toggleSkillMenu() {
+  if(!battleState) return;
+  const sm = document.getElementById('skillMenu');
+  const im = document.getElementById('itemMenu');
+  im.style.display='none';
+  if(sm.style.display==='block') { sm.style.display='none'; return; }
+
+  const list = document.getElementById('skillList');
+  list.innerHTML='';
+  player.skills.forEach(name => {
+    const sk = SKILLS_DB[name];
+    if(!sk) return;
+    const btn = document.createElement('button');
+    btn.className='skill-btn';
+    btn.disabled = player.mp < sk.mp;
+    btn.textContent = `${sk.icon} ${name} (MP:${sk.mp}) - ${sk.desc}`;
+    btn.onclick = ()=>{ battleState.busy=true; setBattleButtons(false); useSkill(name); };
+    list.appendChild(btn);
+  });
+  sm.style.display='block';
+}
+
+function toggleItemMenu() {
+  if(!battleState) return;
+  const im = document.getElementById('itemMenu');
+  const sm = document.getElementById('skillMenu');
+  sm.style.display='none';
+  if(im.style.display==='block') { im.style.display='none'; return; }
+
+  const list = document.getElementById('itemList');
+  list.innerHTML='';
+  const items = getItemList();
+  if(items.length===0) {
+    const p = document.createElement('p'); p.style.color='#888'; p.textContent='アイテムがない…';
+    list.appendChild(p);
+  } else {
+    items.forEach(([name,count])=>{
+      const item = ITEMS_DB[name]; if(!item) return;
+      if(item.type==='passive') return;
+      const btn = document.createElement('button');
+      btn.className='item-btn';
+      btn.textContent = `${item.icon} ${name} x${count} - ${item.desc}`;
+      btn.onclick = ()=>{ battleState.busy=true; setBattleButtons(false); useItemInBattle(name); };
+      list.appendChild(btn);
+    });
+  }
+  im.style.display='block';
+}
+
+function closeSubMenus() {
+  document.getElementById('skillMenu').style.display='none';
+  document.getElementById('itemMenu').style.display='none';
+}
+
+function openMenu() {
+  if(gameState==='battle') return;
+  gameState='menu';
+  const ms = document.getElementById('menuScreen');
+  ms.style.display='block';
+
+  // Stats
+  const stats = document.getElementById('menuStats');
+  stats.innerHTML = [
+    ['Lv',player.lv],['EXP',`${player.exp}/${player.expNext}`],
+    ['HP',`${player.hp}/${player.maxHp}`],['MP',`${player.mp}/${player.maxMp}`],
+    ['ATK',player.atk],['DEF',player.def],['MAG',player.mag+player.magicBoost],
+    ['SPD',player.spd],['💰GOLD',player.gold+'G'],['地帯',player.zone==='dungeon'?'ダンジョン':'フィールド'],
+  ].map(([k,v])=>`<div class="stat-row"><span>${k}</span><span class="stat-val">${v}</span></div>`).join('');
+
+  // Items
+  const items = getItemList();
+  document.getElementById('menuItems').innerHTML = items.length
+    ? items.map(([n,c])=>{const i=ITEMS_DB[n];return `${i?.icon||'📦'} ${n} x${c}　`;}).join('')
+    : '（アイテムなし）';
+
+  // Skills
+  document.getElementById('menuSkills').innerHTML = player.skills.map(s=>{
+    const sk=SKILLS_DB[s]; return sk ? `${sk.icon} ${s} (MP:${sk.mp})　` : '';
+  }).join('');
+}
+function closeMenu() {
+  gameState='field';
+  document.getElementById('menuScreen').style.display='none';
+}
+
+// ─────────────────────────────────────────────
+//  SHOP
+// ─────────────────────────────────────────────
+function openShop() {
+  closeMenu();
+  gameState='shop';
+  document.getElementById('shopScreen').style.display='block';
+  document.getElementById('shopGold').textContent = `所持ゴールド：${player.gold}G`;
+  const grid = document.getElementById('shopItems');
+  grid.innerHTML='';
+  SHOP_CATALOG.forEach(({name,price})=>{
+    const item = ITEMS_DB[name]; if(!item) return;
+    const div = document.createElement('div');
+    div.className='shop-item';
+    div.innerHTML=`
+      <div class="shop-item-name">${item.icon} ${name}</div>
+      <div class="shop-item-desc">${item.desc}</div>
+      <div class="shop-item-price">${price}G</div>
+    `;
+    div.onclick=()=>{
+      if(player.gold>=price) {
+        player.gold-=price; addItem(name,1); sfxBuy();
+        document.getElementById('shopGold').textContent=`所持ゴールド：${player.gold}G`;
+        showNotif(`${item.icon} ${name}を購入した！`);
+        updateHUD();
+      } else {
+        showNotif('ゴールドが足りない！');
+      }
+    };
+    grid.appendChild(div);
+  });
+}
+function closeShop() {
+  document.getElementById('shopScreen').style.display='none';
+  gameState='field';
+}
+
+// ─────────────────────────────────────────────
+//  SAVE / LOAD
+// ─────────────────────────────────────────────
+function saveGame() {
+  try {
+    localStorage.setItem('chronoblade_save', JSON.stringify(player));
+    showNotif('💾 セーブ完了！');
+    closeMenu();
+  } catch(e) { showNotif('セーブ失敗…'); }
+}
+function loadGame(fromTitle=false) {
+  try {
+    const data = localStorage.getItem('chronoblade_save');
+    if(!data) { showNotif('セーブデータがない…'); return; }
+    Object.assign(player, JSON.parse(data));
+    updateHUD(); updateCamera();
+    if(fromTitle) startGame();
+    showNotif('📂 ロード完了！');
+    closeMenu();
+  } catch(e) { showNotif('ロード失敗…'); }
+}
+
+// ─────────────────────────────────────────────
+//  TITLE / GAME START
+// ─────────────────────────────────────────────
+function startNewGame() {
+  // Reset player
+  player = {
+    x:3,y:4, hp:100,maxHp:100, mp:50,maxMp:50,
+    atk:18,def:8,mag:15,spd:10,
+    lv:1,exp:0,expNext:100, gold:50,
+    items:{'ポーション':3}, skills:['ファイア','ヒール'],
+    openedChests:[], zone:'field', fieldX:3,fieldY:4,
+    dungeonX:1,dungeonY:1, name:'勇者アリア', magicBoost:0,defBuff:0,
+  };
+  startGame();
+}
+
+function startGame() {
+  updateCamera(); updateHUD();
+  document.getElementById('titleScreen').style.display='none';
+  document.getElementById('gameOverScreen').style.display='none';
+  gameState='field';
+  showMsg('🗡 冒険へ出発！矢印キーで移動、Escでメニューを開こう。');
+}
+
+function showTitle() {
+  document.getElementById('gameOverScreen').style.display='none';
+  document.getElementById('battleUI').style.display='none';
+  document.getElementById('menuScreen').style.display='none';
+  document.getElementById('shopScreen').style.display='none';
+  document.getElementById('titleScreen').style.display='flex';
+  gameState='title';
+}
+
+// ─────────────────────────────────────────────
+//  INPUT
+// ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  keys[e.key]=true;
+  const now = Date.now();
+  if(now - lastKey < 130) return;
+  lastKey = now;
+
+  if(gameState==='field') {
+    if(e.key==='ArrowUp'    ||e.key==='w') tryMove(0,-1);
+    if(e.key==='ArrowDown'  ||e.key==='s') tryMove(0, 1);
+    if(e.key==='ArrowLeft'  ||e.key==='a') tryMove(-1,0);
+    if(e.key==='ArrowRight' ||e.key==='d') tryMove(1, 0);
+    if(e.key===' '||e.key==='Enter') handleInteract();
+    if(e.key==='Escape') openMenu();
+
+    // Dungeon exit
+    if(player.zone==='dungeon' && px()===1 && py()===1) {
+      if(e.key===' '||e.key==='Enter') {
+        player.zone='field';
+        updateCamera();
+        showMsg('フィールドに戻った。');
+      }
+    }
+  }
+  if(gameState==='menu') {
+    if(e.key==='Escape') closeMenu();
+  }
+  if(gameState==='shop') {
+    if(e.key==='Escape') closeShop();
+  }
+  e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.key]=false; });
+
+// ─────────────────────────────────────────────
+//  BATTLE ANIMATION UPDATE
+// ─────────────────────────────────────────────
+function drawBattleScene() {
+  if(gameState !== 'battle' || !battleState) return;
+  const enemy = ENEMIES_DB[battleState.enemyKey];
+  ctx.clearRect(0,0,W,H);
+
+  // BG
+  const bg = ctx.createLinearGradient(0,0,0,H-200);
+  if(enemy.boss) {
+    bg.addColorStop(0,'#1a0005'); bg.addColorStop(1,'#300010');
+  } else if(player.zone==='dungeon') {
+    bg.addColorStop(0,'#050010'); bg.addColorStop(1,'#0a001a');
+  } else {
+    bg.addColorStop(0,'#0a1530'); bg.addColorStop(1,'#142050');
+  }
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H-200);
+
+  // Ground
+  ctx.fillStyle = player.zone==='dungeon' ? '#1a1020' : '#1a3020';
+  ctx.fillRect(0,H-260,W,60);
+  ctx.fillStyle = player.zone==='dungeon' ? '#221530' : '#243530';
+  ctx.fillRect(0,H-202,W,4);
+
+  // Stars (field)
+  if(player.zone!=='dungeon') {
+    ctx.fillStyle='#fff';
+    for(let i=0;i<60;i++) {
+      const sx=(i*137)%W, sy=(i*97)%200;
+      const r = 0.7+0.5*Math.sin(animFrame*0.08+i);
+      ctx.globalAlpha=r; ctx.beginPath(); ctx.arc(sx,sy,1,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+
+  // Dungeon torches
+  if(player.zone==='dungeon') {
+    [100,700].forEach(tx=>{
+      ctx.fillStyle='#aa5500'; ctx.fillRect(tx-4,H-300,8,30);
+      const flicker = 0.8+0.2*Math.sin(animFrame*0.3);
+      ctx.fillStyle=`rgba(255,${Math.floor(100+80*flicker)},0,${flicker})`;
+      ctx.beginPath(); ctx.ellipse(tx,H-305,8*flicker,14,0,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  // Enemy
+  if(battleState.enemyHp>0) {
+    drawEnemy(battleState.enemyKey, 380, H-380, battleState.enemyHp/battleState.enemyMaxHp);
+  }
+  if(battleAnim.shake>0) battleAnim.shake--;
+  if(battleAnim.flash>0) battleAnim.flash--;
+
+  // Hero (battle pose)
+  drawHero(60, H-380);
+
+  // Particles
+  updateParticles();
+  particles.forEach(p=>{
+    ctx.save(); ctx.globalAlpha=p.life/p.maxLife;
+    ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+}
+
+// ─────────────────────────────────────────────
+//  MAIN LOOP
+// ─────────────────────────────────────────────
+function gameLoop() {
+  animFrame++;
+
+  if(gameState==='field' || gameState==='menu' || gameState==='shop') {
+    drawScene();
+    updateParticles();
+    drawMinimap();
+  } else if(gameState==='battle') {
+    drawBattleScene();
+  } else if(gameState==='title') {
+    drawTitleBG();
+  } else if(gameState==='gameover') {
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0a0000'; ctx.fillRect(0,0,W,H);
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+function drawTitleBG() {
+  ctx.fillStyle='#000010'; ctx.fillRect(0,0,W,H);
+  // Stars
+  ctx.fillStyle='#fff';
+  for(let i=0;i<120;i++) {
+    const sx=(i*173+animFrame*0.3)%W, sy=(i*97)%H;
+    const r=0.5+0.8*Math.abs(Math.sin(animFrame*0.06+i));
+    ctx.globalAlpha=r; ctx.beginPath(); ctx.arc(sx,sy,1.2,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  // Floating hero
+  drawHero(360, 280+Math.sin(animFrame*0.05)*8);
+}
+
+// ─────────────────────────────────────────────
+//  BOOT
+// ─────────────────────────────────────────────
+updateCamera();
+updateHUD();
+gameLoop();
+</script>
+</body>
+</html>

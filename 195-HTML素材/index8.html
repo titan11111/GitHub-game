@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIAR GAME - 密輸ゲーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050505;
+            color: #e0e0e0;
+            font-family: 'Noto Serif JP', serif;
+            overflow-x: hidden;
+        }
+        .gold-text {
+            color: #d4af37;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+        .liar-card {
+            background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .btn-gold {
+            background: linear-gradient(to bottom, #d4af37, #aa8a2e);
+            color: black;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-gold:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.7);
+        }
+        .btn-gold:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .log-entry {
+            border-left: 2px solid #d4af37;
+            padding-left: 10px;
+            margin-bottom: 8px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+
+    <header class="mb-8 text-center">
+        <h1 class="text-4xl md:text-6xl font-bold tracking-widest gold-text mb-2" style="font-family: 'Playfair Display', serif;">LIAR GAME</h1>
+        <p class="text-sm tracking-widest text-gray-500 uppercase">Smuggling Game Simulation</p>
+    </header>
+
+    <div class="max-w-4xl w-full grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- ステータスパネル -->
+        <div class="md:col-span-1 space-y-4">
+            <div class="liar-card p-6 rounded-lg text-center">
+                <h2 class="text-xs text-gray-500 mb-1 uppercase tracking-tighter">Your Balance</h2>
+                <div id="player-money" class="text-3xl font-bold text-white">¥1,000,000</div>
+            </div>
+            <div class="liar-card p-6 rounded-lg text-center">
+                <h2 class="text-xs text-gray-500 mb-1 uppercase tracking-tighter">AI Balance</h2>
+                <div id="ai-money" class="text-3xl font-bold text-white">¥1,000,000</div>
+            </div>
+            <div class="liar-card p-6 rounded-lg">
+                <h3 class="text-sm gold-text mb-4 uppercase">Game Log</h3>
+                <div id="game-log" class="text-xs h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                    <div class="log-entry">ゲームを開始します。</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- メインゲームエリア -->
+        <div class="md:col-span-2 space-y-6">
+            <div class="liar-card p-8 rounded-xl relative overflow-hidden">
+                <div id="turn-indicator" class="absolute top-0 left-0 bg-yellow-600 text-black text-[10px] px-3 py-1 font-bold uppercase">
+                    Round 1: Your Turn (Smuggler)
+                </div>
+
+                <div id="game-view" class="mt-4 min-h-[300px] flex flex-col justify-center">
+                    <!-- コンテンツはJSで動的に書き換え -->
+                    <div id="action-content" class="text-center space-y-6">
+                        <p class="text-xl">密輸する金額を決めてください</p>
+                        <div class="flex flex-col items-center space-y-4">
+                            <input type="range" id="smuggle-amount" min="0" max="1000000" step="10000" value="0" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+                            <div id="smuggle-display" class="text-4xl font-bold gold-text">¥0</div>
+                            <button id="smuggle-btn" class="btn-gold px-12 py-3 rounded-full text-lg">密輸を実行する</button>
+                            <p class="text-xs text-gray-500 italic">※申告額は常に「0円」となります。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ヘルプ/ルール -->
+            <div class="text-[10px] text-gray-600 leading-relaxed border-t border-gray-800 pt-4">
+                <p>RULE: 密輸側は現金を隠して運びます。検査官が「パス」すれば現金はあなたのもの。「ダウト」され、中に現金があれば没収され、さらに対戦相手に罰金を支払います。もし「ダウト」された時に中身が空なら、検査官があなたに罰金を支払います。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ゲーム状態
+        let playerMoney = 1000000;
+        let aiMoney = 1000000;
+        let round = 1;
+        let isPlayerSmuggler = true;
+        const penalty = 500000; // 誤認・嘘バレ時のペナルティ
+
+        const logElement = document.getElementById('game-log');
+        const playerMoneyElement = document.getElementById('player-money');
+        const aiMoneyElement = document.getElementById('ai-money');
+        const actionContent = document.getElementById('action-content');
+        const turnIndicator = document.getElementById('turn-indicator');
+
+        // 音の代わりに視覚効果
+        function flashScreen(color) {
+            document.body.style.transition = '0s';
+            document.body.style.backgroundColor = color;
+            setTimeout(() => {
+                document.body.style.transition = '1s';
+                document.body.style.backgroundColor = '#050505';
+            }, 50);
+        }
+
+        function addLog(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerText = message;
+            logElement.prepend(entry);
+        }
+
+        function updateUI() {
+            playerMoneyElement.innerText = `¥${playerMoney.toLocaleString()}`;
+            aiMoneyElement.innerText = `¥${aiMoney.toLocaleString()}`;
+            turnIndicator.innerText = `Round ${round}: ${isPlayerSmuggler ? 'Your Turn (Smuggler)' : 'AI Turn (Smuggler)'}`;
+            
+            if (playerMoney <= 0) endGame("AIの勝利。あなたは破滅しました。");
+            if (aiMoney <= 0) endGame("あなたの勝利。AIを負かしました。");
+        }
+
+        function endGame(msg) {
+            actionContent.innerHTML = `
+                <div class="text-center space-y-6">
+                    <h2 class="text-3xl font-bold gold-text">GAME OVER</h2>
+                    <p class="text-xl">${msg}</p>
+                    <button onclick="location.reload()" class="btn-gold px-8 py-2 rounded-full">もう一度プレイする</button>
+                </div>
+            `;
+        }
+
+        // --- プレイヤーが密輸するフェーズ ---
+        function startPlayerSmuggle() {
+            actionContent.innerHTML = `
+                <p class="text-xl">スーツケースにいくら入れますか？</p>
+                <div class="flex flex-col items-center space-y-4">
+                    <input type="range" id="smuggle-range" min="0" max="1000000" step="10000" value="0" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+                    <div id="smuggle-display" class="text-4xl font-bold gold-text">¥0</div>
+                    <button id="smuggle-confirm-btn" class="btn-gold px-12 py-3 rounded-full text-lg">密輸実行（申告: ¥0）</button>
+                </div>
+            `;
+
+            const range = document.getElementById('smuggle-range');
+            const display = document.getElementById('smuggle-display');
+            range.oninput = () => display.innerText = `¥${parseInt(range.value).toLocaleString()}`;
+
+            document.getElementById('smuggle-confirm-btn').onclick = () => {
+                const amount = parseInt(range.value);
+                processAiInspection(amount);
+            };
+        }
+
+        function processAiInspection(amount) {
+            actionContent.innerHTML = `<p class="text-2xl animate-pulse">AIがあなたの挙動を観察しています...</p>`;
+            
+            setTimeout(() => {
+                // AIのロジック: 基本はランダムだが、金額が大きいほど疑いやすくなる
+                const doubtProbability = 0.2 + (amount / 1000000) * 0.6;
+                const isDoubt = Math.random() < doubtProbability;
+
+                if (isDoubt) {
+                    addLog(`AI: 「ダウト！」`);
+                    flashScreen('#440000');
+                    if (amount > 0) {
+                        addLog(`嘘がバレました！ ¥${amount.toLocaleString()}を没収され、罰金¥${penalty.toLocaleString()}を支払います。`);
+                        playerMoney -= (amount + penalty);
+                        aiMoney += (amount + penalty);
+                    } else {
+                        addLog(`AIの誤認です！ 無実の罪に対してAIが罰金¥${penalty.toLocaleString()}を支払います。`);
+                        playerMoney += penalty;
+                        aiMoney -= penalty;
+                    }
+                } else {
+                    addLog(`AI: 「パス」`);
+                    flashScreen('#003300');
+                    addLog(`密輸成功！ ¥${amount.toLocaleString()}を獲得しました。`);
+                    playerMoney += amount;
+                    aiMoney -= amount;
+                }
+                
+                updateUI();
+                setTimeout(nextTurn, 2000);
+            }, 1500);
+        }
+
+        // --- AIが密輸するフェーズ ---
+        function startAiSmuggle() {
+            actionContent.innerHTML = `<p class="text-2xl animate-pulse">AIがスーツケースに現金を詰めています...</p>`;
+            
+            setTimeout(() => {
+                // AIの密輸額決定 (0, 小額, または一か八かの高額)
+                const choices = [0, 0, 100000, 300000, 500000, 1000000];
+                const aiActualAmount = choices[Math.floor(Math.random() * choices.length)];
+
+                actionContent.innerHTML = `
+                    <p class="text-xl mb-4">AIが申告しました: <span class="gold-text font-bold text-2xl">「¥0 です」</span></p>
+                    <p class="text-sm text-gray-400 mb-6">AIの表情は読み取れません。どうしますか？</p>
+                    <div class="flex space-x-4 justify-center">
+                        <button id="btn-doubt" class="bg-red-900 hover:bg-red-700 text-white px-10 py-4 rounded-lg font-bold transition">ダウト</button>
+                        <button id="btn-pass" class="bg-green-900 hover:bg-green-700 text-white px-10 py-4 rounded-lg font-bold transition">パス</button>
+                    </div>
+                `;
+
+                document.getElementById('btn-doubt').onclick = () => {
+                    if (aiActualAmount > 0) {
+                        addLog(`見破りました！ AIの密輸額¥${aiActualAmount.toLocaleString()}を没収し、罰金¥${penalty.toLocaleString()}を徴収します。`);
+                        flashScreen('#003300');
+                        playerMoney += (aiActualAmount + penalty);
+                        aiMoney -= (aiActualAmount + penalty);
+                    } else {
+                        addLog(`誤認です！ AIは何も持っていませんでした。罰金¥${penalty.toLocaleString()}を支払います。`);
+                        flashScreen('#440000');
+                        playerMoney -= penalty;
+                        aiMoney += penalty;
+                    }
+                    updateUI();
+                    setTimeout(nextTurn, 2000);
+                };
+
+                document.getElementById('btn-pass').onclick = () => {
+                    addLog(`パスしました。AIは¥${aiActualAmount.toLocaleString()}を安全に運び出しました。`);
+                    aiMoney += aiActualAmount;
+                    playerMoney -= aiActualAmount;
+                    updateUI();
+                    setTimeout(nextTurn, 2000);
+                };
+            }, 1500);
+        }
+
+        function nextTurn() {
+            round++;
+            isPlayerSmuggler = !isPlayerSmuggler;
+            updateUI();
+            if (isPlayerSmuggler) {
+                startPlayerSmuggle();
+            } else {
+                startAiSmuggle();
+            }
+        }
+
+        // 初期化
+        window.onload = () => {
+            updateUI();
+            startPlayerSmuggle();
+        };
+    </script>
+</body>
+</html>

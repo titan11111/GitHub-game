@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" role="img" aria-label="ダンゴムシ（丸まった状態・落下時）">
+  <defs>
+    <radialGradient id="dbBall" cx="36%" cy="28%" r="78%">
+      <stop offset="0%"   stop-color="#B6C1D2"/>
+      <stop offset="35%"  stop-color="#7B8799"/>
+      <stop offset="72%"  stop-color="#4B5461"/>
+      <stop offset="100%" stop-color="#252B34"/>
+    </radialGradient>
+    <linearGradient id="dbRim" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%"   stop-color="#9FB0C6" stop-opacity=".7"/>
+      <stop offset="100%" stop-color="#9FB0C6" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="dbSoft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.4"/>
+    </filter>
+    <clipPath id="dbClip"><circle cx="40" cy="40" r="31.2"/></clipPath>
+  </defs>
+
+  <ellipse cx="40" cy="74" rx="24" ry="5" fill="#0B1016" opacity=".3" filter="url(#dbSoft)"/>
+
+  <circle cx="40" cy="40" r="32" fill="url(#dbBall)" stroke="#1D222A" stroke-width="1.6"/>
+
+  <g clip-path="url(#dbClip)">
+  <!-- 甲板の継ぎ目：丸まると節が同心状に並ぶ -->
+  <g stroke="#232932" stroke-width="1.7" fill="none" stroke-linecap="round" opacity=".85">
+    <path d="M18 16.8 Q14 40 18 63.2"/>
+    <path d="M26 11.2 Q22 40 26 68.8"/>
+    <path d="M34 8.6  Q30 40 34 71.4"/>
+    <path d="M42 8.1  Q38 40 42 71.9"/>
+    <path d="M50 9.6  Q46 40 50 70.4"/>
+    <path d="M58 13.5 Q54 40 58 66.5"/>
+  </g>
+  <g stroke="#96A2B4" stroke-width=".8" fill="none" stroke-linecap="round" opacity=".55">
+    <path d="M19.2 16.6 Q15.2 40 19.2 63.4"/>
+    <path d="M27.2 11 Q23.2 40 27.2 69"/>
+    <path d="M35.2 8.4 Q31.2 40 35.2 71.6"/>
+    <path d="M43.2 7.9 Q39.2 40 43.2 72.1"/>
+    <path d="M51.2 9.4 Q47.2 40 51.2 70.6"/>
+    <path d="M59.2 13.3 Q55.2 40 59.2 66.7"/>
+  </g>
+
+  <!-- 頭側の丸め込み（右端に頭部が収まる） -->
+  <path d="M62 18 Q72 40 62 62 Q69 40 62 18 Z" fill="#2B323C" opacity=".55"/>
+
+  </g>
+
+  <!-- 光沢 -->
+  <ellipse cx="30" cy="22" rx="14" ry="8.5" fill="#FFFFFF" opacity=".22" transform="rotate(-24 30 22)"/>
+  <circle cx="40" cy="40" r="31" fill="none" stroke="url(#dbRim)" stroke-width="2"/>
+</svg>

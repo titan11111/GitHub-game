@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>営業支援ダッシュボード B案 - データ重視型</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #f0f0f0;
+            padding: 15px;
+            font-size: 12px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border: 1px solid #999;
+            padding: 15px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 2px solid #000;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .header-left {
+            font-size: 14px;
+        }
+
+        .header-right {
+            font-size: 11px;
+            color: #666;
+        }
+
+        /* グリッドレイアウト */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .data-box {
+            border: 1px solid #999;
+            padding: 10px;
+            background: #fafafa;
+        }
+
+        .data-box-title {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #999;
+            padding-bottom: 4px;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 11px;
+        }
+
+        .metric-label {
+            color: #333;
+        }
+
+        .metric-value {
+            font-weight: bold;
+            text-align: right;
+            min-width: 80px;
+        }
+
+        .metric-value.high {
+            color: #008000;
+        }
+
+        .metric-value.low {
+            color: #cc0000;
+        }
+
+        .metric-value.warning {
+            color: #ff6600;
+        }
+
+        /* 詳細テーブル */
+        .detail-section {
+            margin-bottom: 15px;
+        }
+
+        .detail-title {
+            font-weight: bold;
+            font-size: 12px;
+            padding: 8px;
+            background: #e0e0e0;
+            border: 1px solid #999;
+            margin-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        th {
+            background: #d9d9d9;
+            border: 1px solid #999;
+            padding: 5px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        td {
+            border: 1px solid #ccc;
+            padding: 5px;
+        }
+
+        tr:nth-child(even) {
+            background: #f5f5f5;
+        }
+
+        tr:hover {
+            background: #fffacd;
+        }
+
+        .align-right {
+            text-align: right;
+        }
+
+        .status-new {
+            color: #0066cc;
+            font-weight: bold;
+        }
+
+        .status-ongoing {
+            color: #666;
+        }
+
+        .status-closed {
+            color: #999;
+            text-decoration: line-through;
+        }
+
+        .urgent {
+            background: #ffcccc;
+            font-weight: bold;
+        }
+
+        .rank-badge {
+            background: #333;
+            color: white;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        .footer {
+            font-size: 10px;
+            color: #999;
+            border-top: 1px solid #999;
+            padding-top: 10px;
+            margin-top: 15px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <div class="header">
+            <div class="header-left">営業支援ダッシュボード | 山田太郎 | 2026年8月29日</div>
+            <div class="header-right">Data-Driven Reporting | 更新: 09:00</div>
+        </div>
+
+        <!-- KPI サマリー -->
+        <div class="main-grid">
+            <div class="data-box">
+                <div class="data-box-title">📊 月間売上</div>
+                <div class="metric">
+                    <span class="metric-label">実績:</span>
+                    <span class="metric-value high">¥850万</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">目標:</span>
+                    <span class="metric-value">¥1,000万</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">進捗率:</span>
+                    <span class="metric-value warning">85%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">差額:</span>
+                    <span class="metric-value low">-¥150万</span>
+                </div>
+            </div>
+
+            <div class="data-box">
+                <div class="data-box-title">📋 案件集計</div>
+                <div class="metric">
+                    <span class="metric-label">新規:</span>
+                    <span class="metric-value">12件</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">継続:</span>
+                    <span class="metric-value">28件</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">クローズ:</span>
+                    <span class="metric-value">8件</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">合計:</span>
+                    <span class="metric-value high">48件</span>
+                </div>
+            </div>
+
+            <div class="data-box">
+                <div class="data-box-title">⭐ 品質指標</div>
+                <div class="metric">
+                    <span class="metric-label">顧客評価:</span>
+                    <span class="metric-value high">4.7/5.0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">評価件数:</span>
+                    <span class="metric-value">48件</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">期限超過:</span>
+                    <span class="metric-value low">2件</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">平均対応:</span>
+                    <span class="metric-value high">1.2日</span>
+                </div>
+            </div>
+
+            <div class="data-box">
+                <div class="data-box-title">🏆 順位・比較</div>
+                <div class="metric">
+                    <span class="metric-label">チーム順位:</span>
+                    <span class="metric-value"><span class="rank-badge">3位</span></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">平均比:</span>
+                    <span class="metric-value high">+5%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">先月比:</span>
+                    <span class="metric-value warning">-3%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">年初比:</span>
+                    <span class="metric-value high">+12%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 案件一覧（詳細テーブル） -->
+        <div class="detail-section">
+            <div class="detail-title">【案件進捗管理】当月の活動案件一覧</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>案件ID</th>
+                        <th>顧客名</th>
+                        <th>金額</th>
+                        <th>ステージ</th>
+                        <th>進捗率</th>
+                        <th>期限</th>
+                        <th>経過日数</th>
+                        <th>備考</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="urgent">
+                        <td>C20260001</td>
+                        <td>〇〇産業株式会社</td>
+                        <td class="align-right">¥250万</td>
+                        <td><span class="status-ongoing">継続</span></td>
+                        <td class="align-right">75%</td>
+                        <td>2026-08-30</td>
+                        <td class="align-right">-1日</td>
+                        <td>要フォローアップ</td>
+                    </tr>
+                    <tr>
+                        <td>C20260012</td>
+                        <td>△△テクノロジー</td>
+                        <td class="align-right">¥180万</td>
+                        <td><span class="status-new">新規</span></td>
+                        <td class="align-right">45%</td>
+                        <td>2026-09-15</td>
+                        <td class="align-right">17日</td>
+                        <td>初回ヒアリング済</td>
+                    </tr>
+                    <tr>
+                        <td>C20260008</td>
+                        <td>□□証券</td>
+                        <td class="align-right">¥420万</td>
+                        <td><span class="status-ongoing">継続</span></td>
+                        <td class="align-right">90%</td>
+                        <td>2026-09-10</td>
+                        <td class="align-right">12日</td>
+                        <td>最終提案予定</td>
+                    </tr>
+                    <tr>
+                        <td>C20260015</td>
+                        <td>◇◇コンサルティング</td>
+                        <td class="align-right">¥150万</td>
+                        <td><span class="status-new">新規</span></td>
+                        <td class="align-right">20%</td>
+                        <td>2026-10-01</td>
+                        <td class="align-right">33日</td>
+                        <td>資料待ち</td>
+                    </tr>
+                    <tr>
+                        <td>C20260003</td>
+                        <td>■■製造業</td>
+                        <td class="align-right">¥320万</td>
+                        <td><span class="status-closed">クローズ</span></td>
+                        <td class="align-right">100%</td>
+                        <td>2026-08-25</td>
+                        <td class="align-right">4日</td>
+                        <td>契約完了</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- チーム比較テーブル -->
+        <div class="detail-section">
+            <div class="detail-title">【チーム業績比較】全12サポーター</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>順位</th>
+                        <th>サポーター名</th>
+                        <th>売上実績</th>
+                        <th>売上目標</th>
+                        <th>達成率</th>
+                        <th>案件数</th>
+                        <th>顧客評価</th>
+                        <th>月間増減</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="rank-badge">1位</span></td>
+                        <td>佐藤花子</td>
+                        <td class="align-right high">¥950万</td>
+                        <td class="align-right">¥1,000万</td>
+                        <td class="align-right high">95%</td>
+                        <td class="align-right">52件</td>
+                        <td class="align-right">4.9/5</td>
+                        <td class="align-right high">+8%</td>
+                    </tr>
+                    <tr>
+                        <td><span class="rank-badge">2位</span></td>
+                        <td>鈴木一郎</td>
+                        <td class="align-right high">¥900万</td>
+                        <td class="align-right">¥1,000万</td>
+                        <td class="align-right warning">90%</td>
+                        <td class="align-right">48件</td>
+                        <td class="align-right">4.8/5</td>
+                        <td class="align-right">+2%</td>
+                    </tr>
+                    <tr style="background: #fffacd;">
+                        <td><span class="rank-badge">3位</span></td>
+                        <td><strong>山田太郎</strong></td>
+                        <td class="align-right high"><strong>¥850万</strong></td>
+                        <td class="align-right"><strong>¥1,000万</strong></td>
+                        <td class="align-right warning"><strong>85%</strong></td>
+                        <td class="align-right"><strong>48件</strong></td>
+                        <td class="align-right"><strong>4.7/5</strong></td>
+                        <td class="align-right warning"><strong>-3%</strong></td>
+                    </tr>
+                    <tr>
+                        <td><span class="rank-badge">4位</span></td>
+                        <td>田中花子</td>
+                        <td class="align-right">¥800万</td>
+                        <td class="align-right">¥1,000万</td>
+                        <td class="align-right low">80%</td>
+                        <td class="align-right">45件</td>
+                        <td class="align-right">4.6/5</td>
+                        <td class="align-right low">-5%</td>
+                    </tr>
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: #999;">... 他8人</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            B案（データ重視型）| エクセルライク・詳細データ指向 | 生成: 2026-08-29 08:15
+        </div>
+    </div>
+</body>
+</html>

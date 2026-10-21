@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>苔王の遺跡</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{
+    --ink:#08100c; --stone:#3b4a40; --moss:#2d5136; --gold:#e0a83c;
+    --blood:#c8402f; --bone:#d9d2b6; --deep:#050a08;
+  }
+  html,body{height:100%;background:var(--deep);color:var(--bone);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+    overflow:hidden;touch-action:none;user-select:none}
+  #wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;padding:6px}
+  #hud{width:100%;max-width:640px;display:flex;align-items:center;gap:10px;
+    font-size:13px;letter-spacing:.04em;padding:2px 4px}
+  #hearts{display:flex;gap:3px}
+  .hp{width:14px;height:14px;background:
+    radial-gradient(circle at 30% 30%, #ff8a7a, var(--blood) 60%, #7a1d14);
+    clip-path:polygon(50% 100%,0 45%,0 20%,25% 0,50% 18%,75% 0,100% 20%,100% 45%)}
+  .hp.empty{background:#22302a}
+  #stat{margin-left:auto;display:flex;gap:14px;color:var(--gold)}
+  #room{color:#7d9184}
+  canvas{width:100%;max-width:640px;image-rendering:pixelated;
+    border:3px solid #1b2a22;border-radius:2px;background:#0b1410;
+    box-shadow:0 0 0 1px #0a120e, 0 10px 30px rgba(0,0,0,.6)}
+  #pad{width:100%;max-width:640px;flex:1;display:flex;align-items:center;justify-content:space-between;padding:4px 8px 10px}
+  #dpad{width:150px;height:150px;position:relative}
+  .d{position:absolute;width:50px;height:50px;background:#1b2a22;border:2px solid #33473a;border-radius:8px}
+  .d:active,.d.on{background:#2d5136;border-color:var(--gold)}
+  #du{left:50px;top:0}#dd{left:50px;top:100px}#dl{left:0;top:50px}#dr{left:100px;top:50px}
+  #dc{left:50px;top:50px;background:#111c17;border:2px solid #22332a}
+  #atk{width:96px;height:96px;border-radius:50%;background:#3a2a12;border:3px solid var(--gold);
+    color:var(--gold);font-size:15px;font-weight:700;letter-spacing:.1em;display:grid;place-items:center}
+  #atk:active,#atk.on{background:var(--gold);color:#2a1d06}
+  #overlay{position:fixed;inset:0;background:rgba(5,10,8,.92);display:grid;place-items:center;text-align:center;padding:24px;z-index:9}
+  #overlay h1{font-size:clamp(28px,7vw,44px);letter-spacing:.18em;color:var(--gold);margin-bottom:6px}
+  #overlay p{font-size:14px;line-height:2;color:#9db0a3;max-width:34ch;margin:0 auto}
+  #overlay button{margin-top:22px;padding:14px 34px;background:var(--moss);color:var(--bone);
+    border:2px solid var(--gold);border-radius:3px;font-size:16px;letter-spacing:.12em}
+  .hide{display:none!important}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div id="hearts"></div>
+    <div id="room">遺跡の入口</div>
+    <div id="stat"><span id="keys">🔑0</span><span id="gems">◆0</span></div>
+  </div>
+  <canvas id="cv" width="480" height="352"></canvas>
+  <div id="pad">
+    <div id="dpad">
+      <div class="d" id="du"></div><div class="d" id="dl"></div>
+      <div class="d" id="dc"></div><div class="d" id="dr"></div><div class="d" id="dd"></div>
+    </div>
+    <div id="atk">けん</div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div>
+    <h1>苔王の遺跡</h1>
+    <p>剣で草を刈り、鍵を見つけ、北の扉の奥にいる主を倒せ。<br>
+    移動＝十字キー／WASD　攻撃＝スペース・Z<br>スマホは下のボタンで操作</p>
+    <button id="start">はじめる</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+const TILE=32, RW=15, RH=11, W=RW*TILE, H=RH*TILE;
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+
+const T={FLOOR:0,WALL:1,BUSH:2,WATER:3,LOCK:4,CHEST:5,OPEN:6,PILLAR:7,FLOWER:8};
+const SOLID=new Set([T.WALL,T.BUSH,T.WATER,T.LOCK,T.CHEST,T.OPEN,T.PILLAR]);
+
+/* ---------- audio ---------- */
+let AC=null;
+function beep(f,d,type='square',vol=.05,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,AC.currentTime);
+  if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40,f+slide),AC.currentTime+d);
+  g.gain.setValueAtTime(vol,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);
+  o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);
+}
+const S={
+  swing:()=>beep(680,.08,'square',.04,-320),
+  hit:()=>beep(190,.12,'sawtooth',.05,-90),
+  hurt:()=>beep(150,.25,'square',.06,-90),
+  pick:()=>{beep(880,.06);setTimeout(()=>beep(1320,.09),60)},
+  key:()=>{beep(660,.08);setTimeout(()=>beep(990,.08),80);setTimeout(()=>beep(1480,.18),160)},
+  door:()=>beep(300,.3,'triangle',.06,180),
+  die:()=>beep(320,.5,'sawtooth',.07,-260),
+};
+
+/* ---------- rooms ---------- */
+const MAPW=3,MAPH=3, BOSS=1; // room index 1 = (1,0)
+const ROOMS=[
+  {name:'苔むした広間', deco:'pillars', enemies:[['bat',4,3],['bat',10,7],['slime',7,5]], chest:null},
+  {name:'苔王の間',     deco:'boss',    enemies:[], chest:'prize', boss:true},
+  {name:'割れた回廊',   deco:'rocks',   enemies:[['slime',4,4],['slime',9,3],['slime',6,7],['bat',11,6]], chest:'gem'},
+  {name:'枯れ井戸',     deco:'well',    enemies:[['slime',4,5],['slime',9,6],['bat',7,3]], chest:'key'},
+  {name:'central',      deco:'center',  enemies:[['bat',5,4],['slime',9,6],['slime',4,7]], chest:null},
+  {name:'ぬかるみ',     deco:'pond',    enemies:[['bat',5,3],['bat',10,4],['bat',7,7]], chest:'gem'},
+  {name:'草原の入口',   deco:'grass',   enemies:[], chest:null},
+  {name:'南の門',       deco:'gate',    enemies:[['slime',7,4],['slime',5,7]], chest:null},
+  {name:'蔦の小道',     deco:'vines',   enemies:[['slime',10,5],['bat',6,4],['slime',6,8]], chest:'heart'},
+];
+ROOMS[4].name='遺跡の中庭';
+const START=7;
+function rc(i){return {x:i%MAPW,y:(i/MAPW)|0};}
+function connected(a,b){
+  if(a<0||b<0||a>8||b>8)return false;
+  const A=rc(a),B=rc(b);
+  if(Math.abs(A.x-B.x)+Math.abs(A.y-B.y)!==1)return false;
+  if(a===BOSS||b===BOSS) return (a===4||b===4); // 主の間は中庭からのみ
+  return true;
+}
+function neighbor(i,dir){
+  const {x,y}=rc(i);
+  const n={n:[x,y-1],s:[x,y+1],w:[x-1,y],e:[x+1,y]}[dir];
+  if(n[0]<0||n[0]>=MAPW||n[1]<0||n[1]>=MAPH)return -1;
+  const j=n[1]*MAPW+n[0];
+  return connected(i,j)?j:-1;
+}
+
+let rng=1;
+function srand(s){rng=s>>>0||1;}
+function rnd(){rng^=rng<<13;rng^=rng>>>17;rng^=rng<<5;return ((rng>>>0)%10000)/10000;}
+
+const tileCache={}, roomFlags={};
+function buildRoom(i){
+  if(tileCache[i])return tileCache[i];
+  srand(i*7919+13);
+  const t=[];
+  for(let y=0;y<RH;y++){t.push([]);for(let x=0;x<RW;x++){
+    t[y][x]=(x===0||y===0||x===RW-1||y===RH-1)?T.WALL:T.FLOOR;
+  }}
+  const d=ROOMS[i].deco;
+  const put=(x,y,v)=>{if(x>0&&y>0&&x<RW-1&&y<RH-1)t[y][x]=v;};
+  if(d==='pillars'){for(let y=2;y<RH-2;y+=3)for(let x=3;x<RW-3;x+=4)put(x,y,T.PILLAR);}
+  if(d==='rocks'){for(let k=0;k<16;k++)put(2+((rnd()*(RW-4))|0),2+((rnd()*(RH-4))|0),T.WALL);}
+  if(d==='well'){for(let y=4;y<7;y++)for(let x=6;x<9;x++)put(x,y,T.WATER);put(7,5,T.WALL);}
+  if(d==='pond'){for(let y=3;y<8;y++)for(let x=2;x<6;x++)if(rnd()>.25)put(x,y,T.WATER);}
+  if(d==='center'){for(const[x,y]of[[4,3],[10,3],[4,7],[10,7]])put(x,y,T.PILLAR);}
+  if(d==='gate'){put(3,3,T.PILLAR);put(11,3,T.PILLAR);put(3,7,T.PILLAR);put(11,7,T.PILLAR);}
+  if(d==='vines'){for(let k=0;k<10;k++)put(3+((rnd()*9)|0),2+((rnd()*7)|0),T.PILLAR);}
+  if(d==='boss'){for(let x=1;x<RW-1;x++){put(x,1,T.PILLAR);}for(let y=2;y<RH-1;y+=4){put(1,y,T.PILLAR);put(RW-2,y,T.PILLAR);}}
+  // 草むら
+  const bushes=d==='boss'?0:14;
+  for(let k=0;k<bushes;k++){
+    const x=2+((rnd()*(RW-4))|0), y=2+((rnd()*(RH-4))|0);
+    if(t[y][x]===T.FLOOR)t[y][x]=T.BUSH;
+  }
+  for(let k=0;k<8;k++){
+    const x=2+((rnd()*(RW-4))|0), y=2+((rnd()*(RH-4))|0);
+    if(t[y][x]===T.FLOOR)t[y][x]=T.FLOWER;
+  }
+  // 出入口
+  const cx=(RW/2)|0, cy=(RH/2)|0;
+  const open=(x,y)=>{t[y][x]=T.FLOOR;};
+  if(neighbor(i,'n')>=0){for(let x=cx-1;x<=cx+1;x++){open(x,0);open(x,1);open(x,2);}}
+  if(neighbor(i,'s')>=0){for(let x=cx-1;x<=cx+1;x++){open(x,RH-1);open(x,RH-2);open(x,RH-3);}}
+  if(neighbor(i,'w')>=0){for(let y=cy-1;y<=cy+1;y++){open(0,y);open(1,y);open(2,y);}}
+  if(neighbor(i,'e')>=0){for(let y=cy-1;y<=cy+1;y++){open(RW-1,y);open(RW-2,y);open(RW-3,y);}}
+  // 鍵の扉（中庭の北）
+  if(i===4){for(let x=cx-1;x<=cx+1;x++)t[0][x]=T.LOCK;}
+  // 宝箱
+  if(ROOMS[i].chest){const x=cx, y=i===BOSS?3:2; t[y][x]=T.CHEST; for(let dx=-1;dx<=1;dx++)if(t[y+1][x+dx]===T.BUSH)t[y+1][x+dx]=T.FLOOR;}
+  tileCache[i]=t; return t;
+}
+
+/* ---------- state ---------- */
+let room=START, tiles=null, player, enemies=[], items=[], fx=[], boss=null;
+let keys=0, gems=0, hp=6, maxhp=6, playing=false, flash=0, msg='', msgT=0, cleared=false;
+
+function spawnRoom(i,fromDir){
+  room=i; tiles=buildRoom(i);
+  document.getElementById('room').textContent=ROOMS[i].name;
+  enemies=[]; items=[]; fx=[]; boss=null;
+  if(!roomFlags['clr'+i]){
+    for(const[type,x,y]of ROOMS[i].enemies) enemies.push(makeEnemy(type,x*TILE+16,y*TILE+16));
+  }
+  if(i===BOSS && !roomFlags.bossDead){
+    boss=makeEnemy('boss',W/2,H/2-20); enemies.push(boss);
+  }
+}
+function makeEnemy(type,x,y){
+  const base={x,y,type,vx:0,vy:0,hurt:0,dead:false,t:Math.random()*6};
+  if(type==='slime')return {...base,r:11,hp:2,spd:34,dmg:1};
+  if(type==='bat')  return {...base,r:9, hp:1,spd:72,dmg:1};
+  return {...base,r:26,hp:16,spd:44,dmg:2,phase:0};
+}
+
+function reset(){
+  keys=0;gems=0;hp=maxhp=6;cleared=false;
+  for(const k in roomFlags)delete roomFlags[k];
+  for(const k in tileCache)delete tileCache[k];
+  player={x:W/2,y:H-70,r:9,dir:'n',atk:0,inv:0,kx:0,ky:0};
+  spawnRoom(START);
+  drawHUD();
+}
+
+/* ---------- input ---------- */
+const K={};
+const map={ArrowUp:'n',KeyW:'n',ArrowDown:'s',KeyS:'s',ArrowLeft:'w',KeyA:'w',ArrowRight:'e',KeyD:'e'};
+addEventListener('keydown',e=>{
+  if(map[e.code]){K[map[e.code]]=1;e.preventDefault();}
+  if(['Space','KeyZ','KeyJ'].includes(e.code)){attack();e.preventDefault();}
+});
+addEventListener('keyup',e=>{if(map[e.code])K[map[e.code]]=0;});
+function bindPad(id,dir){
+  const el=document.getElementById(id);
+  const on=e=>{e.preventDefault();K[dir]=1;el.classList.add('on');};
+  const off=e=>{e.preventDefault();K[dir]=0;el.classList.remove('on');};
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); el.addEventListener('mouseup',off);
+  el.addEventListener('mouseleave',off);
+}
+bindPad('du','n');bindPad('dd','s');bindPad('dl','w');bindPad('dr','e');
+const atkBtn=document.getElementById('atk');
+const doAtk=e=>{e.preventDefault();attack();atkBtn.classList.add('on');setTimeout(()=>atkBtn.classList.remove('on'),90);};
+atkBtn.addEventListener('touchstart',doAtk,{passive:false});
+atkBtn.addEventListener('mousedown',doAtk);
+
+/* ---------- helpers ---------- */
+function tileAt(px,py){
+  const x=(px/TILE)|0, y=(py/TILE)|0;
+  if(x<0||y<0||x>=RW||y>=RH)return T.WALL;
+  return tiles[y][x];
+}
+function solidAt(px,py){return SOLID.has(tileAt(px,py));}
+function moveBody(o,dx,dy){
+  const r=o.r;
+  if(dx){
+    const nx=o.x+dx;
+    if(!solidAt(nx+Math.sign(dx)*r,o.y-r+2)&&!solidAt(nx+Math.sign(dx)*r,o.y+r-2))o.x=nx;
+  }
+  if(dy){
+    const ny=o.y+dy;
+    if(!solidAt(o.x-r+2,ny+Math.sign(dy)*r)&&!solidAt(o.x+r-2,ny+Math.sign(dy)*r))o.y=ny;
+  }
+}
+function say(t){msg=t;msgT=2.2;}
+
+/* ---------- attack ---------- */
+function attack(){
+  if(!playing||player.atk>0)return;
+  player.atk=.26; S.swing();
+  const d=player.dir;
+  const ox={n:0,s:0,w:-24,e:24}[d], oy={n:-24,s:24,w:0,e:0}[d];
+  const hx=player.x+ox, hy=player.y+oy, hw=d==='w'||d==='e'?26:22, hh=d==='n'||d==='s'?26:22;
+  // 敵
+  for(const e of enemies){
+    if(e.dead||e.hurt>0)continue;
+    if(Math.abs(e.x-hx)<hw/2+e.r&&Math.abs(e.y-hy)<hh/2+e.r){
+      e.hp--; e.hurt=.35; S.hit();
+      const a=Math.atan2(e.y-player.y,e.x-player.x);
+      e.vx=Math.cos(a)*150; e.vy=Math.sin(a)*150;
+      if(e.hp<=0){
+        e.dead=true; fx.push({x:e.x,y:e.y,t:.4,type:'pop'});
+        if(e===boss){roomFlags.bossDead=true; say('苔王をたおした！'); S.key();}
+        else if(Math.random()<.35)items.push({x:e.x,y:e.y,type:Math.random()<.6?'heart':'gem',t:0});
+      }
+    }
+  }
+  // タイル（草・宝箱・鍵の扉）
+  const tx=((hx)/TILE)|0, ty=((hy)/TILE)|0;
+  for(let y=ty-1;y<=ty+1;y++)for(let x=tx-1;x<=tx+1;x++){
+    if(x<0||y<0||x>=RW||y>=RH)continue;
+    const cxp=x*TILE+16, cyp=y*TILE+16;
+    if(Math.abs(cxp-hx)>hw/2+16||Math.abs(cyp-hy)>hh/2+16)continue;
+    const v=tiles[y][x];
+    if(v===T.BUSH){
+      tiles[y][x]=T.FLOOR; fx.push({x:cxp,y:cyp,t:.35,type:'leaf'});
+      const r=Math.random();
+      if(r<.22)items.push({x:cxp,y:cyp,type:'heart',t:0});
+      else if(r<.42)items.push({x:cxp,y:cyp,type:'gem',t:0});
+    }else if(v===T.CHEST){
+      tiles[y][x]=T.OPEN; openChest(room);
+    }else if(v===T.LOCK){
+      if(keys>0){keys--; for(let k=0;k<RW;k++)if(tiles[y][k]===T.LOCK)tiles[y][k]=T.FLOOR;
+        S.door(); say('扉がひらいた'); drawHUD();}
+      else say('鍵がかかっている');
+    }
+  }
+}
+function openChest(i){
+  const kind=ROOMS[i].chest;
+  if(kind==='key'){keys++;S.key();say('小さな鍵を手に入れた');}
+  else if(kind==='gem'){gems+=10;S.pick();say('宝石×10');}
+  else if(kind==='heart'){maxhp+=2;hp=maxhp;S.key();say('器がひろがった（最大HP+1）');}
+  else if(kind==='prize'){cleared=true;S.key();}
+  drawHUD();
+}
+
+/* ---------- update ---------- */
+function update(dt){
+  const p=player;
+  let dx=(K.e?1:0)-(K.w?1:0), dy=(K.s?1:0)-(K.n?1:0);
+  if(dx||dy){
+    if(p.atk<=0){ if(dy<0)p.dir='n'; else if(dy>0)p.dir='s'; else p.dir=dx>0?'e':'w'; }
+    const l=Math.hypot(dx,dy)||1, sp=(p.atk>0?60:110)*dt;
+    moveBody(p,dx/l*sp,dy/l*sp);
+  }
+  if(p.kx||p.ky){moveBody(p,p.kx*dt,p.ky*dt);p.kx*=.86;p.ky*=.86;if(Math.hypot(p.kx,p.ky)<8)p.kx=p.ky=0;}
+  p.atk=Math.max(0,p.atk-dt); p.inv=Math.max(0,p.inv-dt);
+
+  // 部屋移動
+  let nd=null;
+  if(p.y<4)nd='n'; else if(p.y>H-4)nd='s'; else if(p.x<4)nd='w'; else if(p.x>W-4)nd='e';
+  if(nd){
+    const nx=neighbor(room,nd);
+    if(nx>=0){
+      if(enemies.filter(e=>!e.dead).length===0)roomFlags['clr'+room]=true;
+      spawnRoom(nx,nd); flash=.18; S.door();
+      if(nd==='n')p.y=H-24; if(nd==='s')p.y=24; if(nd==='w')p.x=W-24; if(nd==='e')p.x=24;
+      p.kx=p.ky=0; return;
+    }else{p.x=Math.min(W-12,Math.max(12,p.x));p.y=Math.min(H-12,Math.max(12,p.y));}
+  }
+
+  // 敵
+  for(const e of enemies){
+    if(e.dead)continue;
+    e.t+=dt; e.hurt=Math.max(0,e.hurt-dt);
+    if(e.vx||e.vy){moveBody(e,e.vx*dt,e.vy*dt);e.vx*=.82;e.vy*=.82;}
+    const a=Math.atan2(p.y-e.y,p.x-e.x);
+    if(e.type==='slime'){
+      const hop=(Math.sin(e.t*3)+1)/2;
+      if(hop>.5)moveBody(e,Math.cos(a)*e.spd*dt,Math.sin(a)*e.spd*dt);
+    }else if(e.type==='bat'){
+      const w=Math.sin(e.t*4)*.9;
+      moveBody(e,Math.cos(a+w)*e.spd*dt,Math.sin(a+w)*e.spd*dt);
+    }else{ // boss
+      const phase=Math.sin(e.t*1.4);
+      const sp=e.hp<8?e.spd*1.5:e.spd;
+      if(phase>0)moveBody(e,Math.cos(a)*sp*dt,Math.sin(a)*sp*dt);
+      if(e.hp<=10&&!e.split1){e.split1=1;spawnAdd(e);}
+      if(e.hp<=5 &&!e.split2){e.split2=1;spawnAdd(e);spawnAdd(e);}
+    }
+    // 接触ダメージ
+    if(p.inv<=0&&Math.hypot(e.x-p.x,e.y-p.y)<e.r+p.r){
+      hp-=e.dmg; p.inv=1.1; S.hurt(); drawHUD();
+      const ha=Math.atan2(p.y-e.y,p.x-e.x);
+      p.kx=Math.cos(ha)*190; p.ky=Math.sin(ha)*190;
+      if(hp<=0){S.die();gameOver();return;}
+    }
+  }
+  enemies=enemies.filter(e=>!e.dead||e.hurt>0);
+  // アイテム
+  items=items.filter(it=>{
+    it.t+=dt;
+    if(Math.hypot(it.x-p.x,it.y-p.y)<16){
+      if(it.type==='heart'){hp=Math.min(maxhp,hp+2);} else gems++;
+      S.pick(); drawHUD(); return false;
+    }
+    return it.t<14;
+  });
+  fx=fx.filter(f=>(f.t-=dt)>0);
+  if(msgT>0)msgT-=dt;
+  if(flash>0)flash-=dt;
+  if(cleared){win();}
+}
+function spawnAdd(e){
+  const s=makeEnemy('slime',e.x+(Math.random()*60-30),e.y+(Math.random()*60-30));
+  enemies.push(s);
+}
+
+/* ---------- draw ---------- */
+function px(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x|0,y|0,w,h);}
+function drawTiles(){
+  for(let y=0;y<RH;y++)for(let x=0;x<RW;x++){
+    const v=tiles[y][x], X=x*TILE, Y=y*TILE;
+    // 床
+    const shade=((x*3+y*5)%7===0)?'#16241c':'#132018';
+    px(X,Y,TILE,TILE,shade);
+    if((x+y)%2===0)px(X+2,Y+2,2,2,'#1b2c21');
+    if(v===T.WALL){
+      px(X,Y,TILE,TILE,'#2a3a30'); px(X,Y,TILE,4,'#3d5245'); px(X,Y+TILE-5,TILE,5,'#1a2620');
+      px(X+5,Y+9,9,7,'#22312a'); px(X+18,Y+18,10,7,'#22312a');
+    }else if(v===T.PILLAR){
+      px(X+3,Y+2,26,28,'#33453a'); px(X+3,Y+2,26,5,'#4a6153'); px(X+6,Y+12,6,10,'#26342c');
+      px(X+9,Y+24,14,4,'#1d2a23');
+    }else if(v===T.BUSH){
+      px(X+2,Y+4,28,26,'#264d2f'); px(X+5,Y+7,10,8,'#3a7043'); px(X+18,Y+16,9,7,'#3a7043');
+      px(X+2,Y+27,28,3,'#17301d');
+    }else if(v===T.WATER){
+      px(X,Y,TILE,TILE,'#1d4657');
+      px(X+4,Y+6+Math.sin(Date.now()/300+x)*2,12,2,'#3c7a91');
+      px(X+18,Y+20+Math.cos(Date.now()/280+y)*2,9,2,'#2f6478');
+    }else if(v===T.FLOWER){
+      px(X+13,Y+16,3,10,'#2f5c37'); px(X+11,Y+11,8,6,'#c8a23a'); px(X+13,Y+13,3,2,'#f0dd9a');
+    }else if(v===T.LOCK){
+      px(X,Y,TILE,TILE,'#4a3a1c'); px(X+2,Y+2,28,28,'#6b5426');
+      px(X+12,Y+11,8,10,'#1a1408'); px(X+14,Y+9,4,4,'#e0a83c');
+    }else if(v===T.CHEST||v===T.OPEN){
+      px(X+3,Y+10,26,20,'#6b4a1e'); px(X+3,Y+10,26,4,'#8c6528');
+      if(v===T.CHEST){px(X+3,Y+4,26,8,'#8c6528'); px(X+13,Y+14,6,7,'#e0a83c');}
+      else {px(X+3,Y+2,26,6,'#5a3d18'); px(X+8,Y+16,16,8,'#101a14');}
+    }
+  }
+}
+function drawPlayer(){
+  const p=player;
+  if(p.inv>0&&((p.inv*20)|0)%2)return;
+  const x=p.x|0,y=p.y|0;
+  px(x-9,y+6,18,5,'rgba(0,0,0,.35)');
+  px(x-8,y-4,16,14,'#2f7a3c');          // 胴
+  px(x-8,y+8,6,5,'#5a3a1c');px(x+2,y+8,6,5,'#5a3a1c'); // 足
+  px(x-7,y-14,14,11,'#d9b48a');         // 顔
+  px(x-9,y-19,18,6,'#256b32');          // 帽子
+  px(x-3,y-24,10,7,'#256b32');
+  if(p.dir==='s'){px(x-4,y-11,2,3,'#1a1208');px(x+3,y-11,2,3,'#1a1208');}
+  if(p.dir==='w')px(x-6,y-11,2,3,'#1a1208');
+  if(p.dir==='e')px(x+4,y-11,2,3,'#1a1208');
+  if(p.dir==='n')px(x-7,y-14,14,8,'#c49a72');
+  if(p.atk>0){
+    const t=1-p.atk/.26, L=10+t*16;
+    ctx.fillStyle='#dfe6e4';
+    if(p.dir==='n')ctx.fillRect(x+2,y-14-L,4,L);
+    if(p.dir==='s')ctx.fillRect(x-6,y+4,4,L);
+    if(p.dir==='w')ctx.fillRect(x-6-L,y-4,L,4);
+    if(p.dir==='e')ctx.fillRect(x+6,y-4,L,4);
+  }
+}
+function drawEnemy(e){
+  const x=e.x|0,y=e.y|0;
+  if(e.hurt>0&&((e.hurt*24)|0)%2){ctx.globalAlpha=.5;}
+  px(x-e.r,y+e.r-3,e.r*2,4,'rgba(0,0,0,.3)');
+  if(e.type==='slime'){
+    const s=Math.sin(e.t*3)*3;
+    px(x-11,y-6-s,22,14+s,'#6f4bb8'); px(x-8,y-9-s,16,5,'#8d6bd4');
+    px(x-5,y-3-s,3,3,'#160f22'); px(x+3,y-3-s,3,3,'#160f22');
+  }else if(e.type==='bat'){
+    const f=Math.sin(e.t*14)*4;
+    px(x-5,y-5,10,10,'#3b3b52'); px(x-14,y-4+f,9,5,'#55556f'); px(x+5,y-4-f,9,5,'#55556f');
+    px(x-3,y-2,2,2,'#e0a83c'); px(x+2,y-2,2,2,'#e0a83c');
+  }else{
+    const s=Math.sin(e.t*2.4)*4;
+    px(x-26,y-18-s,52,40+s,'#2f6f4c'); px(x-20,y-24-s,40,10,'#489468');
+    px(x-14,y-8-s,8,8,'#0d1a12'); px(x+7,y-8-s,8,8,'#0d1a12');
+    px(x-8,y+8-s,16,4,'#0d1a12');
+    px(x-24,y-30-s,10,8,'#e0a83c'); px(x+15,y-30-s,10,8,'#e0a83c'); // 王冠
+  }
+  ctx.globalAlpha=1;
+}
+function drawItem(it){
+  const b=Math.sin(it.t*6)*2;
+  if(it.type==='heart'){px(it.x-5,it.y-5+b,10,8,'#c8402f');px(it.x-3,it.y-4+b,3,3,'#ff9a8a');}
+  else{px(it.x-4,it.y-6+b,8,12,'#3ac8b0');px(it.x-2,it.y-4+b,3,4,'#c4fff4');}
+}
+function render(){
+  ctx.clearRect(0,0,W,H);
+  drawTiles();
+  for(const it of items)drawItem(it);
+  const order=[...enemies].sort((a,b)=>a.y-b.y);
+  for(const e of order){if(e.y<player.y)drawEnemy(e);}
+  drawPlayer();
+  for(const e of order){if(e.y>=player.y)drawEnemy(e);}
+  for(const f of fx){
+    if(f.type==='pop'){const r=(1-f.t/.4)*22;ctx.strokeStyle='rgba(224,168,60,.8)';ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(f.x,f.y,r,0,7);ctx.stroke();}
+    else{for(let i=0;i<5;i++){const a=i*1.3+f.t*8;px(f.x+Math.cos(a)*(1-f.t/.35)*18,f.y+Math.sin(a)*(1-f.t/.35)*18,4,4,'#4c8f57');}}
+  }
+  // ボスHP
+  if(boss&&!boss.dead&&room===BOSS){
+    px(W/2-90,10,180,10,'#20120f'); px(W/2-88,12,176*Math.max(0,boss.hp)/16,6,'#c8402f');
+  }
+  if(msgT>0){
+    const a=Math.min(1,msgT);
+    ctx.globalAlpha=a; px(30,H-52,W-60,34,'#0b1611'); ctx.strokeStyle='#e0a83c';ctx.lineWidth=2;
+    ctx.strokeRect(31,H-51,W-62,32);
+    ctx.fillStyle='#d9d2b6';ctx.font='16px "Hiragino Kaku Gothic ProN",sans-serif';ctx.textAlign='center';
+    ctx.fillText(msg,W/2,H-30); ctx.globalAlpha=1; ctx.textAlign='left';
+  }
+  if(flash>0){ctx.fillStyle='rgba(0,0,0,'+(flash/.18*.8)+')';ctx.fillRect(0,0,W,H);}
+}
+function drawHUD(){
+  const hs=document.getElementById('hearts'); hs.innerHTML='';
+  for(let i=0;i<maxhp/2;i++){const d=document.createElement('div');
+    d.className='hp'+(i*2<hp?'':' empty');hs.appendChild(d);}
+  document.getElementById('keys').textContent='🔑'+keys;
+  document.getElementById('gems').textContent='◆'+gems;
+}
+
+/* ---------- loop / screens ---------- */
+let last=0;
+function loop(ts){
+  const dt=Math.min(.05,(ts-last)/1000||0); last=ts;
+  if(playing){update(dt);render();}
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+const ov=document.getElementById('overlay');
+function screen(title,body,btn){
+  ov.classList.remove('hide');
+  ov.innerHTML='<div><h1>'+title+'</h1><p>'+body+'</p><button id="start">'+btn+'</button></div>';
+  document.getElementById('start').onclick=begin;
+}
+function begin(){
+  if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();
+  ov.classList.add('hide'); reset(); playing=true; last=performance.now();
+}
+function gameOver(){playing=false;screen('やられた…','苔が視界をのみこんだ。<br>宝石 '+gems+' 個で力尽きた。','もういちど');}
+function win(){playing=false;screen('苔王の秘宝','遺跡の主は倒れ、朝の光が差した。<br>宝石 '+gems+' 個・最大HP '+(maxhp/2)+'　クリア！','もういちど');}
+document.getElementById('start').onclick=begin;
+})();
+</script>
+</body>
+</html>

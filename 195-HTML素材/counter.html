@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>テキストカウンター</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Shippori+Mincho:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0d0d;
+      --surface:   #161616;
+      --border:    #2a2a2a;
+      --text:      #d8d4cc;
+      --muted:     #5a5650;
+      --amber:     #f5a623;
+      --amber-dim: #7a5110;
+      --red:       #e05656;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Shippori Mincho', serif;
+    }
+
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      padding: 1.4rem 2.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-family: 'Courier Prime', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--amber);
+    }
+
+    header span {
+      font-size: .72rem;
+      color: var(--muted);
+      letter-spacing: .08em;
+    }
+
+    /* ── Main layout ── */
+    main {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      overflow: hidden;
+    }
+
+    /* ── Textarea pane ── */
+    .editor-pane {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+
+    .editor-pane::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent calc(1.65rem - 1px),
+        #1d1d1d calc(1.65rem - 1px),
+        #1d1d1d 1.65rem
+      );
+      pointer-events: none;
+      opacity: .5;
+    }
+
+    textarea {
+      flex: 1;
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 2rem 2.6rem;
+      font-family: 'Shippori Mincho', serif;
+      font-size: 1rem;
+      line-height: 1.65rem;
+      color: var(--text);
+      caret-color: var(--amber);
+      letter-spacing: .04em;
+      position: relative;
+      z-index: 1;
+    }
+
+    textarea::placeholder {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    textarea::selection {
+      background: var(--amber-dim);
+      color: #fff;
+    }
+
+    .editor-footer {
+      padding: .6rem 2.4rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn {
+      font-family: 'Courier Prime', monospace;
+      font-size: .72rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      padding: .38rem .9rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .18s;
+    }
+
+    .btn:hover { border-color: var(--amber); color: var(--amber); }
+    .btn:active { opacity: .7; }
+
+    .btn-clear:hover { border-color: var(--red); color: var(--red); }
+
+    .copy-feedback {
+      font-family: 'Courier Prime', monospace;
+      font-size: .7rem;
+      color: var(--amber);
+      letter-spacing: .1em;
+      opacity: 0;
+      transition: opacity .3s;
+    }
+    .copy-feedback.show { opacity: 1; }
+
+    /* ── Stats pane ── */
+    .stats-pane {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .stat-block {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 0 2rem;
+      border-bottom: 1px solid var(--border);
+      min-height: 100px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-block:last-child { border-bottom: none; }
+
+    .stat-block::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--amber);
+      transform: scaleY(0);
+      transform-origin: bottom;
+      transition: transform .35s ease;
+    }
+
+    .stat-block.active::after { transform: scaleY(1); }
+
+    .stat-label {
+      font-size: .68rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: .5rem;
+    }
+
+    .stat-number {
+      font-family: 'Courier Prime', monospace;
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--amber);
+      line-height: 1;
+      transition: transform .12s ease, opacity .12s ease;
+      will-change: transform;
+    }
+
+    .stat-number.tick {
+      transform: scale(1.06);
+      opacity: .8;
+    }
+
+    .stat-sub {
+      font-family: 'Courier Prime', monospace;
+      font-size: .68rem;
+      color: var(--muted);
+      margin-top: .45rem;
+      letter-spacing: .06em;
+    }
+
+    /* Reading time gets different color */
+    .stat-block.time .stat-number {
+      font-size: 1.9rem;
+      color: var(--text);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Text Counter</h1>
+  <span>テキストカウンター</span>
+</header>
+
+<main>
+  <div class="editor-pane">
+    <textarea
+      id="input"
+      placeholder="ここにテキストを貼り付けてください…"
+      spellcheck="false"
+      autocomplete="off"
+    ></textarea>
+    <div class="editor-footer">
+      <button class="btn btn-clear" onclick="clearText()">クリア</button>
+      <button class="btn" onclick="copyStats()">結果をコピー</button>
+      <span class="copy-feedback" id="copyFeedback">コピーしました</span>
+    </div>
+  </div>
+
+  <div class="stats-pane">
+    <div class="stat-block" id="block-chars">
+      <div class="stat-label">文字数（全て）</div>
+      <div class="stat-number" id="count-chars">0</div>
+      <div class="stat-sub" id="sub-chars">スペース・改行を含む</div>
+    </div>
+
+    <div class="stat-block" id="block-nospace">
+      <div class="stat-label">文字数（空白除く）</div>
+      <div class="stat-number" id="count-nospace">0</div>
+      <div class="stat-sub" id="sub-nospace">スペース・改行を除く</div>
+    </div>
+
+    <div class="stat-block" id="block-words">
+      <div class="stat-label">単語数</div>
+      <div class="stat-number" id="count-words">0</div>
+      <div class="stat-sub" id="sub-words">スペース区切り</div>
+    </div>
+
+    <div class="stat-block" id="block-lines">
+      <div class="stat-label">行数</div>
+      <div class="stat-number" id="count-lines">0</div>
+      <div class="stat-sub" id="sub-lines">空行を含む</div>
+    </div>
+
+    <div class="stat-block time" id="block-time">
+      <div class="stat-label">読了時間（目安）</div>
+      <div class="stat-number" id="count-time">—</div>
+      <div class="stat-sub">日本語 500字/分</div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const input       = document.getElementById('input');
+  const elChars     = document.getElementById('count-chars');
+  const elNospace   = document.getElementById('count-nospace');
+  const elWords     = document.getElementById('count-words');
+  const elLines     = document.getElementById('count-lines');
+  const elTime      = document.getElementById('count-time');
+  const subChars    = document.getElementById('sub-chars');
+
+  const blocks = {
+    chars:   document.getElementById('block-chars'),
+    nospace: document.getElementById('block-nospace'),
+    words:   document.getElementById('block-words'),
+    lines:   document.getElementById('block-lines'),
+    time:    document.getElementById('block-time'),
+  };
+
+  let prev = { chars: 0, nospace: 0, words: 0, lines: 0 };
+
+  function tick(el, block) {
+    el.classList.add('tick');
+    block.classList.add('active');
+    setTimeout(() => el.classList.remove('tick'), 140);
+  }
+
+  function setVal(el, block, key, val) {
+    const str = String(val);
+    if (el.textContent !== str) {
+      el.textContent = str;
+      tick(el, block);
+    }
+  }
+
+  function update() {
+    const text = input.value;
+
+    const chars   = text.length;
+    const nospace = text.replace(/\s/g, '').length;
+    const words   = text.trim() === '' ? 0 : text.trim().split(/\s+/).filter(Boolean).length;
+    const lines   = text === '' ? 0 : text.split('\n').length;
+
+    setVal(elChars,   blocks.chars,   'chars',   chars);
+    setVal(elNospace, blocks.nospace, 'nospace', nospace);
+    setVal(elWords,   blocks.words,   'words',   words);
+    setVal(elLines,   blocks.lines,   'lines',   lines);
+
+    // 読了時間（日本語 500字/分）
+    if (nospace === 0) {
+      elTime.textContent = '—';
+      blocks.time.classList.remove('active');
+    } else {
+      const sec = Math.ceil((nospace / 500) * 60);
+      let timeStr;
+      if (sec < 60)       timeStr = `${sec}秒`;
+      else if (sec < 3600) timeStr = `${Math.floor(sec/60)}分 ${sec%60}秒`;
+      else                 timeStr = `${Math.floor(sec/3600)}時間 ${Math.floor((sec%3600)/60)}分`;
+      if (elTime.textContent !== timeStr) {
+        elTime.textContent = timeStr;
+        tick(elTime, blocks.time);
+      }
+    }
+
+    // サブテキスト更新
+    if (chars > 0 && chars !== nospace) {
+      subChars.textContent = `（空白除く: ${nospace}字）`;
+    } else {
+      subChars.textContent = 'スペース・改行を含む';
+    }
+
+    prev = { chars, nospace, words, lines };
+  }
+
+  function clearText() {
+    input.value = '';
+    update();
+    input.focus();
+  }
+
+  function copyStats() {
+    const text = input.value;
+    const nospace = text.replace(/\s/g, '').length;
+    const words   = text.trim() === '' ? 0 : text.trim().split(/\s+/).filter(Boolean).length;
+    const lines   = text === '' ? 0 : text.split('\n').length;
+    const sec     = nospace === 0 ? null : Math.ceil((nospace / 500) * 60);
+    const timeStr = sec === null ? '—'
+      : sec < 60 ? `${sec}秒`
+      : sec < 3600 ? `${Math.floor(sec/60)}分 ${sec%60}秒`
+      : `${Math.floor(sec/3600)}時間 ${Math.floor((sec%3600)/60)}分`;
+
+    const result = [
+      `文字数（全て）: ${text.length}`,
+      `文字数（空白除く）: ${nospace}`,
+      `単語数: ${words}`,
+      `行数: ${lines}`,
+      `読了時間: ${timeStr}`,
+    ].join('\n');
+
+    navigator.clipboard.writeText(result).then(() => {
+      const fb = document.getElementById('copyFeedback');
+      fb.classList.add('show');
+      setTimeout(() => fb.classList.remove('show'), 1600);
+    });
+  }
+
+  input.addEventListener('input', update);
+  update();
+</script>
+</body>
+</html>

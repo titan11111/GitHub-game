@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>爆速宅配人 3D</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            text-shadow: 2px 2px 4px #000;
+            z-index: 10;
+        }
+        #message-box {
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00f0ff;
+            border-radius: 12px;
+            padding: 20px 40px;
+            text-align: center;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 0 20px #00f0ff;
+        }
+        #message-box h2 {
+            font-size: 2.5em;
+            margin: 0;
+            color: #00f0ff;
+        }
+        #message-box p {
+            font-size: 1.2em;
+            margin: 0;
+        }
+        #message-box button {
+            background-color: #00f0ff;
+            color: #000;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #message-box button:hover {
+            background-color: #00cccc;
+            transform: scale(1.05);
+        }
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            display: flex;
+            gap: 20px;
+            color: #fff;
+            font-size: 1.5em;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        #time-container {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            color: #fff;
+            font-size: 1.5em;
+            text-shadow: 2px 2px 4px #000;
+        }
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .upgrade-button {
+            margin-top: 5px;
+        }
+        .upgrade-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #joystick-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            touch-action: none;
+        }
+
+        #joystick {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        #jump-button {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            width: 100px;
+            height: 100px;
+            background: rgba(0, 240, 255, 0.5);
+            border-radius: 50%;
+            border: 2px solid #00f0ff;
+            color: #fff;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            cursor: pointer;
+            z-index: 20;
+            touch-action: none;
+        }
+        @media (min-width: 769px) {
+            #joystick-container, #jump-button {
+                display: none;
+            }
+        }
+        @media (max-width: 768px) {
+            #hud {
+                flex-direction: column;
+                align-items: center;
+                gap: 5px;
+            }
+            #message-text {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-overlay">
+        <div id="message-box">
+            <h2 id="message-title">爆速宅配人 3D</h2>
+            <p id="message-text">WASDまたは十字キーで移動、スペースで二段ジャンプ、Shiftでスライディング。<br>クリックしてゲームを開始！</p>
+            <p id="best-time-text">ベストタイム: --:--</p>
+            <div id="upgrade-section" style="display: none;">
+                <p>現在のステータス:</p>
+                <div class="stats-container">
+                    <p>スピード: <span id="speed-stat">10</span></p>
+                    <p>ジャンプ力: <span id="jump-stat">14</span></p>
+                </div>
+                <div class="stats-container">
+                    <div class="upgrade-section">
+                        <button id="upgrade-speed" class="upgrade-button">スピードを強化 (<span id="speed-cost">1000</span>)</button>
+                        <p id="speed-message" style="color: #ff0000; font-size: 0.9em;"></p>
+                    </div>
+                    <div class="upgrade-section">
+                        <button id="upgrade-jump" class="upgrade-button">ジャンプ力を強化 (<span id="jump-cost">1500</span>)</button>
+                        <p id="jump-message" style="color: #ff0000; font-size: 0.9em;"></p>
+                    </div>
+                </div>
+            </div>
+            <button id="start-button">スタート</button>
+        </div>
+    <div id="time-container" style="display:none;">プレイタイム: <span id="time-display">00:00</span></div>
+    <div id="hud" style="display:none;">
+        <div>スコア: <span id="score-display">0</span></div>
+        <div>ベスト: <span id="best-time-display">--:--</span></div>
+    </div>
+    </div>
+
+    <!-- 仮想ジョイスティックとジャンプボタン -->
+    <div id="joystick-container">
+        <div id="joystick"></div>
+    </div>
+    <div id="jump-button">JUMP</div>
+
+    <script>
+        // Three.js, Cannon.js, Tone.js のインスタンスを定義
+        let scene, camera, renderer;
+        let world;
+        let playerMesh, playerBody;
+        let obstacles = [];
+        let items = [];
+        let drones = [];
+        let fallingFloors = [];
+        let destination;
+        let starField;
+        let isSliding = false;
+        let jumpCount = 0;
+        let isGameActive = false;
+        let startTime, elapsedTime = 0;
+        const gameDuration = 90; // 90秒
+        const scorePerSecond = 10;
+        let score = 0;
+        let canJump = true; // ジャンプを制御するフラグを追加
+        let hasPackage = true; // パッケージを持っているかどうかのフラグ
+        let packageMesh;
+        let destinationMarkers = [];
+        let bestTime = localStorage.getItem('bestTime') ? parseFloat(localStorage.getItem('bestTime')) : null;
+
+        // プレイヤーの強化可能ステータス
+        let playerSpeed = 10; // 速度を2倍に
+        let playerJumpPower = 14; // ジャンプ力を2倍に
+        let speedUpgradeCost = 1000;
+        let jumpUpgradeCost = 1500;
+
+        // UI要素
+        const uiOverlay = document.getElementById('ui-overlay');
+        const messageBox = document.getElementById('message-box');
+        const messageTitle = document.getElementById('message-title');
+        const messageText = document.getElementById('message-text');
+        const bestTimeText = document.getElementById('best-time-text');
+        const startButton = document.getElementById('start-button');
+        const hud = document.getElementById('hud');
+        const timeContainer = document.getElementById('time-container');
+        const timeDisplay = document.getElementById('time-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const bestTimeDisplay = document.getElementById('best-time-display');
+        const upgradeSection = document.getElementById('upgrade-section');
+        const speedStat = document.getElementById('speed-stat');
+        const jumpStat = document.getElementById('jump-stat');
+        const speedCost = document.getElementById('speed-cost');
+        const jumpCost = document.getElementById('jump-cost');
+        const upgradeSpeedButton = document.getElementById('upgrade-speed');
+        const upgradeJumpButton = document.getElementById('upgrade-jump');
+        const speedMessage = document.getElementById('speed-message');
+        const jumpMessage = document.getElementById('jump-message');
+        
+        // タッチ操作関連
+        const joystickContainer = document.getElementById('joystick-container');
+        const joystick = document.getElementById('joystick');
+        const jumpButton = document.getElementById('jump-button');
+        let joystickActive = false;
+        let joystickCenter = { x: 0, y: 0 };
+        let touchMoveDirection = new THREE.Vector2(0, 0);
+
+        // 音声関連
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "square" }
+        }).toDestination();
+        const laserSynth = new Tone.Synth({
+            oscillator: { type: "sine" },
+            envelope: {
+                attack: 0.001,
+                decay: 0.2,
+                sustain: 0.05,
+                release: 0.2
+            }
+        }).toDestination();
+
+        let bgm;
+        let bgmPattern = [
+            "C3", "G3", "A#3", "F3",
+            "C3", "G3", "A#3", "F3",
+            "C3", "G3", "A#3", "F3",
+            "C3", "G3", "A#3", "F3",
+            null, null, null, null,
+            "D3", "A3", "C4", "G3",
+            "D3", "A3", "C4", "G3",
+            "D3", "A3", "C4", "G3",
+            "D3", "A3", "C4", "G3"
+        ];
+        
+        function setupBGM() {
+            bgm = new Tone.Sequence((time, note) => {
+                if (note) {
+                    synth.triggerAttackRelease(note, "4n", time);
+                }
+            }, bgmPattern, "4n").start(0);
+            bgm.loop = true;
+            Tone.Transport.bpm.value = 120;
+        }
+
+
+        // キー入力の状態
+        const keys = {};
+
+        // ゲーム初期化
+        function init() {
+            setupScene();
+            setupPhysics();
+            createPlayer();
+            createPackage(); // パッケージを作成
+            createWorld();
+            createStarfield();
+            createObstacles();
+            createItems();
+            createDrones();
+            createFallingFloors();
+            createDestination();
+            createDestinationMarkers();
+
+            setupEventListeners();
+            setupTouchListeners();
+            setupBGM();
+            showStartScreen();
+        }
+
+        function setupScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a1a);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+        }
+
+        function setupPhysics() {
+            world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0);
+            world.broadphase = new CANNON.NaiveBroadphase();
+            world.solver.iterations = 10;
+        }
+
+        function createPlayer() {
+            const playerShape = new CANNON.Box(new CANNON.Vec3(0.5, 0.9, 0.5));
+            playerBody = new CANNON.Body({ mass: 1, shape: playerShape, position: new CANNON.Vec3(0, 2, 0) });
+            world.addBody(playerBody);
+
+            const playerGroup = new THREE.Group();
+            
+            // Body
+            const bodyGeometry = new THREE.BoxGeometry(1, 1.2, 0.6);
+            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x00f0ff });
+            const bodyMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            bodyMesh.position.y = 0.6;
+            playerGroup.add(bodyMesh);
+
+            // Head
+            const headGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+            const headMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00 });
+            const headMesh = new THREE.Mesh(headGeometry, headMaterial);
+            headMesh.position.y = 1.6;
+            playerGroup.add(headMesh);
+            
+            // Face
+            const eyeGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+            const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.2, 1.6, 0.4);
+            playerGroup.add(leftEye);
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.2, 1.6, 0.4);
+            playerGroup.add(rightEye);
+            
+            const mouthGeometry = new THREE.BoxGeometry(0.3, 0.05, 0.1);
+            const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+            mouth.position.set(0, 1.3, 0.4);
+            playerGroup.add(mouth);
+
+            // Legs
+            const legGeometry = new THREE.BoxGeometry(0.4, 1.8, 0.4);
+            const legMaterial = new THREE.MeshPhongMaterial({ color: 0x8888ff });
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-0.25, -0.9, 0);
+            playerGroup.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(0.25, -0.9, 0);
+            playerGroup.add(rightLeg);
+
+            // Arms
+            const armGeometry = new THREE.BoxGeometry(0.4, 1.6, 0.4);
+            const armMaterial = new THREE.MeshPhongMaterial({ color: 0xff8888 });
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.7, 0.6, 0);
+            playerGroup.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.7, 0.6, 0);
+            playerGroup.add(rightArm);
+
+            playerMesh = playerGroup;
+            playerMesh.position.y = 0.9;
+            scene.add(playerMesh);
+
+            playerBody.addEventListener('collide', (event) => {
+                const contactNormal = new CANNON.Vec3();
+                const upAxis = new CANNON.Vec3(0, 1, 0);
+                event.contact.ni.negate(contactNormal);
+                if (contactNormal.dot(upAxis) > 0.5) {
+                    jumpCount = 0;
+                }
+            });
+        }
+        
+        function createPackage() {
+            const packageGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const packageMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
+            packageMesh = new THREE.Mesh(packageGeometry, packageMaterial);
+            playerMesh.add(packageMesh);
+        }
+
+        function createDestinationMarkers() {
+            const markerGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+
+            const path = [
+                new THREE.Vector3(0, 1, -20),
+                new THREE.Vector3(20, 1, -40),
+                new THREE.Vector3(30, 1, -10),
+                new THREE.Vector3(50, 1, 20),
+                new THREE.Vector3(10, 1, 50),
+            ];
+
+            path.forEach(pos => {
+                const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+                marker.position.copy(pos);
+                scene.add(marker);
+                destinationMarkers.push(marker);
+            });
+        }
+
+        function createWorld() {
+            // 地面
+            const groundShape = new CANNON.Plane();
+            const groundBody = new CANNON.Body({ mass: 0, shape: groundShape });
+            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+            world.addBody(groundBody);
+
+            const groundGeometry = new THREE.PlaneGeometry(500, 500);
+            const groundMaterial = new THREE.MeshPhongMaterial({ color: 0x111122, side: THREE.DoubleSide });
+            const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+            groundMesh.rotation.x = -Math.PI / 2;
+            groundMesh.receiveShadow = true;
+            scene.add(groundMesh);
+
+            // 建物
+            for (let i = 0; i < 50; i++) {
+                createBuilding();
+            }
+        }
+
+        function createStarfield() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 2000;
+            const positions = new Float32Array(starCount * 3);
+
+            for (let i = 0; i < starCount; i++) {
+                const direction = new THREE.Vector3(
+                    Math.random() * 2 - 1,
+                    Math.random() * 2 - 1,
+                    Math.random() * 2 - 1
+                ).normalize();
+
+                const radius = THREE.MathUtils.randFloat(200, 500);
+                direction.multiplyScalar(radius);
+
+                positions[i * 3] = direction.x;
+                positions[i * 3 + 1] = direction.y;
+                positions[i * 3 + 2] = direction.z;
+            }
+
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const starMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 1.5,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.85
+            });
+
+            starField = new THREE.Points(starGeometry, starMaterial);
+            starField.name = 'starField';
+            scene.add(starField);
+        }
+
+        function createBuilding() {
+            const group = new THREE.Group();
+            const numBlocks = Math.floor(Math.random() * 5) + 2;
+            let currentHeight = 0;
+
+            for (let i = 0; i < numBlocks; i++) {
+                const width = Math.random() * 5 + 5;
+                const depth = Math.random() * 5 + 5;
+                const height = Math.random() * 10 + 5;
+
+                const geometry = new THREE.BoxGeometry(width, height, depth);
+                const material = new THREE.MeshPhongMaterial({ color: 0x222233 + Math.random() * 0x111111 });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.y = currentHeight + height / 2;
+                mesh.castShadow = true;
+                group.add(mesh);
+                
+                currentHeight += height;
+            }
+
+            group.position.set(
+                (Math.random() - 0.5) * 400,
+                0,
+                (Math.random() - 0.5) * 400
+            );
+
+            const box3 = new THREE.Box3().setFromObject(group);
+            const size = box3.getSize(new THREE.Vector3());
+            const center = box3.getCenter(new THREE.Vector3());
+
+            const buildingShape = new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2));
+            const buildingBody = new CANNON.Body({ mass: 0, shape: buildingShape, position: new CANNON.Vec3(center.x + group.position.x, center.y + group.position.y, center.z + group.position.z) });
+            world.addBody(buildingBody);
+            
+            scene.add(group);
+        }
+
+        function createDestination() {
+            // 家のモデルを作成
+            const houseGroup = new THREE.Group();
+            const baseGeometry = new THREE.BoxGeometry(10, 6, 8);
+            const baseMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
+            const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
+            houseGroup.add(baseMesh);
+
+            const roofGeometry = new THREE.CylinderGeometry(8, 8, 12, 4, 1);
+            const roofMaterial = new THREE.MeshPhongMaterial({ color: 0x880000 });
+            const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
+            roofMesh.rotation.y = Math.PI / 4;
+            roofMesh.position.y = 5;
+            houseGroup.add(roofMesh);
+
+            const doorGeometry = new THREE.BoxGeometry(2, 3, 0.1);
+            const doorMaterial = new THREE.MeshPhongMaterial({ color: 0x654321 });
+            const doorMesh = new THREE.Mesh(doorGeometry, doorMaterial);
+            doorMesh.position.set(0, -1.5, 4.05);
+            houseGroup.add(doorMesh);
+
+            const signGeometry = new THREE.BoxGeometry(1, 1, 0.1);
+            const signMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const signMesh = new THREE.Mesh(signGeometry, signMaterial);
+            signMesh.position.set(0, 1.5, 4.06);
+            houseGroup.add(signMesh);
+
+            // Scale the destination house to 200% of its original size
+            houseGroup.scale.set(2, 2, 2);
+
+            const destPosition = new THREE.Vector3(
+                (Math.random() - 0.5) * 200,
+                3,
+                (Math.random() - 0.5) * 200
+            );
+
+            houseGroup.position.copy(destPosition);
+            houseGroup.castShadow = true;
+            houseGroup.receiveShadow = true;
+
+            scene.add(houseGroup);
+            destination = houseGroup;
+        }
+
+        function createObstacles() {
+            // Hover car
+            const carGeometry = new THREE.BoxGeometry(5, 1, 2);
+            const carMaterial = new THREE.MeshPhongMaterial({ color: 0x8888ff });
+            for (let i = 0; i < 5; i++) {
+                const carMesh = new THREE.Mesh(carGeometry, carMaterial);
+                carMesh.position.set((Math.random() - 0.5) * 200, 1, -Math.random() * 200 - 50);
+                scene.add(carMesh);
+                obstacles.push(carMesh);
+            }
+        }
+
+        function createDrones() {
+            const droneGeometry = new THREE.BoxGeometry(1, 0.5, 1);
+            const droneMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
+            const laserGeometry = new THREE.CylinderGeometry(0.1, 0.1, 20, 8);
+            const laserMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
+
+            for (let i = 0; i < 3; i++) {
+                const droneMesh = new THREE.Mesh(droneGeometry, droneMaterial);
+                droneMesh.position.set((Math.random() - 0.5) * 100, 10 + Math.random() * 10, -Math.random() * 100 - 50);
+                scene.add(droneMesh);
+
+                const laserMesh = new THREE.Mesh(laserGeometry, laserMaterial);
+                scene.add(laserMesh);
+                laserMesh.visible = false;
+
+                drones.push({ mesh: droneMesh, laser: laserMesh, firing: false, lastShot: 0 });
+            }
+        }
+
+        function createFallingFloors() {
+            const floorGeometry = new THREE.BoxGeometry(10, 0.5, 10);
+            const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x444455 });
+            const floorShape = new CANNON.Box(new CANNON.Vec3(5, 0.25, 5));
+
+            for (let i = 0; i < 5; i++) {
+                const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+                floorMesh.position.set((Math.random() - 0.5) * 100, 5, (Math.random() - 0.5) * 100);
+                scene.add(floorMesh);
+
+                const floorBody = new CANNON.Body({ mass: 0, shape: floorShape, position: new CANNON.Vec3(floorMesh.position.x, floorMesh.position.y, floorMesh.position.z) });
+                world.addBody(floorBody);
+
+                fallingFloors.push({ mesh: floorMesh, body: floorBody, touched: false });
+            }
+        }
+
+        function createItems() {
+            // Speed boost
+            const boostGeometry = new THREE.TorusGeometry(1, 0.3, 16, 100);
+            const boostMaterial = new THREE.MeshBasicMaterial({ color: 0xffa500 });
+            for (let i = 0; i < 3; i++) {
+                const boostMesh = new THREE.Mesh(boostGeometry, boostMaterial);
+                boostMesh.position.set((Math.random() - 0.5) * 100, 1, -Math.random() * 100);
+                items.push({ type: 'speedBoost', mesh: boostMesh, active: true });
+                scene.add(boostMesh);
+            }
+        }
+
+        // Keyboard event listeners
+        function setupEventListeners() {
+            document.addEventListener('keydown', (event) => {
+                keys[event.key.toLowerCase()] = true;
+                if (event.key === ' ') {
+                    canJump = true;
+                }
+            });
+            document.addEventListener('keyup', (event) => {
+                keys[event.key.toLowerCase()] = false;
+                if (event.key === ' ') {
+                    canJump = true;
+                }
+            });
+            upgradeSpeedButton.addEventListener('click', upgradeSpeed);
+            upgradeJumpButton.addEventListener('click', upgradeJump);
+        }
+        
+        // Touch event listeners
+        function setupTouchListeners() {
+            joystickContainer.addEventListener('touchstart', (e) => {
+                joystickActive = true;
+                joystickCenter.x = e.touches[0].clientX;
+                joystickCenter.y = e.touches[0].clientY;
+                joystick.style.transition = 'none';
+            });
+            joystickContainer.addEventListener('touchmove', (e) => {
+                if (!joystickActive) return;
+                const touch = e.touches[0];
+                const dx = touch.clientX - joystickCenter.x;
+                const dy = touch.clientY - joystickCenter.y;
+                const angle = Math.atan2(dy, dx);
+                const distance = Math.min(Math.sqrt(dx * dx + dy * dy), 75);
+                const x = Math.cos(angle) * distance;
+                const y = Math.sin(angle) * distance;
+                
+                joystick.style.transform = `translate(${x}px, ${y}px)`;
+                
+                touchMoveDirection.set(dx, dy).normalize();
+            });
+            joystickContainer.addEventListener('touchend', () => {
+                joystickActive = false;
+                joystick.style.transition = 'transform 0.2s ease-out';
+                joystick.style.transform = `translate(0, 0)`;
+                touchMoveDirection.set(0, 0);
+            });
+            
+            jumpButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (canJump && jumpCount < 2) {
+                    playerBody.velocity.y = playerJumpPower;
+                    jumpCount++;
+                    canJump = false; 
+                    synth.triggerAttackRelease("C4", "8n");
+                    jumpButton.addEventListener('touchend', () => {
+                        canJump = true;
+                    }, { once: true });
+                }
+            });
+        }
+
+        // Game loop
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isGameActive) {
+                updateGame();
+            }
+            renderScene();
+        }
+
+        function updateGame() {
+            // Update time and score
+            elapsedTime = (Date.now() - startTime) / 1000;
+            score = Math.floor(elapsedTime * scorePerSecond);
+            timeDisplay.textContent = formatTime(elapsedTime);
+            scoreDisplay.textContent = score;
+
+            if (elapsedTime >= gameDuration) {
+                endGame("タイムオーバー！");
+                return;
+            }
+
+            // WASD/Touch movement
+            let moveDirection = new THREE.Vector3();
+            if (keys['w'] || keys['arrowup'] || touchMoveDirection.y < 0) moveDirection.z -= 1;
+            if (keys['s'] || keys['arrowdown'] || touchMoveDirection.y > 0) moveDirection.z += 1;
+            if (keys['a'] || keys['arrowleft'] || touchMoveDirection.x < 0) moveDirection.x -= 1;
+            if (keys['d'] || keys['arrowright'] || touchMoveDirection.x > 0) moveDirection.x += 1;
+
+            if (moveDirection.length() > 0) {
+                moveDirection.normalize();
+                const currentVelocity = playerBody.velocity;
+                
+                // 空中制御を追加
+                const force = new CANNON.Vec3(moveDirection.x * playerSpeed * 10, 0, moveDirection.z * playerSpeed * 10);
+                if (jumpCount > 0) {
+                    playerBody.applyForce(force, playerBody.position);
+                } else {
+                    playerBody.velocity.x = moveDirection.x * playerSpeed;
+                    playerBody.velocity.z = moveDirection.z * playerSpeed;
+                    playerBody.velocity.y = currentVelocity.y;
+                }
+            } else {
+                playerBody.velocity.x *= 0.8;
+                playerBody.velocity.z *= 0.8;
+            }
+            
+            // パッケージの同期
+            if (hasPackage) {
+                packageMesh.position.copy(new THREE.Vector3(0.7, 0.6, 0.3));
+                packageMesh.quaternion.copy(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 4, 0, 0)));
+            }
+
+            // Destination markers pulsing
+            destinationMarkers.forEach(marker => {
+                const scale = 1.0 + Math.sin(elapsedTime * 5) * 0.1;
+                marker.scale.set(scale, scale, scale);
+            });
+
+
+            // Double jump (keyboard)
+            if (keys[' '] && canJump && jumpCount < 2) {
+                playerBody.velocity.y = playerJumpPower;
+                jumpCount++;
+                canJump = false;
+                synth.triggerAttackRelease("C4", "8n");
+            }
+
+            // Sliding
+            if (keys['shift'] && !isSliding) {
+                isSliding = true;
+                gsap.to(playerBody.shapes[0].halfExtents, { y: 0.25, z: 1, duration: 0.3 });
+                setTimeout(() => {
+                    isSliding = false;
+                    gsap.to(playerBody.shapes[0].halfExtents, { y: 0.9, z: 0.5, duration: 0.3 });
+                }, 1000);
+            }
+
+            // Update physics
+            world.step(1/60);
+
+            // Sync Three.js mesh with Cannon.js body
+            playerMesh.position.copy(playerBody.position);
+            playerMesh.quaternion.copy(playerBody.quaternion);
+
+            // Camera follow
+            const cameraOffset = new THREE.Vector3(0, 5, 10);
+            const cameraPosition = new THREE.Vector3().copy(playerMesh.position).add(cameraOffset);
+            camera.position.lerp(cameraPosition, 0.1);
+            camera.lookAt(playerMesh.position);
+
+            // FOV and motion blur effect
+            const speed = playerBody.velocity.length();
+            const targetFOV = 75 + Math.min(speed, 10) * 2;
+            gsap.to(camera, { fov: targetFOV, duration: 0.2, ease: "power1.out" });
+            camera.updateProjectionMatrix();
+
+            // Obstacle movement
+            obstacles.forEach(obstacle => {
+                obstacle.position.x += Math.sin(elapsedTime) * 0.1;
+            });
+
+            // Drone movement and attack
+            drones.forEach(drone => {
+                const dir = new THREE.Vector3().subVectors(playerMesh.position, drone.mesh.position).normalize();
+                drone.mesh.position.addScaledVector(dir, 0.05);
+
+                const distToPlayer = drone.mesh.position.distanceTo(playerMesh.position);
+                if (distToPlayer < 20) {
+                     // 警告音
+                    const note = `F${Math.max(4, 6 - Math.floor(distToPlayer/5))}`;
+                    laserSynth.triggerAttackRelease(note, "16n");
+                }
+
+                const timeSinceLastShot = elapsedTime - drone.lastShot;
+                if (timeSinceLastShot > 3 && distToPlayer < 50) {
+                    drone.firing = true;
+                    drone.lastShot = elapsedTime;
+                    laserSynth.triggerAttackRelease("E5", "0.5");
+                }
+                
+                if (drone.firing) {
+                    drone.laser.visible = true;
+                    const laserDir = new THREE.Vector3().subVectors(playerMesh.position, drone.mesh.position).normalize();
+                    drone.laser.position.copy(drone.mesh.position);
+                    drone.laser.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), laserDir);
+                    drone.laser.scale.y = drone.mesh.position.distanceTo(playerMesh.position) / 20;
+
+                    if (drone.mesh.position.distanceTo(playerMesh.position) < 2) {
+                        endGame("ドローンに捕まった！");
+                    }
+                    if (timeSinceLastShot > 0.5) {
+                        drone.firing = false;
+                        drone.laser.visible = false;
+                    }
+                }
+            });
+
+            // Check falling floors
+            fallingFloors.forEach(floor => {
+                if (!floor.touched && playerMesh.position.distanceTo(floor.mesh.position) < 6 && Math.abs(playerMesh.position.y - floor.mesh.position.y) < 1) {
+                    floor.touched = true;
+                    setTimeout(() => {
+                        world.removeBody(floor.body);
+                        scene.remove(floor.mesh);
+                    }, 1000);
+                }
+            });
+
+            // Check items
+            items.forEach(item => {
+                if (item.active && playerMesh.position.distanceTo(item.mesh.position) < 2) {
+                    console.log(`アイテム ${item.type} を取得！`);
+                    scene.remove(item.mesh);
+                    item.active = false;
+                    const currentVel = playerBody.velocity;
+                    const boostVel = new CANNON.Vec3(currentVel.x * 2, currentVel.y, currentVel.z * 2);
+                    playerBody.velocity.copy(boostVel);
+                    synth.triggerAttackRelease("A5", "8n");
+                }
+            });
+
+            // Check if destination is reached
+            if (hasPackage && playerMesh.position.distanceTo(destination.position) < 10) {
+                endGame("配達完了！", true);
+            }
+        }
+
+        function renderScene() {
+            if (starField) {
+                starField.rotation.y += 0.0005;
+                starField.rotation.x += 0.0002;
+            }
+            renderer.render(scene, camera);
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function showStartScreen() {
+            uiOverlay.style.display = 'flex';
+            messageBox.style.display = 'flex';
+            messageText.innerHTML = `WASDまたは十字キーで移動、スペースで二段ジャンプ、Shiftでスライディング。<br>クリックしてゲームを開始！`;
+            if (isTouchDevice()) {
+                 messageText.innerHTML = `左のジョイスティックで移動、右のボタンでジャンプ。<br>画面をタップしてゲームを開始！`;
+            }
+            bestTimeText.textContent = bestTime ? `ベストタイム: ${formatTime(bestTime)}` : 'ベストタイム: --:--';
+            bestTimeDisplay.textContent = bestTime ? formatTime(bestTime) : '--:--';
+            upgradeSection.style.display = 'none';
+            hud.style.display = 'none';
+            timeContainer.style.display = 'none';
+        }
+        
+        function isTouchDevice() {
+            return ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0);
+        }
+
+        function startGame() {
+            isGameActive = true;
+            startTime = Date.now();
+            score = 0;
+            hasPackage = true;
+            if (!packageMesh.parent) {
+                playerMesh.add(packageMesh);
+            }
+            uiOverlay.style.display = 'none';
+            messageBox.style.display = 'none';
+            hud.style.display = 'flex';
+            timeContainer.style.display = 'block';
+            playerBody.position.set(0, 2, 0);
+            playerBody.velocity.set(0, 0, 0);
+            Tone.Transport.start();
+        }
+
+        function endGame(message, success = false) {
+            isGameActive = false;
+            Tone.Transport.stop();
+            let finalScore = success ? score + 1000 : score;
+            let deliveryTime = elapsedTime;
+            let rank = "C";
+            if (finalScore > 2000) rank = "S";
+            else if (finalScore > 1500) rank = "A";
+            else if (finalScore > 1000) rank = "B";
+            
+            score = finalScore;
+            hasPackage = false; // パッケージを消す
+            playerMesh.remove(packageMesh);
+
+            messageTitle.textContent = success ? "配達完了！" : message;
+            messageText.innerHTML = `最終スコア: ${finalScore}<br>評価: ${rank}<br>タイム: ${formatTime(deliveryTime)}`;
+            if (success) {
+                if (bestTime === null || deliveryTime < bestTime) {
+                    bestTime = deliveryTime;
+                    localStorage.setItem('bestTime', bestTime.toString());
+                }
+                bestTimeDisplay.textContent = formatTime(bestTime);
+                bestTimeText.textContent = `ベストタイム: ${formatTime(bestTime)}`;
+            }
+            upgradeSection.style.display = 'flex';
+            updateStatsDisplay();
+            startButton.textContent = "もう一度プレイ";
+            showStartScreen();
+        }
+
+        function updateStatsDisplay() {
+            speedStat.textContent = playerSpeed.toFixed(1);
+            jumpStat.textContent = playerJumpPower.toFixed(1);
+            speedCost.textContent = speedUpgradeCost;
+            jumpCost.textContent = jumpUpgradeCost;
+            scoreDisplay.textContent = score;
+
+            upgradeSpeedButton.disabled = score < speedUpgradeCost;
+            upgradeJumpButton.disabled = score < jumpUpgradeCost;
+            if (upgradeSpeedButton.disabled) speedMessage.textContent = 'スコアが足りません';
+            else speedMessage.textContent = '';
+            if (upgradeJumpButton.disabled) jumpMessage.textContent = 'スコアが足りません';
+            else jumpMessage.textContent = '';
+        }
+
+        function upgradeSpeed() {
+            if (score >= speedUpgradeCost) {
+                score -= speedUpgradeCost;
+                playerSpeed += 1.0;
+                speedUpgradeCost = Math.floor(speedUpgradeCost * 1.5);
+                updateStatsDisplay();
+            } else {
+                console.log('スコアが足りません');
+            }
+        }
+
+        function upgradeJump() {
+            if (score >= jumpUpgradeCost) {
+                score -= jumpUpgradeCost;
+                playerJumpPower += 1.0;
+                jumpUpgradeCost = Math.floor(jumpUpgradeCost * 1.5);
+                updateStatsDisplay();
+            } else {
+                console.log('スコアが足りません');
+            }
+        }
+
+        startButton.addEventListener('click', () => {
+             // Resume Tone.js context on user gesture
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
+            startGame();
+        });
+
+        window.onload = function() {
+            init();
+            animate();
+        };
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

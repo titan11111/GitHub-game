@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>心霊カメラ - GHOST DETECTOR -</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #050505;
+            color: #ecece2;
+            font-family: 'Courier New', Courier, monospace, "Hiragino Kaku Gothic ProN", sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 900px;
+            max-height: 650px;
+            background: #000;
+            border: 2px solid #222;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Screen States */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* Title Screen */
+        #title-screen {
+            background: radial-gradient(circle, #1a0505 0%, #000000 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #d93838;
+            text-shadow: 0 0 10px #ff0000, 0 0 20px #800000;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+            animation: glitch 2s infinite alternate;
+        }
+
+        p.subtitle {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+        }
+
+        .btn {
+            background: rgba(40, 10, 10, 0.8);
+            color: #ff4d4d;
+            border: 1px solid #ff4d4d;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            background: #ff4d4d;
+            color: #000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+        }
+
+        /* Camera View Screen */
+        #viewfinder-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            background: #080808;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        canvas#view-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Viewfinder Overlay Elements */
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            border: 20px solid rgba(0, 0, 0, 0.4);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #00ff66;
+            font-size: 0.85rem;
+            text-shadow: 0 0 5px #00ff66;
+        }
+
+        .rec-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #ff0000;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: blink 1s infinite;
+        }
+
+        .hud-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        /* EMF Meter */
+        .emf-meter {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #333;
+            padding: 8px 12px;
+            border-radius: 4px;
+            width: 180px;
+        }
+
+        .emf-title {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .emf-bars {
+            display: flex;
+            gap: 4px;
+            height: 16px;
+        }
+
+        .emf-bar {
+            flex: 1;
+            background: #222;
+            border-radius: 2px;
+        }
+
+        .emf-bar.active-1 { background: #00ff66; box-shadow: 0 0 5px #00ff66; }
+        .emf-bar.active-2 { background: #aaff00; box-shadow: 0 0 5px #aaff00; }
+        .emf-bar.active-3 { background: #ffff00; box-shadow: 0 0 5px #ffff00; }
+        .emf-bar.active-4 { background: #ffaa00; box-shadow: 0 0 5px #ffaa00; }
+        .emf-bar.active-5 { background: #ff0000; box-shadow: 0 0 8px #ff0000; }
+
+        /* Controls Area */
+        .controls-bar {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            pointer-events: auto;
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+        }
+
+        .shutter-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #e63939 0%, #800000 100%);
+            border: 4px solid #fff;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: white;
+            font-size: 0.8rem;
+            transition: transform 0.1s;
+        }
+
+        .shutter-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* Flash Effect */
+        #flash-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity 0.05s ease-out;
+        }
+
+        /* Photo Result Screen */
+        #result-screen {
+            background: #0a0a0c;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .photo-frame {
+            background: #e8e6e1;
+            padding: 12px 12px 40px 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            transform: rotate(-1deg);
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+        }
+
+        .photo-img-container {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #111;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .photo-img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: contrast(1.2) sepia(0.3) grayscale(0.2);
+        }
+
+        .photo-caption {
+            margin-top: 15px;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            color: #222;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .ghost-info {
+            margin-top: 20px;
+            color: #ddd;
+            text-align: center;
+            max-width: 450px;
+        }
+
+        .ghost-info h3 {
+            color: #ff4d4d;
+            font-size: 1.4rem;
+            margin-bottom: 5px;
+        }
+
+        .ghost-info p {
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.4;
+        }
+
+        /* Gallery/Album Screen */
+        #gallery-screen {
+            background: #0d0d0d;
+            padding: 20px;
+        }
+
+        .gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 15px;
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 5px;
+        }
+
+        .gallery-item {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.03);
+            border-color: #ff4d4d;
+        }
+
+        .gallery-item.empty {
+            height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #444;
+            font-size: 2rem;
+            border: 1px dashed #333;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gallery-item .title {
+            font-size: 0.75rem;
+            color: #ccc;
+            margin-top: 5px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Animations */
+        @keyframes glitch {
+            0% { text-shadow: 2px 0 0 red, -2px 0 0 blue; }
+            95% { text-shadow: 2px 0 0 red, -2px 0 0 blue; }
+            96% { text-shadow: -5px 0 0 red, 5px 0 0 blue; }
+            98% { text-shadow: 3px 0 0 red, -3px 0 0 blue; }
+            100% { text-shadow: 2px 0 0 red, -2px 0 0 blue; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        /* Crosshair in camera */
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .crosshair::before, .crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .crosshair::before { top: 19px; left: -10px; width: 60px; height: 1px; }
+        .crosshair::after { left: 19px; top: -10px; height: 60px; width: 1px; }
+
+        /* Modal for Viewing Captured Photo */
+        #photo-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="flash-overlay"></div>
+
+        <!-- TITLE SCREEN -->
+        <div id="title-screen" class="screen active">
+            <h1>心霊カメラ</h1>
+            <p class="subtitle">- GHOST DETECTOR -</p>
+            <p style="color: #666; font-size: 0.8rem; max-width: 400px; margin-bottom: 30px; line-height: 1.5;">
+                【操作方法】<br>
+                ファインダー（ライト）を動かして室内を探索してください。<br>
+                心霊の気配（ノイズ・ノイズ音・EMFセンサー）を感じたら、カメラを向けてシャッターを切りましょう。
+            </p>
+            <button class="btn" id="start-btn">探索を開始する</button>
+            <button class="btn" id="gallery-btn-title" style="border-color: #666; color: #aaa;">心霊写真集 (0/6)</button>
+        </div>
+
+        <!-- CAMERA VIEWFINDER SCREEN -->
+        <div id="camera-screen" class="screen">
+            <div id="viewfinder-container">
+                <canvas id="view-canvas"></canvas>
+                <div class="crosshair"></div>
+
+                <div class="hud-overlay">
+                    <div class="hud-header">
+                        <div><span class="rec-dot"></span>REC [00:<span id="timer">00</span>]</div>
+                        <div id="location-name">場所: 廃病院の一室</div>
+                    </div>
+
+                    <div class="hud-footer">
+                        <div class="emf-meter">
+                            <div class="emf-title">EMF (心霊波検知器)</div>
+                            <div class="emf-bars">
+                                <div class="emf-bar" id="emf-1"></div>
+                                <div class="emf-bar" id="emf-2"></div>
+                                <div class="emf-bar" id="emf-3"></div>
+                                <div class="emf-bar" id="emf-4"></div>
+                                <div class="emf-bar" id="emf-5"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls-bar">
+                    <button class="shutter-btn" id="shutter-btn">撮影</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULT SCREEN -->
+        <div id="result-screen" class="screen">
+            <div class="photo-frame">
+                <div class="photo-img-container">
+                    <img id="result-img" src="" alt="心霊写真">
+                </div>
+                <div class="photo-caption" id="result-date">2026/08/13 12:00</div>
+            </div>
+
+            <div class="ghost-info">
+                <h3 id="ghost-title">???</h3>
+                <p id="ghost-desc">判定中...</p>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="btn" id="continue-btn">探索を続ける</button>
+                <button class="btn" id="gallery-btn-result" style="border-color: #666; color: #aaa;">写真集を見る</button>
+            </div>
+        </div>
+
+        <!-- GALLERY SCREEN -->
+        <div id="gallery-screen" class="screen">
+            <div class="gallery-header">
+                <h2>心霊写真図鑑</h2>
+                <button class="btn" id="back-title-btn" style="padding: 5px 15px; font-size: 0.8rem;">戻る</button>
+            </div>
+            <div class="gallery-grid" id="gallery-grid">
+                <!-- Dynamic Items -->
+            </div>
+        </div>
+
+        <!-- PHOTO DETAIL MODAL -->
+        <div id="photo-modal">
+            <div class="photo-frame" style="max-width: 360px;">
+                <div class="photo-img-container">
+                    <img id="modal-img" src="" alt="心霊写真">
+                </div>
+                <div class="photo-caption" id="modal-caption"></div>
+            </div>
+            <div class="ghost-info">
+                <h3 id="modal-title"></h3>
+                <p id="modal-desc"></p>
+            </div>
+            <button class="btn" id="close-modal-btn" style="margin-top: 15px; padding: 6px 20px; font-size: 0.9rem;">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME DATA & GHOST DEFINITIONS ---
+        const GHOST_TYPES = [
+            {
+                id: 'face_window',
+                name: '覗き込む顔',
+                rarity: 'C',
+                desc: '闇の向こうからじっとこちらを見つめる女性の顔。視線を合わせ続けると災いが起きるという。',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    // Pale Face
+                    let grad = ctx.createRadialGradient(0, 0, 5, 0, 0, size);
+                    grad.addColorStop(0, 'rgba(200, 220, 210, 0.85)');
+                    grad.addColorStop(0.7, 'rgba(100, 130, 120, 0.4)');
+                    grad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Hollow Eyes
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                    ctx.beginPath();
+                    ctx.ellipse(-size*0.3, -size*0.1, size*0.18, size*0.25, 0, 0, Math.PI*2);
+                    ctx.ellipse(size*0.3, -size*0.1, size*0.18, size*0.25, 0, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Red Pupils
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                    ctx.beginPath();
+                    ctx.arc(-size*0.3, -size*0.1, size*0.05, 0, Math.PI*2);
+                    ctx.arc(size*0.3, -size*0.1, size*0.05, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Open Mouth
+                    ctx.fillStyle = 'rgba(10, 0, 0, 0.95)';
+                    ctx.beginPath();
+                    ctx.ellipse(0, size*0.35, size*0.2, size*0.3, 0, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'shadow_man',
+                name: '佇む黒い影',
+                rarity: 'UC',
+                desc: '人間のような輪郭をした真っ黒な人影。光を当てても影が消えることはなく、じっと直立している。',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = 'rgba(5, 5, 5, 0.92)';
+                    ctx.shadowColor = 'black';
+                    ctx.shadowBlur = 15;
+                    
+                    // Silhouette head and body
+                    ctx.beginPath();
+                    ctx.arc(0, -size*0.8, size*0.35, 0, Math.PI*2);
+                    ctx.rect(-size*0.4, -size*0.4, size*0.8, size*1.5);
+                    ctx.fill();
+
+                    // Faint White Eyes
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.beginPath();
+                    ctx.arc(-size*0.12, -size*0.85, size*0.04, 0, Math.PI*2);
+                    ctx.arc(size*0.12, -size*0.85, size*0.04, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'reaching_hand',
+                name: '闇から伸びる手',
+                rarity: 'C',
+                desc: '空間の亀裂から這い出そうとする青白い手。カメラのレンズを掴もうとしているかのようだ。',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.strokeStyle = 'rgba(180, 200, 190, 0.75)';
+                    ctx.lineWidth = size * 0.12;
+                    ctx.lineCap = 'round';
+
+                    // Palm & Fingers
+                    ctx.beginPath();
+                    ctx.moveTo(0, size);
+                    ctx.lineTo(0, 0);
+                    // Fingers
+                    ctx.lineTo(-size*0.3, -size*0.6);
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-size*0.1, -size*0.8);
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(size*0.1, -size*0.85);
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(size*0.3, -size*0.7);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'floating_head',
+                name: '怨念の浮游首',
+                rarity: 'R',
+                desc: '長い黒髪を振り乱しながら空中を漂う生首の霊。無念の表情で何かを呟いている。',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    
+                    // Hair background
+                    ctx.fillStyle = 'rgba(10, 10, 10, 0.9)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size*0.9, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Face
+                    ctx.fillStyle = 'rgba(190, 190, 170, 0.8)';
+                    ctx.beginPath();
+                    ctx.ellipse(0, size*0.1, size*0.45, size*0.55, 0, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Bleeding Eyes
+                    ctx.fillStyle = 'rgba(150, 0, 0, 0.8)';
+                    ctx.beginPath();
+                    ctx.arc(-size*0.18, 0, size*0.08, 0, Math.PI*2);
+                    ctx.arc(size*0.18, 0, size*0.08, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Hair strands
+                    ctx.strokeStyle = 'rgba(5, 5, 5, 0.95)';
+                    ctx.lineWidth = 3;
+                    for(let i = -5; i <= 5; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(i*size*0.15, -size*0.3);
+                        ctx.quadraticCurveTo(i*size*0.3, size*0.5, i*size*0.2, size*1.2);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'giant_eye',
+                name: '壁に浮かぶ巨眼',
+                rarity: 'SR',
+                desc: '空間に突如開いた巨大な単眼。撮影した者を狂気に引きずり込む力を持つ。',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+
+                    // Sclera
+                    ctx.fillStyle = 'rgba(220, 200, 200, 0.85)';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, size, size*0.55, 0, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Blood vessels
+                    ctx.strokeStyle = 'rgba(200, 0, 0, 0.6)';
+                    ctx.lineWidth = 1.5;
+                    for(let a = 0; a < Math.PI*2; a += Math.PI/4) {
+                        ctx.beginPath();
+                        ctx.moveTo(Math.cos(a)*size*0.3, Math.sin(a)*size*0.2);
+                        ctx.lineTo(Math.cos(a)*size*0.8, Math.sin(a)*size*0.45);
+                        ctx.stroke();
+                    }
+
+                    // Iris & Pupil
+                    let irisGrad = ctx.createRadialGradient(0,0,2, 0,0,size*0.35);
+                    irisGrad.addColorStop(0, '#000');
+                    irisGrad.addColorStop(0.5, '#990000');
+                    irisGrad.addColorStop(1, '#330000');
+                    ctx.fillStyle = irisGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size*0.35, 0, Math.PI*2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'red_ doppelganger',
+                name: '赤のドッペルゲンガー',
+                rarity: 'SSR',
+                desc: '滅多に遭遇することができない極めて危険な高位怨霊。撮影者の全身の血を凍らせる。',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+
+                    let grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size*1.2);
+                    grad.addColorStop(0, 'rgba(255, 0, 0, 0.9)');
+                    grad.addColorStop(0.5, 'rgba(150, 0, 0, 0.6)');
+                    grad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size*1.2, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Distortion lines
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-size*0.5, 0); ctx.lineTo(size*0.5, 0);
+                    ctx.moveTo(0, -size*0.5); ctx.lineTo(0, size*0.5);
+                    ctx.stroke();
+
+                    ctx.restore();
+                }
+            }
+        ];
+
+        // --- AUDIO SYNTHESIZER (Web Audio API) ---
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playShutter() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                
+                // Click noise
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(10, now + 0.08);
+                
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+
+            playBeep(freq = 440, duration = 0.05) {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now);
+                
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            }
+
+            playGhostScare() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(60, now);
+                osc.frequency.linearRampToValueAtTime(40, now + 0.5);
+
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.6);
+            }
+        }
+
+        const sound = new SoundEffects();
+
+        // --- GAME STATE & VARIABLES ---
+        let capturedGhosts = JSON.parse(localStorage.getItem('ghost_camera_album') || '{}');
+        let currentGhost = null; // Ghost currently in the room
+        let mouseX = 0, mouseY = 0;
+        let isExploring = false;
+        let emfLevel = 0;
+        let lastBeepTime = 0;
+        let timerSeconds = 0;
+        let timerInterval = null;
+
+        // DOM Elements
+        const canvas = document.getElementById('view-canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('viewfinder-container');
+
+        // --- INITIALIZATION ---
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            updateGalleryButtonText();
+
+            // Screen Navigation
+            document.getElementById('start-btn').addEventListener('click', () => {
+                sound.init();
+                switchScreen('camera-screen');
+                startExploration();
+            });
+
+            document.getElementById('gallery-btn-title').addEventListener('click', () => {
+                renderGallery();
+                switchScreen('gallery-screen');
+            });
+
+            document.getElementById('gallery-btn-result').addEventListener('click', () => {
+                renderGallery();
+                switchScreen('gallery-screen');
+            });
+
+            document.getElementById('back-title-btn').addEventListener('click', () => {
+                switchScreen('title-screen');
+            });
+
+            document.getElementById('continue-btn').addEventListener('click', () => {
+                switchScreen('camera-screen');
+                startExploration();
+            });
+
+            document.getElementById('close-modal-btn').addEventListener('click', () => {
+                document.getElementById('photo-modal').style.display = 'none';
+            });
+
+            // Camera Controls
+            container.addEventListener('mousemove', (e) => {
+                const rect = container.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+                mouseY = e.clientY - rect.top;
+            });
+
+            container.addEventListener('touchmove', (e) => {
+                if(e.touches.length > 0) {
+                    const rect = container.getBoundingClientRect();
+                    mouseX = e.touches[0].clientX - rect.left;
+                    mouseY = e.touches[0].clientY - rect.top;
+                }
+            }, {passive: true});
+
+            document.getElementById('shutter-btn').addEventListener('click', takePhoto);
+        });
+
+        function resizeCanvas() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            if (screenId !== 'camera-screen') {
+                isExploring = false;
+                clearInterval(timerInterval);
+            }
+        }
+
+        // --- EXPLORATION & GAME LOOP ---
+        function startExploration() {
+            isExploring = true;
+            spawnNewGhost();
+            
+            // Reset timer
+            timerSeconds = 0;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                document.getElementById('timer').textContent = String(timerSeconds % 60).padStart(2, '0');
+            }, 1000);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnNewGhost() {
+            // Select random ghost template based on rarity
+            const rand = Math.random();
+            let template;
+            if (rand < 0.45) template = GHOST_TYPES[0]; // C
+            else if (rand < 0.70) template = GHOST_TYPES[1]; // UC
+            else if (rand < 0.85) template = GHOST_TYPES[2]; // C
+            else if (rand < 0.93) template = GHOST_TYPES[3]; // R
+            else if (rand < 0.98) template = GHOST_TYPES[4]; // SR
+            else template = GHOST_TYPES[5]; // SSR
+
+            // Position ghost inside canvas padding
+            const padding = 80;
+            currentGhost = {
+                template: template,
+                x: padding + Math.random() * (canvas.width - padding * 2),
+                y: padding + Math.random() * (canvas.height - padding * 2),
+                size: 35 + Math.random() * 25,
+                alpha: 0.05 + Math.random() * 0.1 // Barely visible in viewfinder
+            };
+        }
+
+        function gameLoop() {
+            if (!isExploring) return;
+
+            updateEMF();
+            drawViewfinder();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateEMF() {
+            if (!currentGhost) return;
+
+            // Calculate distance between flashlight (mouse) and ghost
+            const dx = mouseX - currentGhost.x;
+            const dy = mouseY - currentGhost.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // EMF Level 0 to 5
+            const maxDist = 300;
+            if (dist < 30) emfLevel = 5;
+            else if (dist < 70) emfLevel = 4;
+            else if (dist < 120) emfLevel = 3;
+            else if (dist < 180) emfLevel = 2;
+            else if (dist < maxDist) emfLevel = 1;
+            else emfLevel = 0;
+
+            // Update UI Bars
+            for (let i = 1; i <= 5; i++) {
+                const bar = document.getElementById(`emf-${i}`);
+                bar.className = 'emf-bar';
+                if (i <= emfLevel) {
+                    bar.classList.add(`active-${i}`);
+                }
+            }
+
+            // Audio Feedback (Beeps based on EMF level)
+            const now = Date.now();
+            const intervals = [0, 1000, 600, 350, 180, 80];
+            if (emfLevel > 0 && now - lastBeepTime > intervals[emfLevel]) {
+                sound.playBeep(300 + emfLevel * 120, 0.04);
+                lastBeepTime = now;
+            }
+        }
+
+        function drawViewfinder() {
+            // 1. Dark Room Background
+            ctx.fillStyle = '#050508';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Background details (Creepy room silhouettes)
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(40, canvas.height - 150, 100, 150); // Wardrobe
+            ctx.fillRect(canvas.width - 180, canvas.height - 100, 140, 100); // Bed/Desk
+
+            // 2. Faint Ghost Layer (Very subtle in camera view)
+            if (currentGhost && emfLevel > 1) {
+                ctx.save();
+                ctx.globalAlpha = currentGhost.alpha * (emfLevel / 3);
+                currentGhost.template.draw(ctx, currentGhost.x, currentGhost.y, currentGhost.size);
+                ctx.restore();
+            }
+
+            // 3. Flashlight Mask Effect
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-in';
+            let grad = ctx.createRadialGradient(mouseX, mouseY, 20, mouseX, mouseY, 180);
+            grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+            grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.85)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0.05)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 180, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 4. Camera View Noise/Grain Effect
+            drawNoise();
+        }
+
+        function drawNoise() {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+            for (let i = 0; i < 80; i++) {
+                let rx = Math.random() * canvas.width;
+                let ry = Math.random() * canvas.height;
+                ctx.fillRect(rx, ry, 2, 2);
+            }
+            ctx.restore();
+        }
+
+        // --- PHOTOGRAPHY & RESULT GENERATION ---
+        function takePhoto() {
+            if (!isExploring) return;
+
+            sound.playShutter();
+
+            // Trigger Flash
+            const flash = document.getElementById('flash-overlay');
+            flash.style.opacity = '1';
+            setTimeout(() => { flash.style.opacity = '0'; }, 100);
+
+            // Check if photo captured the ghost
+            const captured = emfLevel >= 3; // Must be close enough (EMF 3+)
+
+            // Render high-res developed photo to an offscreen canvas
+            const photoCanvas = document.createElement('canvas');
+            photoCanvas.width = 640;
+            photoCanvas.height = 480;
+            const pCtx = photoCanvas.getContext('2d');
+
+            // Render photo contents
+            renderDevelopedPhoto(pCtx, photoCanvas.width, photoCanvas.height, captured ? currentGhost : null);
+
+            const imageDataUrl = photoCanvas.toDataURL('image/jpeg', 0.85);
+
+            if (captured) {
+                sound.playGhostScare();
+                saveGhostToAlbum(currentGhost.template, imageDataUrl);
+                showResult(currentGhost.template, imageDataUrl, true);
+            } else {
+                showResult(null, imageDataUrl, false);
+            }
+
+            isExploring = false;
+        }
+
+        function renderDevelopedPhoto(pCtx, w, h, ghost) {
+            // Dark creepy room background
+            pCtx.fillStyle = '#0f0e12';
+            pCtx.fillRect(0, 0, w, h);
+
+            // Draw room features
+            pCtx.fillStyle = '#070709';
+            pCtx.fillRect(50, h - 200, 150, 200);
+            pCtx.fillRect(w - 220, h - 140, 180, 140);
+
+            // Light spot from flash
+            let grad = pCtx.createRadialGradient(w/2, h/2, 50, w/2, h/2, w*0.6);
+            grad.addColorStop(0, 'rgba(255, 255, 240, 0.25)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+            pCtx.fillStyle = grad;
+            pCtx.fillRect(0, 0, w, h);
+
+            // If ghost caught, draw vividly with paranormal distortion
+            if (ghost) {
+                pCtx.save();
+                // Map ghost position to photo canvas coordinates
+                const scaleX = w / canvas.width;
+                const scaleY = h / canvas.height;
+                const gx = ghost.x * scaleX;
+                const gy = ghost.y * scaleY;
+
+                // Ghost AURA
+                let aura = pCtx.createRadialGradient(gx, gy, 10, gx, gy, ghost.size * 2.5);
+                aura.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+                aura.addColorStop(0.5, 'rgba(180, 0, 0, 0.3)');
+                aura.addColorStop(1, 'transparent');
+                pCtx.fillStyle = aura;
+                pCtx.beginPath();
+                pCtx.arc(gx, gy, ghost.size * 2.5, 0, Math.PI * 2);
+                pCtx.fill();
+
+                // Draw vivid ghost
+                ghost.template.draw(pCtx, gx, gy, ghost.size * 1.6);
+
+                pCtx.restore();
+            }
+
+            // Vignette & Sepia Photo Filter
+            pCtx.fillStyle = 'rgba(40, 20, 10, 0.15)';
+            pCtx.fillRect(0, 0, w, h);
+
+            // Photo Grain
+            pCtx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+            for (let i = 0; i < 400; i++) {
+                pCtx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+            }
+        }
+
+        function showResult(ghostTemplate, imgUrl, isSuccess) {
+            switchScreen('result-screen');
+            document.getElementById('result-img').src = imgUrl;
+
+            const now = new Date();
+            document.getElementById('result-date').textContent = 
+                `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+            if (isSuccess && ghostTemplate) {
+                document.getElementById('ghost-title').textContent = `【${ghostTemplate.rarity}】${ghostTemplate.name}`;
+                document.getElementById('ghost-title').style.color = '#ff4d4d';
+                document.getElementById('ghost-desc').textContent = ghostTemplate.desc;
+            } else {
+                document.getElementById('ghost-title').textContent = '心霊反応なし';
+                document.getElementById('ghost-title').style.color = '#888888';
+                document.getElementById('ghost-desc').textContent = '写真には何も映っていないようだ...。EMFメーターが強く反応する場所を狙って撮影しよう。';
+            }
+        }
+
+        // --- ALBUM / GALLERY SYSTEM ---
+        function saveGhostToAlbum(ghostTemplate, imgUrl) {
+            capturedGhosts[ghostTemplate.id] = {
+                id: ghostTemplate.id,
+                name: ghostTemplate.name,
+                rarity: ghostTemplate.rarity,
+                desc: ghostTemplate.desc,
+                img: imgUrl,
+                date: new Date().toLocaleDateString('ja-JP')
+            };
+            localStorage.setItem('ghost_camera_album', JSON.stringify(capturedGhosts));
+            updateGalleryButtonText();
+        }
+
+        function updateGalleryButtonText() {
+            const count = Object.keys(capturedGhosts).length;
+            const text = `心霊写真集 (${count}/${GHOST_TYPES.length})`;
+            document.getElementById('gallery-btn-title').textContent = text;
+            document.getElementById('gallery-btn-result').textContent = text;
+        }
+
+        function renderGallery() {
+            const grid = document.getElementById('gallery-grid');
+            grid.innerHTML = '';
+
+            GHOST_TYPES.forEach(type => {
+                const item = document.createElement('div');
+                const captured = capturedGhosts[type.id];
+
+                if (captured) {
+                    item.className = 'gallery-item';
+                    item.innerHTML = `
+                        <img src="${captured.img}" alt="${captured.name}">
+                        <div class="title">【${captured.rarity}】${captured.name}</div>
+                    `;
+                    item.addEventListener('click', () => showPhotoModal(captured));
+                } else {
+                    item.className = 'gallery-item empty';
+                    item.innerHTML = `?`;
+                }
+                grid.appendChild(item);
+            });
+        }
+
+        function showPhotoModal(data) {
+            document.getElementById('modal-img').src = data.img;
+            document.getElementById('modal-caption').textContent = data.date;
+            document.getElementById('modal-title').textContent = `【${data.rarity}】${data.name}`;
+            document.getElementById('modal-desc').textContent = data.desc;
+            document.getElementById('photo-modal').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>

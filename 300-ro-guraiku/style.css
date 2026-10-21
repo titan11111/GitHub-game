@@ -1,0 +1,137 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+::selection { background: transparent; }
+.hidden { display: none !important; }
+
+:root {
+  --ink: #eef2ff;
+  --deep: #0c0818;
+  --accent: #6bdc8a;
+  --slash: #f0a848;
+  --dash: #58a8e8;
+  --blood: #ff5868;
+}
+
+html, body {
+  margin: 0; height: 100%; width: 100%;
+  overflow: hidden; position: fixed;
+  background: var(--deep); color: var(--ink);
+  font-family: "Hiragino Sans", "Segoe UI", sans-serif;
+  touch-action: manipulation;
+}
+@supports (height: 100dvh) { html, body { height: 100dvh; } }
+
+#game-shell {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+}
+#game-stage { order: 1; flex: 0 0 75%; min-height: 0; position: relative; }
+#control-deck { order: 2; flex: 0 0 25%; min-height: 0; }
+
+#screen-wrap { position: absolute; inset: 0; background: #060410; overflow: hidden; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+
+#hud {
+  position: absolute; top: max(6px, env(safe-area-inset-top)); left: 0; right: 0;
+  display: flex; justify-content: center; gap: 8px; z-index: 2; pointer-events: none;
+  font-size: 12px; font-weight: 700;
+}
+#hud span {
+  background: rgba(12, 8, 24, 0.9); border: 1px solid #4a5080;
+  padding: 4px 10px; border-radius: 6px;
+}
+#hudHp { min-width: 7em; }
+
+#banner {
+  position: absolute; left: 0; right: 0; bottom: 12px; z-index: 2;
+  text-align: center; font-size: 14px; font-weight: 800; letter-spacing: 0.08em;
+  color: var(--slash); text-shadow: 0 0 12px #000;
+  pointer-events: none; min-height: 1.2em;
+}
+
+.screen {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 24px;
+  background: linear-gradient(180deg, rgba(6,4,16,0.5), rgba(6,4,16,0.94));
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.screen .start-btn {
+  margin-top: 18px; min-height: 52px; min-width: 160px; padding: 0 28px;
+  background: var(--accent); color: #0a180c; border-radius: 12px;
+  font: inherit; font-weight: 800; font-size: 17px;
+  touch-action: manipulation;
+}
+.screen h1 { margin: 0 0 12px; font-size: clamp(24px, 7vw, 34px); color: var(--accent); }
+.screen p { margin: 0; line-height: 1.65; font-size: 14px; max-width: 22em; }
+.screen strong { color: var(--slash); }
+.screen .hint { margin-top: 18px; color: #c8a860; animation: pulse 1.2s ease-in-out infinite; }
+#titleBest { animation: none; opacity: 0.85; margin-top: 8px; }
+@keyframes pulse { 50% { opacity: 0.4; } }
+
+#upgrade { cursor: default; z-index: 12; background: rgba(6, 4, 16, 0.92); }
+#upgrade .upgrade-head { margin: 0 0 8px; font-size: clamp(20px, 5vw, 28px); color: var(--slash); }
+#upgrade #upgradeSub { font-size: 13px; color: #a8b0d8; margin-bottom: 14px; }
+.upgrade-col { display: flex; flex-direction: column; gap: 10px; width: min(92vw, 320px); }
+.upgrade-btn {
+  min-height: 52px; padding: 10px 14px; text-align: left; line-height: 1.35;
+  background: #2a3860; color: var(--ink); font-size: 14px; border-radius: 12px;
+}
+.upgrade-btn:active, .upgrade-btn.is-pressed { background: #3a5088; }
+
+.game-btn {
+  min-width: 48px; min-height: 48px; border: 0; border-radius: 12px;
+  font: inherit; font-weight: 800; font-size: 16px;
+  transition: transform 0.06s ease, opacity 0.06s ease;
+  touch-action: manipulation;
+}
+.game-btn:active, .game-btn.is-pressed { transform: scale(0.9); opacity: 0.85; }
+.game-btn:disabled { opacity: 0.35; pointer-events: none; }
+
+#control-deck {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  background: linear-gradient(180deg, #1a1430, #0e0a18);
+  border-top: 2px solid #3a3060;
+}
+
+.dpad {
+  position: relative; width: min(40vw, 128px); height: min(40vw, 128px);
+  border-radius: 50%; flex-shrink: 0;
+  background: radial-gradient(circle, #2a2440, #161020);
+  border: 2px solid #5a5088;
+}
+.dpad .arr {
+  position: absolute; font-size: 13px; opacity: 0.75; pointer-events: none;
+  color: var(--ink);
+}
+.dpad .arr.u { top: 7%; left: 50%; transform: translateX(-50%); }
+.dpad .arr.d { bottom: 7%; left: 50%; transform: translateX(-50%); }
+.dpad .arr.l { left: 8%; top: 50%; transform: translateY(-50%); }
+.dpad .arr.r { right: 8%; top: 50%; transform: translateY(-50%); }
+.dpad.press-u .arr.u, .dpad.press-d .arr.d, .dpad.press-l .arr.l, .dpad.press-r .arr.r {
+  opacity: 1; color: var(--accent);
+}
+.dpad-nub {
+  position: absolute; left: 50%; top: 50%; width: 28%; height: 28%; border-radius: 50%;
+  background: #222038; transform: translate(-50%, -50%);
+}
+
+#control-deck .slash { flex: 1.1; min-height: 56px; background: var(--slash); color: #1a1008; }
+#control-deck .dash { flex: 0.95; min-height: 56px; background: var(--dash); color: #081018; }
+#control-deck .sys { display: flex; gap: 6px; }
+#control-deck .sys .game-btn { background: #2a2840; color: var(--ink); font-size: 14px; }
+
+#pauseDlg {
+  border: 0; border-radius: 16px; background: #1a1430; color: var(--ink); padding: 20px;
+}
+#pauseDlg::backdrop { background: rgba(4, 2, 12, 0.8); }
+#pauseDlg .col { display: flex; flex-direction: column; gap: 8px; }
+#pauseDlg .game-btn { width: 100%; min-height: 48px; background: #3a3860; color: var(--ink); }

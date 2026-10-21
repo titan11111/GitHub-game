@@ -1,0 +1,176 @@
+/* ============================================
+   防御系魔法エフェクト
+   ============================================
+   
+   役割: 防御系魔法のエフェクトスタイル
+   
+   含まれる内容:
+   - アイアンガード（.magic-effect-iron-guard）
+   - ダイヤモンドスキン（.magic-effect-diamond）
+   ============================================ */
+
+.magic-effect-judgment {
+    position: absolute;
+    width: 150px;
+    height: 600px;
+    left: 50%;
+    top: -50%;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg,
+        rgba(255, 255, 255, 1) 0%,
+        rgba(255, 255, 255, 0.9) 20%,
+        rgba(200, 220, 255, 0.8) 50%,
+        rgba(150, 180, 255, 0.6) 80%,
+        transparent 100%
+    );
+    box-shadow: 
+        0 0 60px rgba(255, 255, 255, 1),
+        0 0 120px rgba(200, 220, 255, 0.8),
+        inset 0 0 60px rgba(255, 255, 255, 0.5);
+    clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+    animation: judgmentRay 1s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: transform, opacity, top;
+    -webkit-transform: translateX(-50%) translateZ(0);
+}
+
+.magic-effect-judgment::before {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: 
+        repeating-linear-gradient(45deg,
+            rgba(255, 255, 255, 0.8) 0px,
+            transparent 10px,
+            rgba(255, 255, 255, 0.8) 20px
+        );
+    border-radius: 50%;
+    animation: judgmentCross 0.5s ease-out forwards;
+}
+
+@keyframes judgmentRay {
+    0% {
+        top: -50%;
+        opacity: 0;
+    }
+    30% {
+        opacity: 1;
+    }
+    100% {
+        top: 50%;
+        opacity: 0.8;
+    }
+}
+
+@keyframes judgmentCross {
+    0% {
+        transform: translateX(-50%) scale(0) rotate(0deg);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(-50%) scale(1.5) rotate(180deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(-50%) scale(2) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* ゼロ・ディザスター - 闇に包まれる */
+.magic-effect-zero {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle at 50% 50%,
+        rgba(0, 0, 0, 0.8) 0%,
+        rgba(0, 0, 0, 0.9) 50%,
+        rgba(0, 0, 0, 1) 100%
+    );
+    z-index: 200;
+    animation: zeroDisaster 2s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: opacity;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+.magic-effect-zero::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: 
+        repeating-linear-gradient(0deg,
+            transparent 0px,
+            rgba(255, 255, 255, 0.05) 1px,
+            transparent 2px
+        ),
+        repeating-linear-gradient(90deg,
+            transparent 0px,
+            rgba(255, 255, 255, 0.05) 1px,
+            transparent 2px
+        );
+    animation: zeroCrack 0.1s ease-in-out infinite;
+}
+
+.magic-effect-zero::after {
+    content: '';
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle,
+        rgba(255, 255, 255, 0.3) 0%,
+        rgba(200, 200, 255, 0.2) 30%,
+        transparent 70%
+    );
+    border-radius: 50%;
+    animation: zeroExplosion 1.5s ease-out forwards;
+}
+
+@keyframes zeroDisaster {
+    0% {
+        opacity: 0;
+    }
+    30% {
+        opacity: 1;
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes zeroCrack {
+    0%, 100% {
+        opacity: 0.05;
+    }
+    50% {
+        opacity: 0.1;
+    }
+}
+
+@keyframes zeroExplosion {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(5);
+        opacity: 0;
+    }

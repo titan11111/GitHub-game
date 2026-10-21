@@ -1,0 +1,336 @@
+/* リセット */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+    padding: 10px;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+h1 {
+    text-align: center;
+    color: #4a5568;
+    margin-bottom: 30px;
+    font-size: 2rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    color: #2d3748;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+h3 {
+    color: #4a5568;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+}
+
+/* 設定セクション */
+.settings {
+    margin-bottom: 30px;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 20px;
+    border-radius: 15px;
+    border: 2px solid #e2e8f0;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+#itemInput {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #cbd5e0;
+    border-radius: 10px;
+    font-size: 16px;
+    min-width: 200px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+#itemInput:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+#addBtn {
+    padding: 12px 20px;
+    background: linear-gradient(45deg, #48bb78, #38a169);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 80px;
+}
+
+#addBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(72, 187, 120, 0.4);
+}
+
+#addBtn:active {
+    transform: translateY(0);
+}
+
+.items-list {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+#currentItems {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.item-tag {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.item-tag .remove-btn {
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s;
+}
+
+.item-tag .remove-btn:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* ルーレットセクション */
+.roulette-container {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.roulette-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 20px;
+}
+
+#rouletteCanvas {
+    border-radius: 50%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transition: transform 0.1s;
+    max-width: 100%;
+    height: auto;
+}
+
+.pointer {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 30px;
+    color: #e53e3e;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+#spinBtn {
+    padding: 15px 30px;
+    background: linear-gradient(45deg, #ed8936, #dd6b20);
+    color: white;
+    border: none;
+    border-radius: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 5px 15px rgba(237, 137, 54, 0.4);
+}
+
+#spinBtn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(237, 137, 54, 0.6);
+}
+
+#spinBtn:active:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+#spinBtn:disabled {
+    background: #a0aec0;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* 結果表示 */
+.result {
+    text-align: center;
+    margin-bottom: 30px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.result.show {
+    background: linear-gradient(45deg, #48bb78, #38a169);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    font-size: 24px;
+    font-weight: bold;
+    box-shadow: 0 5px 20px rgba(72, 187, 120, 0.4);
+    animation: resultPop 0.6s ease-out;
+}
+
+/* 操作説明 */
+.instructions {
+    background: rgba(255, 255, 255, 0.7);
+    padding: 20px;
+    border-radius: 15px;
+    border: 2px solid #e2e8f0;
+}
+
+.instructions p {
+    margin-bottom: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* アニメーション */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes resultPop {
+    0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(20px);
+    }
+    50% {
+        transform: scale(1.05) translateY(-5px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .container {
+        margin: 5px;
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+    }
+    
+    h2 {
+        font-size: 1.3rem;
+    }
+    
+    .settings {
+        padding: 15px;
+    }
+    
+    .input-group {
+        flex-direction: column;
+    }
+    
+    #itemInput, #addBtn {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    
+    #rouletteCanvas {
+        width: 250px;
+        height: 250px;
+    }
+    
+    #spinBtn {
+        padding: 12px 25px;
+        font-size: 16px;
+    }
+    
+    .result.show {
+        font-size: 20px;
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    #rouletteCanvas {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .pointer {
+        font-size: 25px;
+        top: -8px;
+    }
+    
+    .instructions p {
+        font-size: 13px;
+    }
+}

@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80" width="128" height="80" role="img" aria-label="ダンゴムシ（真上から・右向き）">
+  <defs>
+    <linearGradient id="dgBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#AEB9CB"/>
+      <stop offset="28%"  stop-color="#7C889B"/>
+      <stop offset="62%"  stop-color="#596373"/>
+      <stop offset="100%" stop-color="#333A47"/>
+    </linearGradient>
+    <linearGradient id="dgHead" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#9BA7B9"/>
+      <stop offset="55%"  stop-color="#5E6877"/>
+      <stop offset="100%" stop-color="#2E3540"/>
+    </linearGradient>
+    <linearGradient id="dgSheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity=".55"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="dgShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.4"/>
+      <feOffset dy="3"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".45"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="dgSoft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.6"/>
+    </filter>
+  </defs>
+
+  <!-- 接地影（HD-2D の足元グラウンディング） -->
+  <ellipse cx="62" cy="63" rx="44" ry="9" fill="#0B1016" opacity=".28" filter="url(#dgSoft)"/>
+
+  <g filter="url(#dgShadow)">
+    <!-- 脚：7対。胴体より先に描いて下に潜らせる -->
+    <g stroke="#2B313C" stroke-width="3.2" stroke-linecap="round" fill="none">
+      <path d="M30 27 L25 17"/>   <path d="M30 53 L25 63"/>
+      <path d="M40 24 L35 13"/>   <path d="M40 56 L35 67"/>
+      <path d="M50 22 L45 11"/>   <path d="M50 58 L45 69"/>
+      <path d="M60 21 L55 10"/>   <path d="M60 59 L55 70"/>
+      <path d="M70 22 L65 11"/>   <path d="M70 58 L65 69"/>
+      <path d="M80 23 L76 13"/>   <path d="M80 57 L76 67"/>
+      <path d="M89 25 L86 16"/>   <path d="M89 55 L86 64"/>
+    </g>
+    <g stroke="#79859A" stroke-width="1.3" stroke-linecap="round" fill="none" opacity=".85">
+      <path d="M30 27 L25 17"/>   <path d="M40 24 L35 13"/>
+      <path d="M50 22 L45 11"/>   <path d="M60 21 L55 10"/>
+      <path d="M70 22 L65 11"/>   <path d="M80 23 L76 13"/>
+      <path d="M89 25 L86 16"/>
+    </g>
+
+    <!-- 尾節（テルソン） -->
+    <rect x="16" y="25" width="24" height="30" rx="11" fill="url(#dgBody)" stroke="#242A34" stroke-width="1.2"/>
+
+    <!-- 胸節 7枚：後ろから前へ、中央が最も太い -->
+    <g stroke="#242A34" stroke-width="1.2">
+      <rect x="34" y="22.5" width="12" height="35" rx="5.5" fill="url(#dgBody)"/>
+      <rect x="44" y="21"   width="12" height="38" rx="5.5" fill="url(#dgBody)"/>
+      <rect x="54" y="20"   width="12" height="40" rx="5.5" fill="url(#dgBody)"/>
+      <rect x="64" y="20.5" width="12" height="39" rx="5.5" fill="url(#dgBody)"/>
+      <rect x="74" y="21.5" width="12" height="37" rx="5.5" fill="url(#dgBody)"/>
+      <rect x="83" y="23"   width="11" height="34" rx="5.5" fill="url(#dgBody)"/>
+    </g>
+
+    <!-- 頭部 -->
+    <rect x="92" y="26" width="17" height="28" rx="11.5" fill="url(#dgHead)" stroke="#242A34" stroke-width="1.2"/>
+
+    <!-- 甲羅のハイライト（真上からの光） -->
+    <path d="M22 28 Q62 17 104 30 Q62 25 22 34 Z" fill="url(#dgSheen)" opacity=".7"/>
+
+    <!-- 複眼 -->
+    <circle cx="101" cy="31.5" r="2.6" fill="#12161D"/>
+    <circle cx="101" cy="48.5" r="2.6" fill="#12161D"/>
+    <circle cx="101.9" cy="30.6" r=".9" fill="#DDE4EE" opacity=".9"/>
+    <circle cx="101.9" cy="47.6" r=".9" fill="#DDE4EE" opacity=".9"/>
+
+    <!-- 触角 -->
+    <g stroke="#2B313C" stroke-width="2.6" stroke-linecap="round" fill="none">
+      <path d="M107 32 Q118 27 123 20"/>
+      <path d="M107 48 Q118 53 123 60"/>
+    </g>
+    <g stroke="#8994A6" stroke-width="1" stroke-linecap="round" fill="none" opacity=".8">
+      <path d="M107 32 Q118 27 123 20"/>
+      <path d="M107 48 Q118 53 123 60"/>
+    </g>
+  </g>
+</svg>

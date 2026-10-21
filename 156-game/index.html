@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>153-game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- スタート画面 -->
+    <div id="startScreen" class="screen">
+      <h1 id="gameTitle">153-game</h1>
+      <p id="gameDesc">153-game — 雛形のままです。内容は script.js を編集してください。</p>
+      <button id="startBtn" class="btn-primary">スタート</button>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div id="gameoverScreen" class="screen hidden">
+      <h2>ゲームオーバー</h2>
+      <p>スコア: <span id="finalScore">0</span></p>
+      <button id="retryBtn" class="btn-primary">もう一度</button>
+    </div>
+
+    <!-- クリア画面 -->
+    <div id="clearScreen" class="screen hidden">
+      <h2>クリア！</h2>
+      <p>スコア: <span id="clearScore">0</span></p>
+      <button id="clearRetryBtn" class="btn-primary">もう一度</button>
+    </div>
+
+    <!-- モバイル操作ボタン -->
+    <div id="mobileControls" class="hidden">
+      <button id="btnLeft" class="mobile-btn">◀</button>
+      <button id="btnRight" class="mobile-btn">▶</button>
+      <button id="btnUp" class="mobile-btn">▲</button>
+      <button id="btnAction" class="mobile-btn">🔥</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

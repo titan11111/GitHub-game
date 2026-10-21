@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "total": 3,
+    "progress": 3,
+    "lastUpdated": "2026-08-11T00:39:03.077Z"
+  },
+  "games": [
+    {
+      "day": 25,
+      "title": "ぐるぐる世界",
+      "description": "#day25 ゲーム作成：ぐるぐる世界。重力で物が回転する不思議な世界。",
+      "imageUrl": "https://via.placeholder.com/300x300?text=day25",
+      "twitterLink": "https://twitter.com/user/status/1234567890",
+      "date": "2026-08-11",
+      "likes": 42,
+      "retweets": 5
+    },
+    {
+      "day": 24,
+      "title": "迷路の塔",
+      "description": "#day24 ゲーム作成：迷路の塔。上へ上へと登っていく。",
+      "imageUrl": "https://via.placeholder.com/300x300?text=day24",
+      "twitterLink": "https://twitter.com/user/status/1234567889",
+      "date": "2026-08-10",
+      "likes": 38,
+      "retweets": 4
+    },
+    {
+      "day": 23,
+      "title": "カラフル雪玉",
+      "description": "#day23 ゲーム作成：カラフル雪玉。色を集めて大きくなる。",
+      "imageUrl": "https://via.placeholder.com/300x300?text=day23",
+      "twitterLink": "https://twitter.com/user/status/1234567888",
+      "date": "2026-08-09",
+      "likes": 55,
+      "retweets": 8
+    }
+  ]
+}

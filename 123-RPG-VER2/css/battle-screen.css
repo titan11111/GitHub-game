@@ -1,0 +1,112 @@
+/* ============================================
+   戦闘画面基本スタイル
+   ============================================
+   
+   役割: 戦闘画面の基本レイアウトと敵エリアのスタイル
+   
+   含まれる内容:
+   - 戦闘画面（#battle-screen）
+   - 敵エリア（.enemy-area）
+   - モンスター表示（.monster-sprite）
+   ============================================ */
+
+#battle-screen { 
+    position: relative; 
+    width: 100%; 
+    height: 100%;
+    height: 100vh;   /* フォールバック: コントロールパネルが非表示のため画面全体を使用 */
+    height: 100dvh;  /* iOS Safari: 動的ビューポート - コントロールパネルが非表示のため画面全体を使用 */
+    background-color: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;  /* 上から順に配置 */
+    overflow: hidden;
+    /* iOS: 安全領域を考慮したパディング */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    box-sizing: border-box;
+}
+
+#battle-screen .enemy-area { 
+    height: 45%;  /* モンスター画像エリア：45% */
+    min-height: 200px;  /* iOS: 敵画像が切れないよう最小高さを確保 */
+    max-height: none;  /* 最大高さ制限を解除 */
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    flex-direction: column;
+    overflow: visible;  /* iOS: 魔法エフェクトが見切れないように visible に変更 */
+    padding: 12px 8px;  /* 上下に余白を追加（より広く） */
+    box-sizing: border-box;
+    position: relative;
+    flex-shrink: 0;  /* 縮小しない */
+    /* iOS: レンダリング最適化（魔法エフェクト表示用） */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+#battle-screen #monster-name {
+    flex-shrink: 0;
+    padding: 6px 0 4px 0;
+    z-index: 10;  /* 敵画像の上に表示 */
+    font-size: 18px;  /* iOS: フォントサイズを大きく */
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(255, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.5);  /* 背景を追加して視認性向上 */
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+#battle-screen .enemy-hp-bar {
+    flex-shrink: 0;
+    padding: 4px 0;
+    z-index: 10;  /* 敵画像の上に表示 */
+    margin-top: 4px;
+}
+
+#battle-screen .monster-sprite { 
+    flex: 1 1 auto;
+    min-height: 140px;  /* iOS: 最小高さをさらに増加 */
+    max-height: calc(100dvh - 380px);  /* ログ、UI、敵名、HPバーのスペースを確保 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    overflow: visible;  /* 画像が切れないように visible に変更 */
+    font-size: min(160px, 20vw);
+    text-shadow: 0 0 15px rgba(255,0,0,0.5);
+    position: relative;
+    /* iOS: 画像が確実に表示されるように余白を確保 */
+    padding: 8px 0;
+}
+
+/* 戦闘画面の敵画像：親コンテナに合わせて表示（iOS Safari で潰れないよう min/max は .monster-sprite で確保） */
+#battle-screen .monster-sprite img {
+    display: block !important;  /* iOS: 確実に表示 */
+    max-width: 85%;  /* 左右に余白を確保（より広く） */
+    max-height: calc(100dvh - 400px);  /* 確実に表示されるよう計算 */
+    width: auto;
+    height: auto;
+    min-width: 100px;  /* 最小サイズを確保（より大きく） */
+    min-height: 100px;
+    object-fit: contain;  /* アスペクト比を維持して全体を表示 */
+    object-position: center center;  /* 中央配置 */
+    /* iOS: 画像が確実に表示されるように */
+    -webkit-user-select: none;
+    user-select: none;
+    pointer-events: none;
+    /* iOS: 画像の品質を保持 */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    /* iOS: 画像の読み込みを確実にする */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    /* iOS: 画像が確実に表示されるように visibility を明示 */
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+

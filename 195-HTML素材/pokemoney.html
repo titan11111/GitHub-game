@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ポケモンカード おこづかいちょう</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --yellow:   #FFCB05;
+      --yellow2:  #FFE566;
+      --red:      #CC0000;
+      --red2:     #FF4444;
+      --blue:     #3B4CCA;
+      --blue2:    #6677EE;
+      --green:    #2ECC71;
+      --bg:       #FFF9E6;
+      --white:    #FFFFFF;
+      --dark:     #1a1830;
+      --gray:     #8888aa;
+      --lightgray:#F0EEF8;
+      --shadow:   0 4px 20px rgba(60,50,120,.12);
+      --shadow-lg:0 8px 32px rgba(60,50,120,.18);
+      --r:        16px;
+      --font:     'M PLUS Rounded 1c', sans-serif;
+      --num:      'Fredoka', sans-serif;
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      font-family: var(--font);
+      color: var(--dark);
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--yellow);
+      padding: 1rem 1.4rem .9rem;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 4px solid #e8b800;
+    }
+
+    .header-inner {
+      max-width: 680px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* Pokeball CSS */
+    .pokeball {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(to bottom, var(--red) 50%, white 50%);
+      border: 3px solid var(--dark);
+      position: relative;
+      flex-shrink: 0;
+      box-shadow: 0 3px 10px rgba(0,0,0,.2);
+      animation: bobble 2.5s ease-in-out infinite;
+    }
+
+    @keyframes bobble {
+      0%,100% { transform: translateY(0) rotate(-8deg); }
+      50%      { transform: translateY(-4px) rotate(8deg); }
+    }
+
+    .pokeball::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0; right: 0;
+      height: 3px;
+      background: var(--dark);
+      transform: translateY(-50%);
+    }
+
+    .pokeball::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: white;
+      border: 3px solid var(--dark);
+      border-radius: 50%;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+    }
+
+    .header-text h1 {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: var(--dark);
+      letter-spacing: .04em;
+      line-height: 1.2;
+    }
+
+    .header-text p {
+      font-size: .75rem;
+      color: #7a6600;
+      font-weight: 700;
+    }
+
+    /* floating stars */
+    .star {
+      position: absolute;
+      font-size: 1.2rem;
+      opacity: .5;
+      animation: drift 4s ease-in-out infinite;
+    }
+    .star:nth-child(1) { top: 10px; right: 60px; animation-delay: 0s; }
+    .star:nth-child(2) { top: 30px; right: 110px; animation-delay: .8s; font-size: .9rem; }
+    .star:nth-child(3) { bottom: 8px; right: 80px; animation-delay: 1.6s; }
+
+    @keyframes drift {
+      0%,100% { transform: translateY(0) scale(1); }
+      50%      { transform: translateY(-5px) scale(1.15); }
+    }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 1.2rem 1rem 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+
+    /* ── BALANCE CARD ── */
+    .balance-card {
+      background: var(--blue);
+      border-radius: var(--r);
+      padding: 1.4rem 1.8rem;
+      color: white;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .balance-card::before {
+      content: '';
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: 28px solid rgba(255,255,255,.07);
+      top: -50px;
+      right: -40px;
+    }
+
+    .balance-card::after {
+      content: '';
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 18px solid rgba(255,255,255,.05);
+      bottom: -30px;
+      left: 20px;
+    }
+
+    .balance-label {
+      font-size: .78rem;
+      font-weight: 700;
+      opacity: .75;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      margin-bottom: .3rem;
+    }
+
+    .balance-amount {
+      font-family: var(--num);
+      font-size: 3rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--yellow);
+      text-shadow: 0 2px 8px rgba(0,0,0,.3);
+      transition: transform .2s;
+    }
+
+    .balance-amount.bump {
+      animation: bump .3s ease;
+    }
+
+    @keyframes bump {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+
+    .balance-sub {
+      font-size: .72rem;
+      opacity: .6;
+      margin-top: .4rem;
+      font-weight: 700;
+    }
+
+    /* pack count */
+    .pack-row {
+      display: flex;
+      gap: .6rem;
+      margin-top: .9rem;
+      flex-wrap: wrap;
+    }
+
+    .pack-badge {
+      background: rgba(255,255,255,.13);
+      border-radius: 20px;
+      padding: .32rem .8rem;
+      font-size: .72rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+
+    .pack-badge .pack-num {
+      font-family: var(--num);
+      font-size: .92rem;
+      color: var(--yellow);
+    }
+
+    /* ── STAT CARDS ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .7rem;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--r);
+      padding: .9rem 1rem;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .stat-emoji { font-size: 1.4rem; display: block; margin-bottom: .25rem; }
+
+    .stat-val {
+      font-family: var(--num);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--dark);
+      line-height: 1;
+    }
+
+    .stat-lbl {
+      font-size: .65rem;
+      font-weight: 700;
+      color: var(--gray);
+      margin-top: .2rem;
+      letter-spacing: .06em;
+    }
+
+    /* ── ACTION BUTTONS ── */
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+
+    .action-btn {
+      border: none;
+      border-radius: var(--r);
+      padding: .95rem 1rem;
+      font-family: var(--font);
+      font-size: .95rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      transition: transform .12s, box-shadow .12s;
+      box-shadow: var(--shadow);
+    }
+
+    .action-btn:active { transform: scale(.96); box-shadow: none; }
+
+    .btn-in  { background: var(--green); color: white; }
+    .btn-out { background: var(--red);   color: white; }
+
+    .btn-in:hover  { background: #27b860; }
+    .btn-out:hover { background: #bb0000; }
+
+    .action-icon { font-size: 1.3rem; }
+
+    /* ── FORM PANEL ── */
+    .form-panel {
+      background: var(--white);
+      border-radius: var(--r);
+      padding: 1.2rem 1.3rem;
+      box-shadow: var(--shadow);
+      display: none;
+      flex-direction: column;
+      gap: .9rem;
+      animation: slideDown .22s ease;
+    }
+
+    .form-panel.open { display: flex; }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-title {
+      font-size: .88rem;
+      font-weight: 800;
+      color: var(--dark);
+    }
+
+    .form-title span { font-size: 1.1rem; margin-right: .3rem; }
+
+    .form-row { display: flex; flex-direction: column; gap: .35rem; }
+
+    .form-row label {
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--gray);
+      letter-spacing: .08em;
+    }
+
+    .form-row input,
+    .form-row select {
+      border: 2px solid var(--lightgray);
+      border-radius: 10px;
+      padding: .6rem .9rem;
+      font-family: var(--font);
+      font-size: .95rem;
+      color: var(--dark);
+      font-weight: 700;
+      outline: none;
+      transition: border-color .18s;
+      background: var(--bg);
+    }
+
+    .form-row input:focus,
+    .form-row select:focus { border-color: var(--blue); background: white; }
+
+    /* Pack quick pick */
+    .quick-picks {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+    }
+
+    .qp-btn {
+      border: 2px solid var(--lightgray);
+      border-radius: 20px;
+      background: var(--lightgray);
+      padding: .32rem .8rem;
+      font-family: var(--font);
+      font-size: .78rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--dark);
+      transition: all .15s;
+    }
+
+    .qp-btn:hover { border-color: var(--blue); background: #e8eaff; color: var(--blue); }
+
+    .form-submit {
+      border: none;
+      border-radius: 12px;
+      padding: .75rem;
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .12s;
+      color: white;
+    }
+
+    .form-submit:active { transform: scale(.97); }
+    .form-submit.green { background: var(--green); }
+    .form-submit.red   { background: var(--red); }
+
+    /* ── HISTORY ── */
+    .history-section {
+      background: var(--white);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .history-header {
+      padding: .9rem 1.3rem;
+      border-bottom: 2px solid var(--lightgray);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .history-header h2 {
+      font-size: .9rem;
+      font-weight: 800;
+    }
+
+    .clear-btn {
+      background: var(--lightgray);
+      border: none;
+      border-radius: 8px;
+      padding: .3rem .7rem;
+      font-family: var(--font);
+      font-size: .7rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--gray);
+      transition: all .15s;
+    }
+
+    .clear-btn:hover { background: #ffd4d4; color: var(--red); }
+
+    .history-list { max-height: 360px; overflow-y: auto; }
+
+    .history-empty {
+      padding: 2.5rem;
+      text-align: center;
+      color: var(--gray);
+      font-size: .88rem;
+      font-weight: 700;
+    }
+
+    .history-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: .7rem;
+      padding: .85rem 1.3rem;
+      border-bottom: 1px solid var(--lightgray);
+      animation: rowIn .2s ease;
+    }
+
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .history-item:last-child { border-bottom: none; }
+
+    .hi-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .hi-icon.income  { background: #d4f8e8; }
+    .hi-icon.expense { background: #ffe0e0; }
+
+    .hi-title {
+      font-size: .88rem;
+      font-weight: 800;
+      color: var(--dark);
+    }
+
+    .hi-date {
+      font-size: .68rem;
+      color: var(--gray);
+      font-weight: 700;
+      margin-top: .1rem;
+    }
+
+    .hi-amount {
+      font-family: var(--num);
+      font-size: 1.05rem;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .hi-amount.income  { color: var(--green); }
+    .hi-amount.expense { color: var(--red); }
+
+    .hi-balance {
+      font-family: var(--num);
+      font-size: .78rem;
+      color: var(--gray);
+      font-weight: 600;
+      text-align: right;
+    }
+
+    /* scrollbar */
+    .history-list::-webkit-scrollbar { width: 4px; }
+    .history-list::-webkit-scrollbar-thumb { background: var(--lightgray); border-radius: 2px; }
+
+    /* ── MODAL CONFETTI ── */
+    .confetti-wrap {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    .confetti-piece {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      animation: fall linear forwards;
+    }
+
+    @keyframes fall {
+      0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="star">⭐</div>
+  <div class="star">✨</div>
+  <div class="star">⭐</div>
+  <div class="header-inner">
+    <div class="pokeball"></div>
+    <div class="header-text">
+      <h1>ポケモンカード<br>おこづかいちょう</h1>
+      <p>カードあつめを おうえんするよ！</p>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── BALANCE ── -->
+  <div class="balance-card">
+    <div class="balance-label">いまの ざんだか</div>
+    <div class="balance-amount" id="balance-disp">¥0</div>
+    <div class="balance-sub" id="balance-sub">まだ おかねが ないよ</div>
+    <div class="pack-row" id="pack-row"></div>
+  </div>
+
+  <!-- ── STATS ── -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-emoji">💰</span>
+      <div class="stat-val" id="stat-in">¥0</div>
+      <div class="stat-lbl">もらった<br>おかね</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-emoji">🃏</span>
+      <div class="stat-val" id="stat-out">¥0</div>
+      <div class="stat-lbl">つかった<br>おかね</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-emoji">📦</span>
+      <div class="stat-val" id="stat-packs">0かい</div>
+      <div class="stat-lbl">カードを<br>かった かいすう</div>
+    </div>
+  </div>
+
+  <!-- ── ACTION BUTTONS ── -->
+  <div class="actions">
+    <button class="action-btn btn-in"  onclick="openForm('in')">
+      <span class="action-icon">💰</span> もらった！
+    </button>
+    <button class="action-btn btn-out" onclick="openForm('out')">
+      <span class="action-icon">🃏</span> かったよ！
+    </button>
+  </div>
+
+  <!-- ── FORM: もらった ── -->
+  <div class="form-panel" id="form-in">
+    <div class="form-title"><span>💰</span>おかねを もらった！</div>
+    <div class="form-row">
+      <label>だれから？ なにで？</label>
+      <select id="in-source">
+        <option value="お小遣い">💴 まいつきの おこづかい</option>
+        <option value="お誕生日プレゼント">🎂 たんじょうびプレゼント</option>
+        <option value="お手伝い">🏠 おてつだい</option>
+        <option value="おじいちゃん・おばあちゃんから">👴 おじいちゃん・おばあちゃんから</option>
+        <option value="その他">📝 その他</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>いくら もらった？</label>
+      <input type="number" id="in-amount" min="0" step="1" placeholder="500">
+    </div>
+    <button class="form-submit green" onclick="submitIn()">💰 ついか する！</button>
+  </div>
+
+  <!-- ── FORM: かった ── -->
+  <div class="form-panel" id="form-out">
+    <div class="form-title"><span>🃏</span>カードを かった！</div>
+    <div class="form-row">
+      <label>なにを かった？</label>
+      <input type="text" id="out-desc" placeholder="例: スカーレットexパック">
+    </div>
+    <div class="form-row">
+      <label>⚡ よくかうパック（タップで金額じどう入力）</label>
+      <div class="quick-picks">
+        <button class="qp-btn" onclick="qp(165)">1パック ¥165</button>
+        <button class="qp-btn" onclick="qp(330)">2パック ¥330</button>
+        <button class="qp-btn" onclick="qp(550)">exパック ¥550</button>
+        <button class="qp-btn" onclick="qp(1100)">2パック×ex ¥1,100</button>
+        <button class="qp-btn" onclick="qp(5500)">BOX ¥5,500</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>いくらで かった？</label>
+      <input type="number" id="out-amount" min="0" step="1" placeholder="165">
+    </div>
+    <button class="form-submit red" onclick="submitOut()">🃏 きろく する！</button>
+  </div>
+
+  <!-- ── HISTORY ── -->
+  <div class="history-section">
+    <div class="history-header">
+      <h2>📖 きろく</h2>
+      <button class="clear-btn" onclick="clearAll()">全部けす</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="history-empty" id="history-empty">まだ きろくが ないよ！<br>おかねを もらったり つかったら きろくしよう 🎮</div>
+    </div>
+  </div>
+
+</main>
+
+<div class="confetti-wrap" id="confetti-wrap"></div>
+
+<script>
+  /* ── DATA ── */
+  const PACKS = [
+    { name: '1パック',    price: 165 },
+    { name: 'exパック',   price: 550 },
+    { name: 'BOX',        price: 5500 },
+  ];
+
+  let data = JSON.parse(localStorage.getItem('pokemoney') || '[]');
+
+  /* ── OPEN/CLOSE FORMS ── */
+  let openFormId = null;
+
+  function openForm(type) {
+    const id = type === 'in' ? 'form-in' : 'form-out';
+    if (openFormId === id) {
+      document.getElementById(id).classList.remove('open');
+      openFormId = null;
+      return;
+    }
+    document.getElementById('form-in').classList.remove('open');
+    document.getElementById('form-out').classList.remove('open');
+    document.getElementById(id).classList.add('open');
+    openFormId = id;
+    // focus first input
+    setTimeout(() => {
+      const inp = document.getElementById(id).querySelector('input, select');
+      if (inp) inp.focus();
+    }, 50);
+  }
+
+  function closeForm() {
+    document.getElementById('form-in').classList.remove('open');
+    document.getElementById('form-out').classList.remove('open');
+    openFormId = null;
+  }
+
+  /* ── QUICK PICK ── */
+  function qp(price) {
+    document.getElementById('out-amount').value = price;
+    document.getElementById('out-amount').focus();
+  }
+
+  /* ── SUBMIT IN ── */
+  function submitIn() {
+    const amount = parseInt(document.getElementById('in-amount').value);
+    if (!amount || amount <= 0) { shake('in-amount'); return; }
+    const source = document.getElementById('in-source').value;
+    addEntry({ type: 'in', amount, desc: source, date: today() });
+    document.getElementById('in-amount').value = '';
+    closeForm();
+    confetti();
+  }
+
+  /* ── SUBMIT OUT ── */
+  function submitOut() {
+    const amount = parseInt(document.getElementById('out-amount').value);
+    if (!amount || amount <= 0) { shake('out-amount'); return; }
+    const balance = calcBalance();
+    if (amount > balance) {
+      alert('💦 おかねが たりないよ！\nざんだかは ¥' + balance.toLocaleString() + ' だよ。');
+      return;
+    }
+    const desc = document.getElementById('out-desc').value.trim() || 'ポケモンカード';
+    addEntry({ type: 'out', amount, desc, date: today() });
+    document.getElementById('out-amount').value = '';
+    document.getElementById('out-desc').value = '';
+    closeForm();
+  }
+
+  /* ── ADD ENTRY ── */
+  function addEntry(entry) {
+    data.unshift(entry);
+    save();
+    render();
+    bumpBalance();
+  }
+
+  /* ── CALC ── */
+  function calcBalance() {
+    return data.reduce((s, e) => e.type === 'in' ? s + e.amount : s - e.amount, 0);
+  }
+
+  function calcTotalIn()  { return data.filter(e => e.type === 'in' ).reduce((s,e) => s+e.amount, 0); }
+  function calcTotalOut() { return data.filter(e => e.type === 'out').reduce((s,e) => s+e.amount, 0); }
+  function calcCardCount(){ return data.filter(e => e.type === 'out').length; }
+
+  /* ── RENDER ── */
+  function render() {
+    const balance = calcBalance();
+    const totalIn  = calcTotalIn();
+    const totalOut = calcTotalOut();
+    const cardCnt  = calcCardCount();
+
+    // balance
+    document.getElementById('balance-disp').textContent = '¥' + balance.toLocaleString();
+    const sub = balance === 0  ? 'まだ おかねが ないよ'
+              : balance < 200  ? 'すこし しかないよ…'
+              : balance < 1000 ? 'あつめてるね！'
+              : balance < 5000 ? 'いっぱい ためてるね！ 🌟'
+              :                  'すごい！ BOXが かえるよ！ 🎉';
+    document.getElementById('balance-sub').textContent = sub;
+
+    // pack row
+    const packRow = document.getElementById('pack-row');
+    packRow.innerHTML = '';
+    PACKS.forEach(p => {
+      const n = Math.floor(balance / p.price);
+      const b = document.createElement('div');
+      b.className = 'pack-badge';
+      b.innerHTML = `📦 <span class="pack-num">${n}</span> ${p.name}`;
+      packRow.appendChild(b);
+    });
+
+    // stats
+    document.getElementById('stat-in').textContent   = '¥' + totalIn.toLocaleString();
+    document.getElementById('stat-out').textContent  = '¥' + totalOut.toLocaleString();
+    document.getElementById('stat-packs').textContent = cardCnt + 'かい';
+
+    // history
+    const list  = document.getElementById('history-list');
+    const empty = document.getElementById('history-empty');
+
+    if (data.length === 0) {
+      list.innerHTML = '';
+      list.appendChild(empty);
+      return;
+    }
+
+    // rebuild history with running balance
+    list.innerHTML = '';
+    let running = balance;
+
+    data.forEach(e => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+
+      const isIn = e.type === 'in';
+      const icon = isIn ? '💰' : '🃏';
+      const cls  = isIn ? 'income' : 'expense';
+      const sign = isIn ? '+' : '−';
+
+      item.innerHTML = `
+        <div class="hi-icon ${cls}">${icon}</div>
+        <div class="hi-body">
+          <div class="hi-title">${esc(e.desc)}</div>
+          <div class="hi-date">${e.date}</div>
+        </div>
+        <div class="hi-amount ${cls}">${sign}¥${e.amount.toLocaleString()}</div>
+        <div class="hi-balance">¥${running.toLocaleString()}</div>
+      `;
+
+      list.appendChild(item);
+      running = isIn ? running - e.amount : running + e.amount;
+    });
+  }
+
+  /* ── UTILS ── */
+  function today() {
+    const d = new Date();
+    return `${d.getMonth()+1}/${d.getDate()}`;
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function save() { localStorage.setItem('pokemoney', JSON.stringify(data)); }
+
+  function clearAll() {
+    if (!confirm('きろくを ぜんぶ けしても いい？')) return;
+    data = [];
+    save();
+    render();
+  }
+
+  function shake(id) {
+    const el = document.getElementById(id);
+    el.style.borderColor = '#CC0000';
+    el.style.animation = 'shk .3s ease';
+    setTimeout(() => { el.style.animation = ''; el.style.borderColor = ''; }, 350);
+  }
+
+  function bumpBalance() {
+    const el = document.getElementById('balance-disp');
+    el.classList.remove('bump');
+    void el.offsetWidth;
+    el.classList.add('bump');
+  }
+
+  /* ── CONFETTI ── */
+  function confetti() {
+    const wrap = document.getElementById('confetti-wrap');
+    const colors = ['#FFCB05','#CC0000','#3B4CCA','#4ade80','#f87171','#FFE566'];
+    for (let i = 0; i < 28; i++) {
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.top  = '-12px';
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      p.style.width  = (Math.random() * 8 + 6) + 'px';
+      p.style.height = (Math.random() * 8 + 6) + 'px';
+      p.style.borderRadius = Math.random() > .5 ? '50%' : '2px';
+      p.style.animationDuration = (Math.random() * 1.2 + .8) + 's';
+      p.style.animationDelay    = (Math.random() * .4) + 's';
+      wrap.appendChild(p);
+      setTimeout(() => p.remove(), 2200);
+    }
+  }
+
+  /* ── INIT ── */
+  render();
+</script>
+</body>
+</html>

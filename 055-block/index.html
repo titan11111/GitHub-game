@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ブロック崩し</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: url('https://images.unsplash.com/photo-1508057198894-247b23fe5ade?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+            background-size: cover;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 400px;
+            max-height: 700px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: linear-gradient(180deg, #1e3c72 0%, #2a5298 100%);
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            z-index: 20;
+            touch-action: auto;
+            pointer-events: auto;
+        }
+        
+        #gameOver h2 {
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+        
+        #gameOver p {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        
+        #restartBtn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            touch-action: manipulation;
+            pointer-events: auto;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        
+        #restartBtn:active {
+            transform: scale(0.95);
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            font-size: 14px;
+            display: block;
+            z-index: 10;
+        }
+        
+        #ballCounter {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">
+            <div>スコア: <span id="score">0</span></div>
+            <div>ライフ: <span id="lives">3</span></div>
+            <div>レベル: <span id="level">1</span></div>
+        </div>
+        <div id="ballCounter">
+            ボール数: <span id="ballCount">1</span><br>
+            次のボール: <span id="nextBall">10</span>個
+        </div>
+        <div id="gameOver">
+            <h2 id="gameOverTitle">ゲームオーバー</h2>
+            <p id="finalScore">最終スコア: 0</p>
+            <button id="restartBtn">もう一度プレイ</button>
+        </div>
+        <div id="instructions">画面をタッチしてパドルを操作<br>タップでスタート</div>
+    </div>
+    
+    <!-- BGM -->
+    <audio id="bgm" src="audio/The_Swing_of_Time.mp3" loop preload="auto"></audio>
+    <!-- エンディング曲 -->
+    <audio id="ending" src="audio/project_777698.mp3" preload="auto"></audio>
+
+    <script>
+        class BreakoutGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                
+                this.gameState = 'waiting'; // waiting, playing, paused, gameOver
+                this.score = 0;
+                this.lives = 3;
+                this.level = 1;
+                this.blocksDestroyed = 0;
+                this.ballsToNext = 10;
+                this.savedLevel = undefined;
+                this.savedScore = undefined;
+
+                this.enemy = null;
+
+                this.setupAudio();
+                this.bgm = document.getElementById('bgm');
+                this.ending = document.getElementById('ending');
+                
+                if (this.bgm) {
+                    this.bgm.volume = 0.4;
+                }
+                if (this.ending) {
+                    this.ending.volume = 0.5;
+                }
+                
+                this.setupGameObjects();
+                this.setupEventListeners();
+                this.gameLoop();
+            }
+            
+            setupAudio() {
+                this.audioContext = null;
+                this.audioEnabled = false;
+                
+                this.initAudio = () => {
+                    try {
+                        if (!this.audioContext) {
+                            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                            this.audioEnabled = true;
+                        }
+                        if (this.audioContext.state === 'suspended') {
+                            this.audioContext.resume();
+                        }
+                        if (this.bgm) {
+                            const playPromise = this.bgm.play();
+                            if (playPromise && playPromise.catch) {
+                                playPromise.catch(() => {});
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Audio initialization failed:', error);
+                        this.audioEnabled = false;
+                    }
+                };
+            }
+            
+            playSound(frequency, duration, type = 'sine', volume = 0.3) {
+                if (!this.audioEnabled || !this.audioContext) return;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    oscillator.type = type;
+                    
+                    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + duration);
+                } catch (error) {
+                    console.log('Sound play error:', error);
+                }
+            }
+            
+            playBlockHitSound() {
+                this.playSound(800, 0.1, 'square', 0.4);
+            }
+            
+            playPaddleHitSound() {
+                this.playSound(220, 0.15, 'sine', 0.3);
+            }
+            
+            playWallHitSound() {
+                this.playSound(440, 0.1, 'triangle', 0.2);
+            }
+            
+            playGameOverSound() {
+                setTimeout(() => this.playSound(523, 0.2, 'sine', 0.4), 0);
+                setTimeout(() => this.playSound(440, 0.2, 'sine', 0.4), 200);
+                setTimeout(() => this.playSound(349, 0.2, 'sine', 0.4), 400);
+                setTimeout(() => this.playSound(262, 0.4, 'sine', 0.4), 600);
+            }
+            
+            playLevelUpSound() {
+                setTimeout(() => this.playSound(262, 0.15, 'sine', 0.3), 0);
+                setTimeout(() => this.playSound(330, 0.15, 'sine', 0.3), 150);
+                setTimeout(() => this.playSound(392, 0.15, 'sine', 0.3), 300);
+                setTimeout(() => this.playSound(523, 0.3, 'sine', 0.3), 450);
+            }
+            
+            playLifeLostSound() {
+                this.playSound(200, 0.3, 'sawtooth', 0.4);
+            }
+            
+            playNewBallSound() {
+                setTimeout(() => this.playSound(440, 0.1, 'sine', 0.3), 0);
+                setTimeout(() => this.playSound(554, 0.1, 'sine', 0.3), 100);
+                setTimeout(() => this.playSound(659, 0.2, 'sine', 0.3), 200);
+            }
+            
+            setupCanvas() {
+                const container = document.getElementById('gameContainer');
+                const rect = container.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                
+                this.gameWidth = this.canvas.width;
+                this.gameHeight = this.canvas.height;
+            }
+            
+            setupGameObjects() {
+                this.paddle = {
+                    width: 80,
+                    height: 12,
+                    x: this.gameWidth / 2 - 40,
+                    y: this.gameHeight - 60,
+                    speed: 8
+                };
+                
+                this.balls = [{
+                    x: this.gameWidth / 2,
+                    y: this.gameHeight / 2,
+                    radius: 8,
+                    dx: 3,
+                    dy: -3,
+                    speed: 4
+                }];
+                
+                this.resetBalls();
+                this.createBlocks();
+                this.createEnemy();
+            }
+            
+            resetBalls() {
+                this.balls.forEach(ball => {
+                    ball.x = this.paddle.x + this.paddle.width / 2;
+                    ball.y = this.paddle.y - ball.radius - 5;
+                    const angle = (Math.random() - 0.5) * Math.PI / 3;
+                    ball.dx = Math.sin(angle) * ball.speed;
+                    ball.dy = -Math.abs(Math.cos(angle) * ball.speed);
+                });
+            }
+            
+            addNewBall() {
+                const newBall = {
+                    x: this.paddle.x + this.paddle.width / 2,
+                    y: this.paddle.y - 8 - 5,
+                    radius: 8,
+                    dx: 3,
+                    dy: -3,
+                    speed: 4 + (this.level - 1) * 0.5
+                };
+                
+                const angle = (Math.random() - 0.5) * Math.PI / 3;
+                newBall.dx = Math.sin(angle) * newBall.speed;
+                newBall.dy = -Math.abs(Math.cos(angle) * newBall.speed);
+                
+                this.balls.push(newBall);
+                this.playNewBallSound();
+                this.updateUI();
+            }
+            
+            createBlocks() {
+                this.blocks = [];
+                const rows = 6;
+                const cols = 8;
+                const blockWidth = (this.gameWidth - 40) / cols;
+                const blockHeight = 25;
+                const colors = ['#ff6b6b', '#ffa500', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0'];
+                
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        this.blocks.push({
+                            x: col * blockWidth + 20,
+                            y: row * blockHeight + 60,
+                            width: blockWidth - 2,
+                            height: blockHeight - 2,
+                            color: colors[row],
+                            points: (rows - row) * 10
+                        });
+                    }
+                }
+            }
+
+            createEnemy() {
+                if (this.level >= 5) {
+                    const speed = 2 + (this.level - 5) * 0.2;
+                    this.enemy = {
+                        x: this.gameWidth / 2,
+                        y: this.gameHeight / 2,
+                        dx: speed,
+                        dy: speed,
+                        radius: 15,
+                        minRadius: 10,
+                        maxRadius: 25,
+                        growthRate: 0.2,
+                        growing: true
+                    };
+                } else {
+                    this.enemy = null;
+                }
+            }
+
+            setupEventListeners() {
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.handleTouch(e);
+                });
+                
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    this.handleTouch(e);
+                });
+                
+                this.canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    this.initAudio();
+                    if (this.gameState === 'waiting') {
+                        this.startGame();
+                    }
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    this.handleMouse(e);
+                });
+                
+                this.canvas.addEventListener('click', (e) => {
+                    this.initAudio();
+                    if (this.gameState === 'waiting') {
+                        this.startGame();
+                    }
+                });
+                
+                const restartBtn = document.getElementById('restartBtn');
+                const restartHandler = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.restart();
+                };
+                restartBtn.addEventListener('click', restartHandler);
+                restartBtn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.restart();
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.setupCanvas();
+                });
+            }
+            
+            handleTouch(e) {
+                const touch = e.touches[0];
+                if (touch) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    this.movePaddle(x);
+                }
+            }
+            
+            handleMouse(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                this.movePaddle(x);
+            }
+            
+            movePaddle(x) {
+                this.paddle.x = Math.max(0, Math.min(this.gameWidth - this.paddle.width, x - this.paddle.width / 2));
+                
+                if (this.gameState === 'waiting') {
+                    this.balls.forEach(ball => {
+                        ball.x = this.paddle.x + this.paddle.width / 2;
+                    });
+                }
+            }
+            
+            startGame() {
+                this.gameState = 'playing';
+                document.getElementById('instructions').style.display = 'none';
+            }
+            
+            update() {
+                if (this.gameState !== 'playing') return;
+
+                if (this.enemy) {
+                    this.enemy.x += this.enemy.dx;
+                    this.enemy.y += this.enemy.dy;
+                    if (this.enemy.x <= this.enemy.radius || this.enemy.x >= this.gameWidth - this.enemy.radius) {
+                        this.enemy.dx = -this.enemy.dx;
+                    }
+                    if (this.enemy.y <= this.enemy.radius || this.enemy.y >= this.gameHeight - this.enemy.radius) {
+                        this.enemy.dy = -this.enemy.dy;
+                    }
+                    if (this.enemy.growing) {
+                        this.enemy.radius += this.enemy.growthRate;
+                        if (this.enemy.radius >= this.enemy.maxRadius) this.enemy.growing = false;
+                    } else {
+                        this.enemy.radius -= this.enemy.growthRate;
+                        if (this.enemy.radius <= this.enemy.minRadius) this.enemy.growing = true;
+                    }
+                }
+
+                let ballRemoved = false;
+                let enemyHit = false;
+
+                this.balls.forEach((ball, ballIndex) => {
+                    ball.x += ball.dx;
+                    ball.y += ball.dy;
+                    
+                    if (ball.x <= ball.radius || ball.x >= this.gameWidth - ball.radius) {
+                        ball.dx = -ball.dx;
+                        ball.x = Math.max(ball.radius, Math.min(this.gameWidth - ball.radius, ball.x));
+                        this.playWallHitSound();
+                    }
+                    if (ball.y <= ball.radius) {
+                        ball.dy = -ball.dy;
+                        ball.y = ball.radius;
+                        this.playWallHitSound();
+                    }
+
+                    if (this.enemy) {
+                        const distX = ball.x - this.enemy.x;
+                        const distY = ball.y - this.enemy.y;
+                        const dist = Math.sqrt(distX * distX + distY * distY);
+                        if (dist < ball.radius + this.enemy.radius) {
+                            ball.remove = true;
+                            ballRemoved = true;
+                            enemyHit = true;
+                            this.createParticles(ball.x, ball.y, '#ffffff');
+                            this.playLifeLostSound();
+                            return;
+                        }
+                    }
+
+                    if (ball.y + ball.radius >= this.paddle.y &&
+                        ball.y + ball.radius <= this.paddle.y + this.paddle.height + 5 &&
+                        ball.x >= this.paddle.x - ball.radius &&
+                        ball.x <= this.paddle.x + this.paddle.width + ball.radius &&
+                        ball.dy > 0) {
+                        
+                        this.playPaddleHitSound();
+                        
+                        const hitPoint = (ball.x - (this.paddle.x + this.paddle.width / 2)) / (this.paddle.width / 2);
+                        const angle = hitPoint * Math.PI / 4;
+                        const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                        ball.dx = Math.sin(angle) * speed;
+                        ball.dy = -Math.abs(Math.cos(angle) * speed);
+                        ball.y = this.paddle.y - ball.radius;
+                    }
+                    
+                    for (let i = this.blocks.length - 1; i >= 0; i--) {
+                        const block = this.blocks[i];
+                        if (ball.x + ball.radius >= block.x &&
+                            ball.x - ball.radius <= block.x + block.width &&
+                            ball.y + ball.radius >= block.y &&
+                            ball.y - ball.radius <= block.y + block.height) {
+                            
+                            this.blocks.splice(i, 1);
+                            this.score += block.points;
+                            this.blocksDestroyed++;
+                            
+                            if (this.blocksDestroyed % 10 === 0) {
+                                this.addNewBall();
+                                this.ballsToNext = 10;
+                            } else {
+                                this.ballsToNext = 10 - (this.blocksDestroyed % 10);
+                            }
+                            
+                            this.updateUI();
+                            this.playBlockHitSound();
+                            this.createParticles(block.x + block.width / 2, block.y + block.height / 2, block.color);
+                            
+                            const overlapX = Math.min(ball.x + ball.radius - block.x, block.x + block.width - (ball.x - ball.radius));
+                            const overlapY = Math.min(ball.y + ball.radius - block.y, block.y + block.height - (ball.y - ball.radius));
+                            
+                            if (overlapX < overlapY) {
+                                ball.dx = -ball.dx;
+                            } else {
+                                ball.dy = -ball.dy;
+                            }
+                            
+                            if (this.blocks.length === 0) {
+                                this.nextLevel();
+                            }
+                            break;
+                        }
+                    }
+                });
+                
+                for (let i = this.balls.length - 1; i >= 0; i--) {
+                    if (this.balls[i].y > this.gameHeight + 20 || this.balls[i].remove) {
+                        this.balls.splice(i, 1);
+                        ballRemoved = true;
+                    }
+                }
+
+                if (ballRemoved) {
+                    this.updateUI();
+                }
+
+                if (this.balls.length === 0) {
+                    this.lives--;
+                    this.updateUI();
+                    if (!enemyHit) {
+                        this.playLifeLostSound();
+                    }
+
+                    if (this.lives <= 0) {
+                        this.gameOver();
+                    } else {
+                        this.balls = [{
+                            x: this.gameWidth / 2,
+                            y: this.gameHeight / 2,
+                            radius: 8,
+                            dx: 3,
+                            dy: -3,
+                            speed: 4 + (this.level - 1) * 0.5
+                        }];
+                        this.resetBalls();
+                        this.gameState = 'waiting';
+                        document.getElementById('instructions').style.display = 'block';
+                        document.getElementById('instructions').innerHTML = 'ライフ残り ' + this.lives + '<br>タップでリスタート';
+                    }
+                }
+
+                this.updateParticles();
+            }
+            
+            createParticles(x, y, color) {
+                if (!this.particles) this.particles = [];
+                
+                for (let i = 0; i < 8; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        dx: (Math.random() - 0.5) * 8,
+                        dy: (Math.random() - 0.5) * 8,
+                        life: 30,
+                        maxLife: 30,
+                        color: color
+                    });
+                }
+            }
+            
+            updateParticles() {
+                if (!this.particles) return;
+                
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.dx;
+                    p.y += p.dy;
+                    p.life--;
+                    
+                    if (p.life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+            
+            nextLevel() {
+                this.level++;
+                this.balls.forEach(ball => {
+                    ball.speed = Math.min(ball.speed + 0.5, 8);
+                    const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                    ball.dx = (ball.dx / currentSpeed) * ball.speed;
+                    ball.dy = (ball.dy / currentSpeed) * ball.speed;
+                });
+                this.createBlocks();
+                this.createEnemy();
+                this.resetBalls();
+                this.gameState = 'waiting';
+                this.playLevelUpSound();
+                document.getElementById('instructions').style.display = 'block';
+                document.getElementById('instructions').innerHTML = 'レベル ' + this.level + '!<br>タップでスタート';
+                this.updateUI();
+            }
+            
+            gameOver() {
+                this.gameState = 'gameOver';
+                this.playGameOverSound();
+                
+                // 現在のレベルを保存（リスタート時に同じステージから再開するため）
+                this.savedLevel = this.level;
+                this.savedScore = this.score;
+                
+                // BGMを停止してエンディング曲を再生
+                if (this.bgm) {
+                    this.bgm.pause();
+                    this.bgm.currentTime = 0;
+                }
+                if (this.ending) {
+                    this.ending.currentTime = 0;
+                    const playPromise = this.ending.play();
+                    if (playPromise && playPromise.catch) {
+                        playPromise.catch(() => {});
+                    }
+                }
+                
+                document.getElementById('finalScore').textContent = '最終スコア: ' + this.score;
+                document.getElementById('gameOver').style.display = 'block';
+            }
+            
+            restart() {
+                // レベルとスコアを保持（同じステージから再開）
+                if (this.savedLevel !== undefined) {
+                    this.level = this.savedLevel;
+                }
+                if (this.savedScore !== undefined) {
+                    this.score = this.savedScore;
+                }
+                
+                this.lives = 3;
+                this.blocksDestroyed = 0;
+                this.ballsToNext = 10;
+                this.gameState = 'waiting';
+                this.particles = [];
+                
+                // エンディング曲を停止してBGMを再生
+                if (this.ending) {
+                    this.ending.pause();
+                    this.ending.currentTime = 0;
+                }
+                if (this.bgm) {
+                    this.bgm.currentTime = 0;
+                    const playPromise = this.bgm.play();
+                    if (playPromise && playPromise.catch) {
+                        playPromise.catch(() => {});
+                    }
+                }
+                
+                // 現在のレベルに応じたボールの速度を設定
+                const ballSpeed = 4 + (this.level - 1) * 0.5;
+                this.balls = [{
+                    x: this.gameWidth / 2,
+                    y: this.gameHeight / 2,
+                    radius: 8,
+                    dx: 3,
+                    dy: -3,
+                    speed: ballSpeed
+                }];
+                
+                // 同じレベルのブロックと敵を再生成
+                this.createBlocks();
+                this.createEnemy();
+                this.resetBalls();
+                
+                // パドルの位置をリセット
+                this.paddle.x = this.gameWidth / 2 - this.paddle.width / 2;
+                this.balls[0].x = this.paddle.x + this.paddle.width / 2;
+                
+                this.updateUI();
+                
+                document.getElementById('gameOver').style.display = 'none';
+                document.getElementById('instructions').style.display = 'block';
+                document.getElementById('instructions').innerHTML = 'レベル ' + this.level + ' から再開<br>画面をタッチしてパドルを操作<br>タップでスタート';
+            }
+            
+            updateUI() {
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('lives').textContent = this.lives;
+                document.getElementById('level').textContent = this.level;
+                document.getElementById('ballCount').textContent = this.balls.length;
+                document.getElementById('nextBall').textContent = this.ballsToNext;
+            }
+            
+            draw() {
+                this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight);
+                
+                this.ctx.shadowColor = 'transparent';
+                this.ctx.shadowBlur = 0;
+                
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                this.ctx.shadowBlur = 5;
+                this.ctx.fillRect(this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height);
+                
+                this.ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+                this.ctx.shadowBlur = 10;
+                this.balls.forEach(ball => {
+                    this.ctx.beginPath();
+                    this.ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fill();
+                });
+                
+                this.ctx.shadowBlur = 3;
+                this.blocks.forEach(block => {
+                    this.ctx.fillStyle = block.color;
+                    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                    this.ctx.fillRect(block.x, block.y, block.width, block.height);
+                    
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    this.ctx.shadowBlur = 0;
+                    this.ctx.fillRect(block.x, block.y, block.width, 3);
+                });
+
+                if (this.enemy) {
+                    this.ctx.shadowBlur = 10;
+                    this.ctx.shadowColor = 'rgba(255, 0, 0, 0.5)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.enemy.x, this.enemy.y, this.enemy.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = '#ff0000';
+                    this.ctx.fill();
+                    this.ctx.shadowBlur = 0;
+                }
+
+                if (this.particles) {
+                    this.ctx.shadowBlur = 0;
+                    this.particles.forEach(p => {
+                        const alpha = p.life / p.maxLife;
+                        this.ctx.fillStyle = p.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+                        this.ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+                    });
+                }
+                
+                if (this.gameState === 'waiting') {
+                    const alpha = (Math.sin(Date.now() * 0.01) + 1) / 2;
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.1})`;
+                    this.ctx.shadowBlur = 0;
+                    this.ctx.fillRect(0, 0, this.gameWidth, this.gameHeight);
+                }
+                
+                this.ctx.shadowColor = 'transparent';
+                this.ctx.shadowBlur = 0;
+            }
+            
+            gameLoop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+        
+        window.addEventListener('load', () => {
+            new BreakoutGame();
+        });
+        
+        document.addEventListener('touchstart', function(e) {
+            // ボタンやゲームオーバー画面内のタッチは許可
+            if (e.target.closest('#gameOver') || e.target.closest('#restartBtn')) {
+                return;
+            }
+            e.preventDefault();
+        }, { passive: false });
+        
+        document.addEventListener('touchmove', function(e) {
+            // ボタンやゲームオーバー画面内のタッチは許可
+            if (e.target.closest('#gameOver') || e.target.closest('#restartBtn')) {
+                return;
+            }
+            e.preventDefault();
+        }, { passive: false });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="まいにち「はい」とこたえるだけ。つづけるほど つよくなる しゅうかんRPG。">
+<title>ハビットクエスト</title>
+<style>
+/* ============================================================
+   ハビットクエスト  ── 外部依存ゼロ（CDN/フォント/画像 なし）
+   ============================================================ */
+:root{
+  --bg:#0d0d14;
+  --ink:#ffffff;
+  --gold:#ffcc33;
+  --red:#ff5a5a;
+  --blue:#6ec7ff;
+  --green:#6ee787;
+  --purple:#c58cff;
+  --dim:#9aa0b0;
+  --panel:#05050a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  font-weight:700;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
+  user-select:none;-webkit-user-select:none;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;touch-action:manipulation}
+input{font:inherit}
+
+/* ---- レトロ枠（box-shadow多重で自前実装） ---- */
+.win{
+  background:var(--panel);
+  border:3px solid #fff;
+  border-radius:5px;
+  box-shadow:0 0 0 2px #000, 0 0 0 5px #fff, 0 6px 0 rgba(0,0,0,.6);
+}
+.win-gold{border-color:var(--gold);box-shadow:0 0 0 2px #000,0 0 0 5px var(--gold),0 6px 0 rgba(0,0,0,.6)}
+
+/* ---- 画面（同時に1枚だけ） ---- */
+.screen{
+  position:fixed;inset:0;
+  display:none;
+  flex-direction:column;
+  padding:calc(env(safe-area-inset-top) + 8px) 10px calc(env(safe-area-inset-bottom) + 8px);
+  gap:8px;
+}
+.screen.on{display:flex}
+
+/* ============ タイトル ============ */
+#screen-title{align-items:center;justify-content:center;text-align:center;gap:18px}
+.logo{
+  font-size:clamp(30px,10vw,52px);
+  color:var(--gold);
+  letter-spacing:.06em;
+  text-shadow:0 4px 0 #7a4a00, 0 0 22px rgba(255,204,51,.45);
+  line-height:1.15;
+}
+.logo small{display:block;font-size:.34em;color:#fff;letter-spacing:.3em;margin-top:8px;text-shadow:none}
+.title-dragon{font-size:clamp(56px,20vw,110px);animation:bob 3s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.title-lead{color:var(--dim);font-size:14px;line-height:1.9}
+.title-lead b{color:var(--gold)}
+
+/* ---- 大ボタン ---- */
+.btn{
+  display:block;width:100%;
+  padding:14px 16px;
+  border-radius:8px;
+  background:#1b1b2c;
+  border:3px solid #fff;
+  box-shadow:0 4px 0 #000;
+  font-size:17px;
+  transition:transform .06s, box-shadow .06s, background .12s;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 0 0 #000}
+.btn-yes{background:linear-gradient(180deg,#ffd75e,#f0a500);border-color:#fff;color:#2a1a00;font-size:22px;padding:18px}
+.btn-no{background:#23242f;border-color:#6a6d80;color:#c7cadb;font-size:17px}
+.btn-gold{background:linear-gradient(180deg,#ffd75e,#f0a500);color:#2a1a00}
+.btn-sm{padding:9px 12px;font-size:13px;border-width:2px;box-shadow:0 3px 0 #000}
+.btn[disabled]{opacity:.45;box-shadow:none;transform:none}
+.btn-row{display:flex;gap:10px}
+.btn-row>*{flex:1}
+
+/* ============ セットアップ（8つのしつもん） ============ */
+#screen-setup{justify-content:flex-start}
+.setup-head{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--dim)}
+.setup-head .qno{color:var(--gold);font-size:14px}
+.pbar{flex:1;height:8px;background:#000;border:2px solid #fff;border-radius:99px;overflow:hidden}
+.pbar>i{display:block;height:100%;background:var(--gold);transition:width .3s}
+.setup-body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;overflow-y:auto;padding:4px}
+.q-title{font-size:clamp(19px,5.4vw,26px);line-height:1.5;text-align:center}
+.q-title em{font-style:normal;color:var(--gold)}
+.q-sub{font-size:12px;color:var(--dim);text-align:center;line-height:1.7}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opts.one{grid-template-columns:1fr}
+.opt{
+  padding:14px 10px;border-radius:8px;background:#141425;
+  border:3px solid #454a63;box-shadow:0 4px 0 #000;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-size:15px;line-height:1.3;text-align:center;
+  transition:transform .06s,box-shadow .06s,border-color .12s;
+}
+.opt .ic{font-size:30px}
+.opt .sm{font-size:11px;color:var(--dim);font-weight:400}
+.opt:active{transform:translateY(4px);box-shadow:0 0 0 #000}
+.opt.sel{border-color:var(--gold);background:#2a2410}
+.name-input{
+  width:100%;padding:14px;text-align:center;font-size:24px;
+  background:#000;color:var(--gold);border:3px solid #fff;border-radius:8px;outline:none;
+}
+.name-input:focus{border-color:var(--gold)}
+
+/* ============ メイン ============ */
+#screen-main{gap:7px}
+.hud{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px}
+.hud .menu-btn{font-size:20px;line-height:1;padding:2px 8px;border:2px solid #fff;border-radius:6px;background:#1b1b2c}
+.hud .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hud .who b{color:var(--gold)}
+.hud .chip{white-space:nowrap;font-size:13px}
+.hud .chip.g{color:var(--gold)}
+.hud .chip.s{color:#ff9b52}
+
+/* モンスター */
+.stage{padding:8px 10px;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;overflow:hidden}
+.stage-top{width:100%;display:flex;justify-content:space-between;align-items:baseline;font-size:12px}
+.stage-top .mname{color:var(--red)}
+.mons{font-size:clamp(44px,13vw,74px);line-height:1;filter:drop-shadow(0 8px 6px rgba(0,0,0,.8));animation:bob 3s ease-in-out infinite}
+.mons.hit{animation:hit .4s steps(2,start)}
+@keyframes hit{0%,100%{filter:none;transform:translateX(0)}25%{filter:invert(1) brightness(2);transform:translateX(-7px)}75%{filter:invert(1) brightness(2);transform:translateX(7px)}}
+.bar{width:100%;height:11px;background:#000;border:2px solid #fff;border-radius:4px;overflow:hidden}
+.bar>i{display:block;height:100%;background:linear-gradient(180deg,#ff8a8a,#c62222);transition:width .45s}
+.dmg-pop{
+  position:absolute;top:34%;left:50%;transform:translateX(-50%);
+  color:var(--gold);font-size:30px;text-shadow:0 3px 0 #000;
+  pointer-events:none;opacity:0;
+}
+.dmg-pop.go{animation:pop 1s ease-out}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,10px) scale(.6)}25%{opacity:1;transform:translate(-50%,-8px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-42px) scale(1)}}
+
+/* メッセージ1行 */
+.ticker{padding:8px 11px;font-size:13px;line-height:1.55;min-height:44px;display:flex;align-items:center;color:#ffeeb8}
+.ticker b{color:var(--gold)}
+
+/* しつもんカード */
+.qwrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:12px;gap:9px;text-align:center;min-height:0}
+.qcount{font-size:11px;color:var(--dim);letter-spacing:.1em}
+.qicon{font-size:clamp(34px,10vw,52px);line-height:1}
+.qask{font-size:clamp(17px,4.8vw,22px);line-height:1.5}
+.qask em{font-style:normal;color:var(--gold)}
+.streak-badge{
+  display:inline-block;padding:6px 12px;border-radius:99px;
+  background:#2a1c04;border:2px solid var(--gold);color:var(--gold);font-size:13px;
+}
+.streak-badge.hot{background:#3a1200;border-color:#ff7a1a;color:#ffb066;animation:glow 1.4s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 rgba(255,122,26,0)}50%{box-shadow:0 0 14px rgba(255,122,26,.7)}}
+.streak-note{font-size:11px;color:var(--dim);font-weight:400}
+
+/* つみあげタワー（メイン下部） */
+.tower-strip{padding:7px 10px;display:flex;align-items:center;gap:8px}
+.tower-strip .lbl{font-size:11px;color:var(--dim);white-space:nowrap}
+.blocks{flex:1;display:flex;gap:3px;align-items:flex-end;height:26px;overflow:hidden;justify-content:flex-end}
+.blk{width:11px;border-radius:2px;border:1px solid rgba(255,255,255,.45);flex:none}
+.blk.new{animation:rise .45s ease-out}
+@keyframes rise{0%{transform:translateY(26px);opacity:0}100%{transform:translateY(0);opacity:1}}
+
+/* ============ オーバーレイ ============ */
+.ov{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.82);z-index:50}
+.ov.on{display:flex}
+.ov-panel{width:100%;max-width:460px;max-height:86vh;display:flex;flex-direction:column;padding:14px}
+.ov-head{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #3a3f55;padding-bottom:8px;margin-bottom:10px}
+.ov-head h2{font-size:16px;color:var(--gold)}
+.ov-close{font-size:20px;padding:2px 10px;border:2px solid #6a6d80;border-radius:6px}
+.ov-body{overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:9px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;background:#11121d;border:2px solid #2c3044;border-radius:6px;font-size:13px}
+.row .sub{font-size:11px;color:var(--dim);font-weight:400}
+.card{padding:11px;background:#11121d;border:2px solid #2c3044;border-radius:6px;font-size:13px}
+.card.own{border-color:#4a3a10;opacity:.6}
+.muted{color:var(--dim);font-weight:400;font-size:12px;text-align:center;padding:14px}
+
+/* クリア演出 */
+#ov-clear .ov-panel{text-align:center;align-items:center;gap:12px}
+.clear-title{font-size:clamp(22px,6.5vw,30px);color:var(--gold);text-shadow:0 3px 0 #7a4a00}
+.big-tower{display:flex;flex-wrap:wrap-reverse;gap:3px;justify-content:center;max-height:190px;overflow-y:auto;padding:6px}
+.big-tower .blk{width:15px;height:15px}
+.confetti{font-size:38px;animation:bob 1.6s ease-in-out infinite}
+</style>
+</head>
+<body>
+
+<!-- ==================== タイトル ==================== -->
+<div id="screen-title" class="screen">
+  <div class="title-dragon">🐉</div>
+  <h1 class="logo">ハビットクエスト<small>H A B I T　Q U E S T</small></h1>
+  <p class="title-lead">
+    まいにち「はい」と こたえるだけ。<br>
+    <b>つづけるほど こうげきが つよくなる！</b>
+  </p>
+  <div style="width:100%;max-width:330px;display:flex;flex-direction:column;gap:10px">
+    <button class="btn btn-gold" data-tap="startSetup">はじめる</button>
+    <button class="btn" id="btn-continue" data-tap="continueGame" style="display:none">つづきから</button>
+  </div>
+</div>
+
+<!-- ==================== 8つのしつもん ==================== -->
+<div id="screen-setup" class="screen">
+  <div class="setup-head">
+    <button class="btn btn-sm" style="width:auto;flex:none" data-tap="setupBack">◀ もどる</button>
+    <div class="pbar"><i id="setup-bar" style="width:12.5%"></i></div>
+    <span class="qno" id="setup-no">1 / 8</span>
+  </div>
+  <div class="setup-body">
+    <h2 class="q-title" id="setup-q">しつもん</h2>
+    <p class="q-sub" id="setup-sub"></p>
+    <div id="setup-opts" class="opts"></div>
+  </div>
+</div>
+
+<!-- ==================== メイン ==================== -->
+<div id="screen-main" class="screen">
+
+  <div class="win hud">
+    <button class="menu-btn" data-tap="openMenu" aria-label="メニュー">☰</button>
+    <span class="who">Lv.<b id="hud-lv">1</b> <span id="hud-name">ゆうしゃ</span></span>
+    <span class="chip g" id="hud-gold">🪙0</span>
+    <span class="chip s" id="hud-streak">🔥0</span>
+  </div>
+
+  <div class="win stage">
+    <div class="stage-top">
+      <span class="mname" id="mons-name">サボりまマグマ</span>
+      <span id="mons-hp" style="color:var(--dim)">100 / 100</span>
+    </div>
+    <div class="mons" id="mons-face">😈</div>
+    <div class="bar"><i id="mons-bar" style="width:100%"></i></div>
+    <div class="dmg-pop" id="dmg-pop"></div>
+  </div>
+
+  <div class="win ticker" id="ticker">まものが あらわれた！</div>
+
+  <div class="win win-gold qwrap" id="qcard"></div>
+
+  <div class="win tower-strip">
+    <span class="lbl">つみあげ<br><b id="tower-count" style="color:var(--gold)">0</b>日</span>
+    <div class="blocks" id="tower-strip"></div>
+    <button class="btn btn-sm" style="width:auto;flex:none" data-tap="openTower">ひらく</button>
+  </div>
+</div>
+
+<!-- ==================== オーバーレイ ==================== -->
+<div class="ov" id="ov-menu" data-close>
+  <div class="win ov-panel">
+    <div class="ov-head"><h2>メニュー</h2><button class="ov-close" data-tap="closeOv">✕</button></div>
+    <div class="ov-body">
+      <button class="btn" data-tap="openTower">🧱 つみあげ を みる</button>
+      <button class="btn" data-tap="openShop">🛒 どうぐや</button>
+      <button class="btn" data-tap="openBook">📕 ぼうけんのしょ</button>
+      <button class="btn" data-tap="openConfig">⚙️ せってい</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-tower" data-close>
+  <div class="win ov-panel">
+    <div class="ov-head"><h2>🧱 つみあげ</h2><button class="ov-close" data-tap="closeOv">✕</button></div>
+    <div class="ov-body">
+      <div class="row"><span>ぜんぶで つみあげた 日</span><b id="tw-total" style="color:var(--gold)">0 日</b></div>
+      <div class="row"><span>いま れんぞく</span><b id="tw-streak" style="color:#ff9b52">0 日</b></div>
+      <div class="big-tower" id="tw-blocks"></div>
+      <div style="font-size:11px;color:var(--dim);font-weight:400;text-align:center">
+        1日 ぜんぶ できると ブロックが 1こ ふえる。<br>やすんでも ブロックは へらないよ。
+      </div>
+      <div id="tw-quests" style="display:flex;flex-direction:column;gap:7px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-shop" data-close>
+  <div class="win ov-panel">
+    <div class="ov-head"><h2>🛒 どうぐや</h2><button class="ov-close" data-tap="closeOv">✕</button></div>
+    <div class="ov-body">
+      <div class="row"><span>もっている ゴールド</span><b id="shop-gold" style="color:var(--gold)">0 G</b></div>
+      <div id="shop-list" style="display:flex;flex-direction:column;gap:9px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-book" data-close>
+  <div class="win ov-panel">
+    <div class="ov-head"><h2>📕 ぼうけんのしょ</h2><button class="ov-close" data-tap="closeOv">✕</button></div>
+    <div class="ov-body" id="book-list"></div>
+  </div>
+</div>
+
+<div class="ov" id="ov-config" data-close>
+  <div class="win ov-panel">
+    <div class="ov-head"><h2>⚙️ せってい</h2><button class="ov-close" data-tap="closeOv">✕</button></div>
+    <div class="ov-body">
+      <div class="row"><span>おと</span><button class="btn btn-sm" style="width:auto" id="snd-btn" data-tap="toggleSound">ON 🎵</button></div>
+      <button class="btn" data-tap="redoSetup">🔁 しゅうかんを えらびなおす<br><span style="font-size:11px;color:var(--dim);font-weight:400">つみあげは のこります</span></button>
+      <button class="btn" data-tap="wipeAll" style="border-color:#a33;color:#ff9b9b">🗑 さいしょから やりなおす</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-clear" data-close>
+  <div class="win win-gold ov-panel">
+    <div class="confetti">🎉</div>
+    <div class="clear-title">きょうの クエスト<br>コンプリート！</div>
+    <div id="clear-msg" style="font-size:14px;line-height:1.7"></div>
+    <div class="big-tower" id="clear-tower"></div>
+    <button class="btn btn-gold" data-tap="closeOv">やった！</button>
+  </div>
+</div>
+
+<script>
+/* ==========================================================
+   ハビットクエスト  ロジック
+   ========================================================== */
+const SAVE_KEY = 'habit_quest_v2';
+
+/* ---------- 習慣の選択肢 ---------- */
+const HABITS = {
+  body: [
+    {id:'squat',  icon:'🏋️', name:'スクワット', unit:'かい', tiers:[10,20,30]},
+    {id:'rope',   icon:'🪢', name:'なわとび',   unit:'かい', tiers:[20,50,100]},
+    {id:'run',    icon:'🏃', name:'ランニング', unit:'ふん', tiers:[5,10,20]},
+    {id:'stretch',icon:'🤸', name:'ストレッチ', unit:'ふん', tiers:[3,5,10]}
+  ],
+  head: [
+    {id:'read',  icon:'📖', name:'どくしょ',   unit:'ページ', tiers:[5,10,20]},
+    {id:'hw',    icon:'📝', name:'しゅくだい', unit:'ページ', tiers:[1,2,3]},
+    {id:'calc',  icon:'🔢', name:'けいさん',   unit:'ページ', tiers:[1,2,4]},
+    {id:'eng',   icon:'🔤', name:'えいご',     unit:'ふん',   tiers:[5,10,20]}
+  ],
+  life: [
+    {id:'sleep', icon:'🌙', name:'はやね はやおき'},
+    {id:'tooth', icon:'🦷', name:'はみがき'},
+    {id:'help',  icon:'🧹', name:'おてつだい'},
+    {id:'tidy',  icon:'🧺', name:'かたづけ'}
+  ]
+};
+const AGE_BANDS = [
+  {id:'kg', name:'ようちえん', sm:'〜6さい',   mul:0.5},
+  {id:'e13',name:'小1〜3',    sm:'6〜9さい',  mul:1.0},
+  {id:'e46',name:'小4〜6',    sm:'9〜12さい', mul:1.5},
+  {id:'jh', name:'中学生いじょう', sm:'12さい〜', mul:2.0}
+];
+const TIERS = [
+  {id:0, label:'かるめ',  mul:1.0},
+  {id:1, label:'ふつう',  mul:1.2},
+  {id:2, label:'がんばる',mul:1.5}
+];
+const TIMINGS = [
+  {id:'morning',icon:'🌅',name:'あさ',        msg:'あさの うちに やっつけよう！'},
+  {id:'after',  icon:'🎒',name:'がっこうのあと',msg:'かえってきたら クエスト スタート！'},
+  {id:'night',  icon:'🌙',name:'よる',        msg:'ねるまえに きょうの ぶんを つみあげよう！'}
+];
+const MONSTERS = [
+  {name:'サボりまマグマ',      face:'😈', hp:100,  gold:50},
+  {name:'にどねスライム',      face:'💧', hp:200,  gold:90},
+  {name:'ゲームゴーレム',      face:'🗿', hp:350,  gold:160},
+  {name:'みっかぼうずドラゴン',face:'🐉', hp:600,  gold:300},
+  {name:'だいまおうネガティブ',face:'👑', hp:1000, gold:800}
+];
+const SHOP = [
+  {id:'dumbbell',icon:'🏋️',name:'でんせつのダンベル',   cost:100, desc:'からだ の しつもんの ダメージ ×1.3'},
+  {id:'glasses', icon:'👓',name:'しゅうちゅうメガネ',   cost:200, desc:'あたま の しつもんの ダメージ ×1.3'},
+  {id:'ring',    icon:'💍',name:'けいぞくの ゆびわ',     cost:400, desc:'もらえる ゴールド ×1.5'},
+  {id:'egg',     icon:'🥚',name:'ドラゴンの たまご',     cost:800, desc:'つみあげブロックが きんいろ になる'}
+];
+
+/* ---------- 日付ユーティリティ ---------- */
+function ymd(d){
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+const today = () => ymd(new Date());
+function yesterday(){ const d=new Date(); d.setDate(d.getDate()-1); return ymd(d); }
+
+/* ---------- 状態 ---------- */
+let S = null;
+function freshState(){
+  return {
+    v:2, setupDone:false, name:'ゆうしゃ', ageBand:'e13', timing:'morning',
+    quests:[], sound:true,
+    gold:0, totalClearDays:0, dayStreak:0, lastClearDate:null,
+    todayDate:null, todayAnswers:[false,false,false],
+    monsterIndex:0, monsterHp:MONSTERS[0].hp,
+    inventory:[], history:[]
+  };
+}
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){} }
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return false;
+    const d = JSON.parse(raw);
+    if(!d || d.v !== 2 || !Array.isArray(d.quests)) return false;
+    S = Object.assign(freshState(), d);
+    return !!S.setupDone;
+  }catch(e){ return false; }
+}
+
+/* ---------- 音（Web Audio・音源ファイルなし） ---------- */
+let actx=null;
+function ac(){
+  if(!actx){ const C = window.AudioContext||window.webkitAudioContext; if(!C) return null; actx = new C(); }
+  if(actx.state==='suspended') actx.resume();
+  return actx;
+}
+function beep(seq){
+  if(!S || !S.sound) return;
+  const c = ac(); if(!c) return;
+  const t0 = c.currentTime;
+  seq.forEach(([f,at,dur,type])=>{
+    const o=c.createOscillator(), g=c.createGain();
+    o.type=type||'square'; o.frequency.setValueAtTime(f, t0+at);
+    g.gain.setValueAtTime(.13, t0+at);
+    g.gain.exponentialRampToValueAtTime(.001, t0+at+dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t0+at); o.stop(t0+at+dur+.02);
+  });
+}
+const SFX = {
+  tap:   ()=>beep([[520,0,.05]]),
+  hit:   ()=>beep([[180,0,.09,'sawtooth'],[90,.07,.12,'sawtooth']]),
+  big:   ()=>beep([[330,0,.08],[440,.08,.08],[660,.16,.2]]),
+  clear: ()=>beep([[523,0,.1,'triangle'],[659,.1,.1,'triangle'],[784,.2,.1,'triangle'],[1047,.3,.3,'triangle']]),
+  buy:   ()=>beep([[880,0,.07],[1175,.07,.14]]),
+  no:    ()=>beep([[220,0,.12,'triangle']])
+};
+
+/* ---------- 連続ボーナス（この作品の主張） ---------- */
+// つぎに「はい」と答えたときの連続日数
+function nextStreak(q){
+  if(q.lastDone === today())     return q.streak;
+  if(q.lastDone === yesterday()) return q.streak + 1;
+  return 1;
+}
+// れんぞく → こうげき倍率  1日=1.0 / 2日=1.2 / 3日=1.3 … 20日以上=3.0
+function streakMul(n){ return n <= 1 ? 1.0 : Math.min(3.0, 1.0 + n * 0.1); }
+const heroLv = () => Math.floor(S.totalClearDays / 3) + 1;
+
+/* ==========================================================
+   画面／オーバーレイ
+   ========================================================== */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(el=>el.classList.toggle('on', el.id===id));
+}
+function openOv(id){
+  document.querySelectorAll('.ov').forEach(el=>el.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+function closeOv(){ document.querySelectorAll('.ov').forEach(el=>el.classList.remove('on')); }
+
+/* ==========================================================
+   セットアップ（8つのしつもん）
+   ========================================================== */
+let setupStep = 0;
+let draft = null;
+
+function startSetup(keepProgress){
+  draft = { name:'', ageBand:'e13', picks:[null,null,null], tiers:[1,1], timing:'morning', keep:!!keepProgress };
+  setupStep = 0;
+  showScreen('screen-setup');
+  renderSetup();
+}
+function setupBack(){
+  if(setupStep === 0){ showScreen('screen-title'); return; }
+  setupStep--; renderSetup();
+}
+function setupNext(){
+  if(setupStep >= 7){ finishSetup(); return; }
+  setupStep++; renderSetup();
+}
+function amountFor(habit, tierIdx){
+  const mul = AGE_BANDS.find(a=>a.id===draft.ageBand).mul;
+  let v = habit.tiers[tierIdx] * mul;
+  v = v >= 10 ? Math.round(v/5)*5 : Math.max(1, Math.round(v));
+  return v;
+}
+function renderSetup(){
+  const bar = document.getElementById('setup-bar');
+  bar.style.width = ((setupStep+1)/8*100) + '%';
+  document.getElementById('setup-no').textContent = (setupStep+1) + ' / 8';
+
+  const qEl = document.getElementById('setup-q');
+  const sEl = document.getElementById('setup-sub');
+  const oEl = document.getElementById('setup-opts');
+  oEl.className = 'opts'; oEl.innerHTML = ''; sEl.textContent = '';
+
+  const optBtn = (ic, name, sm, onPick, selected) => {
+    const b = document.createElement('button');
+    b.className = 'opt' + (selected ? ' sel' : '');
+    b.innerHTML = '<span class="ic">'+ic+'</span><span>'+name+'</span>'+(sm?'<span class="sm">'+sm+'</span>':'');
+    b.addEventListener('pointerdown', e=>{ e.preventDefault(); SFX.tap(); onPick(); }, {passive:false});
+    oEl.appendChild(b);
+  };
+
+  if(setupStep === 0){
+    qEl.innerHTML = 'きみの <em>なまえ</em> は？';
+    sEl.textContent = '8もじ まで';
+    oEl.className = 'opts one';
+    const inp = document.createElement('input');
+    inp.className='name-input'; inp.type='text'; inp.maxLength=8;
+    inp.placeholder='なまえ'; inp.value = draft.name;
+    inp.addEventListener('input', ()=>{ draft.name = inp.value.trim(); });
+    oEl.appendChild(inp);
+    const b = document.createElement('button');
+    b.className='btn btn-gold'; b.textContent='つぎへ ▶';
+    b.addEventListener('pointerdown', e=>{
+      e.preventDefault();
+      draft.name = (inp.value.trim() || 'ゆうしゃ').slice(0,8);
+      SFX.tap(); setupNext();
+    }, {passive:false});
+    oEl.appendChild(b);
+    setTimeout(()=>inp.focus(), 60);
+  }
+  else if(setupStep === 1){
+    qEl.innerHTML = '<em>いくつ</em> かな？';
+    sEl.textContent = 'めやすの かずが かわるよ';
+    AGE_BANDS.forEach(a=>optBtn('🎂', a.name, a.sm, ()=>{ draft.ageBand=a.id; setupNext(); }, draft.ageBand===a.id));
+  }
+  else if(setupStep === 2 || setupStep === 4){
+    const kind = setupStep===2 ? 'body' : 'head';
+    const slot = setupStep===2 ? 0 : 1;
+    qEl.innerHTML = (kind==='body' ? '<em>からだ</em>' : '<em>あたま</em>') + ' の しゅうかんは？';
+    sEl.textContent = 'まいにち やりたい ことを 1つ えらぼう';
+    HABITS[kind].forEach(h=>optBtn(h.icon, h.name, '', ()=>{ draft.picks[slot]=h.id; setupNext(); }, draft.picks[slot]===h.id));
+  }
+  else if(setupStep === 3 || setupStep === 5){
+    const kind = setupStep===3 ? 'body' : 'head';
+    const slot = setupStep===3 ? 0 : 1;
+    const h = HABITS[kind].find(x=>x.id===draft.picks[slot]) || HABITS[kind][0];
+    qEl.innerHTML = h.icon + ' <em>'+h.name+'</em> は<br>どれくらい やる？';
+    sEl.textContent = 'おおいほど こうげきが つよい（あとで かえられるよ）';
+    TIERS.forEach(t=>{
+      const v = amountFor(h, t.id);
+      optBtn(['🙂','💪','🔥'][t.id], v + h.unit, t.label + ' ×' + t.mul.toFixed(1),
+        ()=>{ draft.tiers[slot]=t.id; setupNext(); }, draft.tiers[slot]===t.id);
+    });
+  }
+  else if(setupStep === 6){
+    qEl.innerHTML = '<em>せいかつ</em> の しゅうかんは？';
+    sEl.textContent = 'できたか どうか だけ こたえる やつ';
+    HABITS.life.forEach(h=>optBtn(h.icon, h.name, '', ()=>{ draft.picks[2]=h.id; setupNext(); }, draft.picks[2]===h.id));
+  }
+  else if(setupStep === 7){
+    qEl.innerHTML = 'いつ <em>やる</em>？';
+    sEl.textContent = 'これで じゅんびは かんりょう！';
+    TIMINGS.forEach(t=>optBtn(t.icon, t.name, '', ()=>{ draft.timing=t.id; finishSetup(); }, draft.timing===t.id));
+  }
+}
+function finishSetup(){
+  const prev = S && S.quests ? S.quests : [];
+  const findPrev = id => prev.find(q=>q.id===id);
+
+  const mk = (kind, slot) => {
+    if(kind === 'life'){
+      const h = HABITS.life.find(x=>x.id===draft.picks[2]) || HABITS.life[0];
+      const old = findPrev(h.id);
+      return {id:h.id, kind:'life', icon:h.icon, name:h.name, amount:0, unit:'', tier:0,
+              streak: old?old.streak:0, best: old?old.best:0, lastDone: old?old.lastDone:null};
+    }
+    const list = HABITS[kind];
+    const h = list.find(x=>x.id===draft.picks[slot]) || list[0];
+    const old = findPrev(h.id);
+    return {id:h.id, kind:kind, icon:h.icon, name:h.name,
+            amount: amountFor(h, draft.tiers[slot]), unit:h.unit, tier:draft.tiers[slot],
+            streak: old?old.streak:0, best: old?old.best:0, lastDone: old?old.lastDone:null};
+  };
+
+  if(!S || !draft.keep) S = freshState();
+  S.name     = draft.name || 'ゆうしゃ';
+  S.ageBand  = draft.ageBand;
+  S.timing   = draft.timing;
+  S.quests   = [mk('body',0), mk('head',1), mk('life',2)];
+  S.setupDone = true;
+  S.todayDate = today();
+  S.todayAnswers = S.quests.map(q => q.lastDone === today());
+
+  log('⚔️ '+S.name+' の ぼうけんが はじまった！');
+  save();
+  SFX.clear();
+  enterMain();
+  setTicker('ようこそ <b>'+S.name+'</b>！<br>まいにち つづけると こうげきが つよくなるよ。');
+}
+
+/* ==========================================================
+   メイン
+   ========================================================== */
+let cursor = 0;              // いま出している しつもんの index
+let skipped = [];            // このセッションで「まだ」を選んだ index
+let lastBlockNew = false;
+
+function continueGame(){ enterMain(); }
+
+function enterMain(){
+  rollDay();
+  skipped = [];
+  cursor = firstPending();
+  showScreen('screen-main');
+  renderAll();
+}
+
+// 日付がかわったら きょうの こたえを リセット
+function rollDay(){
+  const t = today();
+  if(S.todayDate !== t){
+    S.todayDate = t;
+    S.todayAnswers = S.quests.map(q => q.lastDone === t);
+    // れんぞくが とぎれた人がいれば やさしく知らせる
+    const broke = S.quests.some(q => q.streak > 1 && q.lastDone !== t && q.lastDone !== yesterday());
+    if(broke) pendingBreakMsg = true;
+    save();
+  }
+}
+let pendingBreakMsg = false;
+
+function firstPending(){
+  for(let i=0;i<S.quests.length;i++){
+    if(!S.todayAnswers[i] && skipped.indexOf(i)===-1) return i;
+  }
+  return -1;
+}
+const allDone = () => S.todayAnswers.every(Boolean);
+
+/* ---------- しつもんカード ---------- */
+function renderQuestCard(){
+  const el = document.getElementById('qcard');
+  el.innerHTML = '';
+
+  if(allDone()){
+    el.innerHTML =
+      '<div class="qicon">🏆</div>'+
+      '<div class="qask">きょうの ぶんは <em>ぜんぶ できた！</em></div>'+
+      '<div class="streak-note">また あした きくね。<br>いま <b style="color:var(--gold)">'+S.totalClearDays+'</b> にちぶん つみあがっているよ。</div>'+
+      '<div style="height:6px"></div>';
+    const b = document.createElement('button');
+    b.className='btn btn-gold'; b.textContent='🧱 つみあげを みる';
+    b.addEventListener('pointerdown', e=>{e.preventDefault(); SFX.tap(); openTower();}, {passive:false});
+    el.appendChild(b);
+    return;
+  }
+
+  if(cursor === -1){
+    const rest = S.todayAnswers.filter(x=>!x).length;
+    el.innerHTML =
+      '<div class="qicon">⏳</div>'+
+      '<div class="qask">のこり <em>'+rest+'こ</em>。<br>できたら また きてね！</div>'+
+      '<div class="streak-note">'+ (TIMINGS.find(t=>t.id===S.timing)||TIMINGS[0]).msg +'</div>'+
+      '<div style="height:6px"></div>';
+    const b = document.createElement('button');
+    b.className='btn'; b.textContent='🔁 もういちど きく';
+    b.addEventListener('pointerdown', e=>{e.preventDefault(); SFX.tap(); skipped=[]; cursor=firstPending(); renderQuestCard();}, {passive:false});
+    el.appendChild(b);
+    return;
+  }
+
+  const q  = S.quests[cursor];
+  const ns = nextStreak(q);
+  const mul = streakMul(ns);
+  const doneCount = S.todayAnswers.filter(Boolean).length;
+  const target = q.amount ? ('<em>'+q.amount+q.unit+'</em> ') : '';
+
+  const badge = ns <= 1
+    ? '<span class="streak-badge">きょうから スタート！ こうげき ×1.0</span>'
+    : '<span class="streak-badge'+(ns>=5?' hot':'')+'">🔥 れんぞく '+ns+'日め → こうげき ×'+mul.toFixed(1)+'</span>';
+  const note = ns <= 1
+    ? 'あした も「はい」なら ×1.2 に アップ！'
+    : (mul >= 3 ? 'さいこう倍率！ この つよさを キープしよう' : 'あした も つづけると ×'+streakMul(ns+1).toFixed(1)+' に アップ！');
+
+  el.innerHTML =
+    '<div class="qcount">きょうの しつもん '+(doneCount+1)+' / '+S.quests.length+'</div>'+
+    '<div class="qicon">'+q.icon+'</div>'+
+    '<div class="qask">きょうは '+target+'<em>'+q.name+'</em><br>しましたか？</div>'+
+    '<div>'+badge+'</div>'+
+    '<div class="streak-note">'+note+'</div>';
+
+  const row = document.createElement('div');
+  row.className = 'btn-row';
+  const yes = document.createElement('button');
+  yes.className='btn btn-yes'; yes.textContent='はい！';
+  yes.addEventListener('pointerdown', e=>{e.preventDefault(); answerYes();}, {passive:false});
+  const no = document.createElement('button');
+  no.className='btn btn-no'; no.textContent='まだ';
+  no.addEventListener('pointerdown', e=>{e.preventDefault(); answerNo();}, {passive:false});
+  row.appendChild(yes); row.appendChild(no);
+  el.appendChild(row);
+}
+
+/* ---------- 「はい」 ---------- */
+function answerYes(){
+  if(cursor < 0) return;
+  const i = cursor;
+  const q = S.quests[i];
+  const t = today();
+
+  const ns  = nextStreak(q);
+  const mul = streakMul(ns);
+
+  q.streak   = ns;
+  q.best     = Math.max(q.best||0, ns);
+  q.lastDone = t;
+  S.todayAnswers[i] = true;
+
+  // ダメージ
+  const base = 12 + heroLv() * 3;
+  const tierMul = TIERS[q.tier] ? TIERS[q.tier].mul : 1.0;
+  let itemMul = 1.0;
+  if(q.kind==='body' && S.inventory.includes('dumbbell')) itemMul = 1.3;
+  if(q.kind==='head' && S.inventory.includes('glasses'))  itemMul = 1.3;
+  const dmg = Math.floor(base * tierMul * itemMul * mul);
+
+  SFX.hit();
+  hitMonster(dmg);
+
+  const bonusTxt = mul > 1 ? ' <b>れんぞく'+ns+'日 ×'+mul.toFixed(1)+'！</b>' : '';
+  setTicker(q.icon+' '+q.name+' たっせい！'+bonusTxt+'<br>まものに <b>'+dmg+'</b> ダメージ！');
+  log(q.icon+' '+q.name+(q.amount?' '+q.amount+q.unit:'')+' → '+dmg+'ダメージ（れんぞく'+ns+'日）');
+
+  // 3つ そろったか
+  if(allDone()) completeDay();
+
+  skipped = [];
+  cursor = firstPending();
+  save();
+  renderAll();
+}
+
+function answerNo(){
+  if(cursor < 0) return;
+  SFX.no();
+  if(skipped.indexOf(cursor)===-1) skipped.push(cursor);
+  const q = S.quests[cursor];
+  setTicker(q.name+' は また あとで きくね。');
+  cursor = firstPending();
+  renderQuestCard();
+}
+
+/* ---------- 1日 コンプリート ---------- */
+function completeDay(){
+  const t = today();
+  if(S.lastClearDate === t) return;      // 同じ日に2回 積み上げない
+
+  S.dayStreak = (S.lastClearDate === yesterday()) ? S.dayStreak + 1 : 1;
+  S.lastClearDate = t;
+  S.totalClearDays++;
+  lastBlockNew = true;
+
+  // コンプリートボーナス（きょうの ごうけいダメージの 50%）
+  const bonus = Math.floor((12 + heroLv()*3) * 1.5 * S.quests.length * 0.5);
+  hitMonster(bonus);
+
+  let gold = 30 + S.dayStreak * 5;
+  if(S.inventory.includes('ring')) gold = Math.floor(gold * 1.5);
+  S.gold += gold;
+
+  log('🏆 きょうの クエスト コンプリート！ +'+gold+'G（れんぞく'+S.dayStreak+'日）');
+  SFX.clear();
+
+  document.getElementById('clear-msg').innerHTML =
+    'ボーナス こうげき <b style="color:var(--gold)">'+bonus+'</b>！<br>'+
+    '🪙 <b style="color:var(--gold)">'+gold+' G</b> を てにいれた！<br>'+
+    '🔥 れんぞく <b style="color:#ff9b52">'+S.dayStreak+' 日</b>　'+
+    '🧱 つみあげ <b style="color:var(--gold)">'+S.totalClearDays+' 日</b>';
+  renderBlocks(document.getElementById('clear-tower'), S.totalClearDays, true);
+  openOv('ov-clear');
+}
+
+/* ---------- モンスター ---------- */
+function hitMonster(dmg){
+  S.monsterHp = Math.max(0, S.monsterHp - dmg);
+  const face = document.getElementById('mons-face');
+  face.classList.remove('hit'); void face.offsetWidth; face.classList.add('hit');
+
+  const pop = document.getElementById('dmg-pop');
+  pop.textContent = '-' + dmg;
+  pop.classList.remove('go'); void pop.offsetWidth; pop.classList.add('go');
+
+  if(S.monsterHp <= 0) defeatMonster();
+}
+function defeatMonster(){
+  const m = MONSTERS[S.monsterIndex % MONSTERS.length];
+  let g = m.gold;
+  if(S.inventory.includes('ring')) g = Math.floor(g*1.5);
+  S.gold += g;
+  log('⚔️ '+m.name+' を たおした！ +'+g+'G');
+  S.monsterIndex++;
+  S.monsterHp = MONSTERS[S.monsterIndex % MONSTERS.length].hp;
+  SFX.big();
+  setTicker('🎉 <b>'+m.name+'</b> を たおした！ 🪙'+g+'G かくとく！<br>つぎの まものが あらわれた！');
+}
+
+/* ---------- 描画 ---------- */
+function setTicker(html){ document.getElementById('ticker').innerHTML = html; }
+
+function renderBlocks(container, count, big){
+  container.innerHTML = '';
+  const gold = S.inventory.includes('egg');
+  const max = big ? Math.min(count, 300) : Math.min(count, 20);
+  const start = count - max;
+  for(let i=0;i<max;i++){
+    const n = start + i;                       // 0-based の 通し番号
+    const d = document.createElement('div');
+    d.className = 'blk';
+    const tone = gold ? 3 : Math.min(3, Math.floor(n/10));
+    d.style.background = ['#8a5a2b','#2f6fd0','#7a3fd0','#e0a020'][tone];
+    if(!big) d.style.height = (10 + Math.min(16, (n%10)*1.6)) + 'px';
+    if(!big && i===max-1 && lastBlockNew) d.classList.add('new');
+    container.appendChild(d);
+  }
+  if(count === 0) container.innerHTML = '<span style="font-size:11px;color:var(--dim);font-weight:400">まだ 0こ</span>';
+}
+
+function renderAll(){
+  const m = MONSTERS[S.monsterIndex % MONSTERS.length];
+  document.getElementById('hud-lv').textContent     = heroLv();
+  document.getElementById('hud-name').textContent   = S.name;
+  document.getElementById('hud-gold').textContent   = '🪙' + S.gold;
+  document.getElementById('hud-streak').textContent = '🔥' + S.dayStreak;
+
+  document.getElementById('mons-name').textContent = m.name;
+  document.getElementById('mons-face').textContent = m.face;
+  document.getElementById('mons-hp').textContent   = S.monsterHp + ' / ' + m.hp;
+  document.getElementById('mons-bar').style.width  = Math.max(0, S.monsterHp / m.hp * 100) + '%';
+
+  document.getElementById('tower-count').textContent = S.totalClearDays;
+  renderBlocks(document.getElementById('tower-strip'), S.totalClearDays, false);
+  lastBlockNew = false;
+
+  renderQuestCard();
+
+  if(pendingBreakMsg){
+    pendingBreakMsg = false;
+    setTicker('きのうは おやすみ だったね。<br><b>きょうから また つみあげよう！</b>');
+  }
+}
+
+/* ---------- ログ ---------- */
+function log(text){
+  const d = new Date();
+  const stamp = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  S.history.unshift({t:stamp, m:text});
+  if(S.history.length > 30) S.history.pop();
+}
+
+/* ==========================================================
+   オーバーレイの中身
+   ========================================================== */
+function openMenu(){ SFX.tap(); openOv('ov-menu'); }
+
+function openTower(){
+  SFX.tap();
+  document.getElementById('tw-total').textContent  = S.totalClearDays + ' 日';
+  document.getElementById('tw-streak').textContent = S.dayStreak + ' 日';
+  renderBlocks(document.getElementById('tw-blocks'), S.totalClearDays, true);
+  const box = document.getElementById('tw-quests');
+  box.innerHTML = S.quests.map(q=>{
+    const mul = streakMul(q.streak);
+    return '<div class="row"><span>'+q.icon+' '+q.name+(q.amount?' '+q.amount+q.unit:'')+
+      '<br><span class="sub">さいこう れんぞく '+(q.best||0)+'日</span></span>'+
+      '<b style="color:var(--gold);white-space:nowrap">🔥'+q.streak+'日<br>×'+mul.toFixed(1)+'</b></div>';
+  }).join('');
+  openOv('ov-tower');
+}
+
+function openShop(){
+  SFX.tap();
+  document.getElementById('shop-gold').textContent = S.gold + ' G';
+  const box = document.getElementById('shop-list');
+  box.innerHTML = '';
+  SHOP.forEach(item=>{
+    const own = S.inventory.includes(item.id);
+    const d = document.createElement('div');
+    d.className = 'card' + (own ? ' own' : '');
+    d.innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px">'+
+      '<span>'+item.icon+' '+item.name+'</span>'+
+      '<b style="color:var(--gold);white-space:nowrap">'+item.cost+' G</b></div>'+
+      '<div class="sub" style="margin-top:4px">'+item.desc+'</div>';
+    const b = document.createElement('button');
+    b.className = 'btn btn-sm' + (own ? '' : ' btn-gold');
+    b.style.marginTop = '8px';
+    b.textContent = own ? 'そうび ずみ' : 'かう';
+    if(own || S.gold < item.cost) b.disabled = true;
+    if(!own) b.addEventListener('pointerdown', e=>{e.preventDefault(); buy(item.id);}, {passive:false});
+    d.appendChild(b);
+    box.appendChild(d);
+  });
+  openOv('ov-shop');
+}
+function buy(id){
+  const item = SHOP.find(i=>i.id===id);
+  if(!item || S.inventory.includes(id) || S.gold < item.cost){ SFX.no(); return; }
+  S.gold -= item.cost;
+  S.inventory.push(id);
+  SFX.buy();
+  log('🛒 '+item.name+' を てにいれた！');
+  save(); renderAll(); openShop();
+}
+
+function openBook(){
+  SFX.tap();
+  const box = document.getElementById('book-list');
+  if(!S.history.length){ box.innerHTML = '<div class="muted">まだ きろくが ないよ</div>'; }
+  else{
+    box.innerHTML = S.history.map(h=>
+      '<div class="row"><span>'+h.m+'</span><span class="sub" style="white-space:nowrap">'+h.t+'</span></div>'
+    ).join('');
+  }
+  openOv('ov-book');
+}
+
+function openConfig(){
+  SFX.tap();
+  document.getElementById('snd-btn').textContent = S.sound ? 'ON 🎵' : 'OFF 🔇';
+  openOv('ov-config');
+}
+function toggleSound(){
+  S.sound = !S.sound; save();
+  document.getElementById('snd-btn').textContent = S.sound ? 'ON 🎵' : 'OFF 🔇';
+  if(S.sound) SFX.tap();
+}
+function redoSetup(){
+  closeOv();
+  startSetup(true);   // つみあげ・ゴールドは のこす
+}
+function wipeAll(){
+  if(!confirm('ぜんぶ さいしょから やりなおしますか？\nつみあげた ブロックも きえます。')) return;
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  location.reload();
+}
+
+/* ==========================================================
+   入力（pointerdown 起点＝クリック待ちの遅延なし）
+   ========================================================== */
+const ACTIONS = {
+  startSetup:  ()=>startSetup(false),
+  continueGame, setupBack, openMenu, openTower, openShop, openBook,
+  openConfig, toggleSound, redoSetup, wipeAll, closeOv
+};
+document.addEventListener('pointerdown', e=>{
+  const t = e.target.closest('[data-tap]');
+  if(t){
+    e.preventDefault();
+    const fn = ACTIONS[t.dataset.tap];
+    if(fn){ if(t.dataset.tap!=='openMenu' && t.dataset.tap!=='toggleSound') SFX.tap(); fn(); }
+    return;
+  }
+  // オーバーレイの背景タップで閉じる
+  const ov = e.target.closest('.ov');
+  if(ov && e.target === ov){ closeOv(); }
+}, {passive:false});
+
+// iOS: さいしょの タッチで オーディオを アンロック
+document.addEventListener('touchstart', function unlock(){
+  ac(); document.removeEventListener('touchstart', unlock);
+}, {passive:true, once:true});
+
+// ダブルタップ ズーム よぼう
+let lastTouch = 0;
+document.addEventListener('touchend', e=>{
+  const now = Date.now();
+  if(now - lastTouch < 320) e.preventDefault();
+  lastTouch = now;
+}, {passive:false});
+document.addEventListener('gesturestart', e=>e.preventDefault());
+
+/* ==========================================================
+   起動
+   ========================================================== */
+(function boot(){
+  const ok = load();
+  if(!S) S = freshState();
+  if(ok){
+    document.getElementById('btn-continue').style.display = 'block';
+    enterMain();
+    setTicker((TIMINGS.find(t=>t.id===S.timing)||TIMINGS[0]).msg);
+  }else{
+    showScreen('screen-title');
+  }
+  // タブに もどってきたら 日付を さいチェック
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden && S && S.setupDone && document.getElementById('screen-main').classList.contains('on')){
+      rollDay(); skipped=[]; cursor=firstPending(); renderAll();
+    }
+  });
+})();
+</script>
+</body>
+</html>

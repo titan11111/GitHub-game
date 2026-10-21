@@ -1,0 +1,990 @@
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 30px rgba(150, 220, 255, 1);
+    }
+}
+
+/* ============================================
+   戦闘画面関連スタイル
+   ============================================
+   
+   役割: 戦闘画面、敵エリア、戦闘UI、コマンドボックス、ステータスボックスのスタイル
+   
+   含まれる内容:
+   - 戦闘画面（#battle-screen）
+   - 敵エリア（.enemy-area）
+   - 戦闘UI（.battle-ui）
+   - コマンドボックス（.command-box）
+   - ステータスボックス（.status-box）
+   - 戦闘ログ（#battle-log）
+   - レスポンシブ対応（メディアクエリ）
+   ============================================ */
+
+/* 戦闘画面：iOS Safari対応で敵画像スペースを確保（ブラウザのアドレスバー表示/非表示に合わせて dvh 使用） */
+/* 比率固定：戦闘ログ10%、モンスター画像45%、戦闘UI45%、コントロールパネル15% */
+/* 戦闘画面内の3ブロック（戦闘ログ、モンスター画像、戦闘UI）の合計が100%で、コントロールパネルが15% */
+/* iOS: 戦闘画面ではコントロールパネルが非表示になるため、画面全体を使用可能 */
+#battle-screen { 
+    position: relative; 
+    width: 100%; 
+    height: 100%;
+    height: 100vh;   /* フォールバック: コントロールパネルが非表示のため画面全体を使用 */
+    height: 100dvh;  /* iOS Safari: 動的ビューポート - コントロールパネルが非表示のため画面全体を使用 */
+    background-color: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;  /* 上から順に配置 */
+    overflow: hidden;
+    /* iOS: 安全領域を考慮したパディング */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    box-sizing: border-box;
+}
+
+#battle-screen .enemy-area { 
+    height: 45%;  /* モンスター画像エリア：45% */
+    min-height: 200px;  /* iOS: 敵画像が切れないよう最小高さを確保 */
+    max-height: none;  /* 最大高さ制限を解除 */
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    flex-direction: column;
+    overflow: visible;  /* iOS: 魔法エフェクトが見切れないように visible に変更 */
+    padding: 12px 8px;  /* 上下に余白を追加（より広く） */
+    box-sizing: border-box;
+    position: relative;
+    flex-shrink: 0;  /* 縮小しない */
+    /* iOS: レンダリング最適化（魔法エフェクト表示用） */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+#battle-screen #monster-name {
+    flex-shrink: 0;
+    padding: 6px 0 4px 0;
+    z-index: 10;  /* 敵画像の上に表示 */
+    font-size: 18px;  /* iOS: フォントサイズを大きく */
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(255, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.5);  /* 背景を追加して視認性向上 */
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+#battle-screen .enemy-hp-bar {
+    flex-shrink: 0;
+    padding: 4px 0;
+    z-index: 10;  /* 敵画像の上に表示 */
+    margin-top: 4px;
+}
+
+#battle-screen .monster-sprite { 
+    flex: 1 1 auto;
+    min-height: 140px;  /* iOS: 最小高さをさらに増加 */
+    max-height: calc(100dvh - 380px);  /* ログ、UI、敵名、HPバーのスペースを確保 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    overflow: visible;  /* 画像が切れないように visible に変更 */
+    font-size: min(160px, 20vw);
+    text-shadow: 0 0 15px rgba(255,0,0,0.5);
+    position: relative;
+    /* iOS: 画像が確実に表示されるように余白を確保 */
+    padding: 8px 0;
+}
+
+/* 戦闘画面の敵画像：親コンテナに合わせて表示（iOS Safari で潰れないよう min/max は .monster-sprite で確保） */
+#battle-screen .monster-sprite img {
+    display: block !important;  /* iOS: 確実に表示 */
+    max-width: 85%;  /* 左右に余白を確保（より広く） */
+    max-height: calc(100dvh - 400px);  /* 確実に表示されるよう計算 */
+    width: auto;
+    height: auto;
+    min-width: 100px;  /* 最小サイズを確保（より大きく） */
+    min-height: 100px;
+    object-fit: contain;  /* アスペクト比を維持して全体を表示 */
+    object-position: center center;  /* 中央配置 */
+    /* iOS: 画像が確実に表示されるように */
+    -webkit-user-select: none;
+    user-select: none;
+    pointer-events: none;
+    /* iOS: 画像の品質を保持 */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    /* iOS: 画像の読み込みを確実にする */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    /* iOS: 画像が確実に表示されるように visibility を明示 */
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#battle-screen .battle-ui { 
+    display: flex; 
+    width: 100%;
+    height: 45%;  /* 戦闘UI：45% */
+    min-height: 180px;  /* 最小高さを確保 */
+    max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限して見切れを防止 */
+    gap: 8px; 
+    padding: 6px 10px; 
+    padding-bottom: 6px;  /* 下部パディングを調整 */
+    flex-shrink: 0;  /* 縮小しない */
+    box-sizing: border-box;
+    align-items: stretch;  /* iOS: 子要素を均等に伸ばして見切れを防止 */
+    position: relative;  /* 子要素の%指定の基準にする */
+    overflow: hidden;  /* iOS: はみ出しを防止 */
+}
+
+.command-box { 
+    flex: 0 1 42%;
+    min-width: 0;
+    text-align: left; 
+    overflow: hidden;  /* iOS: スクロールを無効化、はみ出しを防止 */
+    min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+    max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+    display: flex;
+    flex-direction: column;
+    padding: 2px;  /* iOS: パディングを最小限に */
+    align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+    box-sizing: border-box;  /* iOS: パディングを含めた高さ計算 */
+}
+
+.command-box ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    flex: 1;  /* 利用可能なスペースを使用 */
+    min-height: 0;
+}
+
+/* スクロールバーのスタイル（WebKit系） */
+.command-box::-webkit-scrollbar,
+.status-box::-webkit-scrollbar,
+#battle-log::-webkit-scrollbar {
+    width: 4px;
+}
+
+.command-box::-webkit-scrollbar-track,
+.status-box::-webkit-scrollbar-track,
+#battle-log::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.command-box::-webkit-scrollbar-thumb,
+.status-box::-webkit-scrollbar-thumb,
+#battle-log::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+.command-box::-webkit-scrollbar-thumb:hover,
+.status-box::-webkit-scrollbar-thumb:hover,
+#battle-log::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* 魔法リストもコマンドリストと同じスタイルを適用 */
+#magic-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#magic-list li {
+    padding: 12px 10px;
+    font-size: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    position: relative;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);
+    touch-action: manipulation;
+    border-radius: 4px;
+    margin: 2px 0;
+}
+
+#magic-list li:hover {
+    background-color: rgba(255,255,255,0.15);
+    transform: translateX(2px);
+}
+
+#magic-list li.selected {
+    background-color: rgba(0, 255, 255, 0.2) !important;
+    border-left: 5px solid #00ffff !important;
+    box-shadow: 
+        inset 0 0 15px rgba(0, 255, 255, 0.4),
+        0 0 10px rgba(0, 255, 255, 0.3);
+    font-weight: bold;
+    color: #ffffff;
+    transform: translateX(4px);
+}
+
+#magic-list li:active {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    transform: scale(0.98);
+}
+
+.command-box li { 
+    padding: 4px 4px;  /* iOS: パディングを最小限に */
+    font-size: 13px;  /* iOS: フォントサイズを小さく */
+    border-bottom: 1px solid rgba(255,255,255,0.15); 
+    list-style: none; 
+    position: relative;
+    transition: all 0.2s ease;  /* すべてのプロパティにトランジション */
+    cursor: pointer;
+    /* iOS: タップ領域を確保しつつ、画面内に収める */
+    min-height: 32px;  /* iOS: 最小タップ領域を少し小さく */
+    flex: 1 1 0;  /* iOS: 均等に配置して4つのコマンドが全て表示されるように（flex-basis: 0で均等分割） */
+    display: flex;
+    align-items: center;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);  /* タップ時のハイライトを強化 */
+    touch-action: manipulation;
+    border-radius: 4px;  /* 角を丸く */
+    margin: 0;  /* iOS: 上下の余白を削除 */
+}
+
+.command-box li:hover {
+    background-color: rgba(255,255,255,0.15);
+    transform: translateX(2px);  /* ホバー時に少し右に移動 */
+}
+
+/* 選択中のコマンド：視認性を大幅に向上（クラスベースで確実に適用） */
+.command-box li.selected,
+.command-box li[style*="background-color: rgba(255, 255, 255, 0.1)"] {
+    background-color: rgba(0, 255, 255, 0.2) !important;  /* シアン系の背景色 */
+    border-left: 5px solid #00ffff !important;  /* 左側にシアンの太い枠線 */
+    box-shadow: 
+        inset 0 0 15px rgba(0, 255, 255, 0.4),  /* 内側に光る効果 */
+        0 0 10px rgba(0, 255, 255, 0.3);  /* 外側にも光る効果 */
+    font-weight: bold;  /* 太字で強調 */
+    color: #ffffff;  /* テキストを白に */
+    transform: translateX(4px);  /* 選択時に右に移動 */
+}
+
+/* タッチ時のフィードバック */
+.command-box li:active {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    transform: scale(0.98);  /* タッチ時に少し縮小 */
+}
+
+/* FF風カーソルアニメーション */
+.command-cursor {
+    animation: cursorBlink 1s infinite;
+    color: #00ffff;  /* シアン色で目立たせる */
+    font-size: 1.2em;  /* カーソルを少し大きく */
+    margin-right: 4px;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.8);  /* 光る効果 */
+}
+
+@keyframes cursorBlink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+}
+
+.status-box { 
+    flex: 1;
+    min-width: 0;
+    text-align: left; 
+    font-size: 10px;  /* iOS: フォントサイズを小さくして画面内に収める */
+    overflow: hidden;  /* iOS: スクロールを無効化、はみ出しを防止 */
+    max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+    display: grid;  /* 2×2グリッドレイアウト */
+    grid-template-columns: 1fr 1fr;  /* 2列 */
+    grid-template-rows: 1fr 1fr;  /* 2行 */
+    gap: 4px;  /* iOS: グリッド間の間隔を小さく */
+    padding: 6px;  /* iOS: パディングを小さく */
+    box-sizing: border-box;  /* iOS: パディングを含めた高さ計算 */
+    /* コマンドボックスと同じ高さになるように */
+    align-self: stretch;
+}
+
+/* パーティメンバーのカードスタイル */
+.party-member-card {
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.8) 0%, rgba(30, 64, 175, 0.8) 100%);
+    border: 2px solid rgba(74, 144, 226, 0.6);
+    border-radius: 6px;
+    padding: 4px;  /* iOS: パディングを小さく */
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.party-member-name {
+    font-size: 11px;  /* iOS: フォントサイズを小さく */
+    font-weight: bold;
+    margin-bottom: 2px;  /* iOS: マージンを小さく */
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.party-member-lv {
+    font-size: 9px;  /* iOS: フォントサイズを小さく */
+    color: #ffd700;
+    margin-bottom: 2px;  /* iOS: マージンを小さく */
+}
+
+.stat-row {
+    font-size: 8px;  /* iOS: フォントサイズを小さく */
+    margin-bottom: 1px;  /* iOS: マージンを小さく */
+    display: flex;
+    justify-content: space-between;
+}
+
+.stat-label {
+    color: #aaa;
+}
+
+.stat-value {
+    color: #fff;
+    font-weight: bold;
+}
+
+.hp-value {
+    color: #00ff00;
+}
+
+.mp-value {
+    color: #00bfff;
+}
+
+.mini-bar {
+    height: 3px;  /* iOS: 高さを小さく */
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 1px;  /* iOS: マージンを小さく */
+    margin-bottom: 2px;  /* iOS: マージンを小さく */
+}
+
+.mini-bar-fill {
+    height: 100%;
+    transition: width 0.3s;
+}
+
+.hp-bar-fill {
+    background: linear-gradient(to right, #00ff00, #7fff00);
+}
+
+.mp-bar-fill {
+    background: linear-gradient(to right, #00bfff, #1e90ff);
+}
+
+/* 戦闘ログ：10%の高さを確保（最小高さで2行分の表示を保証） */
+#battle-log { 
+    flex-shrink: 0;
+    width: 100%;
+    height: 10%;  /* 戦闘ログ：10% */
+    min-height: calc(12px * 1.4 * 2 + 16px);  /* iOS: 最小高さを小さく調整 */
+    max-height: calc(100dvh * 0.1);  /* iOS: 最大高さを画面の10%に制限 */
+    margin: 0; 
+    padding: 6px 8px;  /* iOS: パディングを小さく */
+    box-sizing: border-box;
+    background: rgba(0,0,0,0.9);  /* 背景を濃くして視認性向上 */
+    border: 2px solid rgba(255, 255, 255, 0.8);  /* 枠線を太く */
+    border-radius: 6px;  /* 角を丸く */
+    font-family: 'DotGothic16', 'MS Gothic', sans-serif;
+    font-size: 12px;  /* iOS: フォントサイズを小さく */
+    overflow: hidden;  /* iOS: スクロールを無効化、はみ出しを防止 */
+    line-height: 1.4;  /* iOS: 行間を小さく */
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* iOS縦向き（ポートレート）で高さが限られる場合 */
+@media (orientation: portrait) and (max-height: 850px) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(12px * 1.4 * 2 + 16px);  /* iOS: 最小高さを小さく調整 */
+        max-height: calc(100dvh * 0.1);  /* iOS: 最大高さを画面の10%に制限 */
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+        padding: 6px 8px;  /* iOS: パディングを小さく */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+    }
+    #battle-screen .enemy-area {
+        height: 45%;  /* モンスター画像：45% */
+        min-height: 150px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        padding: 8px 6px;  /* iOS: パディングを小さく */
+        overflow: visible;  /* iOS: 魔法エフェクトが見切れないように visible に設定 */
+    }
+    #battle-screen #monster-name {
+        font-size: 14px;  /* iOS: フォントサイズを小さく */
+        padding: 4px 8px;  /* iOS: パディングを小さく */
+    }
+    #battle-screen .monster-sprite {
+        min-height: 100px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.38);  /* iOS: 最大高さを制限 */
+    }
+    #battle-screen .monster-sprite img {
+        max-width: 80%;  /* iOS: 少し小さくして余白を確保 */
+        max-height: calc(100dvh * 0.38);  /* iOS: 最大高さを制限 */
+        min-width: 80px;  /* iOS: 最小サイズを調整 */
+        min-height: 80px;
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 150px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        flex-shrink: 0;
+        overflow: hidden;  /* iOS: はみ出しを防止 */
+        padding: 4px 8px;  /* iOS: パディングを小さく */
+    }
+    .command-box {
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+        padding: 2px;  /* iOS: パディングを最小限に */
+    }
+    .status-box {
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        font-size: 9px;  /* iOS: フォントサイズを小さく */
+        padding: 4px;  /* iOS: パディングを小さく */
+        gap: 3px;  /* iOS: グリッド間の間隔を小さく */
+    }
+    .command-box li {
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+        min-height: 30px;  /* iOS: 最小高さを小さく */
+        padding: 4px 4px;  /* iOS: パディングを小さく */
+    }
+}
+
+/* さらに高さが小さい場合（iPhone SE等） */
+@media (orientation: portrait) and (max-height: 670px) {
+    #battle-screen .enemy-area {
+        height: 45%;  /* モンスター画像：45% */
+        min-height: 100px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        padding: 4px 4px;  /* iOS: パディングを小さく */
+        overflow: visible;  /* iOS: 魔法エフェクトが見切れないように visible に設定 */
+    }
+    #battle-screen #monster-name {
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+        padding: 3px 6px;  /* iOS: パディングを小さく */
+    }
+    #battle-screen .monster-sprite {
+        min-height: 70px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.35);  /* iOS: 最大高さを制限 */
+        font-size: min(100px, 16vw);  /* iOS: フォントサイズを小さく */
+    }
+    #battle-screen .monster-sprite img {
+        max-width: 75%;  /* iOS: さらに小さくして余白を確保 */
+        max-height: calc(100dvh * 0.35);  /* iOS: 最大高さを制限 */
+        min-width: 60px;  /* iOS: 最小サイズを調整 */
+        min-height: 60px;
+    }
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(11px * 1.4 * 2 + 14px);  /* iOS: 最小高さを小さく調整 */
+        max-height: calc(100dvh * 0.1);  /* iOS: 最大高さを画面の10%に制限 */
+        font-size: 11px;  /* iOS: フォントサイズを小さく */
+        padding: 5px 6px;  /* iOS: パディングを小さく */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 120px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        flex-shrink: 0;
+        overflow: hidden;  /* iOS: はみ出しを防止 */
+        padding: 3px 6px;  /* iOS: パディングを小さく */
+    }
+    .command-box {
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+        padding: 2px;  /* iOS: パディングを最小限に */
+    }
+    .status-box {
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        font-size: 8px;  /* iOS: フォントサイズをさらに小さく */
+        padding: 3px;  /* iOS: パディングを小さく */
+        gap: 2px;  /* iOS: グリッド間の間隔を小さく */
+    }
+    .command-box li {
+        padding: 3px 3px;  /* iOS: パディングを小さく */
+        font-size: 11px;  /* iOS: フォントサイズを小さく */
+        min-height: 28px;  /* iOS: 最小高さを小さく */
+    }
+}
+
+/* iPad横向き対応 */
+@media (orientation: landscape) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(12px * 1.4 * 2 + 16px);  /* iOS: 最小高さを小さく調整 */
+        max-height: calc(100dvh * 0.1);  /* iOS: 最大高さを画面の10%に制限 */
+        padding: 6px 8px;  /* iOS: パディングを小さく */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+    }
+    #battle-screen .enemy-area {
+        height: 45%;  /* モンスター画像：45% */
+        min-height: 100px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        padding: 6px 4px;  /* iOS: パディングを小さく */
+        overflow: visible;  /* iOS: 魔法エフェクトが見切れないように visible に設定 */
+    }
+    #battle-screen .monster-sprite {
+        max-height: calc(100dvh * 0.4);  /* iOS: 最大高さを制限 */
+        min-height: 100px;  /* iOS: 最小高さを調整 */
+    }
+    #battle-screen .monster-sprite img {
+        max-height: calc(100dvh * 0.4);  /* iOS: 最大高さを制限 */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 120px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        flex-shrink: 0;
+        overflow: hidden;  /* iOS: はみ出しを防止 */
+        padding: 4px 8px;  /* iOS: パディングを小さく */
+    }
+    .command-box {
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+        padding: 2px;  /* iOS: パディングを最小限に */
+    }
+    .status-box {
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        font-size: 9px;  /* iOS: フォントサイズを小さく */
+        padding: 4px;  /* iOS: パディングを小さく */
+        gap: 3px;  /* iOS: グリッド間の間隔を小さく */
+    }
+    .command-box li {
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+        min-height: 30px;  /* iOS: 最小高さを小さく */
+        padding: 4px 4px;  /* iOS: パディングを小さく */
+    }
+}
+
+/* ダメージ数値表示 */
+.damage-number {
+    position: absolute;
+    font-size: 48px;
+    font-weight: bold;
+    color: #ff0000;
+    text-shadow: 2px 2px 0 #000, 0 0 10px #ff0000;
+    pointer-events: none;
+    z-index: 100;
+    animation: damageFloat 1s ease-out forwards;
+}
+
+@keyframes damageFloat {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-80px) scale(1.5);
+    }
+}
+
+/* クリティカルヒット表示 */
+.critical-text {
+    position: absolute;
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 2px 2px 0 #000, 0 0 15px #ffff00;
+    pointer-events: none;
+    z-index: 101;
+    animation: criticalPulse 1.5s ease-out forwards;
+}
+
+@keyframes criticalPulse {
+    0% {
+        opacity: 1;
+        transform: scale(0.5);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1);
+    }
+}
+
+/* 画面フラッシュエフェクト */
+.battle-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    z-index: 200;
+    animation: flashEffect 0.2s ease-out;
+}
+
+@keyframes flashEffect {
+    0% { opacity: 0.8; }
+    100% { opacity: 0; }
+}
+
+/* HPバー */
+.hp-bar-container {
+    width: 100%;
+    height: 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #fff;
+    margin: 2px 0;
+    position: relative;
+}
+
+.hp-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff00 0%, #ffff00 50%, #ff0000 100%);
+    transition: width 0.5s ease-out;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.hp-bar-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+    z-index: 10;
+}
+
+/* ステータス行のコンパクト化 */
+.status-row {
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.status-row-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+    font-size: 11px;
+}
+
+/* 敵のHPバー */
+.enemy-hp-bar {
+    width: 80%;
+    max-width: 300px;
+    margin: 10px auto;
+}
+
+/* FF風戦闘開始演出 */
+.battle-start-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 300;
+    pointer-events: none;
+    animation: overlayFadeIn 0.2s ease-in, overlayFadeOut 0.3s ease-out 0.7s forwards;
+}
+
+.battle-start-text {
+    font-size: 48px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    animation: battleStartAnimation 1s ease-out forwards;
+}
+
+@keyframes overlayFadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes overlayFadeOut {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes battleStartAnimation {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    30% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+}
+
+/* FF風勝利演出 */
+.victory-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 300;
+    pointer-events: none;
+}
+
+.victory-text {
+    font-size: 36px;
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff00;
+    margin-bottom: 20px;
+    animation: victoryPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes victoryPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.9;
+    }
+}
+
+.victory-rewards {
+    font-size: 20px;
+    color: #fff;
+    text-align: center;
+    line-height: 1.8;
+}
+
+/* FF風レベルアップ演出 */
+.levelup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 400;
+    pointer-events: none;
+}
+
+.levelup-text {
+    font-size: min(56px, 10vw);
+    font-weight: bold;
+    color: #00ffff;
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    animation: levelupAnimation 2.5s ease-out forwards;
+    white-space: nowrap;
+    padding: 0 12px;
+}
+
+@keyframes levelupAnimation {
+    0% {
+        opacity: 0;
+        transform: translateY(50px) scale(0.5);
+    }
+    30% {
+        opacity: 1;
+        transform: translateY(0) scale(1.2);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.8);
+    }
+}
+
+.levelup-stats {
+    font-size: 24px;
+    color: #ffff00;
+    margin-top: 20px;
+    text-align: center;
+    opacity: 0;
+    animation: levelupStatsAnimation 2.5s ease-out forwards;
+}
+
+@keyframes levelupStatsAnimation {
+    0%, 40% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+/* 携帯：レベルアップテキストを1行に収める */
+@media (max-width: 480px) {
+    .levelup-text {
+        font-size: min(32px, 9vw);
+    }
+}
+@media (max-width: 360px) {
+    .levelup-text {
+        font-size: 26px;
+    }
+    .levelup-stats {
+        font-size: 18px;
+        margin-top: 12px;
+    }
+}
+
+/* コントロールパネル */
+#control-panel {
+    flex-shrink: 0;
+    height: 200px;  /* 縦向き時の高さ */
+    width: 100%;
+    max-width: var(--max-content);
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;  /* 20px下に下げる */
+    background-color: var(--control-bg);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    /* ゲーム画面との境界線を削除 */
+    border-top: none;
+    user-select: none;
+    touch-action: manipulation;
+    padding-top: 20px;  /* 上部パディングを追加して天地のバランス調整 */
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));  /* 下部パディングも調整して天地のバランス調整 */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2000;  /* コントロールパネルは常に最前面 */
+}
+
+/* iOS: 戦闘画面では仮想コントローラを非表示（タッチ操作でコマンド選択） */
+@media (max-width: 768px) {
+    #battle-screen.active ~ #control-panel {
+        display: none;  /* 戦闘画面では非表示 */
+    }
+    
+    /* コマンドボタンをタッチ操作に最適化 */
+    .command-box li {
+        /* タッチ操作で直接選択可能にする */
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);
+    }
+}
+
+.d-pad {
+    display: grid;
+    grid-template-areas: 
+        ". up ."
+        "left . right"
+        ". down .";
+    gap: 2px;
+}
+
+.pad-btn {
+    width: 55px;
+    height: 55px;
+    background: var(--btn-bg);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 4px var(--btn-shadow);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.pad-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px var(--btn-shadow);
+    background: #222;
+}
+
+.up { grid-area: up; } 
+.down { grid-area: down; } 
+.left { grid-area: left; } 
+.right { grid-area: right; }
+
+.action-group { 
+    display: flex; 
+    gap: 15px; 
+    transform: rotate(-5deg); 
+}
+
+.circle-btn {
+    width: 70px;
+    height: 70px;
+    background: #a00;
+    border: 2px solid #500;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    box-shadow: 0 4px var(--btn-shadow);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.circle-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px var(--btn-shadow); 
+    background: #700; 
+}
+
+.btn-a { margin-top: -10px; }
+.btn-b { 
+    margin-top: 20px; 
+    background: #444; 
+    border-color: #222; 
+}
+

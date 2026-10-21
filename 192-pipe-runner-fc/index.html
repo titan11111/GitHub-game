@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>PIPE RUNNER FC</title>
+<style>
+:root {
+  --ink: #101018;
+  --panel: #181820;
+  --white: #fff8e8;
+  --gold: #f8c848;
+  --red: #d83828;
+  --blue: #4068d8;
+  --green: #20a850;
+}
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: none;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #080810;
+  color: var(--white);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+body {
+  display: grid;
+  place-items: center;
+}
+#stage {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(#080810 0 8%, #101828 8% 100%);
+}
+#wrap {
+  position: relative;
+  width: 256px;
+  height: 240px;
+  image-rendering: pixelated;
+}
+#game {
+  position: absolute;
+  inset: 0;
+  width: 256px;
+  height: 240px;
+  image-rendering: pixelated;
+  background: #5c94fc;
+}
+#scanline {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0 1px, transparent 1px 4px);
+  opacity: .55;
+  mix-blend-mode: multiply;
+}
+#virtual-controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: none;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  pointer-events: none;
+}
+.pad, .actions {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+.ctl {
+  width: 58px;
+  height: 58px;
+  border: 3px solid #fff8e8;
+  border-radius: 6px;
+  background: rgba(16,16,24,.78);
+  color: #fff8e8;
+  box-shadow: inset -4px -4px 0 rgba(0,0,0,.45), 0 4px 0 rgba(0,0,0,.55);
+  font-weight: 900;
+  font-size: 24px;
+  line-height: 1;
+}
+.ctl:active, .ctl.active {
+  transform: translateY(3px);
+  box-shadow: inset 3px 3px 0 rgba(0,0,0,.45), 0 1px 0 rgba(0,0,0,.55);
+}
+#rotate {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #080810;
+  color: #fff8e8;
+  text-align: center;
+  padding: 24px;
+  font-weight: 800;
+}
+@media (max-width: 900px), (pointer: coarse) {
+  #virtual-controls { display: flex; }
+}
+@media (orientation: portrait) and (max-width: 700px) {
+  #rotate { display: flex; }
+}
+</style>
+</head>
+<body>
+<main id="stage">
+  <div id="wrap">
+    <canvas id="game" width="256" height="240"></canvas>
+  </div>
+</main>
+<div id="virtual-controls" aria-label="game controls">
+  <div class="pad">
+    <button class="ctl" id="cv-left" type="button" aria-label="left">&#9664;</button>
+    <button class="ctl" id="cv-right" type="button" aria-label="right">&#9654;</button>
+  </div>
+  <div class="actions">
+    <button class="ctl" id="cv-run" type="button" aria-label="run">B</button>
+    <button class="ctl" id="cv-jump" type="button" aria-label="jump">A</button>
+  </div>
+</div>
+<div id="rotate">端末を横向きにしてください<br>PLEASE ROTATE</div>
+<div id="scanline"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d', { alpha: false });
+  const wrap = document.getElementById('wrap');
+  const W = 256;
+  const H = 240;
+  const TILE = 16;
+  const GRAVITY = 0.42;
+  const MAX_FALL = 7.2;
+  const WORLD_TILES = 118;
+  const WORLD_W = WORLD_TILES * TILE;
+
+  const PAL = {
+    sky: '#5c94fc',
+    sky2: '#78b4ff',
+    cloud: '#fff8e8',
+    cloud2: '#d8e8f8',
+    hill: '#38b858',
+    hill2: '#1f8f43',
+    ground: '#b85c28',
+    ground2: '#743818',
+    brick: '#c85830',
+    brick2: '#f09048',
+    block: '#f8c848',
+    block2: '#fff070',
+    used: '#906848',
+    pipe: '#20a850',
+    pipe2: '#087838',
+    red: '#d83828',
+    red2: '#f87858',
+    blue: '#4058c8',
+    blue2: '#78a0f8',
+    skin: '#f8d090',
+    dark: '#101018',
+    white: '#fff8e8',
+    gold: '#f8c848',
+    gear: '#8b5a2b',
+    gear2: '#e09048',
+    flag: '#20d858'
+  };
+
+  const FONT = {
+    'A':['01110','10001','10001','11111','10001','10001','10001'],
+    'B':['11110','10001','10001','11110','10001','10001','11110'],
+    'C':['01111','10000','10000','10000','10000','10000','01111'],
+    'D':['11110','10001','10001','10001','10001','10001','11110'],
+    'E':['11111','10000','10000','11110','10000','10000','11111'],
+    'F':['11111','10000','10000','11110','10000','10000','10000'],
+    'G':['01111','10000','10000','10111','10001','10001','01111'],
+    'H':['10001','10001','10001','11111','10001','10001','10001'],
+    'I':['11111','00100','00100','00100','00100','00100','11111'],
+    'J':['00111','00010','00010','00010','10010','10010','01100'],
+    'K':['10001','10010','10100','11000','10100','10010','10001'],
+    'L':['10000','10000','10000','10000','10000','10000','11111'],
+    'M':['10001','11011','10101','10101','10001','10001','10001'],
+    'N':['10001','11001','10101','10011','10001','10001','10001'],
+    'O':['01110','10001','10001','10001','10001','10001','01110'],
+    'P':['11110','10001','10001','11110','10000','10000','10000'],
+    'Q':['01110','10001','10001','10001','10101','10010','01101'],
+    'R':['11110','10001','10001','11110','10100','10010','10001'],
+    'S':['01111','10000','10000','01110','00001','00001','11110'],
+    'T':['11111','00100','00100','00100','00100','00100','00100'],
+    'U':['10001','10001','10001','10001','10001','10001','01110'],
+    'V':['10001','10001','10001','10001','10001','01010','00100'],
+    'W':['10001','10001','10001','10101','10101','10101','01010'],
+    'X':['10001','10001','01010','00100','01010','10001','10001'],
+    'Y':['10001','10001','01010','00100','00100','00100','00100'],
+    'Z':['11111','00001','00010','00100','01000','10000','11111'],
+    '0':['01110','10001','10011','10101','11001','10001','01110'],
+    '1':['00100','01100','00100','00100','00100','00100','01110'],
+    '2':['01110','10001','00001','00010','00100','01000','11111'],
+    '3':['11110','00001','00001','01110','00001','00001','11110'],
+    '4':['00010','00110','01010','10010','11111','00010','00010'],
+    '5':['11111','10000','10000','11110','00001','00001','11110'],
+    '6':['01110','10000','10000','11110','10001','10001','01110'],
+    '7':['11111','00001','00010','00100','01000','01000','01000'],
+    '8':['01110','10001','10001','01110','10001','10001','01110'],
+    '9':['01110','10001','10001','01111','00001','00001','01110'],
+    ':':['00000','00100','00100','00000','00100','00100','00000'],
+    '-':['00000','00000','00000','11111','00000','00000','00000'],
+    '.':['00000','00000','00000','00000','00000','01100','01100'],
+    ' ':['00000','00000','00000','00000','00000','00000','00000']
+  };
+
+  const K = Object.create(null);
+  let audioCtx = null;
+  let musicTimer = 0;
+  let musicStep = 0;
+  let state = 'title';
+  let frame = 0;
+  let camera = 0;
+  let score = 0;
+  let coins = 0;
+  let lives = 3;
+  let timeLeft = 300;
+  let timeAcc = 0;
+  let titleBlink = 0;
+  let shake = 0;
+  let level;
+  let DPR = 1;
+
+  function rect(x, y, w, h, c) {
+    ctx.fillStyle = c;
+    ctx.fillRect(x | 0, y | 0, w | 0, h | 0);
+  }
+
+  function text(str, x, y, s = 1, c = PAL.white) {
+    let ox = x | 0;
+    const upper = String(str).toUpperCase();
+    for (let i = 0; i < upper.length; i++) {
+      const glyph = FONT[upper[i]] || FONT[' '];
+      for (let gy = 0; gy < 7; gy++) {
+        for (let gx = 0; gx < 5; gx++) {
+          if (glyph[gy][gx] === '1') rect(ox + gx * s, y + gy * s, s, s, c);
+        }
+      }
+      ox += 6 * s;
+    }
+  }
+
+  function pad(n, len) {
+    return String(Math.max(0, n | 0)).padStart(len, '0').slice(-len);
+  }
+
+  function unlockAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function beep(freq, dur, type, gain, delay = 0) {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime + delay;
+    const osc = audioCtx.createOscillator();
+    const vol = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    vol.gain.setValueAtTime(0.0001, t);
+    vol.gain.exponentialRampToValueAtTime(gain, t + 0.01);
+    vol.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(vol).connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+
+  function noise(dur, gain) {
+    if (!audioCtx) return;
+    const bufferSize = Math.max(1, audioCtx.sampleRate * dur);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const src = audioCtx.createBufferSource();
+    const vol = audioCtx.createGain();
+    vol.gain.value = gain;
+    src.buffer = buffer;
+    src.connect(vol).connect(audioCtx.destination);
+    src.start();
+  }
+
+  function sfx(name) {
+    if (!audioCtx) return;
+    if (name === 'jump') beep(520, 0.08, 'square', 0.045);
+    if (name === 'coin') { beep(880, 0.06, 'square', 0.045); beep(1320, 0.07, 'square', 0.035, 0.055); }
+    if (name === 'stomp') { beep(180, 0.08, 'triangle', 0.05); noise(0.035, 0.025); }
+    if (name === 'hurt') { beep(110, 0.18, 'sawtooth', 0.055); noise(0.12, 0.025); }
+    if (name === 'clear') { [523,659,784,1046].forEach((f, i) => beep(f, 0.12, 'square', 0.045, i * 0.12)); }
+  }
+
+  function music(dt) {
+    if (!audioCtx || state !== 'playing') return;
+    musicTimer += dt;
+    if (musicTimer < 0.14) return;
+    musicTimer = 0;
+    const melody = [659,659,0,659,0,523,659,0,784,0,392,0,523,0,392,0,330,0,440,494,466,440,392,659,784,880,698,784,659,523,587,494];
+    const bass = [130,130,98,98,110,110,98,98,130,130,98,98,110,110,98,98];
+    const m = melody[musicStep % melody.length];
+    const b = bass[musicStep % bass.length];
+    if (m) beep(m, 0.07, 'square', 0.018);
+    if ((musicStep & 1) === 0) beep(b, 0.09, 'triangle', 0.018);
+    if ((musicStep % 4) === 0) noise(0.025, 0.009);
+    musicStep++;
+  }
+
+  function tileKey(tx, ty) { return tx + ',' + ty; }
+
+  function makeLevel() {
+    const solid = new Map();
+    const blocks = [];
+    const coinsList = [];
+    const enemies = [];
+    const particles = [];
+    const holes = new Set([28,29,47,48,49,75,76,101]);
+
+    function addTile(tx, ty, type) {
+      if (tx < 0 || tx >= WORLD_TILES || ty < 0 || ty > 15) return;
+      solid.set(tileKey(tx, ty), { tx, ty, type, bump: 0, used: false });
+    }
+    function addBlock(tx, ty, type = 'coin') {
+      const b = { tx, ty, type, bump: 0, used: false };
+      solid.set(tileKey(tx, ty), b);
+      blocks.push(b);
+    }
+
+    for (let tx = 0; tx < WORLD_TILES; tx++) {
+      if (!holes.has(tx)) {
+        addTile(tx, 13, 'ground');
+        addTile(tx, 14, 'dirt');
+        addTile(tx, 15, 'dirt');
+      }
+    }
+
+    [8,9,10,34,35,36,58,59,60,84,85,86].forEach(tx => addTile(tx, 12, 'step'));
+    [11,36,60,87].forEach(tx => addTile(tx, 11, 'step'));
+    [37,61,88].forEach(tx => addTile(tx, 10, 'step'));
+
+    [[15,9],[18,9],[19,7],[20,9],[31,8],[32,8],[39,7],[40,7],[41,7],[64,9],[67,9],[70,7],[90,8],[91,8],[92,8]].forEach((p, i) => addBlock(p[0], p[1], i % 3 === 0 ? 'power' : 'coin'));
+    [[24,11],[25,11],[26,11],[52,11],[53,11],[54,11],[55,11],[95,11],[96,11]].forEach(p => addTile(p[0], p[1], 'brick'));
+    [[43,12],[44,12],[79,12],[80,12],[81,12]].forEach(p => {
+      addTile(p[0], p[1], 'pipe');
+      addTile(p[0], p[1] - 1, 'pipeTop');
+    });
+
+    for (let i = 0; i < 18; i++) coinsList.push({ x: (12 + i * 5) * TILE + 5, y: 86 + ((i % 3) * 10), taken: false, vy: 0, pop: 0 });
+    [22, 38, 56, 73, 89].forEach(tx => {
+      for (let i = 0; i < 5; i++) coinsList.push({ x: (tx + i) * TILE + 5, y: 74 - Math.abs(i - 2) * 8, taken: false, vy: 0, pop: 0 });
+    });
+
+    [13,23,33,45,57,66,83,94,106].forEach((tx, i) => {
+      enemies.push({ x: tx * TILE, y: 0, w: 14, h: 14, vx: i % 2 ? 0.45 : -0.45, vy: 0, alive: true, flat: 0, type: i % 3 === 0 ? 'gear' : 'bug' });
+    });
+
+    return { solid, blocks, coinsList, enemies, particles, flagX: 112 * TILE, goal: false };
+  }
+
+  function resetRun(newGame = false) {
+    level = makeLevel();
+    if (newGame) {
+      score = 0;
+      coins = 0;
+      lives = 3;
+      timeLeft = 300;
+    }
+    player.x = 32;
+    player.y = 140;
+    player.vx = 0;
+    player.vy = 0;
+    player.dir = 1;
+    player.grounded = false;
+    player.dead = 0;
+    player.big = false;
+    camera = 0;
+    timeAcc = 0;
+    state = 'playing';
+  }
+
+  const player = {
+    x: 32, y: 140, w: 13, h: 18, vx: 0, vy: 0, dir: 1,
+    grounded: false, jumpLock: false, dead: 0, big: false
+  };
+
+  function getTileAt(px, py) {
+    const tx = Math.floor(px / TILE);
+    const ty = Math.floor(py / TILE);
+    return level.solid.get(tileKey(tx, ty));
+  }
+
+  function eachOverlap(x, y, w, h, cb) {
+    const x0 = Math.floor(x / TILE);
+    const x1 = Math.floor((x + w - 1) / TILE);
+    const y0 = Math.floor(y / TILE);
+    const y1 = Math.floor((y + h - 1) / TILE);
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        const t = level.solid.get(tileKey(tx, ty));
+        if (t) cb(t);
+      }
+    }
+  }
+
+  function collideActor(a) {
+    const prevY = a.y;
+    const prevBottom = a.y + a.h;
+    const isPlayer = a === player;
+
+    a.x += a.vx;
+    let wall = null;
+    eachOverlap(a.x, a.y + 1, a.w, Math.max(1, a.h - 5), t => {
+      wall = t;
+    });
+    if (wall) {
+      if (a.vx > 0) a.x = wall.tx * TILE - a.w;
+      else if (a.vx < 0) a.x = (wall.tx + 1) * TILE;
+      a.vx = isPlayer ? 0 : -a.vx;
+    }
+
+    a.y += a.vy;
+    let grounded = false;
+    eachOverlap(a.x + 1, a.y, Math.max(1, a.w - 2), a.h, t => {
+      const top = t.ty * TILE;
+      const bot = top + TILE;
+      if (a.vy >= 0 && prevBottom <= top + 4) {
+        a.y = top - a.h;
+        a.vy = 0;
+        grounded = true;
+      } else if (a.vy < 0 && prevY >= bot - 4) {
+        a.y = bot;
+        a.vy = 0;
+        if (isPlayer) hitBlock(t);
+      }
+    });
+    a.grounded = grounded;
+  }
+
+  function hitBlock(t) {
+    if (t.bump > 0) return;
+    t.bump = 8;
+    shake = 5;
+    if (!t.used && (t.type === 'coin' || t.type === 'power')) {
+      t.used = true;
+      score += 100;
+      coins++;
+      sfx('coin');
+      level.particles.push({ x: t.tx * TILE + 6, y: t.ty * TILE - 4, vx: 0, vy: -1.8, life: 34, type: 'coin' });
+      if (t.type === 'power') player.big = true;
+    } else {
+      sfx('stomp');
+    }
+  }
+
+  function overlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function hurt() {
+    if (state !== 'playing') return;
+    if (player.big) {
+      player.big = false;
+      player.vy = -3;
+      sfx('hurt');
+      return;
+    }
+    lives--;
+    sfx('hurt');
+    if (lives <= 0) {
+      state = 'gameover';
+      titleBlink = 0;
+    } else {
+      player.dead = 55;
+      state = 'dead';
+    }
+  }
+
+  function clearGame() {
+    if (state !== 'playing') return;
+    state = 'clear';
+    score += Math.max(0, timeLeft) * 20 + 3000;
+    sfx('clear');
+  }
+
+  function update(dt) {
+    frame++;
+    titleBlink = (titleBlink + 1) % 60;
+    music(dt);
+
+    if (state === 'title' || state === 'gameover' || state === 'clear') {
+      if (pressed('Space') || pressed('KeyZ') || pressed('Enter')) resetRun(true);
+      return;
+    }
+    if (state === 'dead') {
+      player.dead--;
+      player.y += player.vy;
+      player.vy += GRAVITY;
+      if (player.dead <= 0) resetRun(false);
+      return;
+    }
+
+    timeAcc += dt;
+    if (timeAcc >= 1) {
+      timeAcc = 0;
+      timeLeft--;
+      if (timeLeft <= 0) hurt();
+    }
+
+    const run = K['ShiftLeft'] || K['ShiftRight'] || K['KeyX'];
+    const accel = player.grounded ? 0.32 : 0.18;
+    const max = run ? 2.75 : 2.05;
+    if (down('ArrowLeft') || down('KeyA')) { player.vx -= accel; player.dir = -1; }
+    if (down('ArrowRight') || down('KeyD')) { player.vx += accel; player.dir = 1; }
+    if (!down('ArrowLeft') && !down('KeyA') && !down('ArrowRight') && !down('KeyD')) player.vx *= player.grounded ? 0.80 : 0.95;
+    player.vx = Math.max(-max, Math.min(max, player.vx));
+
+    const wantsJump = down('Space') || down('KeyZ') || down('KeyW') || down('ArrowUp');
+    if (wantsJump && !player.jumpLock && player.grounded) {
+      player.vy = player.big ? -8.4 : -7.6;
+      player.grounded = false;
+      player.jumpLock = true;
+      sfx('jump');
+    }
+    if (!wantsJump) player.jumpLock = false;
+    if (!wantsJump && player.vy < -2.6) player.vy = -2.6;
+
+    player.vy = Math.min(MAX_FALL, player.vy + GRAVITY);
+    collideActor(player);
+    player.x = Math.max(0, Math.min(WORLD_W - player.w, player.x));
+
+    if (player.y > H + 24) hurt();
+
+    for (const b of level.blocks) if (b.bump > 0) b.bump--;
+    for (const t of level.solid.values()) if (t.bump > 0) t.bump--;
+
+    for (const e of level.enemies) {
+      if (!e.alive) continue;
+      if (e.flat > 0) { e.flat--; if (e.flat <= 0) e.alive = false; continue; }
+      e.vy = Math.min(MAX_FALL, e.vy + GRAVITY);
+      collideActor(e);
+      if (e.y > H + 80) e.alive = false;
+      if (overlap(player, e)) {
+        if (player.vy > 0.8 && player.y + player.h - e.y < 11) {
+          e.flat = 24;
+          player.vy = -5.3;
+          score += 300;
+          sfx('stomp');
+          level.particles.push({ x: e.x + 3, y: e.y - 4, vx: 0, vy: -1.2, life: 24, type: 'score' });
+        } else {
+          hurt();
+        }
+      }
+    }
+
+    for (const c of level.coinsList) {
+      if (c.taken) continue;
+      if (overlap(player, { x: c.x, y: c.y, w: 7, h: 10 })) {
+        c.taken = true;
+        coins++;
+        score += 100;
+        sfx('coin');
+      }
+    }
+
+    for (const p of level.particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.12;
+      p.life--;
+    }
+    level.particles = level.particles.filter(p => p.life > 0);
+
+    if (player.x > level.flagX - 8) clearGame();
+    camera = Math.max(0, Math.min(WORLD_W - W, Math.floor(player.x - 92)));
+    if (shake > 0) shake--;
+  }
+
+  function down(code) { return !!K[code]; }
+  function pressed(code) {
+    if (K[code] && !K[code + '_held']) {
+      K[code + '_held'] = true;
+      return true;
+    }
+    if (!K[code]) K[code + '_held'] = false;
+    return false;
+  }
+
+  function drawTile(t) {
+    const x = t.tx * TILE - camera;
+    const y = t.ty * TILE + (t.bump ? -Math.ceil(Math.sin(t.bump / 8 * Math.PI) * 5) : 0);
+    if (x < -TILE || x > W) return;
+    if (t.type === 'dirt') {
+      rect(x, y, 16, 16, PAL.ground2);
+      for (let yy = 0; yy < 16; yy += 4) for (let xx = (yy & 4) ? 2 : 0; xx < 16; xx += 8) rect(x + xx, y + yy, 4, 2, PAL.ground);
+    } else if (t.type === 'ground' || t.type === 'step') {
+      rect(x, y, 16, 16, PAL.ground);
+      rect(x, y, 16, 3, PAL.brick2);
+      rect(x, y + 8, 16, 2, PAL.ground2);
+      rect(x + 7, y + 3, 2, 13, PAL.ground2);
+    } else if (t.type === 'brick') {
+      rect(x, y, 16, 16, PAL.brick);
+      rect(x, y, 16, 2, PAL.brick2);
+      rect(x, y + 7, 16, 2, PAL.dark);
+      rect(x + 7, y, 2, 7, PAL.dark);
+      rect(x + 3, y + 9, 2, 7, PAL.dark);
+      rect(x + 12, y + 9, 2, 7, PAL.dark);
+    } else if (t.type === 'coin' || t.type === 'power') {
+      if (t.used) {
+        rect(x, y, 16, 16, PAL.used);
+        rect(x + 3, y + 3, 10, 10, '#684830');
+      } else {
+        rect(x, y, 16, 16, PAL.block);
+        rect(x + 2, y + 2, 12, 3, PAL.block2);
+        text('?', x + 5, y + 4, 1, PAL.dark);
+      }
+    } else if (t.type === 'pipe' || t.type === 'pipeTop') {
+      rect(x, y, 16, 16, PAL.pipe);
+      rect(x + 11, y, 5, 16, PAL.pipe2);
+      rect(x + 2, y, 3, 16, '#70e078');
+      if (t.type === 'pipeTop') {
+        rect(x - 2, y, 20, 5, '#70e078');
+        rect(x - 2, y + 5, 20, 3, PAL.pipe2);
+      }
+    }
+  }
+
+  function drawPlayer() {
+    const x = Math.floor(player.x - camera);
+    const y = Math.floor(player.y);
+    const flip = player.dir < 0;
+    const step = Math.floor(frame / 6) % 3;
+    const big = player.big ? 3 : 0;
+    const sx = n => flip ? 12 - n : n;
+    rect(x + sx(2), y + big, 9, 4, PAL.red);
+    rect(x + sx(1), y + 4 + big, 12, 3, PAL.red2);
+    rect(x + sx(4), y + 7 + big, 7, 5, PAL.skin);
+    rect(x + sx(9), y + 8 + big, 2, 2, PAL.dark);
+    rect(x + sx(1), y + 12 + big, 12, 6, PAL.blue);
+    rect(x + sx(3), y + 12 + big, 2, 6, PAL.blue2);
+    rect(x + sx(1), y + 13 + big, 3, 3, PAL.skin);
+    rect(x + sx(10), y + 13 + big, 3, 3, PAL.skin);
+    const ly = step === 1 ? 20 : 18;
+    const ry = step === 2 ? 20 : 18;
+    rect(x + sx(2), y + ly + big, 4, 3, PAL.dark);
+    rect(x + sx(8), y + ry + big, 4, 3, PAL.dark);
+    if (big) {
+      rect(x + sx(2), y, 9, 4, PAL.red);
+      rect(x + sx(1), y + 18, 12, 3, PAL.blue);
+    }
+  }
+
+  function drawEnemy(e) {
+    const x = Math.floor(e.x - camera);
+    const y = Math.floor(e.y);
+    if (x < -20 || x > W + 20) return;
+    if (e.flat > 0) {
+      rect(x + 1, y + 10, 12, 4, PAL.gear);
+      rect(x + 3, y + 8, 8, 2, PAL.gear2);
+      return;
+    }
+    const step = Math.floor(frame / 10) % 2;
+    rect(x + 3, y + 1, 8, 3, PAL.gear2);
+    rect(x + 1, y + 4, 12, 8, PAL.gear);
+    rect(x + 3, y + 5, 2, 2, PAL.dark);
+    rect(x + 9, y + 5, 2, 2, PAL.dark);
+    rect(x + 5, y + 9, 4, 1, PAL.dark);
+    rect(x + (step ? 1 : 3), y + 12, 4, 2, PAL.dark);
+    rect(x + (step ? 9 : 7), y + 12, 4, 2, PAL.dark);
+    rect(x + 6, y + 3, 2, 8, PAL.gear2);
+  }
+
+  function drawCoin(c) {
+    if (c.taken) return;
+    const x = Math.floor(c.x - camera);
+    const y = Math.floor(c.y + Math.sin((frame + c.x) * 0.08) * 2);
+    if (x < -12 || x > W + 12) return;
+    const narrow = Math.floor(frame / 8) % 4;
+    if (narrow === 0) {
+      rect(x + 3, y, 2, 10, PAL.gold);
+      rect(x + 5, y + 1, 1, 8, PAL.block2);
+    } else {
+      rect(x + 1, y + 1, 6, 8, PAL.gold);
+      rect(x + 3, y + 2, 2, 6, PAL.block2);
+      rect(x, y + 3, 8, 4, PAL.gold);
+    }
+  }
+
+  function drawBackground() {
+    rect(0, 0, W, H, PAL.sky);
+    for (let y = 0; y < 70; y += 2) for (let x = (y & 2); x < W; x += 8) rect(x, y, 4, 1, PAL.sky2);
+    const far = Math.floor(camera * 0.22);
+    const mid = Math.floor(camera * 0.45);
+    for (let i = -1; i < 9; i++) {
+      const x = i * 64 - (far % 64);
+      rect(x + 8, 38, 16, 7, PAL.cloud);
+      rect(x + 18, 31, 18, 14, PAL.cloud);
+      rect(x + 33, 37, 20, 8, PAL.cloud);
+      rect(x + 14, 45, 36, 3, PAL.cloud2);
+    }
+    for (let i = -1; i < 8; i++) {
+      const x = i * 80 - (mid % 80);
+      rect(x + 8, 150, 56, 28, PAL.hill2);
+      rect(x + 16, 140, 40, 12, PAL.hill);
+      rect(x + 30, 134, 12, 8, PAL.hill);
+      rect(x + 22, 146, 6, 6, PAL.white);
+      rect(x + 46, 154, 6, 6, PAL.white);
+    }
+  }
+
+  function drawFlag() {
+    const x = level.flagX - camera;
+    rect(x, 54, 3, 154, PAL.white);
+    rect(x + 3, 58, 28, 18, PAL.flag);
+    rect(x + 6, 63, 16, 4, PAL.white);
+    rect(x - 8, 208, 20, 8, PAL.ground2);
+  }
+
+  function drawHud() {
+    rect(0, 0, W, 20, PAL.dark);
+    text('PIPE', 8, 4, 1, PAL.white);
+    text(pad(score, 6), 40, 4, 1, PAL.gold);
+    text('COIN', 96, 4, 1, PAL.white);
+    text(pad(coins, 2), 130, 4, 1, PAL.gold);
+    text('LIFE', 158, 4, 1, PAL.white);
+    text(String(lives), 193, 4, 1, PAL.gold);
+    text('TIME', 210, 4, 1, PAL.white);
+    text(pad(timeLeft, 3), 238, 4, 1, PAL.gold);
+  }
+
+  function drawTitle() {
+    drawBackground();
+    camera = 0;
+    for (let tx = 0; tx < 16; tx++) drawTile({ tx, ty: 13, type: 'ground', bump: 0 });
+    rect(28, 58, 200, 70, PAL.dark);
+    rect(32, 62, 192, 62, PAL.blue);
+    rect(36, 66, 184, 54, PAL.sky);
+    text('PIPE', 58, 76, 3, PAL.white);
+    text('RUNNER', 42, 101, 3, PAL.gold);
+    text('FC', 184, 101, 2, PAL.red);
+    drawPlayer();
+    text('ARROWS MOVE  SPACE JUMP', 48, 148, 1, PAL.white);
+    text('STOMP  COINS  FLAG', 67, 162, 1, PAL.white);
+    if (titleBlink < 34) text('PRESS START', 82, 190, 1, PAL.gold);
+  }
+
+  function drawEnd() {
+    drawWorld();
+    rect(32, 74, 192, 84, PAL.dark);
+    rect(36, 78, 184, 76, state === 'clear' ? PAL.green : PAL.red);
+    text(state === 'clear' ? 'COURSE CLEAR' : 'GAME OVER', state === 'clear' ? 61 : 70, 96, 2, PAL.white);
+    text('SCORE ' + pad(score, 6), 73, 124, 1, PAL.gold);
+    if (titleBlink < 34) text('PRESS START', 82, 140, 1, PAL.white);
+  }
+
+  function drawWorld() {
+    drawBackground();
+    if (shake) ctx.translate((frame & 1) ? 2 : -2, 0);
+    drawFlag();
+    const start = Math.max(0, Math.floor(camera / TILE) - 2);
+    const end = Math.min(WORLD_TILES, Math.floor((camera + W) / TILE) + 3);
+    for (let tx = start; tx <= end; tx++) {
+      for (let ty = 0; ty < 16; ty++) {
+        const t = level.solid.get(tileKey(tx, ty));
+        if (t) drawTile(t);
+      }
+    }
+    for (const c of level.coinsList) drawCoin(c);
+    for (const e of level.enemies) if (e.alive) drawEnemy(e);
+    for (const p of level.particles) {
+      const x = Math.floor(p.x - camera);
+      const y = Math.floor(p.y);
+      if (p.type === 'coin') {
+        rect(x, y, 7, 9, PAL.gold);
+        rect(x + 2, y + 1, 2, 7, PAL.block2);
+      } else {
+        text('300', x - 5, y, 1, PAL.white);
+      }
+    }
+    drawPlayer();
+    if (shake) ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    drawHud();
+  }
+
+  function render() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    if (state === 'title') drawTitle();
+    else if (state === 'clear' || state === 'gameover') drawEnd();
+    else drawWorld();
+  }
+
+  function fit() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const availW = window.innerWidth;
+    const availH = window.innerHeight;
+    const controlsSpace = matchMedia('(max-width: 900px), (pointer: coarse)').matches ? 78 : 0;
+    const scale = Math.max(1, Math.floor(Math.min(availW / W, (availH - controlsSpace) / H)));
+    wrap.style.transform = 'scale(' + scale + ')';
+    wrap.style.transformOrigin = 'center center';
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  function bindButton(id, codes) {
+    const el = document.getElementById(id);
+    const on = e => {
+      e.preventDefault();
+      unlockAudio();
+      el.classList.add('active');
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      codes.forEach(code => { K[code] = true; });
+    };
+    const off = e => {
+      e.preventDefault();
+      el.classList.remove('active');
+      codes.forEach(code => { K[code] = false; K[code + '_held'] = false; });
+    };
+    el.addEventListener('pointerdown', on);
+    el.addEventListener('pointerup', off);
+    el.addEventListener('pointercancel', off);
+    el.addEventListener('lostpointercapture', off);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW','KeyZ','KeyX','ShiftLeft','ShiftRight','Enter'].includes(e.code)) {
+      e.preventDefault();
+      unlockAudio();
+      K[e.code] = true;
+    }
+  }, { passive: false });
+  document.addEventListener('keyup', e => {
+    K[e.code] = false;
+    K[e.code + '_held'] = false;
+  });
+  let lastTap = 0;
+  document.addEventListener('touchstart', e => {
+    const now = Date.now();
+    if (now - lastTap < 300) e.preventDefault();
+    lastTap = now;
+  }, { passive: false });
+  document.addEventListener('dblclick', e => e.preventDefault());
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('pointerdown', unlockAudio, { once: true });
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    unlockAudio();
+    if (state === 'title' || state === 'gameover' || state === 'clear') resetRun(true);
+  });
+
+  bindButton('cv-left', ['ArrowLeft']);
+  bindButton('cv-right', ['ArrowRight']);
+  bindButton('cv-jump', ['Space']);
+  bindButton('cv-run', ['KeyX']);
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+
+  level = makeLevel();
+  fit();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

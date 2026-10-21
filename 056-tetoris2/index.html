@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>英単語クエスト - 魔王を倒せ！</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* 画面切り替え */
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+            animation: fadeIn 0.5s;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* タイトル画面 */
+        .title-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 60px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-title {
+            font-size: 48px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .start-button {
+            font-size: 24px;
+            padding: 15px 50px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .start-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ストーリー画面 */
+        .story-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .story-text {
+            font-size: 20px;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 30px;
+            min-height: 150px;
+        }
+
+        .next-button {
+            font-size: 18px;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .next-button:hover {
+            background: #764ba2;
+        }
+
+        /* バトル画面 */
+        .battle-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .enemy-area, .player-area {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .enemy-status, .player-status {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .enemy-status h2, .player-status h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .hp-bar-container {
+            background: #ddd;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 5px;
+        }
+
+        .hp-bar {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .enemy-hp {
+            background: linear-gradient(90deg, #ff6b6b, #ff4444);
+            width: 100%;
+        }
+
+        .player-hp {
+            background: linear-gradient(90deg, #51cf66, #2ecc71);
+            width: 100%;
+        }
+
+        .hp-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .level-info {
+            display: flex;
+            gap: 20px;
+            font-size: 16px;
+            color: #666;
+        }
+
+        .enemy-sprite, .player-sprite {
+            font-size: 80px;
+            text-align: center;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .damage-number {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff4444;
+            opacity: 0;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .damage-number.show {
+            animation: damagePopup 1s ease-out;
+        }
+
+        @keyframes damagePopup {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -100%) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -150%) scale(1);
+            }
+        }
+
+        .message-area {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            min-height: 60px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .action-button {
+            width: 100%;
+            padding: 15px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ff4444);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .action-button:hover {
+            transform: scale(1.02);
+        }
+
+        .action-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* クイズ画面 */
+        .quiz-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .quiz-status {
+            display: flex;
+            justify-content: space-between;
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .level-display, .combo-display {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .level-display span, .combo-display span {
+            color: #667eea;
+        }
+
+        .question-area {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .question-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .word-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .english-word {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .sound-button {
+            font-size: 36px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .sound-button:hover {
+            transform: scale(1.2);
+        }
+
+        .choices-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .choice-button {
+            padding: 20px;
+            font-size: 20px;
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .choice-button:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .choice-button.correct {
+            background: #51cf66;
+            color: white;
+            border-color: #51cf66;
+            animation: correctPulse 0.5s;
+        }
+
+        .choice-button.wrong {
+            background: #ff6b6b;
+            color: white;
+            border-color: #ff6b6b;
+            animation: wrongShake 0.5s;
+        }
+
+        .choice-button:disabled {
+            cursor: not-allowed;
+        }
+
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .result-display {
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+            min-height: 40px;
+        }
+
+        .result-display.correct {
+            color: #51cf66;
+        }
+
+        .result-display.wrong {
+            color: #ff6b6b;
+        }
+
+        .quiz-action-button {
+            width: 100%;
+            padding: 15px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            display: none;
+        }
+
+        .quiz-action-button:hover {
+            transform: scale(1.02);
+        }
+
+        /* ゲームオーバー画面 */
+        .gameover-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 60px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .gameover-title {
+            font-size: 48px;
+            color: #ff4444;
+            margin-bottom: 20px;
+        }
+
+        .gameover-message {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .retry-button {
+            font-size: 20px;
+            padding: 15px 40px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .retry-button:hover {
+            transform: scale(1.05);
+        }
+
+        /* クリア画面 */
+        .clear-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 60px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .clear-title {
+            font-size: 48px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .clear-message {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .clear-submessage {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .clear-stats {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .clear-stats p {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        .restart-button {
+            font-size: 20px;
+            padding: 15px 40px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #333;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .restart-button:hover {
+            transform: scale(1.05);
+        }
+
+        /* エフェクト */
+        .effect-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .attack-effect {
+            position: absolute;
+            font-size: 100px;
+            animation: attackMove 1s ease-out;
+        }
+
+        @keyframes attackMove {
+            0% {
+                opacity: 1;
+                transform: scale(0.5) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(2) rotate(360deg);
+            }
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 600px) {
+            .game-title {
+                font-size: 36px;
+            }
+            
+            .subtitle {
+                font-size: 16px;
+            }
+            
+            .start-button {
+                font-size: 20px;
+                padding: 12px 40px;
+            }
+            
+            .story-text {
+                font-size: 16px;
+            }
+            
+            .english-word {
+                font-size: 36px;
+            }
+            
+            .choice-button {
+                font-size: 16px;
+                padding: 15px;
+            }
+            
+            .enemy-sprite, .player-sprite {
+                font-size: 60px;
+            }
+            
+            .damage-number {
+                font-size: 36px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .quiz-status {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .choices-area {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- タイトル画面 -->
+    <div id="titleScreen" class="screen active">
+        <div class="title-container">
+            <h1 class="game-title">英単語クエスト</h1>
+            <p class="subtitle">〜魔王を倒して世界を救え〜</p>
+            <button class="start-button" onclick="startGame()">冒険を始める</button>
+        </div>
+    </div>
+
+    <!-- ストーリー画面 -->
+    <div id="storyScreen" class="screen">
+        <div class="story-container">
+            <div class="story-text" id="storyText"></div>
+            <button class="next-button" onclick="nextStory()">次へ</button>
+        </div>
+    </div>
+
+    <!-- バトル画面 -->
+    <div id="battleScreen" class="screen">
+        <div class="battle-container">
+            <!-- 魔王エリア -->
+            <div class="enemy-area">
+                <div class="enemy-status">
+                    <h2>魔王</h2>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar enemy-hp" id="enemyHpBar"></div>
+                        <span class="hp-text" id="enemyHpText">HP: 1000000</span>
+                    </div>
+                </div>
+                <div class="enemy-sprite">👹</div>
+                <div class="damage-number" id="enemyDamage"></div>
+            </div>
+
+            <!-- プレイヤーエリア -->
+            <div class="player-area">
+                <div class="player-status">
+                    <h2>勇者</h2>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar player-hp" id="playerHpBar"></div>
+                        <span class="hp-text" id="playerHpText">HP: 100</span>
+                    </div>
+                    <div class="level-info">
+                        <span>レベル: <span id="playerLevel">1</span></span>
+                        <span>攻撃力: <span id="playerPower">10</span></span>
+                    </div>
+                </div>
+                <div class="player-sprite">⚔️</div>
+                <div class="damage-number" id="playerDamage"></div>
+            </div>
+
+            <!-- メッセージエリア -->
+            <div class="message-area" id="battleMessage"></div>
+            <button class="action-button" id="actionButton" onclick="battleAction()">攻撃する</button>
+        </div>
+    </div>
+
+    <!-- クイズ画面 -->
+    <div id="quizScreen" class="screen">
+        <div class="quiz-container">
+            <!-- ステータス表示 -->
+            <div class="quiz-status">
+                <div class="level-display">
+                    <span>レベル: <span id="currentLevel">1</span></span>
+                    <span>経験値: <span id="currentExp">0</span></span>
+                </div>
+                <div class="combo-display">
+                    <span>連続正解: <span id="comboCount">0</span></span>
+                    <span>苦手: <span id="wrongCount">0</span>個</span>
+                </div>
+            </div>
+
+            <!-- 問題エリア -->
+            <div class="question-area">
+                <h2 class="question-title">英単語の意味を選ぼう！</h2>
+                <div class="word-display">
+                    <span class="english-word" id="englishWord">apple</span>
+                    <button class="sound-button" onclick="playSound()">🔊</button>
+                </div>
+            </div>
+
+            <!-- 選択肢エリア -->
+            <div class="choices-area" id="choicesArea">
+                <button class="choice-button" onclick="checkAnswer(0)"></button>
+                <button class="choice-button" onclick="checkAnswer(1)"></button>
+                <button class="choice-button" onclick="checkAnswer(2)"></button>
+                <button class="choice-button" onclick="checkAnswer(3)"></button>
+            </div>
+
+            <!-- 結果表示 -->
+            <div class="result-display" id="resultDisplay"></div>
+
+            <!-- 進行ボタン -->
+            <button class="quiz-action-button" id="quizActionButton" onclick="quizAction()">修行を続ける</button>
+        </div>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div id="gameOverScreen" class="screen">
+        <div class="gameover-container">
+            <h1 class="gameover-title">GAME OVER</h1>
+            <p class="gameover-message" id="gameOverMessage"></p>
+            <button class="retry-button" onclick="retryGame()">もう一度挑戦する</button>
+        </div>
+    </div>
+
+    <!-- クリア画面 -->
+    <div id="clearScreen" class="screen">
+        <div class="clear-container">
+            <h1 class="clear-title">CLEAR!</h1>
+            <p class="clear-message">魔王を倒した！</p>
+            <p class="clear-submessage">村に平和が戻った！みんなが勇者に感謝している！</p>
+            <div class="clear-stats">
+                <p>最終レベル: <span id="finalLevel">1</span></p>
+                <p>正解数: <span id="correctCount">0</span></p>
+            </div>
+            <button class="restart-button" onclick="restartGame()">最初から遊ぶ</button>
+        </div>
+    </div>
+
+    <!-- エフェクト用 -->
+    <div class="effect-container" id="effectContainer"></div>
+
+    <script>
+        // ゲーム状態管理
+        let gameState = {
+            screen: 'title',
+            storyIndex: 0,
+            playerLevel: 1,
+            playerExp: 0,
+            playerMaxHp: 100,
+            playerHp: 100,
+            playerBasePower: 10,
+            enemyMaxHp: 1000000,
+            enemyHp: 1000000,
+            combo: 0,
+            correctAnswers: 0,
+            totalQuestions: 0,
+            isFirstBattle: true,
+            battlePhase: 'player',
+            currentQuestion: null,
+            isAnswered: false,
+            askedQuestions: [],
+            wrongWords: [],
+            wrongWordCount: {},
+            canBattleBoss: false  // 魔王戦可能フラグを追加
+        };
+
+        // 英単語データ（中学3年生レベル）
+        const wordData = [
+            // 基本単語（レベル1）
+            { english: 'apple', japanese: 'りんご', level: 1 },
+            { english: 'book', japanese: '本', level: 1 },
+            { english: 'cat', japanese: 'ねこ', level: 1 },
+            { english: 'dog', japanese: '犬', level: 1 },
+            { english: 'eat', japanese: '食べる', level: 1 },
+            { english: 'friend', japanese: '友達', level: 1 },
+            { english: 'go', japanese: '行く', level: 1 },
+            { english: 'happy', japanese: '幸せな', level: 1 },
+            { english: 'important', japanese: '重要な', level: 1 },
+            { english: 'jump', japanese: 'ジャンプする', level: 1 },
+            { english: 'water', japanese: '水', level: 1 },
+            { english: 'school', japanese: '学校', level: 1 },
+            { english: 'teacher', japanese: '先生', level: 1 },
+            { english: 'student', japanese: '生徒', level: 1 },
+            { english: 'time', japanese: '時間', level: 1 },
+            { english: 'day', japanese: '日', level: 1 },
+            { english: 'night', japanese: '夜', level: 1 },
+            { english: 'morning', japanese: '朝', level: 1 },
+            { english: 'afternoon', japanese: '午後', level: 1 },
+            { english: 'evening', japanese: '夕方', level: 1 },
+            
+            // 中級単語（レベル2）
+            { english: 'beautiful', japanese: '美しい', level: 2 },
+            { english: 'dangerous', japanese: '危険な', level: 2 },
+            { english: 'education', japanese: '教育', level: 2 },
+            { english: 'future', japanese: '未来', level: 2 },
+            { english: 'government', japanese: '政府', level: 2 },
+            { english: 'history', japanese: '歴史', level: 2 },
+            { english: 'information', japanese: '情報', level: 2 },
+            { english: 'knowledge', japanese: '知識', level: 2 },
+            { english: 'language', japanese: '言語', level: 2 },
+            { english: 'medicine', japanese: '薬', level: 2 },
+            { english: 'nature', japanese: '自然', level: 2 },
+            { english: 'science', japanese: '科学', level: 2 },
+            { english: 'technology', japanese: '技術', level: 2 },
+            { english: 'computer', japanese: 'コンピューター', level: 2 },
+            { english: 'internet', japanese: 'インターネット', level: 2 },
+            { english: 'smartphone', japanese: 'スマートフォン', level: 2 },
+            { english: 'social', japanese: '社会的な', level: 2 },
+            { english: 'culture', japanese: '文化', level: 2 },
+            { english: 'tradition', japanese: '伝統', level: 2 },
+            { english: 'festival', japanese: '祭り', level: 2 },
+            
+            // 上級単語（レベル3）
+            { english: 'accomplish', japanese: '達成する', level: 3 },
+            { english: 'benefit', japanese: '利益', level: 3 },
+            { english: 'challenge', japanese: '挑戦', level: 3 },
+            { english: 'develop', japanese: '発展させる', level: 3 },
+            { english: 'environment', japanese: '環境', level: 3 },
+            { english: 'foreign', japanese: '外国の', level: 3 },
+            { english: 'global', japanese: '世界的な', level: 3 },
+            { english: 'health', japanese: '健康', level: 3 },
+            { english: 'improve', japanese: '改善する', level: 3 },
+            { english: 'journey', japanese: '旅', level: 3 },
+            { english: 'opportunity', japanese: '機会', level: 3 },
+            { english: 'responsibility', japanese: '責任', level: 3 },
+            { english: 'success', japanese: '成功', level: 3 },
+            { english: 'victory', japanese: '勝利', level: 3 },
+            { english: 'defeat', japanese: '敗北', level: 3 },
+            { english: 'strength', japanese: '強さ', level: 3 },
+            { english: 'weakness', japanese: '弱さ', level: 3 },
+            { english: 'courage', japanese: '勇気', level: 3 },
+            { english: 'wisdom', japanese: '知恵', level: 3 },
+            { english: 'justice', japanese: '正義', level: 3 },
+            
+            // 動詞（追加）
+            { english: 'accept', japanese: '受け入れる', level: 2 },
+            { english: 'believe', japanese: '信じる', level: 2 },
+            { english: 'create', japanese: '創造する', level: 2 },
+            { english: 'decide', japanese: '決める', level: 2 },
+            { english: 'explain', japanese: '説明する', level: 2 },
+            { english: 'forget', japanese: '忘れる', level: 2 },
+            { english: 'grow', japanese: '成長する', level: 2 },
+            { english: 'happen', japanese: '起こる', level: 2 },
+            { english: 'increase', japanese: '増やす', level: 3 },
+            { english: 'join', japanese: '参加する', level: 2 },
+            { english: 'learn', japanese: '学ぶ', level: 1 },
+            { english: 'listen', japanese: '聞く', level: 1 },
+            { english: 'speak', japanese: '話す', level: 1 },
+            { english: 'write', japanese: '書く', level: 1 },
+            { english: 'read', japanese: '読む', level: 1 },
+            { english: 'understand', japanese: '理解する', level: 2 },
+            { english: 'remember', japanese: '覚える', level: 2 },
+            { english: 'practice', japanese: '練習する', level: 2 },
+            { english: 'continue', japanese: '続ける', level: 2 },
+            { english: 'finish', japanese: '終える', level: 2 },
+            
+            // 形容詞（追加）
+            { english: 'ancient', japanese: '古代の', level: 3 },
+            { english: 'brave', japanese: '勇敢な', level: 2 },
+            { english: 'careful', japanese: '注意深い', level: 2 },
+            { english: 'different', japanese: '違う', level: 1 },
+            { english: 'easy', japanese: '簡単な', level: 1 },
+            { english: 'famous', japanese: '有名な', level: 2 },
+            { english: 'great', japanese: 'すばらしい', level: 1 },
+            { english: 'huge', japanese: '巨大な', level: 2 },
+            { english: 'interesting', japanese: '興味深い', level: 2 },
+            { english: 'kind', japanese: '親切な', level: 1 },
+            { english: 'difficult', japanese: '難しい', level: 1 },
+            { english: 'simple', japanese: '単純な', level: 1 },
+            { english: 'complex', japanese: '複雑な', level: 3 },
+            { english: 'necessary', japanese: '必要な', level: 2 },
+            { english: 'possible', japanese: '可能な', level: 2 },
+            { english: 'impossible', japanese: '不可能な', level: 2 },
+            { english: 'special', japanese: '特別な', level: 2 },
+            { english: 'ordinary', japanese: '普通の', level: 2 },
+            { english: 'powerful', japanese: '強力な', level: 2 },
+            { english: 'magical', japanese: '魔法の', level: 2 }
+        ];
+
+        // ストーリーテキスト
+        const storyTexts = [
+            "むかしむかし、平和だった世界に恐ろしい魔王が現れました。",
+            "魔王「愚かな人間どもよ！この世界は我が支配する！」",
+            "村人たちは恐怖に震えていました。そんな時、一人の若者が立ち上がります。",
+            "勇者「みんなを守るため、ぼくが魔王を倒す！」",
+            "しかし、勇者はまだレベル1。魔王と戦うには力が足りません。",
+            "賢者「勇者よ、英語の知識こそが魔法の力となる。修行を積むのじゃ！」",
+            "勇者「わかった！英単語をマスターして、最強の勇者になってみせる！」",
+            "こうして、勇者の冒険が始まったのでした..."
+        ];
+
+        // 画面切り替え関数
+        function showScreen(screenId) {
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => screen.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // ゲーム開始
+        function startGame() {
+            gameState.screen = 'story';
+            gameState.storyIndex = 0;
+            showScreen('storyScreen');
+            showStory();
+        }
+
+        // ストーリー表示
+        function showStory() {
+            const storyText = document.getElementById('storyText');
+            if (gameState.storyIndex < storyTexts.length) {
+                storyText.textContent = storyTexts[gameState.storyIndex];
+            } else {
+                // ストーリー終了後、最初のバトルへ
+                startFirstBattle();
+            }
+        }
+
+        // ストーリーを次へ
+        function nextStory() {
+            gameState.storyIndex++;
+            showStory();
+        }
+
+        // 最初のバトル開始
+        function startFirstBattle() {
+            gameState.screen = 'battle';
+            gameState.isFirstBattle = true;
+            gameState.playerHp = gameState.playerMaxHp;
+            gameState.enemyHp = gameState.enemyMaxHp;
+            showScreen('battleScreen');
+            updateBattleUI();
+            showBattleMessage("魔王「愚かな勇者よ、我に勝てると思うか？」");
+        }
+
+        // バトルUI更新
+        function updateBattleUI() {
+            // プレイヤーHP
+            const playerHpBar = document.getElementById('playerHpBar');
+            const playerHpText = document.getElementById('playerHpText');
+            const playerHpPercent = (gameState.playerHp / gameState.playerMaxHp) * 100;
+            playerHpBar.style.width = playerHpPercent + '%';
+            playerHpText.textContent = `HP: ${gameState.playerHp}`;
+            
+            // 魔王HP
+            const enemyHpBar = document.getElementById('enemyHpBar');
+            const enemyHpText = document.getElementById('enemyHpText');
+            const enemyHpPercent = (gameState.enemyHp / gameState.enemyMaxHp) * 100;
+            enemyHpBar.style.width = enemyHpPercent + '%';
+            enemyHpText.textContent = `HP: ${gameState.enemyHp}`;
+            
+            // レベルと攻撃力
+            document.getElementById('playerLevel').textContent = gameState.playerLevel;
+            document.getElementById('playerPower').textContent = calculateAttackPower();
+        }
+
+        // 攻撃力計算（レベル99まで対応した調整）
+        function calculateAttackPower() {
+            // レベル99で魔王を倒せるように調整
+            if (gameState.playerLevel <= 10) {
+                return gameState.playerBasePower * gameState.playerLevel;
+            } else if (gameState.playerLevel <= 30) {
+                return gameState.playerBasePower * gameState.playerLevel * 2;
+            } else if (gameState.playerLevel <= 60) {
+                return gameState.playerBasePower * gameState.playerLevel * 5;
+            } else if (gameState.playerLevel <= 90) {
+                return gameState.playerBasePower * gameState.playerLevel * 10;
+            } else {
+                // レベル91-99では魔王を確実に倒せる威力
+                return gameState.playerBasePower * gameState.playerLevel * 20;
+            }
+        }
+
+        // バトルメッセージ表示
+        function showBattleMessage(message) {
+            document.getElementById('battleMessage').textContent = message;
+        }
+
+        // バトルアクション
+        function battleAction() {
+            if (gameState.battlePhase === 'player') {
+                playerAttack();
+            }
+        }
+
+        // プレイヤー攻撃
+        function playerAttack() {
+            const damage = calculateAttackPower();
+            gameState.enemyHp -= damage;
+            if (gameState.enemyHp < 0) gameState.enemyHp = 0;
+            
+            // ダメージ表示
+            showDamage('enemy', damage);
+            
+            // エフェクト（ダメージに応じて変更）
+            if (damage < 100) {
+                createAttackEffect('⚔️');
+            } else if (damage < 1000) {
+                createAttackEffect('🔥');
+                createAttackEffect('💥');
+            } else if (damage < 10000) {
+                createAttackEffect('⚡');
+                createAttackEffect('🔥');
+                createAttackEffect('💥');
+            } else {
+                createAttackEffect('☄️');
+                createAttackEffect('⚡');
+                createAttackEffect('🌟');
+                createAttackEffect('💥');
+            }
+            
+            updateBattleUI();
+            
+            if (gameState.enemyHp <= 0) {
+                // 魔王撃破
+                if (gameState.isFirstBattle) {
+                    // 最初のバトルでは倒せない演出
+                    gameState.enemyHp = gameState.enemyMaxHp; // HPを戻す
+                    updateBattleUI();
+                    showBattleMessage("勇者「えい！」...攻撃したが魔王には全然効かない！");
+                    setTimeout(() => enemyAttack(), 2000);
+                } else {
+                    // 魔王撃破成功
+                    gameClear();
+                }
+            } else {
+                if (gameState.isFirstBattle) {
+                    showBattleMessage(`勇者「やった！${damage}ダメージ！」でも魔王には効いていない...`);
+                    setTimeout(() => enemyAttack(), 2000);
+                } else {
+                    // 再戦時の攻撃メッセージ
+                    if (damage >= 50000) {
+                        showBattleMessage(`勇者「究極英語魔法！」${damage}の超絶ダメージ！`);
+                    } else if (damage >= 10000) {
+                        showBattleMessage(`勇者「英語の真の力を見せる！」${damage}の超ダメージ！`);
+                    } else if (damage >= 1000) {
+                        showBattleMessage(`勇者「修行の成果だ！」${damage}の大ダメージ！`);
+                    } else {
+                        showBattleMessage(`勇者の攻撃！${damage}のダメージを与えた！`);
+                    }
+                    
+                    // 魔王戦では連続攻撃可能
+                    setTimeout(() => {
+                        showBattleMessage("勇者「まだまだいくぞ！」");
+                    }, 1500);
+                }
+            }
+        }
+
+        // 魔王の攻撃
+        function enemyAttack() {
+            const damage = gameState.isFirstBattle ? 99999 : Math.min(50, gameState.playerHp - 1);
+            gameState.playerHp -= damage;
+            if (gameState.playerHp < 0) gameState.playerHp = 0;
+            
+            // ダメージ表示
+            showDamage('player', damage);
+            
+            // エフェクト
+            createAttackEffect('💀');
+            
+            updateBattleUI();
+            
+            if (gameState.isFirstBattle) {
+                showBattleMessage(`魔王「弱すぎる！消えろ！」${damage}ダメージ！`);
+            } else {
+                showBattleMessage(`魔王「まだ抵抗するか！」${damage}ダメージ！`);
+            }
+            
+            if (gameState.playerHp <= 0) {
+                setTimeout(() => {
+                    if (gameState.isFirstBattle) {
+                        // 最初のバトル敗北 → 修行へ
+                        showBattleMessage("勇者「うわあああ！」...負けてしまった...");
+                        setTimeout(() => {
+                            showBattleMessage("賢者「まだ諦めるでない！英単語を学んで強くなるのじゃ！」");
+                            setTimeout(() => startTraining(), 3000);
+                        }, 2000);
+                    } else {
+                        // ゲームオーバー
+                        gameOver("勇者は倒れてしまった...もっと修行を積んで再挑戦しよう！");
+                    }
+                }, 1500);
+            }
+        }
+
+        // ダメージ数値表示
+        function showDamage(target, damage) {
+            const damageElement = document.getElementById(target + 'Damage');
+            damageElement.textContent = damage;
+            damageElement.classList.add('show');
+            setTimeout(() => {
+                damageElement.classList.remove('show');
+            }, 1000);
+        }
+
+        // 攻撃エフェクト
+        function createAttackEffect(emoji) {
+            const effectContainer = document.getElementById('effectContainer');
+            const effect = document.createElement('div');
+            effect.className = 'attack-effect';
+            effect.textContent = emoji;
+            effect.style.left = Math.random() * window.innerWidth + 'px';
+            effect.style.top = Math.random() * window.innerHeight + 'px';
+            effectContainer.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 1000);
+        }
+
+        // 修行開始
+        function startTraining() {
+            gameState.screen = 'quiz';
+            gameState.combo = 0;
+            gameState.correctAnswers = 0;
+            gameState.totalQuestions = 0;
+            gameState.askedQuestions = [];
+            gameState.canBattleBoss = false; // 魔王戦フラグをリセット
+            showScreen('quizScreen');
+            updateQuizUI();
+            loadNewQuestion();
+        }
+
+        // クイズUI更新
+        function updateQuizUI() {
+            document.getElementById('currentLevel').textContent = gameState.playerLevel;
+            document.getElementById('currentExp').textContent = gameState.playerExp;
+            document.getElementById('comboCount').textContent = gameState.combo;
+            document.getElementById('wrongCount').textContent = gameState.wrongWords.length;
+        }
+
+        // 新しい問題を読み込み
+        function loadNewQuestion() {
+            gameState.isAnswered = false;
+            
+            // 間違えた単語を優先的に出題（30%の確率）
+            let selectedWord = null;
+            if (gameState.wrongWords.length > 0 && Math.random() < 0.3) {
+                const sortedWrongWords = gameState.wrongWords.sort((a, b) => {
+                    const countA = gameState.wrongWordCount[a.english] || 1;
+                    const countB = gameState.wrongWordCount[b.english] || 1;
+                    return countB - countA;
+                });
+                
+                const topWrongWords = sortedWrongWords.slice(0, Math.min(5, sortedWrongWords.length));
+                selectedWord = topWrongWords[Math.floor(Math.random() * topWrongWords.length)];
+                gameState.currentQuestion = selectedWord;
+                
+                if (gameState.wrongWordCount[selectedWord.english] === 0) {
+                    selectedWord = null;
+                }
+            }
+            
+            // 通常の問題選択
+            if (!selectedWord) {
+                let availableWords = wordData.filter(word => 
+                    word.level <= Math.min(Math.ceil(gameState.playerLevel / 10) + 1, 3)
+                );
+                
+                if (gameState.askedQuestions && gameState.askedQuestions.length < availableWords.length) {
+                    availableWords = availableWords.filter(word => 
+                        !gameState.askedQuestions.includes(word.english)
+                    );
+                } else if (gameState.askedQuestions) {
+                    gameState.askedQuestions = [];
+                }
+                
+                const questionIndex = Math.floor(Math.random() * availableWords.length);
+                gameState.currentQuestion = availableWords[questionIndex];
+            }
+            
+            // 出題済みリストに追加
+            if (!gameState.askedQuestions) {
+                gameState.askedQuestions = [];
+            }
+            gameState.askedQuestions.push(gameState.currentQuestion.english);
+            
+            // 問題表示
+            let displayText = gameState.currentQuestion.english;
+            if (gameState.wrongWordCount[gameState.currentQuestion.english] > 0) {
+                displayText += ' ⚠️';
+            }
+            document.getElementById('englishWord').textContent = displayText;
+            
+            // 選択肢を作成
+            createChoices();
+            
+            // 結果表示をクリア
+            const resultDisplay = document.getElementById('resultDisplay');
+            resultDisplay.textContent = '';
+            resultDisplay.className = 'result-display';
+            
+            // ボタンを非表示にする（重要！）
+            document.getElementById('quizActionButton').style.display = 'none';
+        }
+
+        // 選択肢作成
+        function createChoices() {
+            const correctAnswer = gameState.currentQuestion.japanese;
+            const choices = [correctAnswer];
+            
+            // 間違い選択肢を3つ追加
+            const otherWords = wordData.filter(word => 
+                word.japanese !== correctAnswer
+            );
+            
+            while (choices.length < 4) {
+                const randomIndex = Math.floor(Math.random() * otherWords.length);
+                const wrongChoice = otherWords[randomIndex].japanese;
+                if (!choices.includes(wrongChoice)) {
+                    choices.push(wrongChoice);
+                }
+            }
+            
+            // 選択肢をシャッフル
+            for (let i = choices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [choices[i], choices[j]] = [choices[j], choices[i]];
+            }
+            
+            // ボタンに選択肢を設定
+            const choiceButtons = document.querySelectorAll('.choice-button');
+            choiceButtons.forEach((button, index) => {
+                button.textContent = choices[index];
+                button.className = 'choice-button';
+                button.disabled = false;
+            });
+        }
+
+        // 答え合わせ（修正版）
+        function checkAnswer(choiceIndex) {
+            if (gameState.isAnswered) return;
+            
+            gameState.isAnswered = true;
+            gameState.totalQuestions++;
+            
+            const choiceButtons = document.querySelectorAll('.choice-button');
+            const selectedAnswer = choiceButtons[choiceIndex].textContent;
+            const correctAnswer = gameState.currentQuestion.japanese;
+            
+            // ボタンを無効化
+            choiceButtons.forEach(button => button.disabled = true);
+            
+            if (selectedAnswer === correctAnswer) {
+                // 正解処理
+                gameState.correctAnswers++;
+                gameState.combo++;
+                gameState.playerExp += 10 * gameState.combo;
+                
+                // 間違いリストから削除
+                if (gameState.wrongWordCount[gameState.currentQuestion.english] > 0) {
+                    gameState.wrongWordCount[gameState.currentQuestion.english] = 0;
+                    gameState.wrongWords = gameState.wrongWords.filter(word => 
+                        word.english !== gameState.currentQuestion.english
+                    );
+                    
+                    gameState.playerExp += 20;
+                    const resultDisplay = document.getElementById('resultDisplay');
+                    resultDisplay.textContent = '正解！苦手克服ボーナス+20EXP！';
+                    resultDisplay.className = 'result-display correct';
+                } else {
+                    choiceButtons[choiceIndex].classList.add('correct');
+                    const resultDisplay = document.getElementById('resultDisplay');
+                    resultDisplay.textContent = '正解！';
+                    resultDisplay.className = 'result-display correct';
+                }
+                
+                choiceButtons[choiceIndex].classList.add('correct');
+                
+                // レベルアップ判定
+                checkLevelUp();
+                
+                // エフェクト
+                createAttackEffect('⭐');
+                
+            } else {
+                // 不正解処理
+                gameState.combo = 0;
+                
+                // 間違えた単語を記録
+                const wrongWord = gameState.currentQuestion;
+                if (!gameState.wrongWordCount[wrongWord.english]) {
+                    gameState.wrongWordCount[wrongWord.english] = 0;
+                    gameState.wrongWords.push(wrongWord);
+                }
+                gameState.wrongWordCount[wrongWord.english]++;
+                
+                choiceButtons[choiceIndex].classList.add('wrong');
+                
+                // 正解を表示
+                choiceButtons.forEach((button, index) => {
+                    if (button.textContent === correctAnswer) {
+                        button.classList.add('correct');
+                    }
+                });
+                
+                const resultDisplay = document.getElementById('resultDisplay');
+                resultDisplay.textContent = `残念...正解は「${correctAnswer}」`;
+                resultDisplay.className = 'result-display wrong';
+            }
+            
+            updateQuizUI();
+            
+            // 魔王戦可能かチェック
+            if (gameState.playerLevel >= 10 && !gameState.canBattleBoss) {
+                gameState.canBattleBoss = true;
+            }
+            
+            // 次へボタンを表示して適切なテキストを設定
+            const actionButton = document.getElementById('quizActionButton');
+            actionButton.style.display = 'block';
+            
+            if (gameState.canBattleBoss && gameState.playerLevel >= 10) {
+                actionButton.textContent = '魔王に再戦する！';
+            } else {
+                actionButton.textContent = '次の問題へ';
+            }
+        }
+
+        // レベルアップ判定関数
+        function checkLevelUp() {
+            const expNeeded = gameState.playerLevel * 50;
+            if (gameState.playerExp >= expNeeded) {
+                levelUp();
+            }
+        }
+
+        // レベルアップ
+        function levelUp() {
+            gameState.playerLevel++;
+            gameState.playerExp = 0;
+            gameState.playerMaxHp += 50;
+            gameState.playerHp = gameState.playerMaxHp;
+            
+            // レベルアップ演出
+            createAttackEffect('🎉');
+            createAttackEffect('⬆️');
+            
+            const resultDisplay = document.getElementById('resultDisplay');
+            const currentText = resultDisplay.textContent;
+            resultDisplay.textContent = currentText + ` レベルアップ！Lv${gameState.playerLevel}`;
+            
+            // 特定レベルでの特別メッセージ
+            if (gameState.playerLevel === 10) {
+                setTimeout(() => {
+                    resultDisplay.textContent += ' 魔王戦解禁！';
+                }, 1000);
+            } else if (gameState.playerLevel === 50) {
+                setTimeout(() => {
+                    resultDisplay.textContent += ' 真の力が目覚めた！';
+                }, 1000);
+            } else if (gameState.playerLevel === 99) {
+                setTimeout(() => {
+                    resultDisplay.textContent += ' 最強の勇者になった！';
+                }, 1000);
+            }
+        }
+
+        // クイズアクション（修正版）
+        function quizAction() {
+            if (gameState.canBattleBoss && gameState.playerLevel >= 10) {
+                // 魔王戦へ
+                startFinalBattle();
+            } else {
+                // 次の問題
+                loadNewQuestion();
+            }
+        }
+
+        // 最終決戦
+        function startFinalBattle() {
+            gameState.screen = 'battle';
+            gameState.isFirstBattle = false;
+            gameState.playerHp = gameState.playerMaxHp;
+            gameState.enemyHp = gameState.enemyMaxHp;
+            showScreen('battleScreen');
+            updateBattleUI();
+            
+            if (gameState.playerLevel >= 50) {
+                showBattleMessage("勇者「魔王！今度こそ決着をつけよう！」");
+            } else {
+                showBattleMessage("勇者「魔王！今度こそ倒してみせる！」");
+            }
+            
+            setTimeout(() => {
+                if (gameState.playerLevel >= 80) {
+                    showBattleMessage("魔王「この力...まさか！！」");
+                } else {
+                    showBattleMessage("魔王「ほう...少しは強くなったようだな。だが無駄だ！」");
+                }
+            }, 2000);
+        }
+
+        // 音声再生
+        function playSound() {
+            if ('speechSynthesis' in window && gameState.currentQuestion) {
+                const utterance = new SpeechSynthesisUtterance(gameState.currentQuestion.english);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.8;
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        // ゲームクリア
+        function gameClear() {
+            if (gameState.playerLevel >= 80) {
+                showBattleMessage("魔王「バカな！この完璧な英語力...ぐわああああ！」");
+            } else {
+                showBattleMessage("魔王「バカな！英語の力がここまでとは...ぐわああああ！」");
+            }
+            setTimeout(() => {
+                showBattleMessage("勇者「やった！魔王を倒したぞ！」");
+                setTimeout(() => {
+                    document.getElementById('finalLevel').textContent = gameState.playerLevel;
+                    document.getElementById('correctCount').textContent = gameState.correctAnswers;
+                    showScreen('clearScreen');
+                }, 2000);
+            }, 2000);
+        }
+
+        // ゲームオーバー
+        function gameOver(message) {
+            document.getElementById('gameOverMessage').textContent = message;
+            showScreen('gameOverScreen');
+        }
+
+        // リトライ
+        function retryGame() {
+            startFinalBattle();
+        }
+
+        // 最初からやり直し
+        function restartGame() {
+            gameState = {
+                screen: 'title',
+                storyIndex: 0,
+                playerLevel: 1,
+                playerExp: 0,
+                playerMaxHp: 100,
+                playerHp: 100,
+                playerBasePower: 10,
+                enemyMaxHp: 1000000,
+                enemyHp: 1000000,
+                combo: 0,
+                correctAnswers: 0,
+                totalQuestions: 0,
+                isFirstBattle: true,
+                battlePhase: 'player',
+                currentQuestion: null,
+                isAnswered: false,
+                askedQuestions: [],
+                wrongWords: [],
+                wrongWordCount: {},
+                canBattleBoss: false
+            };
+            
+            showScreen('titleScreen');
+        }
+
+        // ページ読み込み時の初期化
+        window.addEventListener('DOMContentLoaded', function() {
+            if ('ontouchstart' in window) {
+                document.addEventListener('touchstart', function() {}, {passive: true});
+            }
+            
+            showScreen('titleScreen');
+        });
+    </script>

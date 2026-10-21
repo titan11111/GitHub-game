@@ -1,0 +1,31 @@
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hatGradient" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#48BB78"/>
+      <stop offset="1" stop-color="#2F855A"/>
+    </linearGradient>
+    <linearGradient id="clothesGradient" x1="50" y1="40" x2="50" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A0AEC0"/>
+      <stop offset="1" stop-color="#718096"/>
+    </linearGradient>
+  </defs>
+  <g id="view-down">
+    <path d="M30 40 Q50 35 70 40 L75 80 Q50 85 25 80 Z" fill="#2D3748"/>
+    <rect x="35" y="75" width="10" height="20" rx="3" fill="#4A5568"/>
+    <rect x="55" y="75" width="10" height="20" rx="3" fill="#4A5568"/>
+    <path d="M33 90 H47 V93 Q47 98 40 98 Q33 98 33 93 Z" fill="#744210"/>
+    <path d="M53 90 H67 V93 Q67 98 60 98 Q53 98 53 93 Z" fill="#744210"/>
+    <path d="M30 45 L70 45 L72 78 Q50 82 28 78 Z" fill="url(#clothesGradient)"/>
+    <rect x="29" y="65" width="42" height="6" fill="#744210"/>
+    <rect x="45" y="64" width="10" height="8" fill="#F6E05E" stroke="#B7791F" stroke-width="1"/>
+    <circle cx="50" cy="35" r="20" fill="#F6E05E"/>
+    <circle cx="50" cy="35" r="20" fill="#FBD38D"/>
+    <ellipse cx="43" cy="38" rx="2.5" ry="4" fill="#1A202C"/>
+    <ellipse cx="57" cy="38" rx="2.5" ry="4" fill="#1A202C"/>
+    <circle cx="38" cy="45" r="2.5" fill="#F687B3" opacity="0.6"/>
+    <circle cx="62" cy="45" r="2.5" fill="#F687B3" opacity="0.6"/>
+    <path d="M20 30 Q50 5 80 30 L90 35 Q50 25 10 35 Z" fill="url(#hatGradient)"/>
+    <path d="M30 30 Q50 0 70 30" fill="url(#hatGradient)"/>
+    <path d="M85 32 Q88 20 82 10 L80 12 L85 32" fill="#E53E3E"/>
+  </g>
+</svg>

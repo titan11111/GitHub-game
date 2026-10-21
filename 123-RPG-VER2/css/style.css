@@ -1,0 +1,3341 @@
+/* ========== iOS・レスポンシブ（縦横・モバイル対応） ==========
+ * - viewport-fit=cover + env(safe-area-inset-*) … ノッチ・ホームインジケータ余白（index.html の meta viewport とセット）
+ * - 100dvh … 縦/横どちらでもビューポートに合わせる（アドレスバー出し入れ対応）
+ * - touch-action: manipulation … body, #control-panel, ボタン（ダブルタップ拡大・遅延防止）
+ * - -webkit-tap-highlight-color: transparent … タップ時のハイライト削除
+ * - orientation: portrait | landscape … 戦闘UI・コントロール高さの切り替え
+ * - max-height: 700px/580px … 画面高さが短いときの戦闘レイアウト圧縮
+ * ======================================== */
+
+/* ========== テーマ変数（共通色・サイズ） ========== */
+:root {
+    --ff-bg-top: #00008b;
+    --ff-bg-bottom: #000044;
+    --ff-border: #eee;
+    --ff-shadow: rgba(0, 150, 255, 0.3);
+    --control-bg: #ccc;
+    --control-border: #666;  /* より濃い色で境界線を明確に */
+    --control-border-top: #666;  /* コントロールパネル上部の境界線色 */
+    --btn-bg: #444;
+    --btn-shadow: #000;
+    --max-content: 620px;
+    --game-control-divider: 6px;  /* ゲーム画面とコントロールパネルの境界線の太さ */
+}
+
+/* 全体設定（PCで左右中央がずれないよう html もリセット / iOS: 縦横で1画面に収める） */
+html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+    height: 100%;
+    /* iOS Safari: アドレスバー出し入れに合わせた高さ・横持ちでもはみ出し防止 */
+    min-height: 100dvh;
+    height: 100dvh;
+    box-sizing: border-box;
+    overflow: hidden;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    background-color: #000;
+    color: #fff;
+    font-family: 'MS Gothic', 'Courier New', monospace;
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100%;
+    height: 100dvh;  /* iOS: 縦/横どちらでもビューポートに合わせる */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    /* iOS Safari: ダブルタップ拡大・遅延防止 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ゲーム画面（上部）：PCで幅上限＋水平中央寄せ / iOS: 縦横で余白・ノッチ対応 */
+#game-container {
+    flex: 1 1 0;
+    width: 100%;
+    max-width: var(--max-content);
+    min-width: 0;
+    min-height: 0;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;  /* 下部に配置してステータスウィンドウとコントロールパネルの間の空白を削除 */
+    align-items: center;
+    position: relative;
+    overflow: hidden;  /* スクロールバーを使わない */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+    padding-bottom: 0;
+    box-sizing: border-box;
+    transition: background-color 0.5s ease;
+    /* コントロールパネルとの境界線を削除 */
+    border-bottom: none;
+    background-color: #000000;  /* デフォルト背景色（黒） */
+}
+
+/* PC: メイン画面では中央配置に戻す（ただしステータスが見えるように調整） */
+@media (min-width: 769px) {
+    #game-container.main-screen-active {
+        justify-content: center;  /* PC: 中央配置 */
+    }
+}
+
+/* ゲーム内画像：中央寄せ・はみ出し防止・アスペクト維持 */
+#game-container img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+    object-fit: contain;
+}
+
+/* タイトル画面の時だけoverflowをvisibleに */
+#game-container.start-screen-active {
+    overflow: visible;
+}
+
+
+/* フィールドごとの背景色調整 */
+#game-container.field-town_inside {
+    background: radial-gradient(ellipse at center, #3a2a1a 0%, #1a0a00 100%);
+}
+
+#game-container.field-green_field {
+    background: radial-gradient(ellipse at center, #1a3a1a 0%, #0a1a0a 100%);
+}
+
+#game-container.field-wasteland {
+    background: radial-gradient(ellipse at center, #2a1a0a 0%, #1a0a00 100%);
+}
+
+#game-container.field-lonely_desert {
+    background: radial-gradient(ellipse at center, #5a4a2a 0%, #3a2a0a 100%);
+}
+
+#game-container.field-lava_cave {
+    background: radial-gradient(ellipse at center, #2a0000 0%, #000000 100%);
+}
+
+#game-container.field-demon_castle {
+    background: radial-gradient(ellipse at center, #001a2a 0%, #000000 100%);
+}
+
+#game-container.field-ruined_village {
+    background: radial-gradient(ellipse at center, #1a1a1a 0%, #000000 100%);
+}
+
+#game-container.field-dark_forest {
+    background: radial-gradient(ellipse at center, #001a00 0%, #000000 100%);
+}
+
+#game-container.field-tropical_south {
+    background: radial-gradient(ellipse at center, #1a3a4a 0%, #0a2a3a 50%, #003030 100%);
+}
+
+#game-container.field-tropical_village {
+    background: radial-gradient(ellipse at center, #2a4a3a 0%, #1a3a2a 50%, #0a2a1a 100%);
+}
+
+#game-container.field-water_spirit_dwelling {
+    background: radial-gradient(ellipse at center, #0a2a3a 0%, #0a1a2a 50%, #001a2a 100%);
+}
+
+#game-container.field-monster_forest {
+    background: radial-gradient(ellipse at center, #0a1a0a 0%, #001a0a 50%, #000000 100%);
+}
+
+/* 壁から差し込む光（室内・町中などで窓から光が入る表現） */
+.light-through-wall {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    /* 左上の窓から差し込む光の筋を複数のグラデーションで表現 */
+    background:
+        linear-gradient(165deg, rgba(255, 248, 220, 0.22) 0%, transparent 35%),
+        linear-gradient(155deg, rgba(255, 250, 205, 0.18) 0%, transparent 40%),
+        linear-gradient(175deg, rgba(255, 245, 200, 0.14) 0%, transparent 45%);
+    opacity: 0.85;
+    mix-blend-mode: overlay;
+}
+
+/* 室内フィールドのときだけ光を表示 */
+#game-container.field-town_inside .light-through-wall,
+#game-container.field-tropical_village .light-through-wall {
+    display: block;
+}
+
+.screen {
+    display: none;
+    width: 100%;
+    max-width: var(--max-content);
+    text-align: center; 
+    padding: 10px; 
+    box-sizing: border-box; 
+    opacity: 0;
+    transition: opacity 0.3s ease-in;
+    position: relative;
+    overflow: visible;  /* PC: ステータスが見えるように visible に変更 */
+    margin: 0 auto;
+}
+
+/* PC: メイン画面のレイアウト最適化（スクロールバーを使わずに全要素を表示） */
+@media (min-width: 769px) {
+    #main-screen.active {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;  /* PC: 下部に配置してステータスウィンドウとコントロールパネルの間の空白を削除 */
+        padding: 4px 6px;  /* PC: パディングを最小限に */
+        padding-bottom: 0;  /* 下部パディングを0にしてコントロールパネルと密着 */
+        gap: 2px;  /* 要素間の間隔を最小限に */
+        overflow: visible;  /* スクロールバーを使わない */
+        flex-shrink: 1;  /* 必要に応じて縮小可能 */
+        min-height: 0;  /* flex子として縮小可能に */
+    }
+    
+    #main-screen .ff-window {
+        flex-shrink: 0;  /* 縮小しない */
+        padding: 4px 6px;  /* PC: パディングを小さく */
+        margin-bottom: 2px;
+    }
+    
+    #main-screen #map-grid {
+        flex-shrink: 0;
+        margin: 2px auto;  /* PC: マージンを小さく */
+    }
+    
+    /* ステータス表示を確実に表示 */
+    #main-screen .status-window {
+        flex-shrink: 0 !important;
+        display: block !important;  /* 確実に表示 */
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 100% !important;
+        margin-top: 4px !important;
+        margin-bottom: 0 !important;  /* 下部マージンを0にしてコントロールパネルと密着 */
+    }
+    
+    #main-screen #st-hp,
+    #main-screen #st-party {
+        font-size: 11px;  /* PC: フォントサイズをさらに小さく */
+        line-height: 1.2;
+        padding: 1px 3px;  /* PC: パディングを最小限に */
+        margin: 0;
+        display: block !important;  /* 確実に表示 */
+        visibility: visible !important;
+        color: #fff !important;  /* テキスト色を確実に */
+    }
+    
+    #main-screen #town-actions {
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+}
+
+/* 表示中は縦方向・中央揃えで戦闘/マップ/タイトルを統一 */
+.active { 
+    display: flex !important; 
+    flex-direction: column;
+    align-items: center;
+    opacity: 1;
+    margin: 0 auto;
+}
+
+#game-container > .screen.active {
+    flex: 0 1 auto;  /* 必要に応じて縮小可能に */
+    width: 100%;
+    max-width: var(--max-content);
+    margin-left: auto;
+    margin-right: auto;
+    min-height: 0;  /* flex子として縮小可能に */
+}
+
+/* メイン画面専用：全要素が確実に表示されるように */
+#game-container > #main-screen.active {
+    flex: 0 1 auto;  /* コンテンツに合わせた高さに */
+    max-height: none;  /* 高さ制限を解除 */
+    overflow: visible;  /* スクロールバーを使わない */
+    min-height: auto;  /* 最小高さを自動に */
+    margin-bottom: 0;  /* 下部マージンを0にしてコントロールパネルと密着 */
+}
+
+/* タイトル画面：シンプルな画像組み合わせレイアウト */
+#start-screen.active {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+    display: block !important;  /* .active の flex を上書き */
+    flex: 1 1 0;  /* flex子として画面全体を使う */
+    box-sizing: border-box;
+    /* スタックコンテキストを確立 */
+    isolation: isolate;
+}
+
+/* オープニング背景画像 - ディスプレイ全体に重なるように配置 */
+#start-screen .opening-background {
+    position: fixed;  /* 画面全体に固定 */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;  /* iOS Safari対応 */
+    object-fit: contain;  /* 画面全体に収まるようにアスペクト比を保ってリサイズ */
+    object-position: center center;
+    z-index: 1000;  /* コントロールパネル（z-index: 2000）より後ろ */
+    pointer-events: none;
+    display: block;
+}
+
+/* オープニング用キャラ画像（犬・猿・キジ） */
+#start-screen .opening-chara {
+    position: absolute;
+    display: block;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    pointer-events: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    z-index: 1001;  /* 背景画像（z-index: 1000）より前面、コントロールパネル（z-index: 2000）より後ろ */
+}
+
+/* 犬：左側、右を向いている - モックアップに合わせて位置とサイズを調整 */
+#start-screen .opening-chara-dog {
+    left: 8%;
+    bottom: calc(25% - 50px);  /* 50px下に移動 */
+    max-width: min(30vw, 150px);  /* モックアップに合わせたサイズ */
+    max-height: min(32vh, 170px);
+}
+
+/* 猿：右上、かがんで左を向いている - モックアップに合わせて位置とサイズを調整 */
+#start-screen .opening-chara-monkey {
+    right: 10%;
+    top: calc(35% + 50px);  /* 50px下に移動 */
+    max-width: min(26vw, 135px);  /* モックアップに合わせたサイズ */
+    max-height: min(28vh, 150px);
+}
+
+/* キジ：右下、羽を広げて飛んでいる - モックアップに合わせて位置とサイズを調整 */
+#start-screen .opening-chara-kiji {
+    right: 12%;
+    bottom: calc(20% - 50px);  /* 50px下に移動 */
+    max-width: min(34vw, 170px);  /* モックアップに合わせたサイズ */
+    max-height: min(32vh, 160px);
+}
+
+/* 戦闘画面への遷移をよりスムーズに */
+#battle-screen {
+    transition: opacity 0.2s ease-in;
+}
+
+/* 戦闘画面はコンテナ全体を使い、中央揃えを崩さない（敵画像・ログ・コマンドを収める） */
+#game-container > #battle-screen.active {
+    align-self: stretch;
+    height: 100%;
+    min-height: 0;
+}
+
+/* ウィンドウデザイン（FF風） */
+.ff-window {
+    background: linear-gradient(180deg, var(--ff-bg-top) 0%, var(--ff-bg-bottom) 100%);
+    border: 3px solid var(--ff-border);
+    border-radius: 8px;
+    box-shadow: inset 0 0 5px #000, 0 0 10px var(--ff-shadow);
+    padding: 10px;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.ff-window::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 5px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+/* カスタムダイアログ（iOS: 縦横どちらでも画面全体をカバー） */
+#custom-dialog-overlay {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100%;
+    background: rgba(0,0,0,0.7); 
+    display: none; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 1000; 
+    pointer-events: auto;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    box-sizing: border-box;
+}
+
+.dialog-content {
+    width: 85%;
+    max-width: 420px;
+    text-align: center;
+    background: linear-gradient(180deg, #0000bb 0%, var(--ff-bg-bottom) 100%);
+    border: 4px double var(--ff-border);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+/* ステータス画面オーバーレイ（Bボタンで表示/非表示） */
+.status-overlay {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    /* コントロールパネルの高さ分だけ下に余白を取る（重なりを防ぐ） */
+    height: calc(100vh - 220px);
+    height: calc(100dvh - 220px);
+    max-height: calc(100vh - 220px);
+    max-height: calc(100dvh - 220px);
+    background: rgba(0, 0, 0, 0.85); 
+    display: none; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 1500;  /* コントロールパネル（z-index: 2000）より下 */
+    pointer-events: auto;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) 0 env(safe-area-inset-left, 0);
+    padding-bottom: 0;  /* 下部パディングを0にしてコントロールパネルと重ならないように */
+    box-sizing: border-box;
+    animation: overlayFadeIn 0.2s ease-in;
+}
+
+.status-overlay-content {
+    width: 90%;
+    max-width: 500px;
+    max-height: 85vh;
+    max-height: 85dvh;
+    text-align: left;
+    background: linear-gradient(180deg, #0000bb 0%, var(--ff-bg-bottom) 100%);
+    border: 4px double var(--ff-border);
+    padding: 20px;
+    border-radius: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-shadow: 0 0 30px rgba(0, 150, 255, 0.5);
+}
+
+.status-overlay-content h2 {
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.status-overlay-content div {
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.status-overlay-content strong {
+    color: #ffff00;
+    font-weight: bold;
+}
+
+/* PC: ステータスオーバーレイの最適化 */
+@media (min-width: 769px) {
+    .status-overlay-content {
+        width: 500px;
+        max-width: 500px;
+        padding: 24px;
+    }
+    
+    .status-overlay-content div {
+        font-size: 15px;
+    }
+}
+
+@keyframes overlayFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* はい/いいえモーダル（#game-container 外・flex干渉防止 / iOS: 安全領域内に表示） */
+#yes-no-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    box-sizing: border-box;
+}
+#yes-no-modal-overlay .ff-window {
+    padding: 30px;
+    text-align: center;
+    max-width: 400px;
+}
+#yes-no-message {
+    margin-bottom: 30px;
+    font-size: 18px;
+    line-height: 1.6;
+}
+.yes-no-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+.yes-no-buttons button {
+    padding: 15px 30px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+#yes-button { background: #4CAF50; color: white; }
+#no-button { background: #f44336; color: white; }
+
+/* マップ（1.2倍表示：鳥など見やすく） */
+#map-grid {
+    display: grid; 
+    grid-template-columns: repeat(10, 9.6vw);  /* 8vw × 1.2 */
+    gap: 1px;
+    max-width: 384px;  /* 320px × 1.2 */
+    justify-content: center; 
+    margin: 10px auto;
+    background-color: #222; 
+    border: 2px solid #555;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+@media (min-width: 400px) {
+    #map-grid { 
+        grid-template-columns: repeat(10, 38.4px);  /* 32px × 1.2 */
+    }
+}
+
+/* 横向き（ランドスケープ）対応：パディングを広げて見やすく */
+@media (orientation: landscape) {
+    #control-panel {
+        height: 160px;  /* 横向き時の高さ */
+    }
+    
+    /* 横向きでも画面全体に表示（変更なし） */
+    
+    #battle-screen {
+        height: calc(100vh - 180px);   /* フォールバック: コントロールパネルの高さを引く（横向き160px + margin-top 20px） */
+        height: calc(100dvh - 180px);  /* iOS Safari: 動的ビューポート - コントロールパネル（横向き） */
+    }
+    
+    .pad-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    .circle-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 20px;
+    }
+    
+    #game-container {
+        padding-left: max(24px, env(safe-area-inset-left, 0));
+        padding-right: max(24px, env(safe-area-inset-right, 0));
+    }
+    
+    #map-grid {
+        max-width: 100%;
+    }
+}
+
+/* 縦向き（ポートレート）対応 */
+@media (orientation: portrait) {
+    #control-panel {
+        height: 200px;  /* 縦向き時の高さ */
+    }
+    
+    #battle-screen {
+        height: calc(100vh - 220px);   /* フォールバック: コントロールパネルの高さを引く（縦向き200px + margin-top 20px） */
+        height: calc(100dvh - 220px);  /* iOS Safari: 動的ビューポート - コントロールパネル（縦向き） */
+    }
+    
+    #game-container {
+        padding-left: env(safe-area-inset-left, 0);
+        padding-right: env(safe-area-inset-right, 0);
+    }
+}
+
+/* 横幅が狭い端末（iPhone SE 縦など）：横スクロール防止・コントロールを少し小さく */
+@media (max-width: 380px) {
+    #game-container {
+        padding-left: env(safe-area-inset-left, 0);
+        padding-right: env(safe-area-inset-right, 0);
+    }
+    .pad-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+    .circle-btn {
+        width: 58px;
+        height: 58px;
+        font-size: 20px;
+    }
+    #map-grid {
+        grid-template-columns: repeat(10, 8.8vw);
+        max-width: 100%;
+    }
+}
+
+/* モバイル・iOS：画面高さが短いとき戦闘レイアウトを圧縮（上下ログ・コマンド必ず見える） */
+@media (max-height: 700px) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(13px * 1.6 * 2 + 18px);  /* 最小高さ：2行分の高さを確保 */
+        max-height: none;
+        font-size: 13px;
+        padding: 9px 8px;
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 150px;
+        max-height: none;  /* 高さ制限を解除 */
+        padding: 4px 8px;
+        gap: 4px;
+    }
+    #battle-screen .monster-sprite {
+        font-size: min(100px, 18vw);
+    }
+    #battle-screen .monster-sprite img {
+        max-height: 100%;  /* 親要素に合わせる */
+    }
+    #battle-screen .enemy-area {
+        height: 45%;  /* モンスター画像：45% */
+        min-height: 100px;
+        max-height: none;
+    }
+    .command-box {
+        overflow-y: auto;  /* スクロール可能に */
+        max-height: calc((100dvh - 400px) * 0.7);  /* 戦闘画面の高さから敵エリアとログを引いた値の70% */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+    }
+    .status-box {
+        font-size: 11px;
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    .command-box li {
+        padding: 5px 4px;
+        font-size: 13px;
+    }
+}
+
+/* さらに縦が短い端末（iOS Plus等） */
+@media (max-height: 580px) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(12px * 1.6 * 2 + 16px);  /* 最小高さ：2行分の高さを確保 */
+        max-height: none;
+        font-size: 12px;
+        padding: 8px 6px;
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 130px;
+        max-height: none;  /* 高さ制限を解除 */
+    }
+    #battle-screen .monster-sprite {
+        font-size: min(72px, 14vw);
+    }
+    #battle-screen .monster-sprite img {
+        max-height: 100%;  /* 親要素に合わせる */
+    }
+    #battle-screen .enemy-area {
+        height: 30%;  /* モンスター画像：30% */
+        min-height: 80px;
+        max-height: none;
+    }
+    .command-box {
+        overflow-y: auto;  /* スクロール可能に */
+        max-height: calc((100dvh - 400px) * 0.7);  /* 戦闘画面の高さから敵エリアとログを引いた値の70% */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+    }
+    .status-box {
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    .command-box li {
+        padding: 4px 3px;
+        font-size: 12px;
+    }
+}
+
+/* 携帯・タッチ：画像が確実に映るようコンテナ最小サイズを確保 */
+@media (max-width: 768px) {
+    #battle-screen .monster-sprite {
+        min-height: 40px;
+    }
+    #battle-screen .monster-sprite img {
+        min-width: 16px;
+        min-height: 16px;
+    }
+    .cat-npc-container .cat-npc-frame {
+        min-width: 16px;
+        min-height: 16px;
+    }
+}
+
+/* フィールドごとの背景色と雰囲気 */
+#map-grid.field-town_inside {
+    background: linear-gradient(135deg, #3a2a1a 0%, #5a4a3a 100%);
+    border: 3px solid #d4a574;
+    box-shadow: 0 0 25px rgba(212, 165, 116, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+#map-grid.field-green_field {
+    background: linear-gradient(135deg, #1a3a1a 0%, #2a5a2a 100%);
+    border: 3px solid #4a8a4a;
+    box-shadow: 0 0 25px rgba(74, 138, 74, 0.4), inset 0 0 10px rgba(100, 200, 100, 0.1);
+}
+
+#map-grid.field-wasteland {
+    background: linear-gradient(135deg, #2a1a0a 0%, #4a3a2a 100%);
+    border: 3px solid #8a6a4a;
+    box-shadow: 0 0 25px rgba(138, 106, 74, 0.3), inset 0 0 10px rgba(100, 80, 60, 0.1);
+}
+
+#map-grid.field-lonely_desert {
+    background: linear-gradient(135deg, #5a4a2a 0%, #8a7a5a 100%);
+    border: 3px solid #d4b884;
+    box-shadow: 0 0 30px rgba(212, 184, 132, 0.5), inset 0 0 15px rgba(255, 240, 200, 0.2);
+}
+
+#map-grid.field-lava_cave {
+    background: linear-gradient(135deg, #2a0000 0%, #4a1a00 100%);
+    border: 3px solid #ff4400;
+    box-shadow: 0 0 35px rgba(255, 68, 0, 0.6), inset 0 0 20px rgba(255, 100, 0, 0.3);
+    animation: lavaGlow 3s ease-in-out infinite;
+}
+
+#map-grid.field-demon_castle {
+    background: linear-gradient(135deg, #001a2a 0%, #003a5a 100%);
+    border: 3px solid #4aa4ff;
+    box-shadow: 0 0 35px rgba(74, 164, 255, 0.6), inset 0 0 20px rgba(150, 220, 255, 0.3);
+    animation: waterFlow 4s ease-in-out infinite;
+}
+
+#map-grid.field-ruined_village {
+    background: linear-gradient(135deg, #1a1a1a 0%, #3a3a3a 100%);
+    border: 3px solid #6a6a6a;
+    box-shadow: 0 0 25px rgba(106, 106, 106, 0.4), inset 0 0 10px rgba(150, 150, 150, 0.1);
+}
+
+#map-grid.field-dark_forest {
+    background: linear-gradient(135deg, #001a00 0%, #003a1a 100%);
+    border: 3px solid #2a5a2a;
+    box-shadow: 0 0 25px rgba(42, 90, 42, 0.4), inset 0 0 10px rgba(50, 120, 50, 0.1);
+}
+
+#map-grid.field-tropical_south {
+    background: linear-gradient(135deg, #1a4a5a 0%, #2a6a7a 50%, #0a3a4a 100%);
+    border: 3px solid #4ab4c4;
+    box-shadow: 0 0 30px rgba(74, 180, 196, 0.5), inset 0 0 15px rgba(150, 220, 230, 0.2);
+}
+
+/* 南国フィールドのセルスタイル */
+.field-tropical_south .cell.plain,
+.field-tropical_south .cell[class*="plain"] { }
+.field-tropical_south .cell.wall {
+    background: linear-gradient(135deg, #2a5a6a 0%, #1a4a5a 100%);
+    border: 1px solid #3a6a7a;
+}
+.field-tropical_south .cell.sea {
+    background: linear-gradient(135deg, #1e90ff 0%, #0077be 50%, #005a8a 100%);
+    border: 1px solid #4ab4ff;
+    box-shadow: inset 0 0 15px rgba(100, 200, 255, 0.4);
+}
+.field-tropical_south .cell.palm {
+    background: linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%);
+    border: 1px solid #3d7a3d;
+}
+/* 南国は0=ビーチとしてplain扱いにするため、.cellにビーチ色をデフォルトで */
+.field-tropical_south .cell {
+    background: linear-gradient(135deg, #f4e4b4 0%, #e8d498 100%);
+    border: 1px solid #f8ecc8;
+}
+.field-tropical_south .cell.wall { background: linear-gradient(135deg, #2a5a6a 0%, #1a4a5a 100%); border-color: #3a6a7a; }
+.field-tropical_south .cell.sea { background: linear-gradient(135deg, #1e90ff 0%, #0077be 100%); border-color: #4ab4ff; }
+.field-tropical_south .cell.palm { background: linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%); border-color: #3d7a3d; }
+/* 橋（浜⇔村を繋ぐ） */
+.field-tropical_south .cell.bridge,
+.field-tropical_village .cell.bridge {
+    background: repeating-linear-gradient(90deg, #8B4513 0px, #8B4513 3px, #6d3410 3px, #6d3410 6px);
+    border: 1px solid #5d2a0a;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
+}
+/* 南国の浜・装飾タイル（上を通れる） */
+.field-tropical_south .cell.beach,
+.field-tropical_south .cell.hibiscus,
+.field-tropical_south .cell.coconut,
+.field-tropical_south .cell.mango {
+    background: linear-gradient(135deg, #f4e4b4 0%, #e8d498 100%);
+    border: 1px solid #f8ecc8;
+}
+
+#map-grid.field-tropical_village {
+    background: linear-gradient(135deg, #1a4a3a 0%, #2a6a5a 50%, #0a3a2a 100%);
+    border: 3px solid #4a9a6a;
+    box-shadow: 0 0 25px rgba(74, 154, 106, 0.5), inset 0 0 12px rgba(120, 200, 150, 0.2);
+}
+.field-tropical_village .cell {
+    background: linear-gradient(135deg, #e8d8a8 0%, #d4c490 100%);
+    border: 1px solid #eae0b0;
+}
+.field-tropical_village .cell.wall {
+    background: linear-gradient(135deg, #3a5a4a 0%, #2a4a3a 100%);
+    border-color: #4a6a5a;
+}
+.field-tropical_village .cell.palm {
+    background: linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%);
+    border-color: #3d7a3d;
+}
+
+/* 水の精霊のすみか */
+#map-grid.field-water_spirit_dwelling {
+    background: linear-gradient(135deg, #0a3a4a 0%, #1a5a6a 50%, #0a2a3a 100%);
+    border: 3px solid #4ab4d4;
+    box-shadow: 0 0 30px rgba(74, 180, 212, 0.5), inset 0 0 15px rgba(100, 220, 255, 0.15);
+}
+.field-water_spirit_dwelling .cell {
+    background: linear-gradient(135deg, #b8e0f0 0%, #88c0e0 100%);
+    border: 1px solid #a0d8f0;
+}
+.field-water_spirit_dwelling .cell.wall {
+    background: linear-gradient(135deg, #2a5a6a 0%, #1a4a5a 100%);
+    border-color: #3a6a7a;
+}
+/* 水の精霊のすみかへの入口：橋を通って入る */
+.field-water_spirit_dwelling .cell.bridge {
+    background: repeating-linear-gradient(90deg, #8B4513 0px, #8B4513 3px, #6d3410 3px, #6d3410 6px);
+    border: 1px solid #5d2a0a;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
+}
+.field-water_spirit_dwelling .cell.obj-water-spirit {
+    background: linear-gradient(135deg, #4ab4e0 0%, #2a94c0 100%);
+    border-color: #5ac4f0;
+    color: #fff;
+}
+
+/* 魔物の森（水の精霊で「森へ行く」を選ぶと東に出現） */
+#map-grid.field-monster_forest {
+    background: linear-gradient(135deg, #001a0a 0%, #003a1a 100%);
+    border: 3px solid #2a5a2a;
+    box-shadow: 0 0 25px rgba(42, 90, 42, 0.4), inset 0 0 10px rgba(50, 120, 50, 0.1);
+}
+.field-monster_forest .cell {
+    background: linear-gradient(135deg, #1a3a1a 0%, #0a2a0a 100%);
+    border: 1px solid #2a4a2a;
+}
+.field-monster_forest .cell.wall {
+    background: linear-gradient(135deg, #001a00 0%, #000a00 100%);
+    border-color: #0a2a0a;
+}
+.field-monster_forest .cell.forest {
+    background: linear-gradient(135deg, #2a6a2a 0%, #1a5a1a 100%);
+    border-color: #3a7a3a;
+}
+.field-monster_forest #area-title {
+    color: #228b22;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(34, 139, 34, 0.5);
+}
+
+/* 猫NPC（125-猫アニメの4コマアニメ） */
+.pixelated {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+.cat-npc-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cat-npc-bounce {
+    position: relative;
+    width: 80%;
+    height: 80%;
+    min-width: 24px;
+    min-height: 24px;
+}
+.cat-npc-container .cat-npc-frame {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    animation: cat-sprite-step 0.4s infinite;
+    display: block;
+}
+.cat-npc-container .cat-npc-f1 { animation-delay: 0s; }
+.cat-npc-container .cat-npc-f2 { animation-delay: 0.1s; }
+.cat-npc-container .cat-npc-f3 { animation-delay: 0.2s; }
+.cat-npc-container .cat-npc-f4 { animation-delay: 0.3s; }
+@keyframes cat-sprite-step {
+    0%, 24.9% { opacity: 1; }
+    25%, 100% { opacity: 0; }
+}
+
+/* フィールドごとのアニメーション */
+@keyframes lavaGlow {
+    0%, 100% {
+        box-shadow: 0 0 35px rgba(255, 68, 0, 0.6), inset 0 0 20px rgba(255, 100, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 45px rgba(255, 100, 0, 0.8), inset 0 0 25px rgba(255, 150, 50, 0.5);
+    }
+}
+
+@keyframes waterFlow {
+    0%, 100% {
+        box-shadow: 0 0 35px rgba(74, 164, 255, 0.6), inset 0 0 20px rgba(150, 220, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 45px rgba(100, 200, 255, 0.8), inset 0 0 25px rgba(180, 240, 255, 0.5);
+    }
+}
+
+.cell {
+    width: 100%;
+    aspect-ratio: 1/1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 18px;
+    line-height: 1;
+    position: relative;
+    transition: transform 0.1s ease, box-shadow 0.2s ease;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8), 0 0 3px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    border-radius: 2px;
+}
+
+/* 街（town_inside）のセルスタイル */
+.field-town_inside .cell.wall { 
+    background: linear-gradient(135deg, #3a2a1a 0%, #5a4a3a 100%);
+    border: 1px solid #6a5a4a;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.field-town_inside .cell.plain { 
+    background: linear-gradient(135deg, #f4d5a4 0%, #e4c584 100%);
+    border: 1px solid #f4e5b4;
+    box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.4);
+}
+
+/* 平原（green_field）のセルスタイル */
+.field-green_field .cell.plain { 
+    background: linear-gradient(135deg, #6aaa6a 0%, #5a9a5a 100%);
+    border: 1px solid #7aba7a;
+    box-shadow: inset 0 0 8px rgba(150, 250, 150, 0.4), 0 1px 2px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.field-green_field .cell.plain::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(150, 250, 150, 0.4) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.field-green_field .cell.wall { 
+    background: linear-gradient(135deg, #1a4a1a 0%, #0a3a0a 100%);
+    border: 1px solid #2a5a2a;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+/* 荒野（wasteland）のセルスタイル */
+.field-wasteland .cell.wasteland { 
+    background: linear-gradient(135deg, #8a7a6a 0%, #7a6a5a 100%);
+    border: 1px solid #9a8a7a;
+    box-shadow: inset 0 0 10px rgba(200, 180, 160, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.field-wasteland .cell.wasteland::after {
+    content: '';
+    position: absolute;
+    top: 20%;
+    left: 20%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(ellipse, rgba(150, 130, 110, 0.5) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.field-wasteland .cell.wall { 
+    background: linear-gradient(135deg, #2a1a0a 0%, #1a0a00 100%);
+    border: 1px solid #3a2a1a;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.7);
+}
+
+/* 砂漠（lonely_desert）のセルスタイル */
+.field-lonely_desert .cell.desert { 
+    background: linear-gradient(135deg, #f4e4b4 0%, #e4d4a4 100%);
+    border: 1px solid #f4f4c4;
+    box-shadow: inset 0 0 8px rgba(255, 250, 230, 0.5), 0 1px 3px rgba(220, 200, 170, 0.2);
+    position: relative;
+    animation: sandShimmer 4s ease-in-out infinite;
+}
+
+.field-lonely_desert .cell.desert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
+    animation: sandWave 3s ease-in-out infinite;
+}
+
+.field-lonely_desert .cell.wall { 
+    background: linear-gradient(135deg, #7a6a4a 0%, #6a5a3a 100%);
+    border: 1px solid #8a7a5a;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes sandShimmer {
+    0%, 100% {
+        background: linear-gradient(135deg, #f4e4b4 0%, #e4d4a4 100%);
+    }
+    50% {
+        background: linear-gradient(135deg, #f4f4c4 0%, #f4e4b4 100%);
+    }
+}
+
+@keyframes sandWave {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 200%;
+    }
+}
+
+/* 火の洞窟（lava_cave）のセルスタイル */
+.field-lava_cave .cell.lava { 
+    background: linear-gradient(135deg, #ff8844 0%, #ff6622 100%);
+    border: 1px solid #ffaa66;
+    box-shadow: 0 0 20px rgba(255, 136, 68, 0.9), inset 0 0 15px rgba(255, 200, 100, 0.7);
+    position: relative;
+    animation: lavaFlicker 2s ease-in-out infinite;
+}
+
+.field-lava_cave .cell.lava::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 240, 150, 0.5) 0%, transparent 60%);
+    animation: lavaPulse 1.5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.field-lava_cave .cell.wall { 
+    background: linear-gradient(135deg, #3a0a00 0%, #1a0000 100%);
+    border: 1px solid #5a1a00;
+    box-shadow: inset 0 0 12px rgba(255, 68, 0, 0.4), 0 0 8px rgba(255, 100, 0, 0.3);
+}
+
+@keyframes lavaFlicker {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(255, 136, 68, 0.9), inset 0 0 15px rgba(255, 200, 100, 0.7);
+        background: linear-gradient(135deg, #ff8844 0%, #ff6622 100%);
+    }
+    25% {
+        box-shadow: 0 0 25px rgba(255, 150, 100, 1), inset 0 0 20px rgba(255, 240, 150, 0.8);
+        background: linear-gradient(135deg, #ffaa66 0%, #ff8844 100%);
+    }
+    50% {
+        box-shadow: 0 0 22px rgba(255, 136, 68, 1), inset 0 0 17px rgba(255, 200, 100, 0.8);
+        background: linear-gradient(135deg, #ff9955 0%, #ff7733 100%);
+    }
+    75% {
+        box-shadow: 0 0 27px rgba(255, 170, 120, 1), inset 0 0 21px rgba(255, 220, 180, 0.9);
+        background: linear-gradient(135deg, #ffbb77 0%, #ff9955 100%);
+    }
+}
+
+@keyframes lavaPulse {
+    0%, 100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
+/* 水の山（demon_castle）のセルスタイル */
+.field-demon_castle .cell.mountain { 
+    background: linear-gradient(135deg, #6ac4ff 0%, #4aa4ef 100%);
+    border: 1px solid #8ae4ff;
+    box-shadow: 0 0 20px rgba(106, 196, 255, 0.9), inset 0 0 15px rgba(180, 240, 255, 0.7);
+    position: relative;
+    animation: waterRipple 3s ease-in-out infinite;
+}
+
+.field-demon_castle .cell.mountain::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(220, 250, 255, 0.6) 0%, transparent 60%);
+    animation: waterShimmer 2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.field-demon_castle .cell.mountain::after {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 80%;
+    height: 80%;
+    border: 1px solid rgba(180, 240, 255, 0.5);
+    border-radius: 50%;
+    animation: waterRing 2s ease-out infinite;
+    pointer-events: none;
+}
+
+.field-demon_castle .cell.wall { 
+    background: linear-gradient(135deg, #002a4a 0%, #001a1a 100%);
+    border: 1px solid #003a6a;
+    box-shadow: inset 0 0 12px rgba(74, 164, 255, 0.4), 0 0 8px rgba(100, 200, 255, 0.3);
+}
+
+@keyframes waterRipple {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(106, 196, 255, 0.9), inset 0 0 15px rgba(180, 240, 255, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(130, 220, 255, 1), inset 0 0 20px rgba(200, 250, 255, 0.8);
+    }
+}
+
+@keyframes waterShimmer {
+    0%, 100% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+@keyframes waterRing {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1.2);
+        opacity: 0;
+    }
+}
+
+/* かつての村（ruined_village）のセルスタイル */
+.field-ruined_village .cell.ruins { 
+    background: linear-gradient(135deg, #6a6a6a 0%, #5a5a5a 100%);
+    border: 1px solid #7a7a7a;
+    box-shadow: inset 0 0 10px rgba(200, 200, 200, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.field-ruined_village .cell.ruins::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.05) 2px,
+        rgba(0, 0, 0, 0.05) 4px
+    );
+    pointer-events: none;
+}
+
+.field-ruined_village .cell.wall { 
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+    border: 1px solid #2a2a2a;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+}
+
+/* かつての村・装飾タイル（上を通れる） */
+.field-ruined_village .cell.coffin,
+.field-ruined_village .cell.cobweb,
+.field-ruined_village .cell.candle {
+    background: linear-gradient(135deg, #6a6a6a 0%, #5a5a5a 100%);
+    border: 1px solid #7a7a7a;
+    box-shadow: inset 0 0 10px rgba(200, 200, 200, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* 迷いの森（dark_forest）のセルスタイル */
+.field-dark_forest .cell.forest { 
+    background: linear-gradient(135deg, #2a6a2a 0%, #1a5a1a 100%);
+    border: 1px solid #3a7a3a;
+    box-shadow: inset 0 0 10px rgba(50, 150, 50, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+    position: relative;
+}
+
+.field-dark_forest .cell.forest::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at 30% 30%, rgba(50, 100, 50, 0.4) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.field-dark_forest .cell.wall { 
+    background: linear-gradient(135deg, #001a00 0%, #000a00 100%);
+    border: 1px solid #0a2a0a;
+    box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.9);
+}
+
+/* 共通のセルスタイル */
+.cell.wall { 
+    background: linear-gradient(135deg, #333 0%, #222 100%);
+    border: 1px solid #444;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.cell.plain { 
+    background: linear-gradient(135deg, #2e8b57 0%, #1e6b37 100%);
+    border: 1px solid #3e9b67;
+    box-shadow: inset 0 0 3px rgba(100, 200, 100, 0.2);
+}
+
+.cell.forest { 
+    background: linear-gradient(135deg, #004d00 0%, #003300 100%);
+    border: 1px solid #005d00;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
+}
+
+.cell.lava { 
+    background: linear-gradient(135deg, #8b0000 0%, #6b0000 100%);
+    border: 1px solid #ab0000;
+    box-shadow: 0 0 10px rgba(255, 68, 0, 0.6);
+}
+
+.cell.mountain { 
+    background: linear-gradient(135deg, #4b3621 0%, #3b2611 100%);
+    border: 1px solid #5b4631;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
+}
+
+.cell.wasteland { 
+    background: linear-gradient(135deg, #554433 0%, #453323 100%);
+    border: 1px solid #655443;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.cell.desert { 
+    background: linear-gradient(135deg, #c2b280 0%, #a29260 100%);
+    border: 1px solid #d2c290;
+    box-shadow: inset 0 0 3px rgba(255, 240, 200, 0.3);
+}
+
+.cell.ruins { 
+    background: linear-gradient(135deg, #444 0%, #333 100%);
+    border: 1px solid #555;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.6);
+}
+
+.cell.hero { 
+    background: transparent;
+    border-radius: 0; 
+    color: #000;
+    z-index: 5;
+    box-shadow: none;
+    border: none;
+    animation: none;
+    overflow: visible;
+}
+
+/* 主人公SVGコンテナ（参考HTMLの動作に合わせる）・携帯で確実に表示 */
+.hero-svg-container {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+    transition: transform 0.1s;
+    position: relative;
+}
+
+/* アニメーション用の内側コンテナ（参考HTMLのanimatingクラス） */
+.hero-animating {
+    width: 100%;
+    height: 100%;
+    animation: heroBob 0.8s infinite ease-in-out;
+}
+
+.hero-svg {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* 主人公のアニメーション（上下に軽く揺れる - 参考HTMLのbobアニメーション） */
+@keyframes heroBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+/* 犬のSVGアニメーション・携帯で確実に表示 */
+.dog-svg {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3));
+}
+
+/* しっぽのアニメーション */
+.dog-svg path.tail {
+    animation: wag 0.5s infinite ease-in-out;
+}
+
+@keyframes wag {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(10deg); }
+    75% { transform: rotate(-10deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* 猿のSVGアニメーション・携帯で確実に表示 */
+.monkey-svg {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3));
+}
+
+/* きじのSVGアニメーション・携帯で確実に表示 */
+.bird-svg {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3));
+    image-rendering: pixelated;
+    shape-rendering: crispEdges;
+}
+
+@keyframes heroGlow {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 235, 0, 1), inset 0 0 15px rgba(255, 255, 255, 0.5);
+    }
+}
+
+/* オブジェクトの視覚的強化 */
+.cell.obj-enemy {
+    filter: drop-shadow(0 0 5px rgba(255, 0, 255, 0.8));
+    animation: enemyPulse 2s ease-in-out infinite;
+}
+
+.cell.obj-treasure {
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.9));
+    animation: treasureGlow 2s ease-in-out infinite;
+}
+
+.cell.obj-castle {
+    filter: drop-shadow(0 0 10px rgba(200, 200, 255, 0.8));
+    font-size: 1.2em;  /* 城を1.2倍表示 */
+}
+
+.cell.obj-boss {
+    filter: drop-shadow(0 0 12px rgba(255, 0, 0, 1));
+    animation: bossPulse 1.5s ease-in-out infinite;
+}
+
+.cell.obj-shop {
+    filter: drop-shadow(0 0 8px rgba(255, 200, 100, 0.8));
+}
+
+.cell.obj-door {
+    filter: drop-shadow(0 0 8px rgba(200, 200, 200, 0.8));
+    animation: doorGlow 3s ease-in-out infinite;
+}
+
+.cell.obj-ghost {
+    filter: drop-shadow(0 0 10px rgba(200, 200, 255, 0.9));
+    animation: ghostFloat 3s ease-in-out infinite;
+}
+
+.cell.obj-momo {
+    filter: drop-shadow(0 0 8px rgba(255, 150, 150, 0.8));
+    animation: momoGlow 2s ease-in-out infinite;
+}
+
+.cell.obj-npc {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 200, 0.7));
+}
+
+.cell.obj-ally {
+    filter: drop-shadow(0 0 6px rgba(255, 220, 150, 0.7));
+}
+
+.cell.obj-village-entrance {
+    filter: drop-shadow(0 0 8px rgba(150, 100, 50, 0.8));
+}
+
+.cell.obj-golden-cat {
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1));
+    animation: goldenCatGlow 2s ease-in-out infinite;
+    font-size: 1.5em;
+    overflow: visible;
+}
+.cell.obj-golden-cat .golden-cat-svg-container {
+    transform: scale(1.2);  /* 金色の🐈を1.2倍表示 */
+}
+
+@keyframes goldenCatGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1)) brightness(1);
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 25px rgba(255, 235, 0, 1)) brightness(1.2);
+        transform: scale(1.1);
+    }
+}
+
+@keyframes enemyPulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 5px rgba(255, 0, 255, 0.8));
+    }
+    50% {
+        transform: scale(1.05);
+        filter: drop-shadow(0 0 8px rgba(255, 50, 255, 1));
+    }
+}
+
+@keyframes treasureGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.9));
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 255, 100, 1));
+        transform: scale(1.08);
+    }
+}
+
+@keyframes bossPulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 12px rgba(255, 0, 0, 1));
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 18px rgba(255, 50, 50, 1));
+        transform: scale(1.1);
+    }
+}
+
+@keyframes doorGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(200, 200, 200, 0.8));
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 255, 255, 1));
+    }
+}
+
+@keyframes ghostFloat {
+    0%, 100% {
+        transform: translateY(0);
+        filter: drop-shadow(0 0 10px rgba(200, 200, 255, 0.9));
+    }
+    50% {
+        transform: translateY(-3px);
+        filter: drop-shadow(0 0 15px rgba(220, 220, 255, 1));
+    }
+}
+
+@keyframes momoGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(255, 150, 150, 0.8));
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 200, 200, 1));
+    }
+}
+
+/* セルのホバーエフェクト（PC用） */
+@media (hover: hover) {
+    .cell:not(.hero):hover {
+        transform: scale(1.1);
+        z-index: 3;
+        transition: transform 0.2s ease, z-index 0s;
+    }
+}
+
+@media (min-width: 400px) {
+    .cell {
+        font-size: 20px;
+    }
+}
+
+/* フィールドごとのセル基本スタイル調整 */
+.field-town_inside .cell {
+    border-radius: 3px;
+}
+
+.field-green_field .cell {
+    border-radius: 2px;
+}
+
+.field-wasteland .cell {
+    border-radius: 1px;
+}
+
+.field-lonely_desert .cell {
+    border-radius: 2px;
+}
+
+.field-lava_cave .cell {
+    border-radius: 3px;
+}
+
+.field-demon_castle .cell {
+    border-radius: 4px;
+}
+
+.field-ruined_village .cell {
+    border-radius: 1px;
+}
+
+.field-dark_forest .cell {
+    border-radius: 2px;
+}
+
+.field-tropical_south .cell {
+    border-radius: 3px;
+}
+
+.field-tropical_village .cell {
+    border-radius: 3px;
+}
+
+.field-water_spirit_dwelling .cell {
+    border-radius: 3px;
+}
+
+.field-monster_forest .cell {
+    border-radius: 2px;
+}
+
+/* エリアタイトルのスタイル強化 */
+#area-title {
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    padding: 8px;
+    transition: all 0.3s ease;
+}
+
+/* フィールドごとのエリアタイトルスタイル */
+.field-town_inside #area-title {
+    color: #ffd4a3;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 212, 163, 0.5);
+}
+
+.field-green_field #area-title {
+    color: #90ee90;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(144, 238, 144, 0.5);
+}
+
+.field-wasteland #area-title {
+    color: #d2b48c;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(210, 180, 140, 0.4);
+}
+
+.field-lonely_desert #area-title {
+    color: #f4a460;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(244, 164, 96, 0.6);
+}
+
+.field-lava_cave #area-title {
+    color: #ff6347;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 99, 71, 0.8);
+    animation: titleFireGlow 2s ease-in-out infinite;
+}
+
+.field-demon_castle #area-title {
+    color: #87ceeb;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(135, 206, 235, 0.8);
+    animation: titleWaterGlow 3s ease-in-out infinite;
+}
+
+.field-ruined_village #area-title {
+    color: #c0c0c0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(192, 192, 192, 0.5);
+}
+
+.field-dark_forest #area-title {
+    color: #228b22;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(34, 139, 34, 0.5);
+}
+
+.field-tropical_south #area-title {
+    color: #7fffd4;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(127, 255, 212, 0.6);
+}
+
+.field-tropical_village #area-title {
+    color: #98fb98;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(152, 251, 152, 0.6);
+}
+
+.field-water_spirit_dwelling #area-title {
+    color: #87ceeb;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(135, 206, 235, 0.6);
+}
+
+@keyframes titleFireGlow {
+    0%, 100% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 99, 71, 0.8);
+    }
+    50% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 150, 100, 1);
+    }
+}
+
+@keyframes titleWaterGlow {
+    0%, 100% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(135, 206, 235, 0.8);
+    }
+    50% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 30px rgba(150, 220, 255, 1);
+    }
+}
+
+/* 戦闘画面：iOS Safari対応で敵画像スペースを確保（ブラウザのアドレスバー表示/非表示に合わせて dvh 使用） */
+/* 比率固定：戦闘ログ10%、モンスター画像45%、戦闘UI45%、コントロールパネル15% */
+/* 戦闘画面内の3ブロック（戦闘ログ、モンスター画像、戦闘UI）の合計が100%で、コントロールパネルが15% */
+/* iOS: 戦闘画面ではコントロールパネルが非表示になるため、画面全体を使用可能 */
+#battle-screen { 
+    position: relative; 
+    width: 100%; 
+    height: 100%;
+    height: 100vh;   /* フォールバック: コントロールパネルが非表示のため画面全体を使用 */
+    height: 100dvh;  /* iOS Safari: 動的ビューポート - コントロールパネルが非表示のため画面全体を使用 */
+    background-color: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;  /* 上から順に配置 */
+    overflow: hidden;
+    /* iOS: 安全領域を考慮したパディング */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    box-sizing: border-box;
+}
+
+#battle-screen .enemy-area { 
+    height: 45%;  /* モンスター画像エリア：45% */
+    min-height: 200px;  /* iOS: 敵画像が切れないよう最小高さを確保 */
+    max-height: none;  /* 最大高さ制限を解除 */
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    flex-direction: column;
+    overflow: visible;  /* iOS: 魔法エフェクトが見切れないように visible に変更 */
+    padding: 12px 8px;  /* 上下に余白を追加（より広く） */
+    box-sizing: border-box;
+    position: relative;
+    flex-shrink: 0;  /* 縮小しない */
+    /* iOS: レンダリング最適化（魔法エフェクト表示用） */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+#battle-screen #monster-name {
+    flex-shrink: 0;
+    padding: 6px 0 4px 0;
+    z-index: 10;  /* 敵画像の上に表示 */
+    font-size: 18px;  /* iOS: フォントサイズを大きく */
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(255, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.5);  /* 背景を追加して視認性向上 */
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+#battle-screen .enemy-hp-bar {
+    flex-shrink: 0;
+    padding: 4px 0;
+    z-index: 10;  /* 敵画像の上に表示 */
+    margin-top: 4px;
+}
+
+#battle-screen .monster-sprite { 
+    flex: 1 1 auto;
+    min-height: 140px;  /* iOS: 最小高さをさらに増加 */
+    max-height: calc(100dvh - 380px);  /* ログ、UI、敵名、HPバーのスペースを確保 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    overflow: visible;  /* 画像が切れないように visible に変更 */
+    font-size: min(160px, 20vw);
+    text-shadow: 0 0 15px rgba(255,0,0,0.5);
+    position: relative;
+    /* iOS: 画像が確実に表示されるように余白を確保 */
+    padding: 8px 0;
+}
+
+/* 戦闘画面の敵画像：親コンテナに合わせて表示（iOS Safari で潰れないよう min/max は .monster-sprite で確保） */
+#battle-screen .monster-sprite img {
+    display: block !important;  /* iOS: 確実に表示 */
+    max-width: 85%;  /* 左右に余白を確保（より広く） */
+    max-height: calc(100dvh - 400px);  /* 確実に表示されるよう計算 */
+    width: auto;
+    height: auto;
+    min-width: 100px;  /* 最小サイズを確保（より大きく） */
+    min-height: 100px;
+    object-fit: contain;  /* アスペクト比を維持して全体を表示 */
+    object-position: center center;  /* 中央配置 */
+    /* iOS: 画像が確実に表示されるように */
+    -webkit-user-select: none;
+    user-select: none;
+    pointer-events: none;
+    /* iOS: 画像の品質を保持 */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    /* iOS: 画像の読み込みを確実にする */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    /* iOS: 画像が確実に表示されるように visibility を明示 */
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#battle-screen .battle-ui { 
+    display: flex; 
+    width: 100%;
+    height: 45%;  /* 戦闘UI：45% */
+    min-height: 180px;  /* 最小高さを確保 */
+    max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限して見切れを防止 */
+    gap: 8px; 
+    padding: 6px 10px; 
+    padding-bottom: 6px;  /* 下部パディングを調整 */
+    flex-shrink: 0;  /* 縮小しない */
+    box-sizing: border-box;
+    align-items: stretch;  /* iOS: 子要素を均等に伸ばして見切れを防止 */
+    position: relative;  /* 子要素の%指定の基準にする */
+    overflow: hidden;  /* iOS: はみ出しを防止 */
+}
+
+.command-box { 
+    flex: 0 1 42%;
+    min-width: 0;
+    text-align: left; 
+    overflow: hidden;  /* iOS: スクロールを無効化、はみ出しを防止 */
+    min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+    max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+    display: flex;
+    flex-direction: column;
+    padding: 2px;  /* iOS: パディングを最小限に */
+    align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+    box-sizing: border-box;  /* iOS: パディングを含めた高さ計算 */
+}
+
+.command-box ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    flex: 1;  /* 利用可能なスペースを使用 */
+    min-height: 0;
+}
+
+/* スクロールバーのスタイル（WebKit系） */
+.command-box::-webkit-scrollbar,
+.status-box::-webkit-scrollbar,
+#battle-log::-webkit-scrollbar {
+    width: 4px;
+}
+
+.command-box::-webkit-scrollbar-track,
+.status-box::-webkit-scrollbar-track,
+#battle-log::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.command-box::-webkit-scrollbar-thumb,
+.status-box::-webkit-scrollbar-thumb,
+#battle-log::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+.command-box::-webkit-scrollbar-thumb:hover,
+.status-box::-webkit-scrollbar-thumb:hover,
+#battle-log::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* 魔法リストもコマンドリストと同じスタイルを適用 */
+#magic-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#magic-list li {
+    padding: 12px 10px;
+    font-size: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    position: relative;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);
+    touch-action: manipulation;
+    border-radius: 4px;
+    margin: 2px 0;
+}
+
+#magic-list li:hover {
+    background-color: rgba(255,255,255,0.15);
+    transform: translateX(2px);
+}
+
+#magic-list li.selected {
+    background-color: rgba(0, 255, 255, 0.2) !important;
+    border-left: 5px solid #00ffff !important;
+    box-shadow: 
+        inset 0 0 15px rgba(0, 255, 255, 0.4),
+        0 0 10px rgba(0, 255, 255, 0.3);
+    font-weight: bold;
+    color: #ffffff;
+    transform: translateX(4px);
+}
+
+#magic-list li:active {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    transform: scale(0.98);
+}
+
+.command-box li { 
+    padding: 4px 4px;  /* iOS: パディングを最小限に */
+    font-size: 13px;  /* iOS: フォントサイズを小さく */
+    border-bottom: 1px solid rgba(255,255,255,0.15); 
+    list-style: none; 
+    position: relative;
+    transition: all 0.2s ease;  /* すべてのプロパティにトランジション */
+    cursor: pointer;
+    /* iOS: タップ領域を確保しつつ、画面内に収める */
+    min-height: 32px;  /* iOS: 最小タップ領域を少し小さく */
+    flex: 1 1 0;  /* iOS: 均等に配置して4つのコマンドが全て表示されるように（flex-basis: 0で均等分割） */
+    display: flex;
+    align-items: center;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);  /* タップ時のハイライトを強化 */
+    touch-action: manipulation;
+    border-radius: 4px;  /* 角を丸く */
+    margin: 0;  /* iOS: 上下の余白を削除 */
+}
+
+.command-box li:hover {
+    background-color: rgba(255,255,255,0.15);
+    transform: translateX(2px);  /* ホバー時に少し右に移動 */
+}
+
+/* 選択中のコマンド：視認性を大幅に向上（クラスベースで確実に適用） */
+.command-box li.selected,
+.command-box li[style*="background-color: rgba(255, 255, 255, 0.1)"] {
+    background-color: rgba(0, 255, 255, 0.2) !important;  /* シアン系の背景色 */
+    border-left: 5px solid #00ffff !important;  /* 左側にシアンの太い枠線 */
+    box-shadow: 
+        inset 0 0 15px rgba(0, 255, 255, 0.4),  /* 内側に光る効果 */
+        0 0 10px rgba(0, 255, 255, 0.3);  /* 外側にも光る効果 */
+    font-weight: bold;  /* 太字で強調 */
+    color: #ffffff;  /* テキストを白に */
+    transform: translateX(4px);  /* 選択時に右に移動 */
+}
+
+/* タッチ時のフィードバック */
+.command-box li:active {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    transform: scale(0.98);  /* タッチ時に少し縮小 */
+}
+
+/* FF風カーソルアニメーション */
+.command-cursor {
+    animation: cursorBlink 1s infinite;
+    color: #00ffff;  /* シアン色で目立たせる */
+    font-size: 1.2em;  /* カーソルを少し大きく */
+    margin-right: 4px;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.8);  /* 光る効果 */
+}
+
+@keyframes cursorBlink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+}
+
+.status-box { 
+    flex: 1;
+    min-width: 0;
+    text-align: left; 
+    font-size: 10px;  /* iOS: フォントサイズを小さくして画面内に収める */
+    overflow: hidden;  /* iOS: スクロールを無効化、はみ出しを防止 */
+    max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+    display: grid;  /* 2×2グリッドレイアウト */
+    grid-template-columns: 1fr 1fr;  /* 2列 */
+    grid-template-rows: 1fr 1fr;  /* 2行 */
+    gap: 4px;  /* iOS: グリッド間の間隔を小さく */
+    padding: 6px;  /* iOS: パディングを小さく */
+    box-sizing: border-box;  /* iOS: パディングを含めた高さ計算 */
+    /* コマンドボックスと同じ高さになるように */
+    align-self: stretch;
+}
+
+/* パーティメンバーのカードスタイル */
+.party-member-card {
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.8) 0%, rgba(30, 64, 175, 0.8) 100%);
+    border: 2px solid rgba(74, 144, 226, 0.6);
+    border-radius: 6px;
+    padding: 4px;  /* iOS: パディングを小さく */
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.party-member-name {
+    font-size: 11px;  /* iOS: フォントサイズを小さく */
+    font-weight: bold;
+    margin-bottom: 2px;  /* iOS: マージンを小さく */
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.party-member-lv {
+    font-size: 9px;  /* iOS: フォントサイズを小さく */
+    color: #ffd700;
+    margin-bottom: 2px;  /* iOS: マージンを小さく */
+}
+
+.stat-row {
+    font-size: 8px;  /* iOS: フォントサイズを小さく */
+    margin-bottom: 1px;  /* iOS: マージンを小さく */
+    display: flex;
+    justify-content: space-between;
+}
+
+.stat-label {
+    color: #aaa;
+}
+
+.stat-value {
+    color: #fff;
+    font-weight: bold;
+}
+
+.hp-value {
+    color: #00ff00;
+}
+
+.mp-value {
+    color: #00bfff;
+}
+
+.mini-bar {
+    height: 3px;  /* iOS: 高さを小さく */
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 1px;  /* iOS: マージンを小さく */
+    margin-bottom: 2px;  /* iOS: マージンを小さく */
+}
+
+.mini-bar-fill {
+    height: 100%;
+    transition: width 0.3s;
+}
+
+.hp-bar-fill {
+    background: linear-gradient(to right, #00ff00, #7fff00);
+}
+
+.mp-bar-fill {
+    background: linear-gradient(to right, #00bfff, #1e90ff);
+}
+
+/* 戦闘ログ：10%の高さを確保（最小高さで2行分の表示を保証） */
+#battle-log { 
+    flex-shrink: 0;
+    width: 100%;
+    height: 10%;  /* 戦闘ログ：10% */
+    min-height: calc(12px * 1.4 * 2 + 16px);  /* iOS: 最小高さを小さく調整 */
+    max-height: calc(100dvh * 0.1);  /* iOS: 最大高さを画面の10%に制限 */
+    margin: 0; 
+    padding: 6px 8px;  /* iOS: パディングを小さく */
+    box-sizing: border-box;
+    background: rgba(0,0,0,0.9);  /* 背景を濃くして視認性向上 */
+    border: 2px solid rgba(255, 255, 255, 0.8);  /* 枠線を太く */
+    border-radius: 6px;  /* 角を丸く */
+    font-family: 'DotGothic16', 'MS Gothic', sans-serif;
+    font-size: 12px;  /* iOS: フォントサイズを小さく */
+    overflow: hidden;  /* iOS: スクロールを無効化、はみ出しを防止 */
+    line-height: 1.4;  /* iOS: 行間を小さく */
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* iOS縦向き（ポートレート）で高さが限られる場合 */
+@media (orientation: portrait) and (max-height: 850px) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(12px * 1.4 * 2 + 16px);  /* iOS: 最小高さを小さく調整 */
+        max-height: calc(100dvh * 0.1);  /* iOS: 最大高さを画面の10%に制限 */
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+        padding: 6px 8px;  /* iOS: パディングを小さく */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+    }
+    #battle-screen .enemy-area {
+        height: 45%;  /* モンスター画像：45% */
+        min-height: 150px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        padding: 8px 6px;  /* iOS: パディングを小さく */
+        overflow: visible;  /* iOS: 魔法エフェクトが見切れないように visible に設定 */
+    }
+    #battle-screen #monster-name {
+        font-size: 14px;  /* iOS: フォントサイズを小さく */
+        padding: 4px 8px;  /* iOS: パディングを小さく */
+    }
+    #battle-screen .monster-sprite {
+        min-height: 100px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.38);  /* iOS: 最大高さを制限 */
+    }
+    #battle-screen .monster-sprite img {
+        max-width: 80%;  /* iOS: 少し小さくして余白を確保 */
+        max-height: calc(100dvh * 0.38);  /* iOS: 最大高さを制限 */
+        min-width: 80px;  /* iOS: 最小サイズを調整 */
+        min-height: 80px;
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 150px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        flex-shrink: 0;
+        overflow: hidden;  /* iOS: はみ出しを防止 */
+        padding: 4px 8px;  /* iOS: パディングを小さく */
+    }
+    .command-box {
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+        padding: 2px;  /* iOS: パディングを最小限に */
+    }
+    .status-box {
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        font-size: 9px;  /* iOS: フォントサイズを小さく */
+        padding: 4px;  /* iOS: パディングを小さく */
+        gap: 3px;  /* iOS: グリッド間の間隔を小さく */
+    }
+    .command-box li {
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+        min-height: 30px;  /* iOS: 最小高さを小さく */
+        padding: 4px 4px;  /* iOS: パディングを小さく */
+    }
+}
+
+/* さらに高さが小さい場合（iPhone SE等） */
+@media (orientation: portrait) and (max-height: 670px) {
+    #battle-screen .enemy-area {
+        height: 45%;  /* モンスター画像：45% */
+        min-height: 100px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        padding: 4px 4px;  /* iOS: パディングを小さく */
+        overflow: visible;  /* iOS: 魔法エフェクトが見切れないように visible に設定 */
+    }
+    #battle-screen #monster-name {
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+        padding: 3px 6px;  /* iOS: パディングを小さく */
+    }
+    #battle-screen .monster-sprite {
+        min-height: 70px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.35);  /* iOS: 最大高さを制限 */
+        font-size: min(100px, 16vw);  /* iOS: フォントサイズを小さく */
+    }
+    #battle-screen .monster-sprite img {
+        max-width: 75%;  /* iOS: さらに小さくして余白を確保 */
+        max-height: calc(100dvh * 0.35);  /* iOS: 最大高さを制限 */
+        min-width: 60px;  /* iOS: 最小サイズを調整 */
+        min-height: 60px;
+    }
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(11px * 1.4 * 2 + 14px);  /* iOS: 最小高さを小さく調整 */
+        max-height: calc(100dvh * 0.1);  /* iOS: 最大高さを画面の10%に制限 */
+        font-size: 11px;  /* iOS: フォントサイズを小さく */
+        padding: 5px 6px;  /* iOS: パディングを小さく */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 120px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        flex-shrink: 0;
+        overflow: hidden;  /* iOS: はみ出しを防止 */
+        padding: 3px 6px;  /* iOS: パディングを小さく */
+    }
+    .command-box {
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+        padding: 2px;  /* iOS: パディングを最小限に */
+    }
+    .status-box {
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        font-size: 8px;  /* iOS: フォントサイズをさらに小さく */
+        padding: 3px;  /* iOS: パディングを小さく */
+        gap: 2px;  /* iOS: グリッド間の間隔を小さく */
+    }
+    .command-box li {
+        padding: 3px 3px;  /* iOS: パディングを小さく */
+        font-size: 11px;  /* iOS: フォントサイズを小さく */
+        min-height: 28px;  /* iOS: 最小高さを小さく */
+    }
+}
+
+/* iPad横向き対応 */
+@media (orientation: landscape) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(12px * 1.4 * 2 + 16px);  /* iOS: 最小高さを小さく調整 */
+        max-height: calc(100dvh * 0.1);  /* iOS: 最大高さを画面の10%に制限 */
+        padding: 6px 8px;  /* iOS: パディングを小さく */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+    }
+    #battle-screen .enemy-area {
+        height: 45%;  /* モンスター画像：45% */
+        min-height: 100px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        padding: 6px 4px;  /* iOS: パディングを小さく */
+        overflow: visible;  /* iOS: 魔法エフェクトが見切れないように visible に設定 */
+    }
+    #battle-screen .monster-sprite {
+        max-height: calc(100dvh * 0.4);  /* iOS: 最大高さを制限 */
+        min-height: 100px;  /* iOS: 最小高さを調整 */
+    }
+    #battle-screen .monster-sprite img {
+        max-height: calc(100dvh * 0.4);  /* iOS: 最大高さを制限 */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 120px;  /* iOS: 最小高さを調整 */
+        max-height: calc(100dvh * 0.45);  /* iOS: 最大高さを画面の45%に制限 */
+        flex-shrink: 0;
+        overflow: hidden;  /* iOS: はみ出しを防止 */
+        padding: 4px 8px;  /* iOS: パディングを小さく */
+    }
+    .command-box {
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+        padding: 2px;  /* iOS: パディングを最小限に */
+    }
+    .status-box {
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow: hidden;  /* iOS: スクロールを無効化 */
+        max-height: 100%;  /* iOS: 親要素（.battle-ui）の高さを超えないように */
+        font-size: 9px;  /* iOS: フォントサイズを小さく */
+        padding: 4px;  /* iOS: パディングを小さく */
+        gap: 3px;  /* iOS: グリッド間の間隔を小さく */
+    }
+    .command-box li {
+        font-size: 12px;  /* iOS: フォントサイズを小さく */
+        min-height: 30px;  /* iOS: 最小高さを小さく */
+        padding: 4px 4px;  /* iOS: パディングを小さく */
+    }
+}
+
+/* ダメージ数値表示 */
+.damage-number {
+    position: absolute;
+    font-size: 48px;
+    font-weight: bold;
+    color: #ff0000;
+    text-shadow: 2px 2px 0 #000, 0 0 10px #ff0000;
+    pointer-events: none;
+    z-index: 100;
+    animation: damageFloat 1s ease-out forwards;
+}
+
+@keyframes damageFloat {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-80px) scale(1.5);
+    }
+}
+
+/* クリティカルヒット表示 */
+.critical-text {
+    position: absolute;
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 2px 2px 0 #000, 0 0 15px #ffff00;
+    pointer-events: none;
+    z-index: 101;
+    animation: criticalPulse 1.5s ease-out forwards;
+}
+
+@keyframes criticalPulse {
+    0% {
+        opacity: 1;
+        transform: scale(0.5);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1);
+    }
+}
+
+/* 画面フラッシュエフェクト */
+.battle-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    z-index: 200;
+    animation: flashEffect 0.2s ease-out;
+}
+
+@keyframes flashEffect {
+    0% { opacity: 0.8; }
+    100% { opacity: 0; }
+}
+
+/* HPバー */
+.hp-bar-container {
+    width: 100%;
+    height: 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #fff;
+    margin: 2px 0;
+    position: relative;
+}
+
+.hp-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff00 0%, #ffff00 50%, #ff0000 100%);
+    transition: width 0.5s ease-out;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.hp-bar-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+    z-index: 10;
+}
+
+/* ステータス行のコンパクト化 */
+.status-row {
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.status-row-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+    font-size: 11px;
+}
+
+/* 敵のHPバー */
+.enemy-hp-bar {
+    width: 80%;
+    max-width: 300px;
+    margin: 10px auto;
+}
+
+/* FF風戦闘開始演出 */
+.battle-start-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 300;
+    pointer-events: none;
+    animation: overlayFadeIn 0.2s ease-in, overlayFadeOut 0.3s ease-out 0.7s forwards;
+}
+
+.battle-start-text {
+    font-size: 48px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    animation: battleStartAnimation 1s ease-out forwards;
+}
+
+@keyframes overlayFadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes overlayFadeOut {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes battleStartAnimation {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    30% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+}
+
+/* FF風勝利演出 */
+.victory-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 300;
+    pointer-events: none;
+}
+
+.victory-text {
+    font-size: 36px;
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff00;
+    margin-bottom: 20px;
+    animation: victoryPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes victoryPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.9;
+    }
+}
+
+.victory-rewards {
+    font-size: 20px;
+    color: #fff;
+    text-align: center;
+    line-height: 1.8;
+}
+
+/* FF風レベルアップ演出 */
+.levelup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 400;
+    pointer-events: none;
+}
+
+.levelup-text {
+    font-size: min(56px, 10vw);
+    font-weight: bold;
+    color: #00ffff;
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    animation: levelupAnimation 2.5s ease-out forwards;
+    white-space: nowrap;
+    padding: 0 12px;
+}
+
+@keyframes levelupAnimation {
+    0% {
+        opacity: 0;
+        transform: translateY(50px) scale(0.5);
+    }
+    30% {
+        opacity: 1;
+        transform: translateY(0) scale(1.2);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.8);
+    }
+}
+
+.levelup-stats {
+    font-size: 24px;
+    color: #ffff00;
+    margin-top: 20px;
+    text-align: center;
+    opacity: 0;
+    animation: levelupStatsAnimation 2.5s ease-out forwards;
+}
+
+@keyframes levelupStatsAnimation {
+    0%, 40% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+/* 携帯：レベルアップテキストを1行に収める */
+@media (max-width: 480px) {
+    .levelup-text {
+        font-size: min(32px, 9vw);
+    }
+}
+@media (max-width: 360px) {
+    .levelup-text {
+        font-size: 26px;
+    }
+    .levelup-stats {
+        font-size: 18px;
+        margin-top: 12px;
+    }
+}
+
+/* コントロールパネル */
+#control-panel {
+    flex-shrink: 0;
+    height: 200px;  /* 縦向き時の高さ */
+    width: 100%;
+    max-width: var(--max-content);
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;  /* 20px下に下げる */
+    background-color: var(--control-bg);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    /* ゲーム画面との境界線を削除 */
+    border-top: none;
+    user-select: none;
+    touch-action: manipulation;
+    padding-top: 20px;  /* 上部パディングを追加して天地のバランス調整 */
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));  /* 下部パディングも調整して天地のバランス調整 */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2000;  /* コントロールパネルは常に最前面 */
+}
+
+/* iOS: 戦闘画面では仮想コントローラを非表示（タッチ操作でコマンド選択） */
+@media (max-width: 768px) {
+    #battle-screen.active ~ #control-panel {
+        display: none;  /* 戦闘画面では非表示 */
+    }
+    
+    /* コマンドボタンをタッチ操作に最適化 */
+    .command-box li {
+        /* タッチ操作で直接選択可能にする */
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);
+    }
+}
+
+.d-pad {
+    display: grid;
+    grid-template-areas: 
+        ". up ."
+        "left . right"
+        ". down .";
+    gap: 2px;
+}
+
+.pad-btn {
+    width: 55px;
+    height: 55px;
+    background: var(--btn-bg);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 4px var(--btn-shadow);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.pad-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px var(--btn-shadow);
+    background: #222;
+}
+
+.up { grid-area: up; } 
+.down { grid-area: down; } 
+.left { grid-area: left; } 
+.right { grid-area: right; }
+
+.action-group { 
+    display: flex; 
+    gap: 15px; 
+    transform: rotate(-5deg); 
+}
+
+.circle-btn {
+    width: 70px;
+    height: 70px;
+    background: #a00;
+    border: 2px solid #500;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    box-shadow: 0 4px var(--btn-shadow);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.circle-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px var(--btn-shadow); 
+    background: #700; 
+}
+
+.btn-a { margin-top: -10px; }
+.btn-b { 
+    margin-top: 20px; 
+    background: #444; 
+    border-color: #222; 
+}
+
+/* ============================================
+   魔法エフェクト
+   ============================================ */
+
+/* エフェクトコンテナ */
+.magic-effect-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 150;
+    overflow: visible; /* iOS: エフェクトが見切れないように visible に変更 */
+    /* iOS: レンダリング最適化 */
+    will-change: transform;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+/* フレイム弾 - 火の玉が敵に向かって飛ぶ */
+.magic-effect-flame {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, #ffaa00 0%, #ff6600 30%, #ff3300 60%, transparent 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 30px #ff6600, 0 0 60px #ff3300, inset 0 0 20px #ffaa00;
+    animation: flameShot 1s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+.magic-effect-flame::before {
+    content: '';
+    position: absolute;
+    top: 20%;
+    left: 20%;
+    width: 30%;
+    height: 30%;
+    background: radial-gradient(circle, #ffff00 0%, transparent 70%);
+    border-radius: 50%;
+    animation: flameCore 0.2s ease-in-out infinite;
+}
+
+.magic-effect-flame::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 200, 0, 0.6) 0%, transparent 50%);
+    border-radius: 50%;
+    animation: flameGlow 0.3s ease-in-out infinite;
+}
+
+@keyframes flameShot {
+    0% {
+        left: -10%;
+        top: 50%;
+        transform: translateY(-50%) scale(0.3) rotate(0deg);
+        opacity: 0;
+    }
+    20% {
+        opacity: 1;
+        transform: translateY(-50%) scale(0.8) rotate(90deg);
+    }
+    50% {
+        transform: translateY(-50%) scale(1.2) rotate(180deg);
+    }
+    80% {
+        left: 50%;
+        transform: translate(-50%, -50%) scale(1.5) rotate(270deg);
+    }
+    100% {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%) scale(2) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes flameCore {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.8;
+    }
+}
+
+@keyframes flameGlow {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* アイアンガード - 金属のシールドが現れる */
+.magic-effect-iron-guard {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: 
+        repeating-linear-gradient(0deg, 
+            rgba(200, 200, 220, 0.8) 0px,
+            rgba(150, 150, 180, 0.8) 2px,
+            rgba(200, 200, 220, 0.8) 4px
+        );
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    box-shadow: 
+        0 0 40px rgba(200, 200, 255, 0.8),
+        inset 0 0 30px rgba(255, 255, 255, 0.5);
+    animation: ironGuardAppear 0.8s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: transform, opacity;
+    -webkit-transform: translate(-50%, -50%) translateZ(0);
+}
+
+.magic-effect-iron-guard::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80%;
+    height: 80%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: ironGuardRotate 2s linear infinite;
+}
+
+@keyframes ironGuardAppear {
+    0% {
+        transform: translate(-50%, -50%) scale(0) rotate(0deg);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2) rotate(180deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1) rotate(360deg);
+        opacity: 0.9;
+    }
+}
+
+@keyframes ironGuardRotate {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+/* ソニックブレード - 青い風の斬撃 */
+.magic-effect-sonic {
+    position: absolute;
+    width: 300px;
+    height: 100px;
+    left: -20%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(90deg, 
+        transparent 0%,
+        rgba(100, 200, 255, 0.8) 20%,
+        rgba(150, 220, 255, 1) 50%,
+        rgba(100, 200, 255, 0.8) 80%,
+        transparent 100%
+    );
+    clip-path: polygon(0% 50%, 30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%);
+    box-shadow: 
+        0 0 30px rgba(100, 200, 255, 1),
+        0 0 60px rgba(150, 220, 255, 0.8);
+    animation: sonicBlade 0.6s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: transform, opacity, left;
+    -webkit-transform: translateY(-50%) translateZ(0);
+}
+
+.magic-effect-sonic::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent 0%,
+        rgba(255, 255, 255, 0.6) 45%,
+        rgba(255, 255, 255, 0.6) 55%,
+        transparent 100%
+    );
+    animation: sonicFlash 0.1s ease-in-out infinite;
+}
+
+@keyframes sonicBlade {
+    0% {
+        left: -20%;
+        transform: translateY(-50%) scaleX(0.5);
+        opacity: 0;
+    }
+    30% {
+        opacity: 1;
+    }
+    100% {
+        left: 120%;
+        transform: translateY(-50%) scaleX(1.5);
+        opacity: 0;
+    }
+}
+
+@keyframes sonicFlash {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* グラビティストーム - 紫のブラックホール */
+.magic-effect-gravity {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, 
+        rgba(100, 0, 150, 0.9) 0%,
+        rgba(50, 0, 100, 0.8) 30%,
+        rgba(20, 0, 50, 0.9) 60%,
+        rgba(0, 0, 0, 1) 100%
+    );
+    border-radius: 50%;
+    box-shadow: 
+        0 0 80px rgba(150, 0, 200, 1),
+        inset 0 0 100px rgba(0, 0, 0, 0.8);
+    animation: gravityStorm 1.5s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: transform, opacity;
+    -webkit-transform: translate(-50%, -50%) translateZ(0);
+}
+
+.magic-effect-gravity::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60%;
+    height: 60%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, 
+        rgba(200, 100, 255, 0.6) 0%,
+        transparent 70%
+    );
+    border-radius: 50%;
+    animation: gravityCore 0.3s ease-in-out infinite;
+}
+
+.magic-effect-gravity::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        repeating-conic-gradient(from 0deg, 
+            transparent 0deg,
+            rgba(150, 0, 200, 0.3) 10deg,
+            transparent 20deg
+        );
+    border-radius: 50%;
+    animation: gravityRotate 2s linear infinite;
+}
+
+@keyframes gravityStorm {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    30% {
+        opacity: 1;
+    }
+    70% {
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0;
+    }
+}
+
+@keyframes gravityCore {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+}
+
+@keyframes gravityRotate {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* ギガバースト - 巨大な炎の爆発 */
+.magic-effect-giga {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, 
+        #ffff00 0%,
+        #ffaa00 20%,
+        #ff6600 40%,
+        #ff3300 60%,
+        #cc0000 80%,
+        #000000 100%
+    );
+    border-radius: 50%;
+    box-shadow: 
+        0 0 100px #ff6600,
+        0 0 200px #ff3300,
+        inset 0 0 100px #ffaa00;
+    animation: gigaBurst 1.2s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: transform, opacity;
+    -webkit-transform: translate(-50%, -50%) translateZ(0);
+}
+
+.magic-effect-giga::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50%;
+    height: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, #ffffff 0%, transparent 70%);
+    border-radius: 50%;
+    animation: gigaCore 0.1s ease-in-out infinite;
+}
+
+.magic-effect-giga::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        repeating-radial-gradient(circle, 
+            transparent 0px,
+            rgba(255, 200, 0, 0.4) 10px,
+            transparent 20px
+        );
+    border-radius: 50%;
+    animation: gigaPulse 0.2s ease-in-out infinite;
+}
+
+@keyframes gigaBurst {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    20% {
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.5);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(3);
+        opacity: 0;
+    }
+}
+
+@keyframes gigaCore {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0.8;
+    }
+}
+
+@keyframes gigaPulse {
+    0%, 100% {
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* ダイヤモンドスキン - ダイヤモンドの輝き */
+.magic-effect-diamond {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background: 
+        repeating-linear-gradient(45deg,
+            rgba(255, 255, 255, 0.1) 0px,
+            rgba(200, 220, 255, 0.2) 2px,
+            rgba(255, 255, 255, 0.1) 4px
+        ),
+        radial-gradient(circle at 50% 50%, 
+            rgba(200, 220, 255, 0.3) 0%,
+            rgba(150, 180, 255, 0.2) 50%,
+            transparent 100%
+        );
+    animation: diamondSkin 2s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: opacity;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+.magic-effect-diamond::before {
+    content: '';
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: 
+        repeating-linear-gradient(0deg,
+            transparent 0deg,
+            rgba(255, 255, 255, 0.4) 30deg,
+            transparent 60deg
+        );
+    border-radius: 50%;
+    animation: diamondRotate 3s linear infinite;
+}
+
+.magic-effect-diamond::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(ellipse at 30% 30%, rgba(255, 255, 255, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 70%, rgba(200, 220, 255, 0.3) 0%, transparent 50%);
+    animation: diamondShimmer 1s ease-in-out infinite;
+}
+
+@keyframes diamondSkin {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes diamondRotate {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+@keyframes diamondShimmer {
+    0%, 100% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+/* ジャッジメント光線 - 白い光の柱 */
+.magic-effect-judgment {
+    position: absolute;
+    width: 150px;
+    height: 600px;
+    left: 50%;
+    top: -50%;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg,
+        rgba(255, 255, 255, 1) 0%,
+        rgba(255, 255, 255, 0.9) 20%,
+        rgba(200, 220, 255, 0.8) 50%,
+        rgba(150, 180, 255, 0.6) 80%,
+        transparent 100%
+    );
+    box-shadow: 
+        0 0 60px rgba(255, 255, 255, 1),
+        0 0 120px rgba(200, 220, 255, 0.8),
+        inset 0 0 60px rgba(255, 255, 255, 0.5);
+    clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+    animation: judgmentRay 1s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: transform, opacity, top;
+    -webkit-transform: translateX(-50%) translateZ(0);
+}
+
+.magic-effect-judgment::before {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: 
+        repeating-linear-gradient(45deg,
+            rgba(255, 255, 255, 0.8) 0px,
+            transparent 10px,
+            rgba(255, 255, 255, 0.8) 20px
+        );
+    border-radius: 50%;
+    animation: judgmentCross 0.5s ease-out forwards;
+}
+
+@keyframes judgmentRay {
+    0% {
+        top: -50%;
+        opacity: 0;
+    }
+    30% {
+        opacity: 1;
+    }
+    100% {
+        top: 50%;
+        opacity: 0.8;
+    }
+}
+
+@keyframes judgmentCross {
+    0% {
+        transform: translateX(-50%) scale(0) rotate(0deg);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(-50%) scale(1.5) rotate(180deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(-50%) scale(2) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* ゼロ・ディザスター - 闇に包まれる */
+.magic-effect-zero {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle at 50% 50%,
+        rgba(0, 0, 0, 0.8) 0%,
+        rgba(0, 0, 0, 0.9) 50%,
+        rgba(0, 0, 0, 1) 100%
+    );
+    z-index: 200;
+    animation: zeroDisaster 2s ease-out forwards;
+    /* iOS: レンダリング最適化 */
+    will-change: opacity;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+.magic-effect-zero::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: 
+        repeating-linear-gradient(0deg,
+            transparent 0px,
+            rgba(255, 255, 255, 0.05) 1px,
+            transparent 2px
+        ),
+        repeating-linear-gradient(90deg,
+            transparent 0px,
+            rgba(255, 255, 255, 0.05) 1px,
+            transparent 2px
+        );
+    animation: zeroCrack 0.1s ease-in-out infinite;
+}
+
+.magic-effect-zero::after {
+    content: '';
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle,
+        rgba(255, 255, 255, 0.3) 0%,
+        rgba(200, 200, 255, 0.2) 30%,
+        transparent 70%
+    );
+    border-radius: 50%;
+    animation: zeroExplosion 1.5s ease-out forwards;
+}
+
+@keyframes zeroDisaster {
+    0% {
+        opacity: 0;
+    }
+    30% {
+        opacity: 1;
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes zeroCrack {
+    0%, 100% {
+        opacity: 0.05;
+    }
+    50% {
+        opacity: 0.1;
+    }
+}
+
+@keyframes zeroExplosion {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(5);
+        opacity: 0;
+    }
+}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>太陽系シューティング</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <button type="button" id="muteBtn" aria-label="ミュート切替">🔊</button>
+
+    <div id="ui">
+        <div>ステージ: <span id="stage">1</span> - <span id="planetName">水星</span></div>
+        <div>スコア: <span id="score">0</span></div>
+        <div>体力: <span id="hp">100</span></div>
+        <div>武器Lv: <span id="weapon">1</span></div>
+        <div id="waveInfo">ウェーブ</div>
+    </div>
+
+    <div id="bossBarWrap">
+        <div id="bossLabel">BOSS</div>
+        <div id="bossBarBg"><div id="bossBarFill"></div></div>
+    </div>
+
+    <div id="controls">
+        <div class="control-btn" id="leftBtn" role="button" aria-label="左">←</div>
+        <div class="control-btn" id="rightBtn" role="button" aria-label="右">→</div>
+    </div>
+
+    <div id="startScreen">
+        <h1>太陽系シューティング</h1>
+        <p>惑星を巡ってウェーブを突破し、ボスを倒せ！<br>
+           敵を倒すとパワーアップが落ちる。<br>
+           プレイ中はオート連射。右上で音のON/OFF。</p>
+        <button type="button" class="btn" id="startBtn">TAP TO START</button>
+    </div>
+
+    <div id="stageClearScreen" style="display: none;">
+        <h1>ステージクリア!</h1>
+        <p id="clearMsg">次の惑星へ</p>
+    </div>
+
+    <div id="gameOverScreen" style="display: none;">
+        <h1>ゲームオーバー</h1>
+        <p>最終スコア: <span id="finalScore">0</span></p>
+        <button type="button" class="btn" id="retryBtn">もう一度</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>カプセル機甲戦線 -CAPSULE TACTICS-</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar">
+    <span class="tag">★カプセル機甲戦線★</span>
+    <span class="blue" id="hud-blue">青軍 ¥0</span>
+    <span class="red" id="hud-red">赤軍 ¥0</span>
+    <span class="turn" id="hud-selected">選択なし</span>
+    <span class="turn" id="hud-turn">TURN 1 / 青軍</span>
+  </div>
+  <canvas id="cv" width="880" height="560"></canvas>
+  <div id="controls">
+    <button id="btn-produce">生産(ガチャベース)</button>
+    <button id="btn-end" class="warn">ターン終了 ▶</button>
+    <span id="msg"></span>
+  </div>
+  <div id="legend">
+    <span class="k">マップ:</span> ユニットをクリック→移動先/隣接敵をクリック。
+    <span class="k">戦闘:</span> 矢印=移動 / <span class="k">Z</span>=射撃 / <span class="k">X</span>=格闘 / <span class="k">C</span>=特殊(残量あり) / <span class="k">V</span>=バースト。 制限60秒、HPを削り切れ。
+  </div>
+</div>
+<script src="script-core.js"></script>
+<script src="script-main.js"></script>
+</body>
+</html>

@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>火星生物開発シミュレーター - Mars Bio-Engineering</title>
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            mars: {
+              bg: '#0a0606',
+              panel: '#150a0a',
+              card: '#1e0e0e',
+              border: '#3a1818',
+              accent: '#ff4500',
+              glow: '#ff6b35',
+              cyan: '#00f0ff',
+              bio: '#10b981',
+              warning: '#f59e0b'
+            }
+          },
+          fontFamily: {
+            mono: ['Courier New', 'monospace', 'ui-monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* カスタムスクロールバー & SFネオンエフェクト */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0606; }
+    ::-webkit-scrollbar-thumb { background: #3a1818; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #ff4500; }
+    
+    .glow-orange { filter: drop-shadow(0 0 8px rgba(255, 69, 0, 0.5)); }
+    .glow-cyan { filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.5)); }
+    .glow-green { filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.5)); }
+    
+    .box-glow { box-shadow: 0 0 15px rgba(255, 69, 0, 0.15); }
+
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.8; }
+    }
+    .animate-pulse-slow { animation: pulse-slow 3s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-mars-bg text-slate-200 font-sans antialiased selection:bg-mars-accent selection:text-white min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // --- Web Audio API 効果音合成エンジン ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+      }
+
+      playClick() {
+        if (this.muted) return;
+        this.init();
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.05);
+          gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.05);
+        } catch(e){}
+      }
+
+      playGeneSelect() {
+        if (this.muted) return;
+        this.init();
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.08);
+        } catch(e){}
+      }
+
+      playDeploy() {
+        if (this.muted) return;
+        this.init();
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.exponentialRampToValueAtTime(450, now + 0.25);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(now + 0.25);
+        } catch(e){}
+      }
+
+      playUnlock() {
+        if (this.muted) return;
+        this.init();
+        try {
+          const now = this.ctx.currentTime;
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.06);
+            gain.gain.setValueAtTime(0.1, now + i * 0.06);
+            gain.gain.linearRampToValueAtTime(0.01, now + i * 0.06 + 0.15);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + i * 0.06);
+            osc.stop(now + i * 0.06 + 0.15);
+          });
+        } catch(e){}
+      }
+    }
+
+    const audio = new SoundEngine();
+
+    // --- ゲーム初期設定データ ---
+    const TRAITS = {
+      coldResist: { id: 'coldResist', name: '耐寒酵素 (Cold-Active)', desc: '極低温での細胞活動を可能にする', type: 'survival', cost: 10, icon: '❄️', reqTech: null },
+      radResist: { id: 'radResist', name: 'メラニン防壁 (Rad Shield)', desc: '強烈な宇宙放射線からDNAを守る', type: 'survival', cost: 15, icon: '🛡️', reqTech: null },
+      droughtResist: { id: 'droughtResist', name: '細胞乾燥保全 (Anhydrobiosis)', desc: '超乾燥環境での水分の蒸散を防ぐ', type: 'survival', cost: 12, icon: '🌵', reqTech: null },
+      photosynthesis: { id: 'photosynthesis', name: '広域光合成 (Photosynthesis)', desc: '微光を吸収し酸素を発生させる', type: 'terraforming', cost: 25, icon: '🌿', reqTech: 'tech_photo' },
+      methaneMeta: { id: 'methaneMeta', name: 'メタン代謝 (Methanogenesis)', desc: '地下メタンを分解し温室効果ガスを生む', type: 'terraforming', cost: 30, icon: '🔥', reqTech: 'tech_methane' },
+      highFertility: { id: 'highFertility', name: '高速分裂 (Hyper-Division)', desc: '適合率に応じた繁殖速度を倍加させる', type: 'growth', cost: 40, icon: '⚡', reqTech: 'tech_genetics' },
+      regeneration: { id: 'regeneration', name: '自己修復細胞 (Auto-Repair)', desc: '悪環境下での死滅率を大幅に軽減する', type: 'survival', cost: 50, icon: '🧬', reqTech: 'tech_repair' }
+    };
+
+    const MARS_REGIONS = [
+      {
+        id: 'equator',
+        name: '赤道平原 (Equatorial Plains)',
+        desc: '比較的高温だが非常に乾燥している。日照量は良好。',
+        temp: -20,
+        rad: 60,
+        dryness: 85,
+        light: 80,
+        methane: 20,
+        color: '#d97706',
+        biomass: 0,
+        deployedSpeciesId: null
+      },
+      {
+        id: 'polar',
+        name: '北極冠 (Polar Ice Cap)',
+        desc: '極低温だが、水氷が豊富に存在する。放射線も高め。',
+        temp: -110,
+        rad: 75,
+        dryness: 20,
+        light: 40,
+        methane: 10,
+        color: '#38bdf8',
+        biomass: 0,
+        deployedSpeciesId: null
+      },
+      {
+        id: 'canyon',
+        name: 'マリネリス峡谷 (Valles Marineris)',
+        desc: '大気圧が最も高く、適度な光量と安定した温湿度を持つ。',
+        temp: -40,
+        rad: 45,
+        dryness: 60,
+        light: 70,
+        methane: 30,
+        color: '#e11d48',
+        biomass: 0,
+        deployedSpeciesId: null
+      },
+      {
+        id: 'cave',
+        name: '溶岩チューブ地下洞窟 (Lava Tube)',
+        desc: '太陽光は皆無だが、放射線が遮断されメタンガスが充満。',
+        temp: -50,
+        rad: 10,
+        dryness: 40,
+        light: 0,
+        methane: 95,
+        color: '#a855f7',
+        biomass: 0,
+        deployedSpeciesId: null
+      }
+    ];
+
+    const TECH_TREE = [
+      { id: 'tech_photo', name: '葉緑体最適化', desc: '遺伝子「広域光合成」をアンロック', cost: 50, unlocked: false, parent: null },
+      { id: 'tech_methane', name: '古細菌ゲノム解析', desc: '遺伝子「メタン代謝」をアンロック', cost: 100, unlocked: false, parent: null },
+      { id: 'tech_genetics', name: 'アクセラレータ育成', desc: '遺伝子「高速分裂」をアンロック', cost: 250, unlocked: false, parent: 'tech_photo' },
+      { id: 'tech_repair', name: 'DNA重合修復機構', desc: '遺伝子「自己修復細胞」をアンロック', cost: 500, unlocked: false, parent: 'tech_methane' },
+      { id: 'tech_lab_expand', name: 'バイオラボ拡張', desc: '作成できる生物種の最大数を+2増強', cost: 300, unlocked: false, parent: null },
+      { id: 'tech_terra_boost', name: '惑星生態触媒', desc: '全生物のバイオマス獲得効率が +50% 向上', cost: 1000, unlocked: false, parent: 'tech_genetics' }
+    ];
+
+    // --- メインコンポーネント ---
+    function App() {
+      const [dnaPoints, setDnaPoints] = useState(100);
+      const [techList, setTechList] = useState(TECH_TREE);
+      const [regions, setRegions] = useState(MARS_REGIONS);
+      const [activeTab, setActiveTab] = useState('lab');
+      const [maxSpeciesCount, setMaxSpeciesCount] = useState(3);
+      const [soundMuted, setSoundMuted] = useState(false);
+
+      const [speciesList, setSpeciesList] = useState([
+        {
+          id: 'sp_default',
+          name: 'クリオ・バチルス α',
+          traits: ['coldResist', 'droughtResist'],
+          color: '#10b981',
+          shape: 'bacillus',
+          speed: 1.2
+        }
+      ]);
+      const [selectedSpeciesId, setSelectedSpeciesId] = useState('sp_default');
+
+      const [editingName, setEditingName] = useState('新種Extremophile');
+      const [editingTraits, setEditingTraits] = useState([]);
+      const [editingColor, setEditingColor] = useState('#00f0ff');
+      const [editingShape, setEditingShape] = useState('bacillus');
+
+      const [logs, setLogs] = useState([
+        { id: 1, text: '火星テラフォーミングミッション開始。バイオラボへようこそ。', type: 'info' }
+      ]);
+
+      const addLog = (text, type = 'info') => {
+        setLogs(prev => [{ id: Date.now(), text, type }, ...prev.slice(0, 19)]);
+      };
+
+      const currentSpecies = useMemo(() => {
+        return speciesList.find(s => s.id === selectedSpeciesId) || speciesList[0];
+      }, [speciesList, selectedSpeciesId]);
+
+      const isTechUnlocked = (techId) => {
+        if (!techId) return true;
+        return techList.find(t => t.id === techId)?.unlocked || false;
+      };
+
+      const calculateFitness = (species, region) => {
+        if (!species) return 0;
+        let score = 50;
+
+        if (region.temp < -30) {
+          const coldSeverity = Math.abs(region.temp + 30);
+          if (species.traits.includes('coldResist')) {
+            score += 25;
+          } else {
+            score -= coldSeverity * 0.5;
+          }
+        }
+
+        if (region.rad > 30) {
+          if (species.traits.includes('radResist')) {
+            score += 25;
+          } else {
+            score -= (region.rad - 30) * 0.6;
+          }
+        }
+
+        if (region.dryness > 50) {
+          if (species.traits.includes('droughtResist')) {
+            score += 20;
+          } else {
+            score -= (region.dryness - 50) * 0.4;
+          }
+        }
+
+        if (species.traits.includes('photosynthesis')) {
+          if (region.light > 40) {
+            score += region.light * 0.3;
+          } else {
+            score -= 30;
+          }
+        }
+
+        if (species.traits.includes('methaneMeta')) {
+          if (region.methane > 50) {
+            score += region.methane * 0.35;
+          } else {
+            score -= 20;
+          }
+        }
+
+        if (species.traits.includes('regeneration')) {
+          score += 15;
+        }
+
+        return Math.max(0, Math.min(100, Math.round(score)));
+      };
+
+      useEffect(() => {
+        const timer = setInterval(() => {
+          let gainedDna = 0;
+
+          setRegions(prevRegions => {
+            return prevRegions.map(region => {
+              if (!region.deployedSpeciesId) return region;
+
+              const species = speciesList.find(s => s.id === region.deployedSpeciesId);
+              if (!species) return { ...region, deployedSpeciesId: null };
+
+              const fitness = calculateFitness(species, region);
+              let fertilityMult = species.traits.includes('highFertility') ? 1.8 : 1.0;
+              let terraBoostMult = isTechUnlocked('tech_terra_boost') ? 1.5 : 1.0;
+
+              let currentBio = region.biomass;
+
+              if (fitness >= 40) {
+                const growthRate = (fitness - 35) * 0.25 * fertilityMult;
+                currentBio = Math.min(1000000, currentBio + Math.max(1, growthRate * (1 + currentBio * 0.005)));
+              } else {
+                const decayRate = (40 - fitness) * 0.8;
+                currentBio = Math.max(0, currentBio - decayRate);
+              }
+
+              if (currentBio > 0) {
+                gainedDna += (currentBio / 200) * (fitness / 100) * terraBoostMult;
+              }
+
+              return {
+                ...region,
+                biomass: Math.round(currentBio)
+              };
+            });
+          });
+
+          if (gainedDna > 0) {
+            setDnaPoints(prev => Math.round((prev + gainedDna) * 10) / 10);
+          }
+        }, 1000);
+
+        return () => clearInterval(timer);
+      }, [speciesList, techList]);
+
+      const totalBiomass = useMemo(() => {
+        return regions.reduce((acc, r) => acc + r.biomass, 0);
+      }, [regions]);
+
+      const terraformPercent = useMemo(() => {
+        return Math.min(100, ((totalBiomass / 1000000) * 100)).toFixed(2);
+      }, [totalBiomass]);
+
+      const handleToggleMute = () => {
+        audio.muted = !soundMuted;
+        setSoundMuted(!soundMuted);
+      };
+
+      const handleCreateSpecies = () => {
+        audio.playClick();
+        if (speciesList.length >= maxSpeciesCount) {
+          addLog(`生物種の保存可能上限（${maxSpeciesCount}種）に達しています。ゲノムツリーでラボを拡張してください。`, 'warning');
+          return;
+        }
+
+        let totalCost = editingTraits.reduce((acc, tId) => acc + TRAITS[tId].cost, 20);
+        if (dnaPoints < totalCost) {
+          addLog(`DNAポイントが不足しています (必要: ${totalCost} DNA)`, 'warning');
+          return;
+        }
+
+        setDnaPoints(prev => prev - totalCost);
+        const newSpecies = {
+          id: 'sp_' + Date.now(),
+          name: editingName || '未知の極限環境生物',
+          traits: [...editingTraits],
+          color: editingColor,
+          shape: editingShape,
+          speed: 1 + editingTraits.length * 0.2
+        };
+
+        setSpeciesList(prev => [...prev, newSpecies]);
+        setSelectedSpeciesId(newSpecies.id);
+        addLog(`新生物種「${newSpecies.name}」をゲノムデータベースに登録しました。`, 'success');
+        audio.playUnlock();
+      };
+
+      const handleDeleteSpecies = (id) => {
+        if (speciesList.length <= 1) {
+          addLog('最後の1種は削除できません。', 'warning');
+          return;
+        }
+        audio.playClick();
+        setSpeciesList(prev => prev.filter(s => s.id !== id));
+        setRegions(prev => prev.map(r => r.deployedSpeciesId === id ? { ...r, deployedSpeciesId: null } : r));
+        if (selectedSpeciesId === id) {
+          setSelectedSpeciesId(speciesList.find(s => s.id !== id).id);
+        }
+        addLog('生物種を削除しました。', 'info');
+      };
+
+      const handleDeploySpecies = (regionId, speciesId) => {
+        audio.playDeploy();
+        setRegions(prev => prev.map(r => {
+          if (r.id === regionId) {
+            const isSame = r.deployedSpeciesId === speciesId;
+            return {
+              ...r,
+              deployedSpeciesId: isSame ? null : speciesId,
+              biomass: isSame ? r.biomass : Math.max(r.biomass, 10)
+            };
+          }
+          return r;
+        }));
+        const sp = speciesList.find(s => s.id === speciesId);
+        const reg = regions.find(r => r.id === regionId);
+        if (sp && reg) {
+          addLog(`「${sp.name}」を【${reg.name}】へ放流・培養開始しました。`, 'info');
+        }
+      };
+
+      const handleUnlockTech = (tech) => {
+        if (dnaPoints < tech.cost) {
+          addLog('DNAポイントが足りません。', 'warning');
+          return;
+        }
+        audio.playUnlock();
+        setDnaPoints(prev => prev - tech.cost);
+        setTechList(prev => prev.map(t => t.id === tech.id ? { ...t, unlocked: true } : t));
+
+        if (tech.id === 'tech_lab_expand') {
+          setMaxSpeciesCount(prev => prev + 2);
+        }
+
+        addLog(`テクノロジー【${tech.name}】の解読に成功しました！`, 'success');
+      };
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          {/* ヘッダー / ステータスバー */}
+          <header className="bg-mars-panel border-b border-mars-border px-4 py-3 sticky top-0 z-50 shadow-md">
+            <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-full bg-mars-accent flex items-center justify-center glow-orange font-bold text-lg text-white">
+                  ♂
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold tracking-wider text-slate-100 flex items-center gap-2">
+                    MARS BIO-ENGINEER
+                    <span className="text-xs px-2 py-0.5 rounded bg-mars-border text-mars-accent border border-mars-accent/40 font-mono">
+                      v2.5 LAB
+                    </span>
+                  </h1>
+                  <p className="text-xs text-slate-400">極限環境生物 遺伝子組み換え & 繁殖シミュレーター</p>
+                </div>
+              </div>
+
+              {/* メインリソース表示 */}
+              <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-2 bg-mars-bg px-3 py-1.5 rounded border border-mars-border">
+                  <span className="text-lg">🧬</span>
+                  <div>
+                    <div className="text-xs text-slate-400">DNA POINTS</div>
+                    <div className="text-base font-mono font-bold text-mars-cyan glow-cyan">
+                      {Math.floor(dnaPoints).toLocaleString()} <span className="text-xs font-normal">pts</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 bg-mars-bg px-3 py-1.5 rounded border border-mars-border">
+                  <span className="text-lg">🌍</span>
+                  <div>
+                    <div className="text-xs text-slate-400">TERRAFORMING</div>
+                    <div className="text-base font-mono font-bold text-mars-bio glow-green">
+                      {terraformPercent} <span className="text-xs font-normal">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleToggleMute}
+                  className="p-2 bg-mars-card hover:bg-mars-border rounded border border-mars-border text-slate-300 text-sm transition"
+                  title="音声を切り替え"
+                >
+                  {soundMuted ? '🔇 MUTE' : '🔊 SOUND'}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* メインコンテンツ領域 */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* 左側/上部：ナビゲーション & メインビュー (8 cols) */}
+            <div className="lg:col-span-8 flex flex-col space-y-4">
+              
+              {/* タブボタン */}
+              <div className="flex border-b border-mars-border space-x-2 overflow-x-auto pb-1">
+                <button
+                  onClick={() => { audio.playClick(); setActiveTab('lab'); }}
+                  className={`px-4 py-2 rounded-t font-semibold text-sm flex items-center space-x-2 transition ${
+                    activeTab === 'lab'
+                      ? 'bg-mars-panel text-mars-accent border-t-2 border-x border-mars-accent border-b-transparent shadow-lg'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-mars-card'
+                  }`}
+                >
+                  <span>🔬</span>
+                  <span>バイオラボ (生物設計)</span>
+                </button>
+
+                <button
+                  onClick={() => { audio.playClick(); setActiveTab('mars'); }}
+                  className={`px-4 py-2 rounded-t font-semibold text-sm flex items-center space-x-2 transition ${
+                    activeTab === 'mars'
+                      ? 'bg-mars-panel text-mars-accent border-t-2 border-x border-mars-accent border-b-transparent shadow-lg'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-mars-card'
+                  }`}
+                >
+                  <span>🪐</span>
+                  <span>火星フィールド (環境試練)</span>
+                </button>
+
+                <button
+                  onClick={() => { audio.playClick(); setActiveTab('tech'); }}
+                  className={`px-4 py-2 rounded-t font-semibold text-sm flex items-center space-x-2 transition ${
+                    activeTab === 'tech'
+                      ? 'bg-mars-panel text-mars-accent border-t-2 border-x border-mars-accent border-b-transparent shadow-lg'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-mars-card'
+                  }`}
+                >
+                  <span>🌳</span>
+                  <span>ゲノムツリー (研究)</span>
+                </button>
+
+                <button
+                  onClick={() => { audio.playClick(); setActiveTab('stats'); }}
+                  className={`px-4 py-2 rounded-t font-semibold text-sm flex items-center space-x-2 transition ${
+                    activeTab === 'stats'
+                      ? 'bg-mars-panel text-mars-accent border-t-2 border-x border-mars-accent border-b-transparent shadow-lg'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-mars-card'
+                  }`}
+                >
+                  <span>📊</span>
+                  <span>惑星レポート</span>
+                </button>
+              </div>
+
+              {/* タブ 1: バイオラボ (Bio Lab) */}
+              {activeTab === 'lab' && (
+                <div className="bg-mars-panel border border-mars-border rounded-b-lg rounded-tr-lg p-5 space-y-6 box-glow">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    {/* 顕微鏡ビュー (Canvas) */}
+                    <div className="flex flex-col items-center bg-mars-bg p-4 rounded-lg border border-mars-border relative">
+                      <div className="absolute top-2 left-3 text-xs font-mono text-mars-cyan flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-mars-cyan animate-ping"></span>
+                        MICROSCOPE VIEW [LIVE]
+                      </div>
+                      
+                      <MicroscopeCanvas species={currentSpecies} />
+
+                      <div className="mt-3 w-full flex justify-between items-center text-xs text-slate-400 px-2">
+                        <span>観察対象: <strong className="text-slate-200">{currentSpecies ? currentSpecies.name : ''}</strong></span>
+                        <span>倍率: 10,000x</span>
+                      </div>
+                    </div>
+
+                    {/* 登録済み生物種リスト & 選択 */}
+                    <div className="flex flex-col justify-between space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="text-sm font-bold text-slate-300">保有生物ゲノム ({speciesList.length}/{maxSpeciesCount})</h3>
+                        </div>
+                        
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                          {speciesList.map(sp => (
+                            <div
+                              key={sp.id}
+                              onClick={() => { audio.playGeneSelect(); setSelectedSpeciesId(sp.id); }}
+                              className={`p-3 rounded border cursor-pointer flex justify-between items-center transition ${
+                                selectedSpeciesId === sp.id
+                                  ? 'bg-mars-card border-mars-accent glow-orange'
+                                  : 'bg-mars-bg border-mars-border hover:border-slate-500'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-4 h-4 rounded-full border border-white/40" style={{ backgroundColor: sp.color }} />
+                                <div>
+                                  <div className="text-sm font-bold text-slate-200">{sp.name}</div>
+                                  <div className="text-xs text-slate-400">
+                                    Traits: {sp.traits.map(t => TRAITS[t]?.icon).join(' ')}
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteSpecies(sp.id); }}
+                                className="text-xs text-red-400 hover:text-red-300 p-1 hover:bg-red-950 rounded"
+                                title="ゲノム破棄"
+                              >
+                                ✖
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-mars-bg rounded border border-mars-border text-xs text-slate-400">
+                        💡 <strong className="text-slate-200">バイオエンジニアのヒント:</strong> 火星の各地域環境に適した特性（寒さ、放射線、乾燥）を持たせることで適応率が上がります。
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 遺伝子組み換え / 新種設計フォーム */}
+                  <div className="border-t border-mars-border pt-5">
+                    <h3 className="text-base font-bold text-mars-accent mb-4 flex items-center gap-2">
+                      <span>🧪</span> 遺伝子シーケンス合成 (新規開発)
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">生物種名称</label>
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          className="w-full bg-mars-bg border border-mars-border rounded px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-mars-accent"
+                          placeholder="種族名を入力..."
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">細胞形状</label>
+                          <select
+                            value={editingShape}
+                            onChange={(e) => setEditingShape(e.target.value)}
+                            className="w-full bg-mars-bg border border-mars-border rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-mars-accent"
+                          >
+                            <option value="bacillus">桿菌 (Bacillus)</option>
+                            <option value="coccus">球菌 (Coccus)</option>
+                            <option value="spirillum">螺旋菌 (Spirillum)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">蛍光カラー</label>
+                          <input
+                            type="color"
+                            value={editingColor}
+                            onChange={(e) => setEditingColor(e.target.value)}
+                            className="w-full h-8 bg-mars-bg border border-mars-border rounded cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 選択可能遺伝子 (Traits) 一覧 */}
+                    <div className="mb-4">
+                      <label className="block text-xs text-slate-400 mb-2">遺伝子モジュール (Traits) 組み込み</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                        {Object.values(TRAITS).map(trait => {
+                          const unlocked = isTechUnlocked(trait.reqTech);
+                          const selected = editingTraits.includes(trait.id);
+
+                          return (
+                            <div
+                              key={trait.id}
+                              onClick={() => {
+                                if (!unlocked) return;
+                                audio.playGeneSelect();
+                                setEditingTraits(prev =>
+                                  prev.includes(trait.id)
+                                    ? prev.filter(t => t !== trait.id)
+                                    : [...prev, trait.id]
+                                );
+                              }}
+                              className={`p-2.5 rounded border text-xs cursor-pointer transition flex flex-col justify-between ${
+                                !unlocked
+                                  ? 'opacity-40 bg-mars-bg border-slate-800 cursor-not-allowed'
+                                  : selected
+                                  ? 'bg-mars-card border-mars-cyan text-slate-100 glow-cyan'
+                                  : 'bg-mars-bg border-mars-border hover:border-slate-500 text-slate-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="font-bold flex justify-between items-center mb-1">
+                                  <span>{trait.icon} {trait.name}</span>
+                                  <span className="text-mars-cyan font-mono">+{trait.cost} DNA</span>
+                                </div>
+                                <div className="text-[11px] text-slate-400">{trait.desc}</div>
+                              </div>
+                              {!unlocked && (
+                                <div className="text-[10px] text-mars-warning mt-1 font-mono">
+                                  🔒 要研究: {TECH_TREE.find(t => t.id === trait.reqTech)?.name}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 合成ボタン */}
+                    <div className="flex justify-between items-center bg-mars-bg p-3 rounded border border-mars-border">
+                      <div className="text-xs text-slate-300">
+                        必要コスト: <span className="text-mars-cyan font-bold font-mono text-sm">
+                          {editingTraits.reduce((acc, tId) => acc + TRAITS[tId].cost, 20)} DNA
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleCreateSpecies}
+                        className="px-5 py-2 bg-mars-accent hover:bg-orange-600 text-white font-bold text-xs rounded transition glow-orange flex items-center gap-2"
+                      >
+                        <span>🧬</span> 新遺伝子個体を出力
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* タブ 2: 火星フィールド (Mars Field) */}
+              {activeTab === 'mars' && (
+                <div className="bg-mars-panel border border-mars-border rounded-b-lg rounded-tr-lg p-5 space-y-6 box-glow">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                        <span>🪐</span> 火星各エリア環境パラメータ & 繁殖状況
+                      </h2>
+                      <p className="text-xs text-slate-400">設計した生物を選択中のエリアへ放流（Deploy）し、繁殖させます。</p>
+                    </div>
+                  </div>
+
+                  {/* 各エリアグリッド */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {regions.map(region => {
+                      const deployedSpecies = speciesList.find(s => s.id === region.deployedSpeciesId);
+                      const fitness = calculateFitness(deployedSpecies, region);
+
+                      return (
+                        <div
+                          key={region.id}
+                          className="bg-mars-bg border border-mars-border rounded-lg p-4 space-y-3 relative overflow-hidden"
+                        >
+                          {/* エリア上部カラーバー */}
+                          <div
+                            className="absolute top-0 left-0 right-0 h-1"
+                            style={{ backgroundColor: region.color }}
+                          />
+
+                          <div className="flex justify-between items-start pt-1">
+                            <div>
+                              <h3 className="font-bold text-sm text-slate-200">{region.name}</h3>
+                              <p className="text-xs text-slate-400 mt-0.5">{region.desc}</p>
+                            </div>
+                          </div>
+
+                          {/* 環境値インジケーター */}
+                          <div className="grid grid-cols-3 gap-2 bg-mars-panel p-2 rounded text-[11px] font-mono border border-mars-border/50">
+                            <div>
+                              <span className="text-slate-500">気温:</span>
+                              <span className={`ml-1 ${region.temp < -50 ? 'text-blue-400' : 'text-slate-200'}`}>
+                                {region.temp}℃
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">放射線:</span>
+                              <span className={`ml-1 ${region.rad > 50 ? 'text-amber-400' : 'text-slate-200'}`}>
+                                {region.rad}mSv
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">乾燥度:</span>
+                              <span className="ml-1 text-slate-200">{region.dryness}%</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">光量:</span>
+                              <span className="ml-1 text-slate-200">{region.light}%</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-slate-500">メタン濃度:</span>
+                              <span className="ml-1 text-slate-200">{region.methane}%</span>
+                            </div>
+                          </div>
+
+                          {/* 配置中の生物情報 */}
+                          <div className="border-t border-mars-border pt-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs text-slate-400">配置生物:</span>
+                              <span className="text-xs font-bold text-slate-200">
+                                {deployedSpecies ? deployedSpecies.name : '未配置'}
+                              </span>
+                            </div>
+
+                            {deployedSpecies && (
+                              <div className="space-y-2 mb-3">
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-400">環境適合率 (Fitness):</span>
+                                  <span className={`font-bold font-mono ${
+                                    fitness >= 60 ? 'text-mars-bio' : fitness >= 40 ? 'text-amber-400' : 'text-red-400'
+                                  }`}>
+                                    {fitness}%
+                                  </span>
+                                </div>
+                                <div className="w-full bg-mars-panel h-1.5 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-500 ${
+                                      fitness >= 60 ? 'bg-mars-bio' : fitness >= 40 ? 'bg-amber-400' : 'bg-red-500'
+                                    }`}
+                                    style={{ width: `${fitness}%` }}
+                                  />
+                                </div>
+
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-400">バイオマス量:</span>
+                                  <span className="font-mono text-mars-cyan font-bold">
+                                    {region.biomass.toLocaleString()} 個体
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* ドロップダウン & 放流ボタン */}
+                            <div className="flex gap-2">
+                              <select
+                                value={region.deployedSpeciesId || ''}
+                                onChange={(e) => handleDeploySpecies(region.id, e.target.value)}
+                                className="flex-1 bg-mars-panel border border-mars-border rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-mars-accent"
+                              >
+                                <option value="">-- 生物種を選択 --</option>
+                                {speciesList.map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* タブ 3: ゲノムツリー (Tech Tree) */}
+              {activeTab === 'tech' && (
+                <div className="bg-mars-panel border border-mars-border rounded-b-lg rounded-tr-lg p-5 space-y-6 box-glow">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                      <span>🌳</span> ゲノムテクノロジー研究ツリー
+                    </h2>
+                    <p className="text-xs text-slate-400">DNAポイントを投じることで新たな遺伝子形質や研究バフを開放します。</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {techList.map(tech => {
+                      const parentUnlocked = !tech.parent || techList.find(t => t.id === tech.parent)?.unlocked;
+                      const canBuy = parentUnlocked && !tech.unlocked && dnaPoints >= tech.cost;
+
+                      return (
+                        <div
+                          key={tech.id}
+                          className={`p-4 rounded-lg border transition relative flex flex-col justify-between ${
+                            tech.unlocked
+                              ? 'bg-mars-card/60 border-mars-bio/60 text-slate-200'
+                              : !parentUnlocked
+                              ? 'bg-mars-bg border-slate-800 opacity-40'
+                              : 'bg-mars-bg border-mars-border hover:border-slate-500'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex justify-between items-start mb-1">
+                              <h3 className="font-bold text-sm flex items-center gap-2">
+                                <span>{tech.unlocked ? '✅' : '🔬'}</span>
+                                {tech.name}
+                              </h3>
+                              <span className="text-xs font-mono text-mars-cyan">
+                                {tech.cost} DNA
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mb-3">{tech.desc}</p>
+                            {tech.parent && !parentUnlocked && (
+                              <div className="text-[10px] text-mars-warning font-mono mb-2">
+                                🔒 前提: {techList.find(t => t.id === tech.parent)?.name} の解放
+                              </div>
+                            )}
+                          </div>
+
+                          {!tech.unlocked ? (
+                            <button
+                              onClick={() => handleUnlockTech(tech)}
+                              disabled={!canBuy}
+                              className={`w-full py-1.5 rounded text-xs font-bold transition ${
+                                canBuy
+                                  ? 'bg-mars-accent hover:bg-orange-600 text-white glow-orange'
+                                  : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                              }`}
+                            >
+                              研究開始
+                            </button>
+                          ) : (
+                            <div className="text-center text-xs text-mars-bio font-bold py-1 bg-mars-bio/10 rounded border border-mars-bio/20">
+                              研究解読完了
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* タブ 4: 惑星レポート (Stats & Logs) */}
+              {activeTab === 'stats' && (
+                <div className="bg-mars-panel border border-mars-border rounded-b-lg rounded-tr-lg p-5 space-y-6 box-glow">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                      <span>📊</span> 火星環境テラフォーミング総合レポート
+                    </h2>
+                    <p className="text-xs text-slate-400">生態系拡大に伴う惑星スケールの環境変化の観察データ。</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-mars-bg p-4 rounded border border-mars-border">
+                      <div className="text-xs text-slate-400 mb-1">全地域バイオマス総量</div>
+                      <div className="text-xl font-mono font-bold text-mars-cyan">
+                        {totalBiomass.toLocaleString()}
+                      </div>
+                    </div>
+
+                    <div className="bg-mars-bg p-4 rounded border border-mars-border">
+                      <div className="text-xs text-slate-400 mb-1">推定大気圧向上</div>
+                      <div className="text-xl font-mono font-bold text-mars-bio">
+                        +{(totalBiomass * 0.00008).toFixed(3)} kPa
+                      </div>
+                    </div>
+
+                    <div className="bg-mars-bg p-4 rounded border border-mars-border">
+                      <div className="text-xs text-slate-400 mb-1">平均表面気温上昇</div>
+                      <div className="text-xl font-mono font-bold text-mars-warning">
+                        +{(totalBiomass * 0.00003).toFixed(2)} ℃
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 火星ビジュアルキャンバス */}
+                  <div className="bg-mars-bg border border-mars-border rounded-lg p-4 flex flex-col items-center">
+                    <h3 className="text-xs font-bold text-slate-400 mb-3 self-start">火星全体の生態系カバー状況</h3>
+                    <MarsGlobeCanvas regions={regions} totalBiomass={totalBiomass} />
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* 右側/下部：サイドパネル - 火星マップ状況 & コンソールミッション (4 cols) */}
+            <div className="lg:col-span-4 space-y-6">
+              
+              {/* クイックサマリー */}
+              <div className="bg-mars-panel border border-mars-border rounded-lg p-4 space-y-4">
+                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-mars-border pb-2">
+                  <span>📡</span> ミッションステータス
+                </h3>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1">
+                      <span>テラフォーミング目標</span>
+                      <span>{terraformPercent}%</span>
+                    </div>
+                    <div className="w-full bg-mars-bg h-2 rounded-full overflow-hidden border border-mars-border">
+                      <div
+                        className="bg-gradient-to-r from-mars-accent via-amber-400 to-mars-bio h-full transition-all duration-500"
+                        style={{ width: `${terraformPercent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-mars-bg rounded border border-mars-border space-y-1">
+                    <div className="text-slate-400">現在稼働中のエリア:</div>
+                    <div className="font-bold text-slate-200">
+                      {regions.filter(r => r.deployedSpeciesId).length} / {regions.length} セクター
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* システムログコンソール */}
+              <div className="bg-mars-panel border border-mars-border rounded-lg p-4 space-y-3">
+                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-mars-border pb-2">
+                  <span>🖥️</span> バイオコンソールログ
+                </h3>
+
+                <div className="bg-mars-bg border border-mars-border rounded p-3 h-64 overflow-y-auto font-mono text-[11px] space-y-2">
+                  {logs.map(log => (
+                    <div
+                      key={log.id}
+                      className={`leading-relaxed border-l-2 pl-2 ${
+                        log.type === 'warning'
+                          ? 'border-amber-500 text-amber-300'
+                          : log.type === 'success'
+                          ? 'border-mars-bio text-emerald-300'
+                          : 'border-mars-cyan text-slate-300'
+                      }`}
+                    >
+                      <span className="text-slate-600">[{new Date(log.id).toLocaleTimeString()}]</span> {log.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </main>
+
+          <footer className="border-t border-mars-border py-4 text-center text-xs text-slate-500">
+            Mars Bio-Engineering Simulator &copy; 2026 - Designed for Web Terran Engineer
+          </footer>
+        </div>
+      );
+    }
+
+    // --- 顕微鏡 Canvas (Microscope View) ---
+    function MicroscopeCanvas({ species }) {
+      const canvasRef = useRef(null);
+
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let animationFrameId;
+
+        const particleCount = 20;
+        const particles = Array.from({ length: particleCount }).map(() => ({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * (species?.speed || 1),
+          vy: (Math.random() - 0.5) * (species?.speed || 1),
+          radius: 4 + Math.random() * 6,
+          angle: Math.random() * Math.PI * 2,
+          pulse: Math.random() * Math.PI
+        }));
+
+        const render = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // グリッド描画
+          ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+          ctx.lineWidth = 1;
+          const gridSize = 20;
+          for (let x = 0; x < canvas.width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+          }
+          for (let y = 0; y < canvas.height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+          }
+
+          // 微生物の描画
+          particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+
+            if (p.x < 10 || p.x > canvas.width - 10) p.vx *= -1;
+            if (p.y < 10 || p.y > canvas.height - 10) p.vy *= -1;
+
+            p.pulse += 0.05;
+            const currentR = p.radius + Math.sin(p.pulse) * 1.2;
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(Math.atan2(p.vy, p.vx));
+
+            ctx.fillStyle = species?.color || '#00f0ff';
+            ctx.shadowColor = species?.color || '#00f0ff';
+            ctx.shadowBlur = 10;
+
+            if (species?.shape === 'coccus') {
+              // 球菌
+              ctx.beginPath();
+              ctx.arc(0, 0, currentR, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (species?.shape === 'spirillum') {
+              // 螺旋菌
+              ctx.beginPath();
+              ctx.moveTo(-currentR * 2, 0);
+              ctx.quadraticCurveTo(-currentR, currentR, 0, 0);
+              ctx.quadraticCurveTo(currentR, -currentR, currentR * 2, 0);
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = species?.color || '#00f0ff';
+              ctx.stroke();
+            } else {
+              // 桿菌 (Bacillus) - 互換性の高いカプセル型描画
+              ctx.beginPath();
+              ctx.arc(-currentR, 0, currentR * 0.8, Math.PI / 2, -Math.PI / 2);
+              ctx.arc(currentR, 0, currentR * 0.8, -Math.PI / 2, Math.PI / 2);
+              ctx.closePath();
+              ctx.fill();
+            }
+
+            // 鞭毛 (Flagella)
+            if (species?.traits && species.traits.includes('highFertility')) {
+              ctx.strokeStyle = species?.color || '#00f0ff';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(-currentR * 1.8, 0);
+              ctx.quadraticCurveTo(-currentR * 3, Math.sin(p.pulse * 2) * 8, -currentR * 4, Math.cos(p.pulse * 2) * 5);
+              ctx.stroke();
+            }
+
+            ctx.restore();
+          });
+
+          // レンズのレンズぼかしオーバーレイ
+          const grad = ctx.createRadialGradient(
+            canvas.width / 2, canvas.height / 2, canvas.width * 0.3,
+            canvas.width / 2, canvas.height / 2, canvas.width * 0.5
+          );
+          grad.addColorStop(0, 'rgba(0,0,0,0)');
+          grad.addColorStop(1, 'rgba(10,6,6,0.85)');
+
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          animationFrameId = requestAnimationFrame(render);
+        };
+
+        render();
+
+        return () => cancelAnimationFrame(animationFrameId);
+      }, [species]);
+
+      return (
+        <canvas
+          ref={canvasRef}
+          width={280}
+          height={220}
+          className="rounded-full border-4 border-mars-border bg-black shadow-inner cursor-crosshair"
+        />
+      );
+    }
+
+    // --- 火星全体キャンバス (Mars Globe View) ---
+    function MarsGlobeCanvas({ regions, totalBiomass }) {
+      const canvasRef = useRef(null);
+
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let frame = 0;
+        let animationId;
+
+        const render = () => {
+          frame += 0.005;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          const cx = canvas.width / 2;
+          const cy = canvas.height / 2;
+          const radius = 80;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+          ctx.clip();
+
+          const planetGrad = ctx.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
+          planetGrad.addColorStop(0, '#c2410c');
+          planetGrad.addColorStop(0.5, '#9a3412');
+          planetGrad.addColorStop(1, '#451a03');
+          ctx.fillStyle = planetGrad;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          const greenRatio = Math.min(1, totalBiomass / 500000);
+          if (greenRatio > 0) {
+            ctx.fillStyle = `rgba(16, 185, 129, ${greenRatio * 0.7})`;
+            for (let i = 0; i < 5; i++) {
+              const x = cx + Math.sin(frame + i * 1.5) * 40;
+              const y = cy + Math.cos(frame * 0.8 + i) * 30;
+              ctx.beginPath();
+              ctx.arc(x, y, 20 + greenRatio * 15, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          const shadowGrad = ctx.createRadialGradient(cx - 20, cy - 20, 10, cx, cy, radius);
+          shadowGrad.addColorStop(0, 'rgba(255,255,255,0.1)');
+          shadowGrad.addColorStop(0.8, 'rgba(0,0,0,0.4)');
+          shadowGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
+          ctx.fillStyle = shadowGrad;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.restore();
+
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(0, 240, 255, ${0.2 + greenRatio * 0.5})`;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          animationId = requestAnimationFrame(render);
+        };
+
+        render();
+        return () => cancelAnimationFrame(animationId);
+      }, [totalBiomass]);
+
+      return (
+        <canvas
+          ref={canvasRef}
+          width={300}
+          height={200}
+          className="rounded border border-mars-border/50 bg-mars-panel"
+        />
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

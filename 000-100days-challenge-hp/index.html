@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>100日チャレンジ - 3個のゲーム</title>
+    <meta name="description" content="100日でゲーム100個を作るチャレンジ。現在3個完成。">
+    <meta property="og:title" content="100日チャレンジ">
+    <meta property="og:description" content="100日でゲーム3個。毎日新しいゲームを作っています。">
+    <meta property="og:image" content="https://via.placeholder.com/1200x630?text=100days-challenge">
+    <meta property="og:type" content="website">
+    <meta property="twitter:card" content="summary_large_image">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        .progress-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .progress-bar {
+            width: 100%;
+            height: 40px;
+            background: #e0e0e0;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 3%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .game-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .game-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+        }
+        .game-image {
+            width: 100%;
+            aspect-ratio: 1;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .game-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .game-info {
+            padding: 15px;
+        }
+        .game-day {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .game-title {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .game-desc {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .game-stats {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: #999;
+        }
+        .game-link {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .game-link:hover {
+            background: #764ba2;
+        }
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            opacity: 0.9;
+        }
+        .footer p {
+            font-size: 12px;
+        }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 32px;
+            }
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 100日チャレンジ</h1>
+            <p>100日でゲーム100個を作る</p>
+        </div>
+
+        <div class="progress-section">
+            <div class="progress-bar">
+                <div class="progress-fill">3%</div>
+            </div>
+            <div class="progress-text">3 / 100</div>
+        </div>
+
+        <div class="gallery">
+            
+            <div class="game-card">
+                <div class="game-image">
+                    <img src="https://via.placeholder.com/300x300?text=day25" alt="day25" loading="lazy">
+                </div>
+                <div class="game-info">
+                    <div class="game-day">#day25</div>
+                    <h3 class="game-title">ぐるぐる世界</h3>
+                    <p class="game-desc">#day25 ゲーム作成：ぐるぐる世界。重力で物が回転する不思議な世界。</p>
+                    <div class="game-stats">
+                        <span>❤️ 42</span>
+                        <span>🔄 5</span>
+                    </div>
+                    <a href="https://twitter.com/user/status/1234567890" target="_blank" class="game-link">X で見る</a>
+                </div>
+            </div>
+        
+            <div class="game-card">
+                <div class="game-image">
+                    <img src="https://via.placeholder.com/300x300?text=day24" alt="day24" loading="lazy">
+                </div>
+                <div class="game-info">
+                    <div class="game-day">#day24</div>
+                    <h3 class="game-title">迷路の塔</h3>
+                    <p class="game-desc">#day24 ゲーム作成：迷路の塔。上へ上へと登っていく。</p>
+                    <div class="game-stats">
+                        <span>❤️ 38</span>
+                        <span>🔄 4</span>
+                    </div>
+                    <a href="https://twitter.com/user/status/1234567889" target="_blank" class="game-link">X で見る</a>
+                </div>
+            </div>
+        
+            <div class="game-card">
+                <div class="game-image">
+                    <img src="https://via.placeholder.com/300x300?text=day23" alt="day23" loading="lazy">
+                </div>
+                <div class="game-info">
+                    <div class="game-day">#day23</div>
+                    <h3 class="game-title">カラフル雪玉</h3>
+                    <p class="game-desc">#day23 ゲーム作成：カラフル雪玉。色を集めて大きくなる。</p>
+                    <div class="game-stats">
+                        <span>❤️ 55</span>
+                        <span>🔄 8</span>
+                    </div>
+                    <a href="https://twitter.com/user/status/1234567888" target="_blank" class="game-link">X で見る</a>
+                </div>
+            </div>
+        
+        </div>
+
+        <div class="footer">
+            <p>最終更新: 2026/8/11 9:39:03</p>
+            <p>毎日新しいゲームを追加中...</p>
+        </div>
+    </div>
+</body>
+</html>

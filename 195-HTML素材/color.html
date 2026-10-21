@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0a0a;
+      --surface: #111111;
+      --border:  #1e1e1e;
+      --text:    #e8e8e8;
+      --muted:   #555;
+      --cur:     #3b82f6;   /* updated by JS */
+      --cur-dim: #0d1a2e;   /* updated by JS */
+    }
+
+    html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; }
+
+    /* ── HEADER ── */
+    header {
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: .9rem;
+      background: var(--surface);
+    }
+
+    header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      letter-spacing: .18em;
+      color: var(--cur);
+      transition: color .3s;
+    }
+
+    header span {
+      font-size: .7rem;
+      color: var(--muted);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.4rem 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+
+    /* ── SWATCH ── */
+    .swatch-panel {
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      height: 220px;
+      background: var(--cur);
+      transition: background .12s;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-end;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 8px 40px rgba(0,0,0,.5);
+    }
+
+    /* gloss overlay */
+    .swatch-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.14) 0%, transparent 55%);
+      pointer-events: none;
+    }
+
+    /* dark vignette for text legibility */
+    .swatch-panel::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,.42) 0%, transparent 55%);
+      pointer-events: none;
+    }
+
+    .swatch-content {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      padding: 1.2rem 1.8rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .swatch-hex-big {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 4.2rem;
+      line-height: 1;
+      letter-spacing: .06em;
+      color: #fff;
+      text-shadow: 0 2px 20px rgba(0,0,0,.4);
+      transition: color .15s;
+    }
+
+    .swatch-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: .6rem;
+    }
+
+    .complement-label {
+      font-size: .62rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.55);
+    }
+
+    .complement-swatch {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.3);
+      box-shadow: 0 2px 12px rgba(0,0,0,.4);
+      cursor: default;
+      transition: background .15s;
+      position: relative;
+    }
+
+    .complement-swatch::after {
+      content: '補色';
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: .56rem;
+      color: rgba(255,255,255,.5);
+      white-space: nowrap;
+      letter-spacing: .1em;
+    }
+
+    .pick-trigger {
+      font-family: 'Syne', sans-serif;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      padding: .45rem 1rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,.3);
+      background: rgba(255,255,255,.1);
+      color: rgba(255,255,255,.85);
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: all .18s;
+      margin-top: .3rem;
+    }
+
+    .pick-trigger:hover { background: rgba(255,255,255,.22); border-color: rgba(255,255,255,.5); }
+
+    /* hidden native picker */
+    #native-picker {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+    }
+
+    /* ── FORMAT CARDS ── */
+    .formats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .format-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: .9rem;
+      transition: border-color .3s;
+    }
+
+    .format-card:focus-within { border-color: var(--cur); }
+
+    .format-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .format-name {
+      font-size: .65rem;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--cur);
+      transition: color .3s;
+    }
+
+    .copy-btn {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-size: .62rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      padding: .28rem .65rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .copy-btn:hover { border-color: var(--cur); color: var(--cur); }
+    .copy-btn.copied { border-color: #4ade80; color: #4ade80; }
+
+    /* Value display input */
+    .format-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.02rem;
+      font-weight: 600;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: .6rem .85rem;
+      color: var(--text);
+      outline: none;
+      width: 100%;
+      transition: border-color .18s;
+      letter-spacing: .02em;
+    }
+
+    .format-value:focus { border-color: var(--cur); }
+
+    /* Sliders */
+    .sliders { display: flex; flex-direction: column; gap: .65rem; }
+
+    .slider-row {
+      display: grid;
+      grid-template-columns: 20px 1fr 40px;
+      align-items: center;
+      gap: .55rem;
+    }
+
+    .slider-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .68rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 5px;
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--cur);
+      border: 2px solid #fff;
+      box-shadow: 0 0 6px rgba(0,0,0,.5);
+      transition: background .12s, transform .1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--cur);
+      border: 2px solid #fff;
+      cursor: pointer;
+    }
+
+    .slider-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .7rem;
+      color: var(--muted);
+      text-align: right;
+      min-width: 38px;
+    }
+
+    /* RGB slider tracks */
+    #r-slider { background: linear-gradient(to right, #000, #f00); }
+    #g-slider { background: linear-gradient(to right, #000, #0f0); }
+    #b-slider { background: linear-gradient(to right, #000, #00f); }
+
+    /* H slider: rainbow */
+    #h-slider {
+      background: linear-gradient(to right,
+        hsl(0,100%,50%), hsl(30,100%,50%), hsl(60,100%,50%),
+        hsl(90,100%,50%), hsl(120,100%,50%), hsl(150,100%,50%),
+        hsl(180,100%,50%), hsl(210,100%,50%), hsl(240,100%,50%),
+        hsl(270,100%,50%), hsl(300,100%,50%), hsl(330,100%,50%), hsl(360,100%,50%)
+      );
+    }
+
+    /* S and L update dynamically via JS */
+    #s-slider { background: linear-gradient(to right, #888, var(--cur)); }
+    #l-slider { background: linear-gradient(to right, #000, var(--cur), #fff); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      background: #1e1e1e;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: .78rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      padding: .6rem 1.4rem;
+      border-radius: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      z-index: 99;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-6px);
+    }
+
+    /* ── RELATED ── */
+    .related-row {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .related-label {
+      font-size: .62rem;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .related-chip {
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform .15s;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 .7rem;
+      gap: .4rem;
+      border: 1px solid rgba(255,255,255,.08);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .65rem;
+      font-weight: 500;
+      letter-spacing: .04em;
+    }
+
+    .related-chip:hover { transform: translateY(-2px); }
+
+    .chip-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 640px) {
+      .formats { grid-template-columns: 1fr; }
+      .swatch-hex-big { font-size: 2.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Color Lab</h1>
+  <span>カラーコード変換ツール</span>
+</header>
+
+<main>
+
+  <!-- ── SWATCH ── -->
+  <div class="swatch-panel" id="swatch-panel" onclick="document.getElementById('native-picker').click()">
+    <input type="color" id="native-picker" value="#3b82f6" oninput="fromNative(this.value)">
+    <div class="swatch-content">
+      <div class="swatch-hex-big" id="swatch-hex-big">#3B82F6</div>
+      <div class="swatch-right">
+        <div class="complement-label">Complementary</div>
+        <div class="complement-swatch" id="complement-swatch"></div>
+        <button class="pick-trigger" onclick="event.stopPropagation(); document.getElementById('native-picker').click()">
+          🎨 ピッカーで選ぶ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FORMAT CARDS ── -->
+  <div class="formats">
+
+    <!-- HEX -->
+    <div class="format-card">
+      <div class="format-header">
+        <span class="format-name">HEX</span>
+        <button class="copy-btn" onclick="copyVal('hex')">コピー</button>
+      </div>
+      <input class="format-value" id="hex-input" type="text" value="#3B82F6" maxlength="7" oninput="fromHex(this.value)" spellcheck="false">
+    </div>
+
+    <!-- RGB -->
+    <div class="format-card">
+      <div class="format-header">
+        <span class="format-name">RGB</span>
+        <button class="copy-btn" onclick="copyVal('rgb')">コピー</button>
+      </div>
+      <input class="format-value" id="rgb-input" type="text" value="rgb(59, 130, 246)" readonly>
+      <div class="sliders">
+        <div class="slider-row">
+          <span class="slider-label">R</span>
+          <input type="range" id="r-slider" min="0" max="255" value="59" oninput="fromSliderRgb()">
+          <span class="slider-num" id="r-num">59</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">G</span>
+          <input type="range" id="g-slider" min="0" max="255" value="130" oninput="fromSliderRgb()">
+          <span class="slider-num" id="g-num">130</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">B</span>
+          <input type="range" id="b-slider" min="0" max="255" value="246" oninput="fromSliderRgb()">
+          <span class="slider-num" id="b-num">246</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HSL -->
+    <div class="format-card">
+      <div class="format-header">
+        <span class="format-name">HSL</span>
+        <button class="copy-btn" onclick="copyVal('hsl')">コピー</button>
+      </div>
+      <input class="format-value" id="hsl-input" type="text" value="hsl(217, 91%, 60%)" readonly>
+      <div class="sliders">
+        <div class="slider-row">
+          <span class="slider-label">H</span>
+          <input type="range" id="h-slider" min="0" max="360" value="217" oninput="fromSliderHsl()">
+          <span class="slider-num" id="h-num">217</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">S</span>
+          <input type="range" id="s-slider" min="0" max="100" value="91" oninput="fromSliderHsl()">
+          <span class="slider-num" id="s-num">91%</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">L</span>
+          <input type="range" id="l-slider" min="0" max="100" value="60" oninput="fromSliderHsl()">
+          <span class="slider-num" id="l-num">60%</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RELATED COLORS ── -->
+  <div class="related-row" id="related-row">
+    <span class="related-label">関連カラー</span>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ── STATE ── */
+  let R = 59, G = 130, B = 246;
+
+  /* ── COLOR MATH ── */
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0').toUpperCase()).join('');
+  }
+
+  function hexToRgb(hex) {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return null;
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    if ([r, g, b].some(isNaN)) return null;
+    return { r, g, b };
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+    }
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+  }
+
+  function hslToRgb(h, s, l) {
+    h /= 360; s /= 100; l /= 100;
+    if (s === 0) {
+      const v = Math.round(l * 255);
+      return { r: v, g: v, b: v };
+    }
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    return {
+      r: Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+      g: Math.round(hue2rgb(p, q, h) * 255),
+      b: Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
+    };
+  }
+
+  function hue2rgb(p, q, t) {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  }
+
+  function luminance(r, g, b) {
+    return [r, g, b].reduce((acc, c, i) => {
+      const v = c / 255;
+      return acc + (i === 0 ? 0.2126 : i === 1 ? 0.7152 : 0.0722) * (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+    }, 0);
+  }
+
+  function dimColor(hex) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return '#111';
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`;
+  }
+
+  /* ── UPDATE ALL ── */
+  function updateAll() {
+    const hex = rgbToHex(R, G, B);
+    const { h, s, l } = rgbToHsl(R, G, B);
+
+    /* swatch */
+    document.getElementById('swatch-panel').style.background = hex;
+    document.getElementById('swatch-hex-big').textContent = hex;
+    document.getElementById('native-picker').value = hex.toLowerCase();
+
+    /* complement */
+    const ch = (h + 180) % 360;
+    const compRgb = hslToRgb(ch, s, l);
+    const compHex = rgbToHex(compRgb.r, compRgb.g, compRgb.b);
+    document.getElementById('complement-swatch').style.background = compHex;
+
+    /* HEX */
+    document.getElementById('hex-input').value = hex;
+
+    /* RGB display */
+    document.getElementById('rgb-input').value = `rgb(${R}, ${G}, ${B})`;
+    document.getElementById('r-slider').value = R;
+    document.getElementById('g-slider').value = G;
+    document.getElementById('b-slider').value = B;
+    document.getElementById('r-num').textContent = R;
+    document.getElementById('g-num').textContent = G;
+    document.getElementById('b-num').textContent = B;
+
+    /* RGB slider tracks */
+    document.getElementById('r-slider').style.background = `linear-gradient(to right, rgb(0,${G},${B}), rgb(255,${G},${B}))`;
+    document.getElementById('g-slider').style.background = `linear-gradient(to right, rgb(${R},0,${B}), rgb(${R},255,${B}))`;
+    document.getElementById('b-slider').style.background = `linear-gradient(to right, rgb(${R},${G},0), rgb(${R},${G},255))`;
+
+    /* HSL display */
+    document.getElementById('hsl-input').value = `hsl(${h}, ${s}%, ${l}%)`;
+    document.getElementById('h-slider').value = h;
+    document.getElementById('s-slider').value = s;
+    document.getElementById('l-slider').value = l;
+    document.getElementById('h-num').textContent = h;
+    document.getElementById('s-num').textContent = s + '%';
+    document.getElementById('l-num').textContent = l + '%';
+
+    /* S/L slider tracks */
+    const hslBase = `hsl(${h},100%,50%)`;
+    document.getElementById('s-slider').style.background = `linear-gradient(to right, hsl(${h},0%,${l}%), ${hslBase})`;
+    document.getElementById('l-slider').style.background = `linear-gradient(to right, #000, hsl(${h},${s}%,50%), #fff)`;
+
+    /* CSS vars for accent */
+    document.documentElement.style.setProperty('--cur', hex);
+    document.documentElement.style.setProperty('--cur-dim', dimColor(hex));
+    document.querySelector('header h1').style.color = hex;
+
+    /* related colors */
+    renderRelated(h, s, l);
+  }
+
+  /* ── RELATED COLORS ── */
+  function renderRelated(h, s, l) {
+    const ll = Math.max(25, Math.min(75, l));
+    const ss = Math.max(40, s);
+    const palette = [
+      { label: 'Analogous −30°', h: (h - 30 + 360) % 360 },
+      { label: 'Analogous +30°', h: (h + 30) % 360 },
+      { label: 'Triadic +120°',  h: (h + 120) % 360 },
+      { label: 'Triadic +240°',  h: (h + 240) % 360 },
+      { label: 'Split −150°',    h: (h - 150 + 360) % 360 },
+      { label: 'Split +150°',    h: (h + 150) % 360 },
+    ];
+
+    const row = document.getElementById('related-row');
+    row.innerHTML = '<span class="related-label">関連カラー</span>';
+
+    palette.forEach(({ label, h: ch }) => {
+      const rgb = hslToRgb(ch, ss, ll);
+      const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+      const chip = document.createElement('div');
+      chip.className = 'related-chip';
+      chip.style.background = hex + '22';
+      chip.style.borderColor = hex + '55';
+      chip.style.color = hex;
+      chip.title = label;
+      chip.innerHTML = `<div class="chip-dot" style="background:${hex}"></div>${hex}`;
+      chip.onclick = () => { ({ r: R, g: G, b: B } = rgb); updateAll(); };
+      row.appendChild(chip);
+    });
+  }
+
+  /* ── INPUT HANDLERS ── */
+  function fromNative(val) {
+    const rgb = hexToRgb(val);
+    if (!rgb) return;
+    ({ r: R, g: G, b: B } = rgb);
+    updateAll();
+  }
+
+  function fromHex(val) {
+    const clean = val.startsWith('#') ? val : '#' + val;
+    const rgb = hexToRgb(clean);
+    if (!rgb) return;
+    ({ r: R, g: G, b: B } = rgb);
+    const { h, s, l } = rgbToHsl(R, G, B);
+    document.getElementById('h-slider').value = h;
+    document.getElementById('s-slider').value = s;
+    document.getElementById('l-slider').value = l;
+    updateAll();
+  }
+
+  function fromSliderRgb() {
+    R = +document.getElementById('r-slider').value;
+    G = +document.getElementById('g-slider').value;
+    B = +document.getElementById('b-slider').value;
+    updateAll();
+  }
+
+  function fromSliderHsl() {
+    const h = +document.getElementById('h-slider').value;
+    const s = +document.getElementById('s-slider').value;
+    const l = +document.getElementById('l-slider').value;
+    ({ r: R, g: G, b: B } = hslToRgb(h, s, l));
+    updateAll();
+  }
+
+  /* ── COPY ── */
+  function copyVal(format) {
+    const vals = {
+      hex: document.getElementById('hex-input').value,
+      rgb: document.getElementById('rgb-input').value,
+      hsl: document.getElementById('hsl-input').value,
+    };
+    navigator.clipboard.writeText(vals[format]).then(() => showToast(vals[format] + ' をコピー！'));
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  /* ── INIT ── */
+  updateAll();
+</script>
+</body>
+</html>

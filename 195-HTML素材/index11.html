@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
+<title>ANDROMEDA DRIVE</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #020612;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: white;
+  }
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    background: #020612;
+  }
+  #shop {
+    position: fixed;
+    inset: 7vh 5vw;
+    background: rgba(5, 12, 30, 0.94);
+    border: 1px solid rgba(120, 200, 255, .45);
+    border-radius: 18px;
+    box-shadow: 0 0 45px rgba(50, 180, 255, .25);
+    padding: 22px;
+    z-index: 10;
+    display: none;
+    overflow: auto;
+    backdrop-filter: blur(10px);
+  }
+  #shop h2 {
+    margin: 0 0 6px;
+    letter-spacing: .08em;
+    color: #8fe7ff;
+  }
+  #shop .sub {
+    color: #b8c8e8;
+    margin-bottom: 18px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    border: 1px solid rgba(160, 220, 255, .22);
+    background: rgba(255,255,255,.045);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .card h3 {
+    margin: 0 0 6px;
+    color: #fff;
+  }
+  .card p {
+    min-height: 42px;
+    color: #c8d7ee;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  button {
+    cursor: pointer;
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 14px;
+    color: #00111d;
+    font-weight: 800;
+    background: linear-gradient(135deg, #7df2ff, #ffd36b);
+  }
+  button:disabled {
+    cursor: not-allowed;
+    opacity: .4;
+    filter: grayscale(1);
+  }
+  #closeShop {
+    float: right;
+    background: linear-gradient(135deg, #ff8aa8, #ffd36b);
+  }
+  #touch {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    display: none;
+  }
+  .touchBtn {
+    position: absolute;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(130, 220, 255, .16);
+    border: 1px solid rgba(180, 240, 255, .4);
+    color: white;
+    display: grid;
+    place-items: center;
+    font-weight: 900;
+    user-select: none;
+    pointer-events: auto;
+    backdrop-filter: blur(6px);
+  }
+  #tLeft  { left: 20px; bottom: 34px; }
+  #tRight { left: 105px; bottom: 34px; }
+  #tThrust { right: 24px; bottom: 38px; width: 88px; height: 88px; }
+  #tBoost { right: 122px; bottom: 42px; }
+  #tWarp { right: 28px; bottom: 140px; }
+  @media (pointer: coarse) {
+    #touch { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="shop">
+  <button id="closeShop">閉じる U</button>
+  <h2>ROCKET UPGRADE BAY</h2>
+  <div class="sub">
+    回収した星鉱石でロケットを強化できます。現在の星鉱石：
+    <b id="oreText">0</b>
+  </div>
+  <div id="shopGrid" class="grid"></div>
+</div>
+
+<div id="touch">
+  <div class="touchBtn" id="tLeft">◀</div>
+  <div class="touchBtn" id="tRight">▶</div>
+  <div class="touchBtn" id="tThrust">噴射</div>
+  <div class="touchBtn" id="tBoost">BOOST</div>
+  <div class="touchBtn" id="tWarp">WARP</div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const shopEl = document.getElementById("shop");
+const shopGrid = document.getElementById("shopGrid");
+const oreText = document.getElementById("oreText");
+const closeShop = document.getElementById("closeShop");
+
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth;
+  H = innerHeight;
+  canvas.width = Math.floor(W * DPR);
+  canvas.height = Math.floor(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener("resize", resize);
+resize();
+
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const dist = (a,b,c,d) => Math.hypot(a-c,b-d);
+const fmt = n => Math.floor(n).toLocaleString("ja-JP");
+
+let audioCtx = null;
+function beep(freq = 440, dur = .06, type = "sine", gain = .04) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = gain;
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+    o.stop(audioCtx.currentTime + dur);
+  } catch {}
+}
+
+const keys = {};
+addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if ([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase())) e.preventDefault();
+
+  if (game.state === "menu" && (k === "enter" || k === " ")) {
+    startGame();
+  } else if (game.state === "gameover" && k === "r") {
+    startGame();
+  } else if (game.state === "ending" && k === "r") {
+    startGame();
+  } else if (k === "p" || k === "escape") {
+    if (game.state === "playing") game.paused = !game.paused;
+  } else if (k === "u" && game.state === "playing") {
+    toggleShop();
+  } else if (k === "r" && game.state === "playing") {
+    startGame();
+  }
+});
+addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+canvas.addEventListener("pointerdown", () => {
+  if (game.state === "menu") startGame();
+  if (game.state === "gameover" || game.state === "ending") startGame();
+});
+
+function touchBind(id, key) {
+  const el = document.getElementById(id);
+  const on = e => { e.preventDefault(); keys[key] = true; };
+  const off = e => { e.preventDefault(); keys[key] = false; };
+  el.addEventListener("pointerdown", on);
+  el.addEventListener("pointerup", off);
+  el.addEventListener("pointercancel", off);
+  el.addEventListener("pointerleave", off);
+}
+touchBind("tLeft", "arrowleft");
+touchBind("tRight", "arrowright");
+touchBind("tThrust", "arrowup");
+touchBind("tBoost", "shift");
+touchBind("tWarp", " ");
+
+const milestones = [
+  { y: 0,      name: "地球発射台", goal: "大気圏を突破せよ" },
+  { y: 3500,   name: "成層圏", goal: "重力と空気抵抗に耐えろ" },
+  { y: 8500,   name: "地球軌道", goal: "宇宙ゴミを回避せよ" },
+  { y: 15000,  name: "月軌道", goal: "月を通過せよ" },
+  { y: 26000,  name: "火星航路", goal: "資源を集めろ" },
+  { y: 39000,  name: "小惑星帯", goal: "隕石嵐を抜けろ" },
+  { y: 56000,  name: "木星重力圏", goal: "スリングショット加速" },
+  { y: 71000,  name: "土星外縁", goal: "ワープを準備せよ" },
+  { y: 88000,  name: "太陽系外縁", goal: "星間空間へ" },
+  { y: 104000, name: "銀河間航路", goal: "アンドロメダへワープ" },
+  { y: 125000, name: "アンドロメダ銀河", goal: "到達！" },
+];
+
+const planets = [
+  { name:"月",       x:-900,  y:15500, r:360, color:"#b8bcc6", glow:"#dfe8ff", g:450000, inf:2600 },
+  { name:"火星",     x:1100,  y:27500, r:520, color:"#c25b35", glow:"#ff9b64", g:580000, inf:3300 },
+  { name:"木星",     x:-1450, y:57000, r:1250, color:"#cfa56f", glow:"#ffe0aa", g:1600000, inf:5200 },
+  { name:"土星",     x:1300,  y:72000, r:980, color:"#d8c085", glow:"#fff1ba", g:1350000, inf:5000, ring:true },
+  { name:"ワームホール", x:0, y:106000, r:900, color:"#7d5cff", glow:"#95f5ff", g:900000, inf:4200, worm:true },
+  { name:"アンドロメダ", x:0, y:125000, r:1900, color:"#9be0ff", glow:"#ffd1ff", g:0, inf:0, galaxy:true },
+];
+
+const upgradeDefs = {
+  engine: {
+    title: "エンジン",
+    max: 5,
+    base: 18,
+    desc: "推力と加速性能が上昇する。",
+    effect: lv => `推力 +${lv * 18}%`
+  },
+  tank: {
+    title: "燃料タンク",
+    max: 5,
+    base: 16,
+    desc: "最大燃料が増える。購入時に燃料も補充。",
+    effect: lv => `最大燃料 +${lv * 45}`
+  },
+  armor: {
+    title: "装甲",
+    max: 5,
+    base: 14,
+    desc: "衝突ダメージを軽減し、最大耐久も上がる。",
+    effect: lv => `耐久 +${lv * 18} / 被害軽減`
+  },
+  solar: {
+    title: "ソーラーパネル",
+    max: 4,
+    base: 20,
+    desc: "宇宙空間で燃料が少しずつ回復する。",
+    effect: lv => `燃料回復 ${lv ? "有効" : "なし"}`
+  },
+  warp: {
+    title: "ワープ装置",
+    max: 5,
+    base: 24,
+    desc: "ワープ距離とワープエネルギー回復量が増える。",
+    effect: lv => `ワープ距離 +${lv * 25}%`
+  },
+  magnet: {
+    title: "AI資源ナビ",
+    max: 4,
+    base: 18,
+    desc: "星鉱石・燃料セルを引き寄せる範囲が広がる。",
+    effect: lv => `回収範囲 +${lv * 35}%`
+  }
+};
+
+const game = {
+  state: "menu",
+  paused: false,
+  shopOpen: false,
+  time: 0,
+  last: performance.now(),
+  high: Number(localStorage.getItem("andromeda_high") || 0),
+  banner: "",
+  bannerT: 0,
+  seen: new Set(),
+  shake: 0,
+  stars: [],
+  particles: [],
+  entities: [],
+  upgrades: {},
+  ore: 0,
+  score: 0,
+  warpFlash: 0,
+  rocket: null,
+};
+
+function makeStars() {
+  game.stars = [];
+  for (let i = 0; i < 600; i++) {
+    game.stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      z: rand(.25, 1.8),
+      a: rand(.25, 1),
+      s: rand(.6, 2.2)
+    });
+  }
+}
+makeStars();
+addEventListener("resize", makeStars);
+
+function maxFuel() {
+  return 100 + game.upgrades.tank * 45;
+}
+function maxHp() {
+  return 100 + game.upgrades.armor * 18;
+}
+function currentArea() {
+  let a = milestones[0];
+  for (const m of milestones) if (game.rocket.y >= m.y) a = m;
+  return a;
+}
+function scaleForAltitude() {
+  const y = game.rocket ? game.rocket.y : 0;
+  return clamp(0.115 - y / 1800000, 0.048, 0.115);
+}
+function sx(x) {
+  return W / 2 + (x - game.rocket.x) * scaleForAltitude();
+}
+function sy(y) {
+  return H * 0.62 - (y - game.rocket.y) * scaleForAltitude();
+}
+
+function startGame() {
+  game.state = "playing";
+  game.paused = false;
+  game.shopOpen = false;
+  shopEl.style.display = "none";
+  game.time = 0;
+  game.banner = "MISSION START：アンドロメダ銀河を目指せ";
+  game.bannerT = 3.2;
+  game.seen = new Set();
+  game.shake = 0;
+  game.particles = [];
+  game.entities = [];
+  game.ore = 0;
+  game.score = 0;
+  game.warpFlash = 0;
+  game.upgrades = { engine:0, tank:0, armor:0, solar:0, warp:0, magnet:0 };
+  game.rocket = {
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    angle: 0,
+    fuel: 100,
+    hp: 100,
+    warp: 18,
+    warpCharge: 0,
+    warpCooldown: 0,
+    inv: 0,
+    thrusting: false,
+    boosting: false
+  };
+  renderShop();
+}
+
+function gameOver(reason) {
+  game.state = "gameover";
+  game.banner = reason;
+  saveHigh();
+  beep(80, .5, "sawtooth", .08);
+}
+
+function saveHigh() {
+  game.high = Math.max(game.high, game.rocket ? game.rocket.y : 0);
+  localStorage.setItem("andromeda_high", String(Math.floor(game.high)));
+}
+
+function winGame() {
+  game.state = "ending";
+  saveHigh();
+  game.banner = "アンドロメダ銀河 到達";
+  beep(660, .18, "triangle", .06);
+  setTimeout(() => beep(880, .18, "triangle", .06), 160);
+  setTimeout(() => beep(1320, .45, "triangle", .05), 340);
+}
+
+function addParticle(x,y,vx,vy,life,color,size=3) {
+  game.particles.push({x,y,vx,vy,life,max:life,color,size});
+}
+
+function burst(x,y,color,count=18,power=380) {
+  for (let i=0;i<count;i++) {
+    const a = rand(0,TAU);
+    const s = rand(power*.2,power);
+    addParticle(x,y,Math.cos(a)*s,Math.sin(a)*s,rand(.25,.9),color,rand(2,6));
+  }
+}
+
+function toggleShop() {
+  game.shopOpen = !game.shopOpen;
+  shopEl.style.display = game.shopOpen ? "block" : "none";
+  renderShop();
+}
+closeShop.onclick = toggleShop;
+
+function renderShop() {
+  oreText.textContent = game.ore;
+  shopGrid.innerHTML = "";
+  for (const [id, def] of Object.entries(upgradeDefs)) {
+    const lv = game.upgrades[id] || 0;
+    const cost = Math.floor(def.base * Math.pow(1.55, lv));
+    const maxed = lv >= def.max;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <h3>${def.title} Lv.${lv}/${def.max}</h3>
+      <p>${def.desc}<br><b>${def.effect(lv)}</b></p>
+      <button ${maxed || game.ore < cost ? "disabled" : ""}>
+        ${maxed ? "MAX" : `購入：星鉱石 ${cost}`}
+      </button>
+    `;
+    const btn = card.querySelector("button");
+    btn.onclick = () => {
+      if (maxed || game.ore < cost) return;
+      game.ore -= cost;
+      game.upgrades[id]++;
+      if (id === "tank") game.rocket.fuel = Math.min(maxFuel(), game.rocket.fuel + 45);
+      if (id === "armor") game.rocket.hp = Math.min(maxHp(), game.rocket.hp + 22);
+      beep(740, .08, "triangle", .05);
+      renderShop();
+    };
+    shopGrid.appendChild(card);
+  }
+}
+
+function spawnEntity() {
+  const r = game.rocket;
+  const sc = scaleForAltitude();
+  const ahead = rand(1800, 9800) / clamp(sc / .08, .7, 1.4);
+  const side = W / sc * .62;
+  const y = r.y + ahead;
+  const x = r.x + rand(-side, side);
+  const alt = Math.max(0, y);
+
+  let type = "asteroid";
+  const roll = Math.random();
+
+  if (alt < 6500) {
+    type = roll < .42 ? "cloud" : roll < .74 ? "debris" : roll < .88 ? "fuel" : "ore";
+  } else if (alt < 18000) {
+    type = roll < .45 ? "debris" : roll < .68 ? "asteroid" : roll < .84 ? "ore" : "fuel";
+  } else if (alt > 36000 && alt < 51000) {
+    type = roll < .72 ? "asteroid" : roll < .9 ? "ore" : "fuel";
+  } else if (alt > 82000) {
+    type = roll < .46 ? "flare" : roll < .7 ? "asteroid" : roll < .9 ? "ore" : "repair";
+  } else {
+    type = roll < .48 ? "asteroid" : roll < .65 ? "debris" : roll < .84 ? "ore" : roll < .94 ? "fuel" : "repair";
+  }
+
+  if (type === "cloud") {
+    game.entities.push({type,x,y,r:rand(80,210),vx:rand(-8,8),vy:rand(-12,4),life:999});
+  } else if (type === "debris") {
+    game.entities.push({type,x,y,r:rand(16,34),vx:rand(-45,45),vy:rand(-30,15),spin:rand(-2,2),a:rand(0,TAU)});
+  } else if (type === "asteroid") {
+    game.entities.push({type,x,y,r:rand(28,78),vx:rand(-34,34),vy:rand(-55,5),spin:rand(-1.3,1.3),a:rand(0,TAU)});
+  } else if (type === "ore") {
+    game.entities.push({type,x,y,r:18,vx:rand(-15,15),vy:rand(-20,10),value:Math.random()<.15?5:2});
+  } else if (type === "fuel") {
+    game.entities.push({type,x,y,r:17,vx:rand(-12,12),vy:rand(-16,8),value:22});
+  } else if (type === "repair") {
+    game.entities.push({type,x,y,r:18,vx:rand(-12,12),vy:rand(-16,8),value:18});
+  } else if (type === "flare") {
+    game.entities.push({type,x,y,r:44,vx:rand(-120,120),vy:rand(-70,-20),phase:rand(0,TAU)});
+  }
+}
+
+function update(dt) {
+  if (game.state !== "playing" || game.paused || game.shopOpen) return;
+
+  const r = game.rocket;
+  game.time += dt;
+  game.bannerT = Math.max(0, game.bannerT - dt);
+  game.shake = Math.max(0, game.shake - dt * 12);
+  game.warpFlash = Math.max(0, game.warpFlash - dt * 1.8);
+  r.inv = Math.max(0, r.inv - dt);
+  r.warpCooldown = Math.max(0, r.warpCooldown - dt);
+
+  const left = keys["arrowleft"] || keys["a"];
+  const right = keys["arrowright"] || keys["d"];
+  const thrust = keys["arrowup"] || keys["w"];
+  const boost = keys["shift"];
+  const warpKey = keys[" "];
+
+  if (left) r.angle -= 2.85 * dt;
+  if (right) r.angle += 2.85 * dt;
+  r.angle = clamp(r.angle, -Math.PI * .82, Math.PI * .82);
+
+  const alt = Math.max(0, r.y);
+  const gravity = 170 * Math.pow(clamp(1 - alt / 12500, 0, 1), 1.7);
+  r.vy -= gravity * dt;
+
+  const drag = alt < 9500 ? lerp(.22, .018, alt / 9500) : .005;
+  r.vx *= Math.max(0, 1 - drag * dt);
+  r.vy *= Math.max(0, 1 - drag * dt);
+
+  r.thrusting = false;
+  r.boosting = false;
+
+  if (thrust && r.fuel > 0) {
+    const engineMul = 1 + game.upgrades.engine * .18;
+    const boostMul = boost ? 1.65 : 1;
+    const power = 620 * engineMul * boostMul;
+    const dx = Math.sin(r.angle);
+    const dy = Math.cos(r.angle);
+    r.vx += dx * power * dt;
+    r.vy += dy * power * dt;
+    const fuelUse = (boost ? 18 : 9) * (1 - game.upgrades.engine * .035);
+    r.fuel = Math.max(0, r.fuel - fuelUse * dt);
+    r.thrusting = true;
+    r.boosting = boost;
+
+    for (let i=0;i<(boost?4:2);i++) {
+      const backA = r.angle + Math.PI + rand(-.18,.18);
+      addParticle(
+        r.x - Math.sin(r.angle)*38 + rand(-7,7),
+        r.y - Math.cos(r.angle)*38 + rand(-7,7),
+        Math.sin(backA)*rand(80,190) - r.vx*.05,
+        Math.cos(backA)*rand(80,190) - r.vy*.05,
+        rand(.18,.42),
+        boost ? "#7df2ff" : "#ffb347",
+        rand(3,7)
+      );
+    }
+  }
+
+  if (alt > 8500) {
+    const solar = game.upgrades.solar;
+    if (solar > 0) r.fuel = Math.min(maxFuel(), r.fuel + (0.38 + solar * .55) * dt);
+  }
+
+  r.warp = Math.min(100, r.warp + (1.15 + game.upgrades.warp * .36 + game.upgrades.solar * .08) * dt);
+
+  if (warpKey) {
+    r.warpCharge += dt;
+    if (r.warp >= 35 && r.warpCharge > .65 && r.warpCooldown <= 0) {
+      const hyper = alt > 88000 ? 1.8 : 1;
+      const jump = (2400 + game.upgrades.warp * 1250 + r.warpCharge * 1800) * hyper;
+      r.y += jump;
+      r.vy += 380 + game.upgrades.warp * 60;
+      r.warp -= 35;
+      r.warpCharge = 0;
+      r.warpCooldown = 2.8;
+      game.warpFlash = 1;
+      game.shake = 9;
+      burst(r.x, r.y, "#9df8ff", 70, 900);
+      game.banner = `WARP DRIVE：+${fmt(jump)} km`;
+      game.bannerT = 2.2;
+      beep(150, .08, "sawtooth", .08);
+      setTimeout(() => beep(900, .2, "triangle", .06), 80);
+    }
+  } else {
+    r.warpCharge = Math.max(0, r.warpCharge - dt * 2.5);
+  }
+
+  // Planet gravity and slingshot.
+  for (const p of planets) {
+    if (p.g <= 0) continue;
+    const dx = p.x - r.x;
+    const dy = p.y - r.y;
+    const d = Math.hypot(dx, dy);
+    if (d < p.inf) {
+      const f = p.g / Math.max(250000, d*d);
+      r.vx += dx / d * f * dt * 90;
+      r.vy += dy / d * f * dt * 90;
+
+      if (d < p.r + 60 && r.inv <= 0) {
+        const dmg = 28 * (1 - game.upgrades.armor * .09);
+        r.hp -= dmg;
+        r.inv = 1.3;
+        r.vx -= dx / d * 360;
+        r.vy -= dy / d * 360;
+        game.shake = 14;
+        burst(r.x,r.y,"#ff6b6b",30,500);
+        game.banner = `${p.name}に接近しすぎた！`;
+        game.bannerT = 1.8;
+        beep(120, .12, "square", .08);
+      }
+    }
+  }
+
+  r.x += r.vx * dt;
+  r.y += r.vy * dt;
+  if (r.y < 0) {
+    r.y = 0;
+    if (r.vy < -80) {
+      r.hp += r.vy * .035;
+      game.shake = 10;
+    }
+    r.vy = Math.max(0, -r.vy * .18);
+  }
+
+  // Milestone banners and rewards.
+  for (const m of milestones) {
+    if (r.y >= m.y && !game.seen.has(m.y)) {
+      game.seen.add(m.y);
+      game.banner = `${m.name}：${m.goal}`;
+      game.bannerT = 3.0;
+      if (m.y > 0) {
+        game.ore += 4;
+        r.warp = Math.min(100, r.warp + 12);
+        beep(620, .08, "triangle", .05);
+      }
+    }
+  }
+
+  while (game.entities.length < 90) spawnEntity();
+
+  const magnetR = 90 * (1 + game.upgrades.magnet * .35);
+  for (let i = game.entities.length - 1; i >= 0; i--) {
+    const e = game.entities[i];
+    e.x += (e.vx || 0) * dt;
+    e.y += (e.vy || 0) * dt;
+    e.a = (e.a || 0) + (e.spin || 0) * dt;
+    e.phase = (e.phase || 0) + dt * 4;
+
+    if (["ore","fuel","repair"].includes(e.type)) {
+      const d = dist(r.x,r.y,e.x,e.y);
+      if (d < magnetR && d > 1) {
+        e.x += (r.x - e.x) / d * 360 * dt;
+        e.y += (r.y - e.y) / d * 360 * dt;
+      }
+    }
+
+    const d = dist(r.x,r.y,e.x,e.y);
+    if (d < e.r + 28) {
+      if (e.type === "ore") {
+        game.ore += e.value;
+        game.score += e.value * 100;
+        burst(e.x,e.y,"#ffd36b",18,280);
+        game.entities.splice(i,1);
+        beep(900, .05, "triangle", .035);
+        renderShop();
+        continue;
+      }
+      if (e.type === "fuel") {
+        r.fuel = Math.min(maxFuel(), r.fuel + e.value);
+        burst(e.x,e.y,"#7df2ff",18,280);
+        game.entities.splice(i,1);
+        beep(520, .06, "sine", .04);
+        continue;
+      }
+      if (e.type === "repair") {
+        r.hp = Math.min(maxHp(), r.hp + e.value);
+        burst(e.x,e.y,"#7dff9b",18,280);
+        game.entities.splice(i,1);
+        beep(700, .06, "sine", .04);
+        continue;
+      }
+      if (e.type !== "cloud" && r.inv <= 0) {
+        const speed = Math.hypot(r.vx - (e.vx||0), r.vy - (e.vy||0));
+        const base = e.type === "flare" ? 20 : e.type === "asteroid" ? 24 : 15;
+        const dmg = (base + speed * .018) * (1 - game.upgrades.armor * .09);
+        r.hp -= dmg;
+        r.inv = .9;
+        r.vx += (r.x - e.x) / Math.max(1,d) * 240;
+        r.vy += (r.y - e.y) / Math.max(1,d) * 240;
+        game.shake = 12;
+        burst(e.x,e.y,e.type==="flare"?"#ff5fd7":"#ff8050",26,520);
+        game.entities.splice(i,1);
+        beep(95, .12, "square", .08);
+        continue;
+      }
+    }
+
+    if (e.y < r.y - 6500 || Math.abs(e.x - r.x) > 12000 || e.y > r.y + 18000) {
+      game.entities.splice(i,1);
+    }
+  }
+
+  for (let i = game.particles.length - 1; i >= 0; i--) {
+    const p = game.particles[i];
+    p.life -= dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= 1 - .8 * dt;
+    p.vy *= 1 - .8 * dt;
+    if (p.life <= 0) game.particles.splice(i,1);
+  }
+
+  if (r.hp <= 0) gameOver("ロケット大破：Rで再挑戦");
+  if (r.fuel <= 0 && r.y < 8500 && r.vy < -50) {
+    // no immediate fail; dramatic fall allowed
+  }
+  if (r.y >= 125000) winGame();
+
+  game.score = Math.max(game.score, Math.floor(r.y));
+  saveHigh();
+}
+
+function drawBackground() {
+  const r = game.rocket || { y:0, x:0 };
+  const alt = Math.max(0, r.y);
+  const t = clamp(alt / 12000, 0, 1);
+  const g = ctx.createLinearGradient(0,0,0,H);
+  if (alt < 12000) {
+    g.addColorStop(0, `rgb(${Math.floor(lerp(78,2,t))},${Math.floor(lerp(170,8,t))},${Math.floor(lerp(255,28,t))})`);
+    g.addColorStop(.56, `rgb(${Math.floor(lerp(48,4,t))},${Math.floor(lerp(105,10,t))},${Math.floor(lerp(205,34,t))})`);
+    g.addColorStop(1, "#020612");
+  } else {
+    g.addColorStop(0, "#01030c");
+    g.addColorStop(.55, "#030817");
+    g.addColorStop(1, "#08051c");
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
+
+  // stars
+  ctx.save();
+  for (const s of game.stars) {
+    let x = (s.x - r.x * .012 * s.z) % W;
+    let y = (s.y + r.y * .018 * s.z) % H;
+    if (x < 0) x += W;
+    if (y < 0) y += H;
+    const a = alt < 8000 ? s.a * clamp((alt - 1200)/6800,0,1) : s.a;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = s.z > 1.3 ? "#d9f8ff" : "#ffffff";
+    ctx.fillRect(x,y,s.s,s.s);
+  }
+  ctx.restore();
+
+  // Earth horizon
+  if (alt < 7000 && game.rocket) {
+    const groundY = sy(0);
+    ctx.fillStyle = "#173b28";
+    ctx.fillRect(0, groundY, W, H-groundY);
+    ctx.fillStyle = "rgba(70,180,90,.35)";
+    for (let i=0;i<12;i++) {
+      const x = ((i*190 - r.x*.12)% (W+240))-120;
+      ctx.beginPath();
+      ctx.arc(x, groundY+70+Math.sin(i)*15, 140, Math.PI, TAU);
+      ctx.fill();
+    }
+    ctx.fillStyle = "rgba(255,255,255,.08)";
+    ctx.fillRect(0, groundY, W, 3);
+  }
+
+  // distant galaxies in deep space
+  if (alt > 78000) {
+    ctx.save();
+    ctx.globalAlpha = clamp((alt-78000)/22000,0, .9);
+    for (let i=0;i<5;i++) {
+      const x = (W*(.15+i*.21) + Math.sin(i*9)*70 - r.x*.004) % W;
+      const y = (H*(.18+(i%3)*.19) + r.y*.003*(i+1)) % H;
+      ctx.translate(x,y);
+      ctx.rotate(game.time*.02 + i);
+      const grad = ctx.createRadialGradient(0,0,2,0,0,90);
+      grad.addColorStop(0,"rgba(255,255,255,.8)");
+      grad.addColorStop(.25,"rgba(125,210,255,.28)");
+      grad.addColorStop(1,"rgba(255,100,230,0)");
+      ctx.fillStyle = grad;
+      ctx.scale(1.8,.35);
+      ctx.beginPath();
+      ctx.arc(0,0,90,0,TAU);
+      ctx.fill();
+      ctx.setTransform(DPR,0,0,DPR,0,0);
+    }
+    ctx.restore();
+  }
+}
+
+function drawPlanets() {
+  if (!game.rocket) return;
+  const sc = scaleForAltitude();
+  for (const p of planets) {
+    const x = sx(p.x), y = sy(p.y), rr = p.r * sc;
+    if (x < -rr*3 || x > W+rr*3 || y < -rr*3 || y > H+rr*3) continue;
+
+    ctx.save();
+    ctx.globalAlpha = p.galaxy ? .9 : 1;
+    const glow = ctx.createRadialGradient(x,y,rr*.2,x,y,rr*3.4);
+    glow.addColorStop(0, p.glow + "cc");
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x,y,rr*3.4,0,TAU);
+    ctx.fill();
+
+    if (p.worm) {
+      ctx.translate(x,y);
+      ctx.rotate(game.time*.9);
+      for (let i=0;i<5;i++) {
+        ctx.strokeStyle = `rgba(${120+i*25},${220-i*10},255,.5)`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(0,0,rr*(.55+i*.22),rr*(.2+i*.11),i*.6,0,TAU);
+        ctx.stroke();
+      }
+      ctx.setTransform(DPR,0,0,DPR,0,0);
+    } else if (p.galaxy) {
+      ctx.translate(x,y);
+      ctx.rotate(-.35 + game.time*.03);
+      for (let i=0;i<9;i++) {
+        ctx.strokeStyle = i%2 ? "rgba(255,190,255,.55)" : "rgba(150,230,255,.62)";
+        ctx.lineWidth = Math.max(1, rr*.025);
+        ctx.beginPath();
+        ctx.ellipse(0,0,rr*(.25+i*.13),rr*(.08+i*.04),i*.2,0,TAU);
+        ctx.stroke();
+      }
+      ctx.setTransform(DPR,0,0,DPR,0,0);
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(x,y,rr,0,TAU);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.18)";
+      ctx.beginPath();
+      ctx.arc(x-rr*.28,y-rr*.24,rr*.3,0,TAU);
+      ctx.fill();
+      if (p.ring) {
+        ctx.strokeStyle = "rgba(245,220,160,.7)";
+        ctx.lineWidth = Math.max(2, rr*.08);
+        ctx.beginPath();
+        ctx.ellipse(x,y,rr*1.75,rr*.44,-.22,0,TAU);
+        ctx.stroke();
+      }
+    }
+
+    ctx.fillStyle = "#e9fbff";
+    ctx.font = "700 14px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(p.name, x, y - rr - 12);
+    ctx.restore();
+  }
+}
+
+function drawEntities() {
+  if (!game.rocket) return;
+  const sc = scaleForAltitude();
+
+  for (const e of game.entities) {
+    const x = sx(e.x), y = sy(e.y), rr = Math.max(2, e.r * sc);
+    if (x < -120 || x > W+120 || y < -120 || y > H+120) continue;
+
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(e.a || 0);
+
+    if (e.type === "cloud") {
+      ctx.globalAlpha = .22;
+      ctx.fillStyle = "#ffffff";
+      for (let i=0;i<5;i++) {
+        ctx.beginPath();
+        ctx.arc((i-2)*rr*.45, Math.sin(i)*rr*.12, rr*(.45+Math.random()*0), 0, TAU);
+        ctx.fill();
+      }
+    } else if (e.type === "asteroid") {
+      ctx.fillStyle = "#8b6f62";
+      ctx.strokeStyle = "#3b2b27";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const n = 10;
+      for (let i=0;i<n;i++) {
+        const a = i/n*TAU;
+        const rad = rr * rand(.72,1.05);
+        const px = Math.cos(a)*rad, py = Math.sin(a)*rad;
+        if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "rgba(0,0,0,.18)";
+      ctx.beginPath(); ctx.arc(-rr*.2,-rr*.1,rr*.25,0,TAU); ctx.fill();
+    } else if (e.type === "debris") {
+      ctx.fillStyle = "#aeb8c7";
+      ctx.strokeStyle = "#5b6575";
+      ctx.lineWidth = 2;
+      ctx.fillRect(-rr*.8,-rr*.45,rr*1.6,rr*.9);
+      ctx.strokeRect(-rr*.8,-rr*.45,rr*1.6,rr*.9);
+      ctx.fillStyle = "#6ee7ff";
+      ctx.fillRect(-rr*.2,-rr*.25,rr*.4,rr*.5);
+    } else if (e.type === "ore") {
+      ctx.fillStyle = "#ffd36b";
+      ctx.shadowColor = "#ffd36b";
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      for (let i=0;i<6;i++) {
+        const a = i/6*TAU;
+        const rad = rr * (i%2?.7:1);
+        const px = Math.cos(a)*rad, py = Math.sin(a)*rad;
+        if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+      ctx.closePath(); ctx.fill();
+    } else if (e.type === "fuel") {
+      ctx.fillStyle = "#7df2ff";
+      ctx.shadowColor = "#7df2ff";
+      ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.arc(0,0,rr,0,TAU); ctx.fill();
+      ctx.fillStyle = "#003444";
+      ctx.fillRect(-rr*.18,-rr*.62,rr*.36,rr*1.24);
+      ctx.fillRect(-rr*.62,-rr*.18,rr*1.24,rr*.36);
+    } else if (e.type === "repair") {
+      ctx.fillStyle = "#72ff9a";
+      ctx.shadowColor = "#72ff9a";
+      ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.arc(0,0,rr,0,TAU); ctx.fill();
+      ctx.fillStyle = "#073b16";
+      ctx.fillRect(-rr*.18,-rr*.62,rr*.36,rr*1.24);
+      ctx.fillRect(-rr*.62,-rr*.18,rr*1.24,rr*.36);
+    } else if (e.type === "flare") {
+      const pulse = 1 + Math.sin(e.phase)*.18;
+      ctx.strokeStyle = "rgba(255,90,210,.85)";
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "#ff5fd7";
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(0,0,rr*pulse,0,TAU);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,90,210,.28)";
+      ctx.beginPath();
+      ctx.arc(0,0,rr*.65*pulse,0,TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  if (!game.rocket) return;
+  for (const p of game.particles) {
+    const x = sx(p.x), y = sy(p.y);
+    const a = clamp(p.life / p.max, 0, 1);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(x,y,p.size*a,0,TAU);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawRocket() {
+  const r = game.rocket;
+  const x = W/2, y = H*.62;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(r.angle);
+
+  if (r.inv > 0 && Math.floor(game.time*18)%2===0) ctx.globalAlpha = .45;
+
+  // flame
+  if (r.thrusting) {
+    const len = r.boosting ? 70 : 48;
+    const grad = ctx.createLinearGradient(0,30,0,30+len);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(.25, r.boosting ? "#83f4ff" : "#ffd36b");
+    grad.addColorStop(1, "rgba(255,80,30,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(-13, 30);
+    ctx.lineTo(0, 30 + len + rand(-8,8));
+    ctx.lineTo(13, 30);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // body
+  ctx.fillStyle = "#e8f6ff";
+  ctx.strokeStyle = "#23364a";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0,-42);
+  ctx.quadraticCurveTo(22,-20,16,26);
+  ctx.lineTo(-16,26);
+  ctx.quadraticCurveTo(-22,-20,0,-42);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // window
+  ctx.fillStyle = "#55dcff";
+  ctx.shadowColor = "#55dcff";
+  ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.arc(0,-15,8,0,TAU); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // fins
+  ctx.fillStyle = "#ff5f68";
+  ctx.beginPath(); ctx.moveTo(-15,10); ctx.lineTo(-33,32); ctx.lineTo(-12,25); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(15,10); ctx.lineTo(33,32); ctx.lineTo(12,25); ctx.closePath(); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawHUD() {
+  if (!game.rocket) return;
+  const r = game.rocket;
+  const area = currentArea();
+  const speed = Math.hypot(r.vx,r.vy);
+
+  ctx.save();
+  ctx.font = "14px system-ui";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(0,10,24,.54)";
+  ctx.fillRect(16,16,330,155);
+  ctx.strokeStyle = "rgba(150,230,255,.28)";
+  ctx.strokeRect(16,16,330,155);
+
+  ctx.fillStyle = "#e9fbff";
+  ctx.font = "800 18px system-ui";
+  ctx.fillText("ANDROMEDA DRIVE", 30, 42);
+
+  ctx.font = "14px system-ui";
+  ctx.fillStyle = "#cde7ff";
+  ctx.fillText(`高度：${fmt(Math.max(0,r.y))} km`, 30, 68);
+  ctx.fillText(`速度：${fmt(speed)} km/s`, 30, 91);
+  ctx.fillText(`エリア：${area.name}`, 30, 114);
+  ctx.fillText(`目的：${area.goal}`, 30, 137);
+  ctx.fillText(`星鉱石：${game.ore}    最高高度：${fmt(game.high)} km`, 30, 160);
+
+  drawBar(370,22,180,14,r.fuel/maxFuel(),"燃料","#7df2ff");
+  drawBar(370,46,180,14,r.hp/maxHp(),"耐久","#ff6b7d");
+  drawBar(370,70,180,14,r.warp/100,"ワープ","#b48cff");
+
+  ctx.fillStyle = "rgba(255,255,255,.75)";
+  ctx.font = "13px system-ui";
+  ctx.fillText("W/↑ 噴射　A/D 回転　Shift ブースト　Space ワープ　U 強化　P 一時停止", 370, 108);
+
+  // progress
+  const px = W - 34, py = 44, ph = H - 120;
+  ctx.strokeStyle = "rgba(255,255,255,.28)";
+  ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px,py+ph); ctx.stroke();
+  const prog = clamp(r.y / 125000,0,1);
+  ctx.strokeStyle = "#7df2ff";
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(px,py+ph); ctx.lineTo(px,py+ph*(1-prog)); ctx.stroke();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(px,py+ph*(1-prog),7,0,TAU); ctx.fill();
+  ctx.font = "12px system-ui";
+  ctx.textAlign = "right";
+  ctx.fillText("AND", px-12, py+4);
+  ctx.fillText("EARTH", px-12, py+ph+4);
+
+  if (game.bannerT > 0) {
+    ctx.textAlign = "center";
+    ctx.font = "900 28px system-ui";
+    ctx.fillStyle = `rgba(255,255,255,${clamp(game.bannerT,0,1)})`;
+    ctx.shadowColor = "#7df2ff";
+    ctx.shadowBlur = 18;
+    ctx.fillText(game.banner, W/2, H*.22);
+    ctx.shadowBlur = 0;
+  }
+
+  if (game.paused) {
+    overlayText("PAUSE", "P / Escで再開");
+  }
+
+  ctx.restore();
+}
+
+function drawBar(x,y,w,h,t,label,color) {
+  t = clamp(t,0,1);
+  ctx.fillStyle = "rgba(255,255,255,.12)";
+  ctx.fillRect(x,y,w,h);
+  ctx.fillStyle = color;
+  ctx.fillRect(x,y,w*t,h);
+  ctx.strokeStyle = "rgba(255,255,255,.28)";
+  ctx.strokeRect(x,y,w,h);
+  ctx.fillStyle = "#eaf8ff";
+  ctx.font = "12px system-ui";
+  ctx.fillText(`${label} ${Math.floor(t*100)}%`, x+w+10, y+h-2);
+}
+
+function overlayText(title, sub) {
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,.45)";
+  ctx.fillRect(0,0,W,H);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 56px system-ui";
+  ctx.fillText(title, W/2, H/2 - 20);
+  ctx.font = "18px system-ui";
+  ctx.fillStyle = "#cde7ff";
+  ctx.fillText(sub, W/2, H/2 + 24);
+  ctx.restore();
+}
+
+function drawMenu() {
+  drawBackground();
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "#7df2ff";
+  ctx.shadowBlur = 24;
+  ctx.font = "900 58px system-ui";
+  ctx.fillText("ANDROMEDA", W/2, H*.30);
+  ctx.font = "900 42px system-ui";
+  ctx.fillText("DRIVE", W/2, H*.30+52);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#cde7ff";
+  ctx.font = "18px system-ui";
+  ctx.fillText("地球から飛び立ち、太陽系を越え、アンドロメダ銀河へ到達せよ。", W/2, H*.48);
+  ctx.fillText("Enter / クリック / タップで開始", W/2, H*.56);
+  ctx.fillStyle = "rgba(255,255,255,.75)";
+  ctx.font = "14px system-ui";
+  ctx.fillText("操作：W/↑ 噴射　A/D 回転　Shift ブースト　Space ワープ　U 強化", W/2, H*.63);
+  ctx.fillText(`最高高度：${fmt(game.high)} km`, W/2, H*.70);
+  ctx.restore();
+}
+
+function drawGameOver() {
+  overlayText("MISSION FAILED", "R / クリックで再挑戦");
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffd36b";
+  ctx.font = "18px system-ui";
+  ctx.fillText(game.banner, W/2, H/2 + 62);
+  ctx.restore();
+}
+
+function drawEnding() {
+  drawBackground();
+  drawPlanets();
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "#ffd1ff";
+  ctx.shadowBlur = 28;
+  ctx.font = "900 44px system-ui";
+  ctx.fillText("ANDROMEDA REACHED", W/2, H*.38);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#dff6ff";
+  ctx.font = "20px system-ui";
+  ctx.fillText("人類初の銀河間ロケット航行、成功。", W/2, H*.48);
+  ctx.fillText(`到達高度：${fmt(game.rocket.y)} km`, W/2, H*.55);
+  ctx.fillText("R / クリックで新しい航海へ", W/2, H*.64);
+  ctx.restore();
+}
+
+function render() {
+  const shake = game.shake > 0 ? game.shake : 0;
+  ctx.save();
+  if (shake) ctx.translate(rand(-shake,shake), rand(-shake,shake));
+
+  drawBackground();
+
+  if (game.state === "menu") {
+    drawMenu();
+    ctx.restore();
+    return;
+  }
+
+  if (game.rocket) {
+    drawPlanets();
+    drawEntities();
+    drawParticles();
+    drawRocket();
+    drawHUD();
+  }
+
+  if (game.warpFlash > 0) {
+    ctx.fillStyle = `rgba(150,245,255,${game.warpFlash*.22})`;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  if (game.state === "gameover") drawGameOver();
+  if (game.state === "ending") drawEnding();
+
+  ctx.restore();
+}
+
+function loop(now) {
+  const dt = Math.min(.033, (now - game.last) / 1000 || .016);
+  game.last = now;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

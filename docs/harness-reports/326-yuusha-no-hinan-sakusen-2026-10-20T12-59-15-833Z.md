@@ -1,0 +1,21 @@
+# Game Harness Report: 326-yuusha-no-hinan-sakusen
+
+- Result: **FAIL**
+- Time: 2026-10-20T12:59:15.836Z
+- URL: http://127.0.0.1:54016/
+- Title: 勇者の避難作戦・救出アップデート
+
+| Check | Result | Evidence |
+|---|---:|---|
+| index.html | PASS | 存在 |
+| モバイル幅 | PASS | 390px / viewport 390px |
+| Canvas | PASS | 480×576 |
+| 描画ループ | PASS | 51 RAF/秒 |
+| タップ | FAIL | 失敗: locator.tap: Timeout 3000ms exceeded. |
+| コンソールエラー | PASS | 0件 |
+| リクエスト失敗 | PASS | 0件 |
+| 通信量20MB以下 | PASS | 0.13MB（上限20.00MB） |
+
+## Errors
+
+- None

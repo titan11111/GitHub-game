@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+<title>SCAN FIGHTERS</title>
+<style>
+  :root{
+    --bg:#0b0f16; --panel:#121827cc; --accent:#79ffe1; --accent2:#14b8a6;
+    --danger:#ff6b6b; --ok:#a7f3d0; --text:#e5e7eb; --muted:#94a3b8; --r:16px; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  html,body{height:100%;}
+  body{margin:0;background:
+    radial-gradient(1200px 600px at 70% -200px, #1f2937 0%, transparent 60%),
+    linear-gradient(180deg, #0b0f16 0%, #0b0f16 70%, #0a0d13 100%);
+    color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Kaku Gothic ProN", Meiryo, Arial, "Noto Sans JP", sans-serif;
+    display:flex; flex-direction:column; gap:16px;}
+  header{padding:14px 16px 0; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;}
+  .logo{font-weight:800; letter-spacing:.5px; font-size:22px; text-shadow:0 0 10px rgba(121,255,225,.35);}  
+  .chip{background:linear-gradient(90deg, #0f172acc, #0b1220cc); border:1px solid #1f2937; padding:6px 10px; border-radius:999px; color:var(--muted); font-size:12px;}
+  main{padding:0 16px 24px; display:grid; gap:16px;}
+  .card{background:var(--panel); border:1px solid #1f2937; border-radius:var(--r); box-shadow:var(--shadow); overflow:hidden;}
+  .card h2{margin:0; padding:14px 16px; font-size:16px; letter-spacing:.3px; border-bottom:1px solid #1f2937; background:linear-gradient(90deg, #0e1626, #0c1422);}  
+  .card .body{padding:12px 16px; display:grid; gap:12px;}
+  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  input[type="text"]{flex:1; min-width:220px; background:#0b1220; border:1px solid #1f2937; color:var(--text); padding:12px 14px; border-radius:12px; outline:0; font-size:16px; letter-spacing:.8px;}
+  .btn{appearance:none; border:0; padding:12px 14px; border-radius:12px; font-weight:700; letter-spacing:.4px; background:linear-gradient(180deg, #13c8b5, #0aa291); color:#062b2a; box-shadow:0 6px 20px rgba(20,184,166,.35); cursor:pointer; transition:transform .05s ease;}
+  .btn:active{ transform:translateY(1px) scale(.99); }
+  .btn.secondary{ background:#0b1220; color:var(--accent); border:1px solid #134e4a; box-shadow:none; }
+  .btn.danger{ background:linear-gradient(180deg, #ff7a7a, #f14d4d); color:#380808; }
+  .btn.ghost{ background:#0b1220; color:var(--muted); border:1px dashed #23324a; box-shadow:none; }
+  .stack{display:grid; gap:8px;}
+  .fighter{display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; padding:10px 12px; background:#0b1220; border:1px solid #122036; border-radius:12px;}
+  .f-name{font-weight:800;}
+  .tag{font-size:12px; color:var(--muted)}
+  .stat{display:flex; align-items:center; gap:8px; font-size:14px;}
+  .bar{flex:1; height:8px; background:#0a1322; border-radius:999px; overflow:hidden; border:1px solid #132238;}
+  .bar > i{display:block; height:100%; width:0%;}
+  .bar.hp i{ background:linear-gradient(90deg, #34d399, #10b981); }
+  .bar.atk i{ background:linear-gradient(90deg, #60a5fa, #38bdf8); }
+  .bar.def i{ background:linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .bar.spd i{ background:linear-gradient(90deg, #a78bfa, #8b5cf6); }
+  .bar.luk i{ background:linear-gradient(90deg, #f472b6, #ec4899); }
+  .type{font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid #1f2937; background:#0c1626; color:var(--accent);}  
+  .arena{display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:end;}
+  .sprite{height:96px; border-radius:10px; border:1px solid #132238; background:linear-gradient(180deg, #08101b, #0b1220); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;}
+  .sprite .flash{ position:absolute; inset:0; background:radial-gradient(circle at center, rgba(255,255,255,.7), transparent 60%); opacity:0; pointer-events:none;}
+  .hpbox{display:grid; gap:6px;}
+  .hptext{font-size:12px; color:var(--muted);}  
+  .log{height:150px; overflow:auto; background:#0b1220; border:1px solid #122036; border-radius:12px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px;}
+  .tabs{display:flex; gap:8px; flex-wrap:wrap;}
+  .tabs .btn{background:#0b1220; color:var(--text); border:1px solid #1f2937;}
+  .tabs .btn.active{background:linear-gradient(180deg,#111827,#0b1220); color:var(--accent); border-color:#134e4a;}
+  .footer{color:var(--muted); font-size:12px; text-align:center; padding:8px 0 18px;}
+  @media (max-width: 720px){ .arena{ grid-template-columns: 1fr; } .row{ gap:6px; } input[type="text"]{ font-size:18px; padding:14px; } .btn{ width:100%; padding:14px 16px; font-size:16px; } }
+  .glow{ box-shadow: 0 0 0px rgba(121,255,225,.0), inset 0 0 0 rgba(121,255,225,.0); }
+  .glow.on{ animation: glow 1.5s ease infinite; }
+  @keyframes glow{ 0%{ box-shadow:0 0 0px rgba(121,255,225,.0);} 50%{ box-shadow:0 0 20px rgba(121,255,225,.35);} 100%{ box-shadow:0 0 0px rgba(121,255,225,.0);} }
+  .shake{ animation: shake .25s linear; }
+  @keyframes shake{ 0%{ transform:translateX(0); } 25%{ transform:translateX(-3px); } 50%{ transform:translateX(3px); } 75%{ transform:translateX(-2px); } 100%{ transform:translateX(0); } }
+  /* スキャンUI */
+  #preview{ width:100%; max-height:50vh; border-radius:12px; border:1px dashed #23324a; object-fit:contain; background:#0b1220; }
+  #videoBox{ position:relative; display:none; }
+  #video{ width:100%; max-height:50vh; border-radius:12px; background:#000; }
+  #scanHint{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); padding:6px 10px; font-size:12px; color:#a5b4fc; background:#0b1220aa; border:1px solid #334155; border-radius:999px;}
+
+    /* ===== Title Screen ===== */
+  [hidden]{ display:none !important; }
+  #titleScreen{ position:fixed; inset:0; z-index:10000; display:grid; place-items:center; padding:20px; background:
+    radial-gradient(1200px 700px at 50% -200px, rgba(20,31,53,.85), transparent 70%),
+    linear-gradient(180deg,#05070b 0%, #070b12 60%, #05070b 100%);
+    opacity:0; transition: opacity .22s ease; }
+  #titleScreen.show{ opacity:1; }
+  .ts-wrap{ width:min(960px,100%); border:1px solid #1f3b5a; border-radius:20px; padding:28px 20px; background:
+    radial-gradient(800px 400px at 50% -120px, rgba(20,184,166,.08), transparent 60%),
+    radial-gradient(600px 600px at -20% 120%, rgba(99,102,241,.07), transparent 60%),
+    radial-gradient(600px 600px at 120% 120%, rgba(34,197,94,.07), transparent 60%),
+    linear-gradient(180deg, #0a1220, #0b1220 40%, #09121c);
+    box-shadow:0 20px 60px rgba(0,0,0,.55); display:grid; gap:16px; text-align:center; }
+  .ts-logo{ font-weight:900; letter-spacing:1.2px; font-size: clamp(28px, 6vw, 48px); text-shadow:0 0 12px rgba(121,255,225,.35); }
+  .ts-sub{ color:#9fb1c7; font-size:13px; margin-top:-6px; }
+  .ts-cta{ display:grid; gap:10px; margin-top:4px; }
+  .ts-cta .row{ justify-content:center; }
+  .ts-cta .btn{ min-width:140px; }
+  .ts-skip{ display:inline-flex; align-items:center; gap:8px; justify-content:center; margin-top:4px; }
+  .ts-footer{ color:#8ea1b8; font-size:11px; }
+  @media (max-width:720px){ .ts-cta .btn{ width:100%; } }
+</style>
+</head>
+<body>
+  <header>
+    <div class="logo">SCAN FIGHTERS</div>
+    <div class="chip">写真/カメラからバーコード読取 → キャラ生成</div>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>モード</h2>
+      <div class="body">
+        <div class="tabs">
+          <button class="btn active" data-tab="solo">1人用</button>
+          <button class="btn" data-tab="vs2">2人用</button>
+          <button class="btn" data-tab="book">名鑑</button>
+          <button class="btn" data-tab="how">遊び方</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 画像/カメラから読取 -->
+    <div class="card">
+      <h2>バーコード読み取り（写真 or ライブ）</h2>
+      <div class="body">
+        <div class="row">
+          <input id="filePick" type="file" accept="image/*" capture="environment" class="btn ghost" />
+          <button class="btn secondary" id="startLive">ライブスキャン（β）</button>
+          <button class="btn secondary" id="stopLive" style="display:none;">停止</button>
+        </div>
+        <img id="preview" alt="プレビュー" />
+        <div id="videoBox">
+          <video id="video" playsinline></video>
+          <div id="scanHint">枠にバーコードを合わせてください</div>
+        </div>
+        <div class="tag" id="scanMsg">写真を選ぶか、ライブスキャンを開始してください。</div>
+      </div>
+    </div>
+
+    <!-- 入力 -->
+    <div class="card" id="panel-solo">
+      <h2>1人用：自分のバーコードで戦士を生成</h2>
+      <div class="body">
+        <div class="row">
+          <input id="code1" type="text" inputmode="numeric" placeholder="例）4901234567894（数字のみ）" />
+          <button class="btn" id="gen1">戦士を生成</button>
+        </div>
+        <div class="row">
+          <button class="btn secondary" id="enemyRand">敵をランダム生成</button>
+          <button class="btn" id="fight1vCPU">バトル開始</button>
+        </div>
+        <div id="you" class="stack"></div>
+        <div id="enemy" class="stack"></div>
+      </div>
+    </div>
+
+    <div class="card" id="panel-vs2" style="display:none;">
+      <h2>2人用：2つのバーコードで対戦</h2>
+      <div class="body">
+        <div class="row">
+          <input id="codeA" type="text" inputmode="numeric" placeholder="プレイヤーAのバーコード" />
+          <input id="codeB" type="text" inputmode="numeric" placeholder="プレイヤーBのバーコード" />
+        </div>
+        <div class="row">
+          <button class="btn" id="genA">A生成</button>
+          <button class="btn" id="genB">B生成</button>
+          <button class="btn" id="fightAB">バトル開始</button>
+        </div>
+        <div class="arena" id="vs2arena"></div>
+      </div>
+    </div>
+
+    <div class="card" id="panel-book" style="display:none;">
+      <h2>名鑑（保存した戦士）</h2>
+      <div class="body">
+        <div id="bookList" class="stack"></div>
+        <div class="row">
+          <button class="btn secondary" id="exportBook">エクスポート</button>
+          <button class="btn danger" id="clearBook">全消去</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="panel-how" style="display:none;">
+      <h2>遊び方</h2>
+      <div class="body">
+        <ul>
+          <li>写真を選ぶ or ライブ開始 → 自動で数字を埋め込み → <strong>戦士を生成</strong>。</li>
+          <li>同じバーコードならいつでも<strong>同じ戦士</strong>が再現されます。</li>
+          <li>保存（名鑑）から呼び出し可能。数字を友だちに渡せば同じ戦士で対戦できます。</li>
+        </ul>
+        <p class="tag">対応：EAN-13/EAN-8/UPC/ITF/Code128/Code39（一部端末差あり）。</p>
+      </div>
+    </div>
+
+    <!-- バトル -->
+    <div class="card">
+      <h2>アリーナ</h2>
+      <div class="body">
+        <div class="arena">
+          <div>
+            <div class="sprite" id="sprL"><div class="flash"></div></div>
+            <div class="hpbox">
+              <div class="hptext" id="nameL">左：-</div>
+              <div class="bar hp"><i id="hpL" style="width:0%"></i></div>
+            </div>
+          </div>
+          <div>
+            <div class="sprite" id="sprR"><div class="flash"></div></div>
+            <div class="hpbox">
+              <div class="hptext" id="nameR">右：-</div>
+              <div class="bar hp"><i id="hpR" style="width:0%"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn" id="btnAttack">攻撃</button>
+          <button class="btn secondary" id="btnAuto">AUTO</button>
+          <button class="btn secondary" id="btnReset">リセット</button>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <div class="footer">© SCAN FIGHTERS — Photo/Camera → Decode → Generate.</div>
+  </main>
+
+<!-- Title Screen Overlay -->
+<div id="titleScreen" hidden>
+  <div class="ts-wrap">
+    <div class="ts-logo">SCAN FIGHTERS</div>
+    <div class="ts-sub">Photo/Camera → Decode → Generate</div>
+    <div class="ts-cta">
+      <button id="tsStart" class="btn">START</button>
+      <div class="row">
+        <button id="tsPhoto" class="btn secondary">写真から</button>
+        <button id="tsLive" class="btn secondary">ライブ</button>
+        <button id="tsHow" class="btn ghost">遊び方</button>
+        <button id="tsBook" class="btn ghost">名鑑</button>
+      </div>
+    </div>
+    <label class="ts-skip chip"><input type="checkbox" id="tsSkip"/> 次回からタイトルをスキップ</label>
+    <div class="ts-footer">v1 • SCAN FIGHTERS</div>
+  </div>
+</div>
+
+<!-- ZXing フォールバック用（動的に使います） -->
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
+
+<script>
+/* ========= 便利関数 ========= */
+const $=sel=>document.querySelector(sel);
+const $$=sel=>document.querySelectorAll(sel);
+const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+const vibrate=(ms=40)=>{ if(navigator.vibrate) navigator.vibrate(ms); };
+const rand=(seed)=>{ let x = seed|0; if (x===0) x=0x9e3779b9; return ()=>{ x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return (x>>>0)/4294967296; }; };
+const hashStr=(s)=>{ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619);} return h>>>0; };
+const syll=["ka","ki","ku","ke","ko","sa","shi","su","se","so","ta","chi","tsu","te","to","na","ni","nu","ne","no","ha","hi","fu","he","ho","ma","mi","mu","me","mo","ya","yu","yo","ra","ri","ru","re","ro","ga","gi","gu","ge","go","za","ji","zu","ze","zo","da","de","do","ba","bi","bu","be","bo","pa","pi","pu","pe","po"];
+const Types=["TECH","FOOD","BEAST","METAL","NATURE","MYTH","AQUA","FLAME","SHOCK","VOID"];
+const Emojis=["🧪","🥫","🦊","🤖","🌿","🐉","💧","🔥","⚡","🛰️"];
+const movesByType={
+  TECH:[{n:"デバッグ斬",m:1.0},{n:"オーバークロック",m:1.2}],
+  FOOD:[{n:"カロリーバースト",m:1.1},{n:"腐敗ガス",m:0.9}],
+  BEAST:[{n:"ひっかき",m:1.0},{n:"けもの吠え",m:1.15}],
+  METAL:[{n:"リベットパンチ",m:1.05},{n:"ホイールクラッシュ",m:1.1}],
+  NATURE:[{n:"つるムチ",m:1.0},{n:"花粉乱舞",m:1.2}],
+  MYTH:[{n:"神話の光",m:1.25},{n:"呪曲",m:1.0}],
+  AQUA:[{n:"みずしぶき",m:1.0},{n:"タイダルウェーブ",m:1.2}],
+  FLAME:[{n:"火炎突き",m:1.1},{n:"ブラストバーン",m:1.25}],
+  SHOCK:[{n:"スパーク",m:1.05},{n:"ライトニング",m:1.25}],
+  VOID:[{n:"虚無穿ち",m:1.3},{n:"ノイズ",m:0.9}],
+};
+function makeName(rng){ let name=""; let len=3+Math.floor(rng()*3); for(let i=0;i<len;i++){ name+=syll[Math.floor(rng()*syll.length)]; } return name.charAt(0).toUpperCase()+name.slice(1); }
+function colorFromSeed(seed){ const r=(seed&0xff), g=(seed>>8)&0xff, b=(seed>>16)&0xff; return `linear-gradient(180deg, rgba(${r},${g},${b},0.6), rgba(${(r+60)%255},${(g+40)%255},${(b+20)%255},0.6))`; }
+
+/* ========= 戦士生成 ========= */
+function generateFighter(code){
+  code=(code||"").replace(/\D/g,""); if(!code) return null;
+  const seed=hashStr(code), rng=rand(seed);
+  const type=Types[seed%Types.length], emoji=Emojis[seed%Emojis.length], name=makeName(rng);
+  const base=60+Math.floor(rng()*40);
+  const HP= base*2 + Math.floor(rng()*120);
+  const ATK=base + Math.floor(rng()*70);
+  const DEF=base + Math.floor(rng()*70);
+  const SPD=40 + Math.floor(rng()*90);
+  const LUK=1 + Math.floor(rng()*30);
+  const hue=colorFromSeed(seed);
+  return { code, seed, name, type, emoji, HP, ATK, DEF, SPD, LUK, moves:movesByType[type], hue, maxHP:HP };
+}
+
+/* ========= 表示 ========= */
+function fighterView(f){
+  if(!f) return "";
+  const pct=(x,max)=> clamp(Math.round((x/max)*100),0,100);
+  return `<div class="fighter">
+    <div>
+      <div class="f-name">${f.emoji} ${f.name} <span class="type">${f.type}</span></div>
+      <div class="tag">CODE: ${f.code}</div>
+      <div class="stat">HP <div class="bar hp"><i style="width:${pct(f.HP,f.maxHP)}%"></i></div></div>
+      <div class="stat">ATK<div class="bar atk"><i style="width:${pct(f.ATK,200)}%"></i></div></div>
+      <div class="stat">DEF<div class="bar def"><i style="width:${pct(f.DEF,200)}%"></i></div></div>
+      <div class="stat">SPD<div class="bar spd"><i style="width:${pct(f.SPD,150)}%"></i></div></div>
+      <div class="stat">LUK<div class="bar luk"><i style="width:${pct(f.LUK,30)}%"></i></div></div>
+    </div>
+    <div class="glow" style="width:72px;height:72px;border-radius:12px;border:1px solid #132238;background:${f.hue}"></div>
+  </div>`;
+}
+function drawSprite(el,f,flip=false){ if(!f){ el.style.background=""; el.innerHTML='<div class="flash"></div>'; return; } el.style.background=`${f.hue}`; el.style.transform=flip? "scaleX(-1)":"none"; el.innerHTML='<div class="flash"></div><div style="font-size:42px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.45))">'+f.emoji+'</div>'; el.querySelector(".flash").style.opacity=0; }
+function updateHP(side,f){ const el=side==="L"?$("#hpL"):$("#hpR"); const pct=clamp(Math.round((f.HP/f.maxHP)*100),0,100); el.style.width=pct+"%"; (side==="L"?$("#nameL"):$("#nameR")).textContent=`${side==="L"?"左":"右"}：${f.emoji} ${f.name} [${f.type}] HP ${f.HP}/${f.maxHP}`; }
+
+/* ========= バトル ========= */
+let left=null,right=null,auto=false,battling=false;
+function log(t){ const l=$("#log"); l.innerHTML+=t+"<br/>"; l.scrollTop=l.scrollHeight; }
+function flash(side){ const spr=side==="L"?$("#sprR"):$("#sprL"); spr.classList.add("shake"); const fl=spr.querySelector(".flash"); fl.style.opacity=1; setTimeout(()=>{ fl.style.opacity=0; spr.classList.remove("shake"); },200); vibrate(30); }
+function attack(att,def){ const move=att.moves[Math.floor(Math.random()*att.moves.length)]; const r=0.85+Math.random()*0.15; const crit=(Math.random()*100 < att.LUK*1.2); let dmg=Math.round(att.ATK*move.m*r - def.DEF*0.35); if(crit) dmg=Math.round(dmg*1.6); dmg=Math.max(1,dmg); def.HP=Math.max(0,def.HP-dmg); return {move:move.n,dmg,crit}; }
+async function takeTurn(){ if(!left||!right||battling===false) return;
+  let first="L",second="R"; if(right.SPD>left.SPD || (right.SPD===left.SPD && Math.random()<0.5)){ first="R"; second="L"; }
+  for(const side of [first,second]){
+    if(left.HP<=0||right.HP<=0) break;
+    const att=side==="L"?left:right, def=side==="L"?right:left; const res=attack(att,def); flash(side);
+    log(`${side==="L"?"左":"右"}（${att.name}）の <b>${res.move}</b>！ ${res.crit?"<span style='color:#f472b6'>会心！</span> ":""} → <b>${res.dmg}</b> ダメージ`);
+    updateHP(side==="L"?"R":"L",def); await new Promise(r=>setTimeout(r,480));
+  }
+  if(left.HP<=0||right.HP<=0){ battling=false; auto=false; const win=left.HP<=0 && right.HP<=0?"引き分け":(left.HP>0?"左の勝ち！":"右の勝ち！"); log(`<b style="color:${left.HP>0? '#a7f3d0' : right.HP>0? '#a7f3d0':'#e5e7eb'}">${win}</b>`); }
+  else if(auto){ setTimeout(takeTurn,460); }
+}
+
+/* ========= 名鑑 ========= */
+const BOOK_KEY="bbneo_book_v1";
+function loadBook(){ try{ return JSON.parse(localStorage.getItem(BOOK_KEY)||"[]"); }catch(e){ return []; } }
+function saveBook(arr){ localStorage.setItem(BOOK_KEY, JSON.stringify(arr.slice(0,200))); }
+function addToBook(f){ const book=loadBook(); if(book.find(x=>x.code===f.code)) return; book.unshift({code:f.code,name:f.name,type:f.type,emoji:f.emoji,seed:f.seed,at:Date.now()}); saveBook(book); renderBook(); }
+function renderBook(){ const list=loadBook(); $("#bookList").innerHTML = list.map(x=>`
+  <div class="fighter"><div>
+    <div class="f-name">${x.emoji} ${x.name} <span class="type">${x.type}</span></div>
+    <div class="tag">CODE: ${x.code}</div>
+  </div>
+  <div class="row">
+    <button class="btn secondary" onclick='pick("${x.code}")'>呼び出し</button>
+    <button class="btn secondary" onclick='copyCode("${x.code}")'>コピー</button>
+  </div></div>`).join("") || `<div class="tag">まだ保存はありません。</div>`; }
+window.copyCode=async(c)=>{ try{ await navigator.clipboard.writeText(c); toast("コードをコピーしました"); }catch(e){} };
+window.pick=(code)=>{ const f=generateFighter(code); $("#you").innerHTML=fighterView(f); addToBook(f); };
+
+/* ========= トースト ========= */
+let toastTimer=null;
+function toast(msg){ clearTimeout(toastTimer); let t=document.getElementById("toast"); if(!t){ t=document.createElement("div"); t.id="toast";
+  Object.assign(t.style,{position:"fixed",left:"50%",bottom:"24px",transform:"translateX(-50%)",background:"#0b1220",border:"1px solid #134e4a",color:"var(--text)",padding:"10px 14px",borderRadius:"12px",boxShadow:"var(--shadow)",zIndex:99999}); document.body.appendChild(t);}  
+  t.textContent=msg; t.style.opacity=1; toastTimer=setTimeout(()=>{ t.style.opacity=0; }, 1400); }
+
+/* ========= UI配線 ========= */
+function setTabs(){
+  $$(".tabs .btn").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      $$(".tabs .btn").forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      const tab=b.dataset.tab;
+      $("#panel-solo").style.display = tab==="solo" ? "" : "none";
+      $("#panel-vs2").style.display = tab==="vs2" ? "" : "none";
+      $("#panel-book").style.display = tab==="book" ? "" : "none";
+      $("#panel-how").style.display = tab==="how" ? "" : "none";
+    });
+  });
+}
+setTabs(); renderBook();
+
+/* ========= 1人用 ========= */
+$("#gen1").onclick=()=>{ const code=$("#code1").value.trim(); const f=generateFighter(code); if(!f){ toast("数字を入力してください"); return; } $("#you").innerHTML=fighterView(f); addToBook(f); setSides(f,null); };
+$("#enemyRand").onclick=()=>{ const code=String(Math.floor(Math.random()*1e13)).padStart(13,"0"); const f=generateFighter(code); $("#enemy").innerHTML=fighterView(f); setSides(left||f,f); };
+$("#fight1vCPU").onclick=()=>{ if(!left){ const code=$("#code1").value.trim(); const f=generateFighter(code); if(!f){ toast("先に自分の戦士を作成"); return; } setSides(f, right||generateFighter(String(Math.floor(Math.random()*1e13)).padStart(13,"0"))); } startBattle(); };
+
+/* ========= 2人用 ========= */
+$("#genA").onclick=()=>{ const f=generateFighter($("#codeA").value.trim()); if(!f) return toast("Aは数字のみ");
+  $("#vs2arena").innerHTML=fighterView(f); setSides(f,right); addToBook(f); };
+$("#genB").onclick=()=>{ const f=generateFighter($("#codeB").value.trim()); if(!f) return toast("Bは数字のみ");
+  const v=document.createElement("div"); v.innerHTML=fighterView(f); $("#vs2arena").appendChild(v.firstElementChild); setSides(left,f); addToBook(f); };
+$("#fightAB").onclick=()=>{ const A=generateFighter($("#codeA").value.trim()); const B=generateFighter($("#codeB").value.trim()); if(!A||!B){ toast("2つのコードを入力してください"); return; } setSides(A,B); startBattle(); };
+
+/* ========= バトル操作 ========= */
+$("#btnAttack").onclick=()=>{ if(!battling) return; takeTurn(); };
+$("#btnAuto").onclick=()=>{ if(!battling){ if(left&&right){ startBattle(true); } else { toast("戦士をセットしてください"); } return; } auto=!auto; toast(`AUTO: ${auto?"ON":"OFF"}`); if(auto) takeTurn(); };
+$("#btnReset").onclick=resetArena;
+function setSides(L,R){ left=L?JSON.parse(JSON.stringify(L)):null; right=R?JSON.parse(JSON.stringify(R)):null; if(left){ left.maxHP=left.HP; } if(right){ right.maxHP=right.HP; }
+  drawSprite($("#sprL"),left,false); drawSprite($("#sprR"),right,true);
+  updateHP("L",left||{HP:0,maxHP:1,name:"-",emoji:""}); updateHP("R",right||{HP:0,maxHP:1,name:"-",emoji:""});
+  $("#log").innerHTML=""; $("#btnAttack").disabled=true; $("#btnAuto").disabled=true; }
+function startBattle(autoStart=false){ if(!left||!right){ toast("戦士が足りません"); return; } left.HP=left.maxHP; right.HP=right.maxHP; updateHP("L",left); updateHP("R",right);
+  $("#log").innerHTML=`<span class="tag">戦闘開始！ ${left.name} vs ${right.name}</span><br/>`; battling=true; auto=autoStart; $("#btnAttack").disabled=false; $("#btnAuto").disabled=false; if(auto) takeTurn(); }
+function resetArena(){ battling=false; auto=false; $("#log").innerHTML=""; if(left){ left.HP=left.maxHP; updateHP("L",left); } if(right){ right.HP=right.maxHP; updateHP("R",right); } }
+
+/* ========= 画像/カメラ：バーコード読取 ========= */
+const formatsNative = ['ean_13','ean_8','upc_e','upc_a','itf','code_128','code_39'];
+const $file=$("#filePick"), $preview=$("#preview"), $msg=$("#scanMsg"), $start=$("#startLive"), $stop=$("#stopLive"), $video=$("#video"), $videoBox=$("#videoBox");
+let liveReader=null, liveStream=null, liveRunning=false;
+
+$file.addEventListener('change', async (e)=>{
+  const file=e.target.files?.[0]; if(!file) return;
+  $preview.src = URL.createObjectURL(file);
+  $msg.textContent="画像から解析中…";
+  try{
+    const code = await decodeFromImageFile(file);
+    onCodeDetected(code, "画像");
+  }catch(err){
+    console.error(err);
+    $msg.textContent = "読み取りに失敗しました。ピントの合ったバーコード画像をお試しください。";
+    toast("読取失敗。バーコード全面が写る写真で再試行を。");
+  }finally{
+    setTimeout(()=>URL.revokeObjectURL($preview.src), 2000);
+  }
+});
+
+$start.onclick = async ()=>{
+  if(liveRunning) return;
+  $msg.textContent="カメラ起動中…";
+  try{
+    await startLiveScan();
+    $start.style.display="none"; $stop.style.display=""; $videoBox.style.display="block"; $preview.style.display="none";
+    $msg.textContent="バーコードを枠に合わせてください（自動検出）";
+  }catch(e){
+    console.error(e);
+    $msg.textContent="ライブ起動に失敗。権限/HTTPS/端末対応をご確認ください。";
+  }
+};
+$stop.onclick = stopLiveScan;
+
+async function decodeFromImageFile(file){
+  // 1) ネイティブ BarcodeDetector
+  if('BarcodeDetector' in window){
+    try{
+      const detector = new BarcodeDetector({ formats: formatsNative });
+      const img = await createImageBitmap(file);
+      const codes = await detector.detect(img);
+      if(codes && codes.length){
+        const raw = (codes[0].rawValue||"").replace(/\D/g,"");
+        if(raw) return raw;
+      }
+    }catch(e){ /* フォールバックへ */ }
+  }
+  // 2) ZXing フォールバック
+  return await decodeWithZXingFile(file);
+}
+async function decodeWithZXingFile(file){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=async ()=>{
+      try{
+        const code = await ZXing.BrowserMultiFormatReader.decodeFromImageElement(img);
+        resolve((code.text||"").replace(/\D/g,""));
+      }catch(err){ reject(err); }
+    };
+    img.onerror=()=>reject(new Error("画像読込に失敗"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+async function startLiveScan(){
+  // 優先：ネイティブ BarcodeDetector（自前でフレームごと検出）
+  if('BarcodeDetector' in window){
+    const detector = new BarcodeDetector({ formats: formatsNative });
+    liveStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment" }, audio:false });
+    $video.srcObject = liveStream; await $video.play(); liveRunning=true;
+    const canvas=document.createElement('canvas'); const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    const loop = async ()=>{
+      if(!liveRunning) return;
+      if($video.videoWidth>0){
+        canvas.width=$video.videoWidth; canvas.height=$video.videoHeight;
+        ctx.drawImage($video,0,0,canvas.width,canvas.height);
+        try{
+          const bitmap = await createImageBitmap(canvas);
+          const codes = await detector.detect(bitmap);
+          if(codes && codes.length){
+            const raw=(codes[0].rawValue||"").replace(/\D/g,"");
+            if(raw){ onCodeDetected(raw, "ライブ"); return; }
+          }
+        }catch(e){ /* 継続 */ }
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+    return;
+  }
+  // フォールバック：ZXing のライブデコード
+  liveReader = new ZXing.BrowserMultiFormatReader();
+  const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+  const back = devices.find(d=>/back|rear|environment/i.test(d.label))?.deviceId || devices[0]?.deviceId;
+  if(!back) throw new Error("カメラが見つかりません");
+  liveRunning=true;
+  await liveReader.decodeFromVideoDevice(back, $video, (res,err)=>{
+    if(!liveRunning) return;
+    if(res && res.text){ onCodeDetected(res.text.replace(/\D/g,""), "ライブ"); }
+  });
+}
+async function stopLiveScan(){
+  liveRunning=false;
+  if(liveReader){ try{ liveReader.reset(); }catch(e){} liveReader=null; }
+  if(liveStream){ liveStream.getTracks().forEach(t=>t.stop()); liveStream=null; }
+  $video.pause(); $video.srcObject=null;
+  $videoBox.style.display="none"; $start.style.display=""; $stop.style.display="none"; $preview.style.display="";
+  $msg.textContent="停止しました。写真を選ぶか、再度ライブを開始できます。";
+}
+
+function onCodeDetected(code, srcLabel){
+  if(!code){ toast("コードが空です"); return; }
+  $("#code1").value = code; // 自動反映
+  const f=generateFighter(code);
+  $("#you").innerHTML=fighterView(f);
+  addToBook(f);
+  setSides(f, right);
+  vibrate(60);
+  toast(`バーコード検出（${srcLabel}）：${code}`);
+  if(liveRunning) stopLiveScan();
+}
+
+/* ========= 名鑑ボタン ========= */
+$("#exportBook").onclick=()=>{ const blob=new Blob([localStorage.getItem(BOOK_KEY)||"[]"],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="bbneo-book.json"; a.click(); URL.revokeObjectURL(url); };
+$("#clearBook").onclick=()=>{ if(confirm("本当に全削除しますか？")){ localStorage.removeItem(BOOK_KEY); renderBook(); } };
+
+/* 初期フォーカス */
+$("#code1").focus();
+
+/* ===== Title Screen (JS) ===== */
+(function(){
+  const $title = document.getElementById('titleScreen');
+  const $tsStart = document.getElementById('tsStart');
+  const $tsPhoto = document.getElementById('tsPhoto');
+  const $tsLive  = document.getElementById('tsLive');
+  const $tsHow   = document.getElementById('tsHow');
+  const $tsBook  = document.getElementById('tsBook');
+  const $tsSkip  = document.getElementById('tsSkip');
+  const SKIP_KEY='sf_skip_title_v1';
+
+  function switchTab(tab){
+    document.querySelectorAll('.tabs .btn').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.tab===tab);
+    });
+    document.getElementById('panel-solo').style.display = tab==='solo' ? '' : 'none';
+    document.getElementById('panel-vs2').style.display  = tab==='vs2'  ? '' : 'none';
+    document.getElementById('panel-book').style.display = tab==='book' ? '' : 'none';
+    document.getElementById('panel-how').style.display  = tab==='how'  ? '' : 'none';
+  }
+  function showTitle(){ if(!$title) return; $title.hidden=false; requestAnimationFrame(()=> $title.classList.add('show')); }
+  function hideTitle(){ if(!$title) return; $title.classList.remove('show'); setTimeout(()=>{ $title.hidden=true; }, 220); }
+
+  // 初期表示
+  if(localStorage.getItem(SKIP_KEY)==='1'){ $tsSkip.checked=true; }
+  if(localStorage.getItem(SKIP_KEY)!=='1'){ showTitle(); }
+
+  $tsSkip?.addEventListener('change', e=>{
+    localStorage.setItem(SKIP_KEY, e.target.checked ? '1' : '0');
+  });
+
+  $tsStart?.addEventListener('click', ()=>{ hideTitle(); switchTab('solo'); document.getElementById('code1')?.focus(); });
+  $tsPhoto?.addEventListener('click', ()=>{ hideTitle(); switchTab('solo'); setTimeout(()=> document.getElementById('filePick')?.click(), 50); });
+  $tsLive?.addEventListener('click', async ()=>{ hideTitle(); switchTab('solo'); try{
+      await startLiveScan();
+      // UIをライブ状態に
+      document.getElementById('startLive').style.display='none';
+      document.getElementById('stopLive').style.display='';
+      document.getElementById('videoBox').style.display='block';
+      document.getElementById('preview').style.display='none';
+      document.getElementById('scanMsg').textContent='バーコードを枠に合わせてください（自動検出）';
+    }catch(e){ toast('ライブ起動に失敗'); }
+  });
+  $tsHow?.addEventListener('click', ()=>{ hideTitle(); switchTab('how'); });
+  $tsBook?.addEventListener('click', ()=>{ hideTitle(); switchTab('book'); });
+
+  window.addEventListener('keydown', (e)=>{ if($title && !$title.hidden && (e.key==='Enter' || e.key===' ')){ e.preventDefault(); $tsStart?.click(); }});
+})();
+</script>
+</body>
+</html>

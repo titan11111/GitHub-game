@@ -8,3 +8,35 @@ node_modules
 
 # 独立GitHubリポ（Pages正本は子リポのみ。親ではサブモジュール化しない）
 305-eto-keshi2/
+
+# ── 2026-10-22 追加 ────────────────────────────────────────────
+# 検証の証跡（公開実体に含めない。20MB鉄則の除外対象と揃える）
+_playtest/
+
+# 自前リポが正本のもの（親ではサブモジュール化しない）
+titans-ui/
+titans-core/
+
+# ローカル作業・バックアップ・一時物
+backups/
+tmp/
+output/
+Scheduled/
+Artifacts/
+playwright-test/
+completion-pack/
+completion-pack*.zip
+CLAUDE.md.bak-*
+*.zip
+
+# エージェント設定（鍵が入りうる）
+.claude/
+
+# 経営・個人の資料（公開リポに入れない）
+.company
+*.pdf
+経営claudecode/
+来週の金曜日のプレゼン用/
+セルフケア/
+バイブコーディング5回目/
+Claude outputs/

@@ -1,0 +1,365 @@
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.05) 2px,
+        rgba(0, 0, 0, 0.05) 4px
+    );
+    pointer-events: none;
+}
+
+.field-ruined_village .cell.wall { 
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+    border: 1px solid #2a2a2a;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+}
+
+/* かつての村・装飾タイル（上を通れる） */
+.field-ruined_village .cell.coffin,
+.field-ruined_village .cell.cobweb,
+.field-ruined_village .cell.candle {
+    background: linear-gradient(135deg, #6a6a6a 0%, #5a5a5a 100%);
+    border: 1px solid #7a7a7a;
+    box-shadow: inset 0 0 10px rgba(200, 200, 200, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* 迷いの森（dark_forest）のセルスタイル */
+.field-dark_forest .cell.forest { 
+    background: linear-gradient(135deg, #2a6a2a 0%, #1a5a1a 100%);
+    border: 1px solid #3a7a3a;
+    box-shadow: inset 0 0 10px rgba(50, 150, 50, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+    position: relative;
+}
+
+.field-dark_forest .cell.forest::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at 30% 30%, rgba(50, 100, 50, 0.4) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.field-dark_forest .cell.wall { 
+    background: linear-gradient(135deg, #001a00 0%, #000a00 100%);
+    border: 1px solid #0a2a0a;
+    box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.9);
+}
+
+/* 共通のセルスタイル */
+.cell.wall { 
+    background: linear-gradient(135deg, #333 0%, #222 100%);
+    border: 1px solid #444;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.cell.plain { 
+    background: linear-gradient(135deg, #2e8b57 0%, #1e6b37 100%);
+    border: 1px solid #3e9b67;
+    box-shadow: inset 0 0 3px rgba(100, 200, 100, 0.2);
+}
+
+.cell.forest { 
+    background: linear-gradient(135deg, #004d00 0%, #003300 100%);
+    border: 1px solid #005d00;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
+}
+
+.cell.lava { 
+    background: linear-gradient(135deg, #8b0000 0%, #6b0000 100%);
+    border: 1px solid #ab0000;
+    box-shadow: 0 0 10px rgba(255, 68, 0, 0.6);
+}
+
+.cell.mountain { 
+    background: linear-gradient(135deg, #4b3621 0%, #3b2611 100%);
+    border: 1px solid #5b4631;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
+}
+
+.cell.wasteland { 
+    background: linear-gradient(135deg, #554433 0%, #453323 100%);
+    border: 1px solid #655443;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.cell.desert { 
+    background: linear-gradient(135deg, #c2b280 0%, #a29260 100%);
+    border: 1px solid #d2c290;
+    box-shadow: inset 0 0 3px rgba(255, 240, 200, 0.3);
+}
+
+.cell.ruins { 
+    background: linear-gradient(135deg, #444 0%, #333 100%);
+    border: 1px solid #555;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================
+   セルオブジェクトスタイル
+   ============================================
+   
+   役割: オブジェクト、主人公・仲間のスタイル
+   
+   含まれる内容:
+   - オブジェクトスタイル（.cell.obj-*）
+   - 主人公・仲間スタイル（.cell.hero, .hero-svg-container）
+   - アニメーション（@keyframes）
+   ============================================ */
+
+.cell.hero { 
+    background: transparent;
+    border-radius: 0; 
+    color: #000;
+    z-index: 5;
+    box-shadow: none;
+    border: none;
+    animation: none;
+    overflow: visible;
+}
+
+/* 主人公SVGコンテナ（参考HTMLの動作に合わせる）・携帯で確実に表示 */
+.hero-svg-container {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+    transition: transform 0.1s;
+    position: relative;
+}
+
+/* アニメーション用の内側コンテナ（参考HTMLのanimatingクラス） */
+.hero-animating {
+    width: 100%;
+    height: 100%;
+    animation: heroBob 0.8s infinite ease-in-out;
+}
+
+.hero-svg {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* 主人公のアニメーション（上下に軽く揺れる - 参考HTMLのbobアニメーション） */
+@keyframes heroBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+/* 犬のSVGアニメーション・携帯で確実に表示 */
+.dog-svg {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3));
+}
+
+/* しっぽのアニメーション */
+.dog-svg path.tail {
+    animation: wag 0.5s infinite ease-in-out;
+}
+
+@keyframes wag {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(10deg); }
+    75% { transform: rotate(-10deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* 猿のSVGアニメーション・携帯で確実に表示 */
+.monkey-svg {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3));
+}
+
+/* きじのSVGアニメーション・携帯で確実に表示 */
+.bird-svg {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3));
+    image-rendering: pixelated;
+    shape-rendering: crispEdges;
+}
+
+@keyframes heroGlow {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 235, 0, 1), inset 0 0 15px rgba(255, 255, 255, 0.5);
+    }
+}
+
+/* オブジェクトの視覚的強化 */
+.cell.obj-enemy {
+    filter: drop-shadow(0 0 5px rgba(255, 0, 255, 0.8));
+    animation: enemyPulse 2s ease-in-out infinite;
+}
+
+.cell.obj-treasure {
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.9));
+    animation: treasureGlow 2s ease-in-out infinite;
+}
+
+.cell.obj-castle {
+    filter: drop-shadow(0 0 10px rgba(200, 200, 255, 0.8));
+    font-size: 1.2em;  /* 城を1.2倍表示 */
+}
+
+.cell.obj-boss {
+    filter: drop-shadow(0 0 12px rgba(255, 0, 0, 1));
+    animation: bossPulse 1.5s ease-in-out infinite;
+}
+
+.cell.obj-shop {
+    filter: drop-shadow(0 0 8px rgba(255, 200, 100, 0.8));
+}
+
+.cell.obj-door {
+    filter: drop-shadow(0 0 8px rgba(200, 200, 200, 0.8));
+    animation: doorGlow 3s ease-in-out infinite;
+}
+
+.cell.obj-ghost {
+    filter: drop-shadow(0 0 10px rgba(200, 200, 255, 0.9));
+    animation: ghostFloat 3s ease-in-out infinite;
+}
+
+.cell.obj-momo {
+    filter: drop-shadow(0 0 8px rgba(255, 150, 150, 0.8));
+    animation: momoGlow 2s ease-in-out infinite;
+}
+
+.cell.obj-npc {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 200, 0.7));
+}
+
+.cell.obj-ally {
+    filter: drop-shadow(0 0 6px rgba(255, 220, 150, 0.7));
+}
+
+.cell.obj-village-entrance {
+    filter: drop-shadow(0 0 8px rgba(150, 100, 50, 0.8));
+}
+
+.cell.obj-golden-cat {
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1));
+    animation: goldenCatGlow 2s ease-in-out infinite;
+    font-size: 1.5em;
+    overflow: visible;
+}
+.cell.obj-golden-cat .golden-cat-svg-container {
+    transform: scale(1.2);  /* 金色の🐈を1.2倍表示 */
+}
+
+@keyframes goldenCatGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1)) brightness(1);
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 25px rgba(255, 235, 0, 1)) brightness(1.2);
+        transform: scale(1.1);
+    }
+}
+
+@keyframes enemyPulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 5px rgba(255, 0, 255, 0.8));
+    }
+    50% {
+        transform: scale(1.05);
+        filter: drop-shadow(0 0 8px rgba(255, 50, 255, 1));
+    }
+}
+
+@keyframes treasureGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.9));
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 255, 100, 1));
+        transform: scale(1.08);
+    }
+}
+
+@keyframes bossPulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 12px rgba(255, 0, 0, 1));
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 18px rgba(255, 50, 50, 1));
+        transform: scale(1.1);
+    }
+}
+
+@keyframes doorGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(200, 200, 200, 0.8));
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 255, 255, 1));
+    }
+}
+
+@keyframes ghostFloat {
+    0%, 100% {
+        transform: translateY(0);
+        filter: drop-shadow(0 0 10px rgba(200, 200, 255, 0.9));
+    }
+    50% {
+        transform: translateY(-3px);
+        filter: drop-shadow(0 0 15px rgba(220, 220, 255, 1));
+    }
+}
+
+@keyframes momoGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(255, 150, 150, 0.8));
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 200, 200, 1));
+    }
+}
+
+/* セルのホバーエフェクト（PC用） */
+@media (hover: hover) {
+    .cell:not(.hero):hover {
+        transform: scale(1.1);
+        z-index: 3;
+        transition: transform 0.2s ease, z-index 0s;
+    }
+}
+
+@media (min-width: 400px) {
+    .cell {
+        font-size: 20px;
+    }
+}

@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>廃線ダッシュ — 追ってくる何かから逃げろ</title>
+<style>
+  :root{
+    --ink:#e8dcc0;
+    --dim:#8b7f68;
+    --rust:#c9702c;
+    --blood:#e0433a;
+    --cold:#63d8bd;
+    --panel:rgba(12,10,18,.82);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#08060d;overflow:hidden;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"Noto Sans JP",sans-serif;
+    color:var(--ink);-webkit-tap-highlight-color:transparent;user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{position:relative;width:100%;max-width:960px;aspect-ratio:16/9}
+  canvas{width:100%;height:100%;display:block;image-rendering:pixelated;
+    background:#0b0912;border-radius:4px}
+
+  /* ---- HUD ---- */
+  #hud{position:absolute;inset:0;pointer-events:none;font-size:13px;line-height:1.3}
+  .tl{position:absolute;top:8px;left:10px}
+  .tr{position:absolute;top:8px;right:10px;width:44%;max-width:230px}
+  .dist{font-size:22px;font-weight:700;letter-spacing:.02em;
+    text-shadow:0 2px 0 #000,0 0 12px rgba(201,112,44,.5)}
+  .dist small{font-size:11px;font-weight:400;color:var(--dim);margin-left:3px}
+  .clock{font-size:12px;color:var(--dim);margin-top:1px}
+  .chaser{margin-bottom:5px;opacity:0;transform:translateX(8px);
+    transition:opacity .35s,transform .35s}
+  .chaser.on{opacity:1;transform:none}
+  .chaser .row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px}
+  .chaser .nm{font-weight:700}
+  .track{height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+  .fill{height:100%;width:100%;transform-origin:right center;transition:transform .08s linear}
+  .learn{font-size:10px;color:var(--cold);margin-top:2px;letter-spacing:.04em}
+
+  /* ---- overlays ---- */
+  .veil{position:absolute;inset:0;background:var(--panel);backdrop-filter:blur(3px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:18px;gap:10px}
+  .veil.hide{display:none}
+  h1{font-size:clamp(24px,6vw,44px);letter-spacing:.12em;font-weight:800;
+    color:var(--ink);text-shadow:0 0 18px rgba(224,67,58,.45)}
+  .sub{color:var(--dim);font-size:13px;max-width:30em;line-height:1.7}
+  .keys{font-size:12px;color:var(--dim);line-height:1.9}
+  .keys b{color:var(--rust)}
+  button{pointer-events:auto;font:inherit;font-weight:700;font-size:15px;
+    padding:11px 30px;color:#120e08;background:var(--rust);border:0;border-radius:2px;
+    cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #7d4315}
+  button:active{transform:translateY(3px);box-shadow:none}
+  button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+  .score{font-size:34px;font-weight:800;color:var(--rust)}
+  .score small{font-size:13px;color:var(--dim);font-weight:400}
+  .caught{font-size:14px;color:var(--blood);letter-spacing:.06em}
+  .best{font-size:12px;color:var(--dim)}
+
+  /* ---- touch pads ---- */
+  #pads{position:absolute;left:0;right:0;bottom:0;height:34%;display:flex;gap:8px;
+    padding:8px;pointer-events:none}
+  #pads div{flex:1;pointer-events:auto;border:1px solid rgba(232,220,192,.16);
+    border-radius:3px;display:flex;align-items:flex-end;justify-content:center;
+    padding-bottom:6px;font-size:11px;color:rgba(232,220,192,.4);
+    background:linear-gradient(to top,rgba(232,220,192,.07),transparent)}
+  #pads div:active{background:rgba(201,112,44,.22)}
+  @media (hover:hover){#pads{display:none}}
+  .flash{position:absolute;inset:0;background:#e0433a;opacity:0;pointer-events:none}
+  .toast{position:absolute;left:50%;top:26%;transform:translateX(-50%);
+    font-size:15px;font-weight:700;letter-spacing:.1em;opacity:0;white-space:nowrap;
+    text-shadow:0 0 14px #000}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <canvas id="cv" width="480" height="270"></canvas>
+
+  <div id="hud">
+    <div class="tl">
+      <div class="dist"><span id="m">0</span><small>m</small></div>
+      <div class="clock" id="clk">0:00</div>
+    </div>
+    <div class="tr" id="chasers"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div id="pads"><div id="padDuck">しゃがむ</div><div id="padJump">ジャンプ</div></div>
+  <div class="flash" id="flash"></div>
+
+  <div class="veil" id="title">
+    <h1>廃線ダッシュ</h1>
+    <p class="sub">草に沈んだ線路を、トロッコで下る。<br>
+      三十年、誰も来なかった。今日までは。</p>
+    <button id="btnStart">出発する</button>
+    <p class="keys"><b>スペース / ↑</b> 跳ぶ　<b>↓</b> 伏せる<br>スマホは画面下の2つのボタン</p>
+  </div>
+
+  <div class="veil hide" id="over">
+    <p class="caught" id="byWhom">追いつかれた</p>
+    <p class="score"><span id="fm">0</span><small> m　/　<span id="ft">0:00</span></small></p>
+    <p class="sub" id="epitaph"></p>
+    <button id="btnAgain">もう一度</button>
+    <p class="best" id="best"></p>
+  </div>
+</div></div>
+
+<script>
+"use strict";
+(function(){
+const cv=document.getElementById("cv"), g=cv.getContext("2d");
+g.imageSmoothingEnabled=false;
+const W=480,H=270;
+
+/* ============ 定数 ============ */
+const GROUND=198;          // 線路面（プレイヤーの足元）
+const PX=14;               // 1メートル = 14px
+const PLAYER_X=150;        // プレイヤーの画面上の固定位置
+const PW=26, PH=34, PH_DUCK=18;
+const GRAV=2000, JUMP_V=-520;
+const MAX_GAP=60;          // 追跡者との距離の上限(m)
+
+/* ============ 状態 ============ */
+let S=null, keys={}, running=false, last=0, best=0;
+
+function newState(){
+  return {
+    t:0, camX:0, dist:0,
+    speed:13, penalty:0, boost:0,
+    y:0, vy:0, onGround:true, ducking:false, invul:0,
+    obstacles:[], items:[], parts:[], chasers:[],
+    nextSpawn:600, lastKind:"", nextMile:800,
+    shake:0, hits:0, dodges:0, over:false, killer:null,
+    wave:0, toastT:0
+  };
+}
+
+/* ============ 追跡者の設計 ============
+   影   : 一定速。ミスした瞬間だけ牙を剥く
+   疾駆 : 加速と休息を繰り返す。波を読めば振り切れる
+   追跡AI: 逃げ切るほど学習して速くなる
+===================================== */
+const CHASER_DEFS=[
+  { id:"shadow", name:"影",     color:"#6b6478", eye:"#ff3b3b", at:14, gap:34,
+    speed:(t)=>Math.min(24, 12.4+t*0.155) },
+  { id:"sprint", name:"疾駆",   color:"#b9532a", eye:"#ffb03a", at:50, gap:40,
+    speed:(t,c)=>{ const b=Math.min(25,12.8+t*0.145);
+      c.ph=(c.ph||0); return b*(c.ph<3.0?1.34:0.74); } },
+  { id:"hunter", name:"追跡AI", color:"#2e6f68", eye:"#63d8bd", at:96, gap:46,
+    speed:(t,c)=>Math.min(26.5, 12.2+t*0.135)*(1+c.learn) }
+];
+
+/* ============ 音（最小限） ============ */
+let AC=null;
+function beep(freq,dur,type,vol){
+  if(!AC) return;
+  const o=AC.createOscillator(), gn=AC.createGain();
+  o.type=type||"square"; o.frequency.value=freq;
+  gn.gain.setValueAtTime(vol||0.05, AC.currentTime);
+  gn.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime+dur);
+  o.connect(gn); gn.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime+dur);
+}
+function noise(dur,vol){
+  if(!AC) return;
+  const n=AC.sampleRate*dur, buf=AC.createBuffer(1,n,AC.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+  const src=AC.createBufferSource(), gn=AC.createGain();
+  src.buffer=buf; gn.gain.value=vol||0.14;
+  src.connect(gn); gn.connect(AC.destination); src.start();
+}
+function audioInit(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+
+/* ============ 入力 ============ */
+function jump(){
+  if(!running||S.over) return;
+  if(S.onGround){ S.vy=JUMP_V; S.onGround=false; beep(300,.09,"square",.04); }
+}
+function setDuck(v){ if(running&&!S.over) S.ducking=v; }
+
+addEventListener("keydown",e=>{
+  if(["Space","ArrowUp","ArrowDown","KeyW","KeyS"].includes(e.code)) e.preventDefault();
+  if(keys[e.code]) return; keys[e.code]=true;
+  audioInit();
+  if(e.code==="Space"||e.code==="ArrowUp"||e.code==="KeyW") jump();
+  if(e.code==="ArrowDown"||e.code==="KeyS") setDuck(true);
+  if(e.code==="KeyR"&&S&&S.over) start();
+});
+addEventListener("keyup",e=>{
+  keys[e.code]=false;
+  if(e.code==="ArrowDown"||e.code==="KeyS") setDuck(false);
+});
+function bindPad(el,down,up){
+  el.addEventListener("touchstart",e=>{e.preventDefault();audioInit();down();},{passive:false});
+  el.addEventListener("touchend",e=>{e.preventDefault();if(up)up();},{passive:false});
+  el.addEventListener("touchcancel",e=>{if(up)up();});
+  el.addEventListener("mousedown",e=>{e.preventDefault();audioInit();down();});
+  el.addEventListener("mouseup",e=>{if(up)up();});
+  el.addEventListener("mouseleave",e=>{if(up)up();});
+}
+bindPad(document.getElementById("padJump"), jump);
+bindPad(document.getElementById("padDuck"), ()=>setDuck(true), ()=>setDuck(false));
+cv.addEventListener("touchstart",e=>{e.preventDefault();audioInit();jump();},{passive:false});
+
+/* ============ 生成 ============ */
+function spawnObstacle(){
+  const r=Math.random();
+  let kind = r<0.42 ? "low" : (r<0.74 ? "high" : "gap");
+  if(kind==="gap" && S.lastKind==="gap") kind="low";
+  S.lastKind=kind;
+  const x=S.nextSpawn;
+
+  if(kind==="low"){
+    const tall=Math.random()<0.4;
+    S.obstacles.push({kind:"low",x,w:tall?24:34,h:tall?28:20,rock:tall});
+  }else if(kind==="high"){
+    S.obstacles.push({kind:"high",x,w:38+Math.random()*26,top:118,bot:176});
+  }else{
+    S.obstacles.push({kind:"gap",x,w:48+Math.random()*44});
+  }
+
+  const spx=S.speed*PX;                       // 現在の秒速(px)
+  const interval=spx*(1.18+Math.random()*0.6);
+  const just=S.obstacles[S.obstacles.length-1];
+  S.nextSpawn = x + (just.w||40) + interval;
+
+  if(Math.random()<0.24){
+    S.items.push({x:x+(just.w||40)+interval*0.5, y:GROUND-46, got:false, bob:Math.random()*6});
+  }
+}
+function spawnChaser(def){
+  S.chasers.push({def, gap:def.gap, ph:0, learn:0, bob:Math.random()*6, alive:true});
+  toast(def.name+"、線路に降りた");
+  beep(70,.7,"sawtooth",.07); noise(.5,.09);
+  addChaserHud(def);
+}
+
+/* ============ HUD ============ */
+const hudBox=document.getElementById("chasers");
+function addChaserHud(def){
+  const d=document.createElement("div");
+  d.className="chaser"; d.id="ch_"+def.id;
+  d.innerHTML='<div class="row"><span class="nm" style="color:'+def.eye+'">'+def.name+
+    '</span><span class="dv">--</span></div>'+
+    '<div class="track"><div class="fill" style="background:'+def.eye+'"></div></div>'+
+    (def.id==="hunter"?'<div class="learn">学習度 0%</div>':'');
+  hudBox.appendChild(d);
+  requestAnimationFrame(()=>d.classList.add("on"));
+}
+const toastEl=document.getElementById("toast");
+function toast(txt){ toastEl.textContent=txt; S.toastT=2.2; }
+
+/* ============ 更新 ============ */
+function update(dt){
+  S.t+=dt;
+
+  // --- プレイヤー速度 ---
+  let base=Math.min(28, 13+S.t*0.185);
+  if(S.penalty>0){ S.penalty-=dt; base*=0.52; }
+  if(S.boost>0){ S.boost-=dt; base*=1.28; }
+  S.speed=base;
+  const spx=S.speed*PX;
+  S.camX+=spx*dt;
+  S.dist+=S.speed*dt;
+
+  // --- ジャンプ物理 ---
+  if(!S.onGround){
+    S.vy+=GRAV*dt; S.y+=S.vy*dt;
+    if(S.y>=0){ S.y=0; S.vy=0; S.onGround=true; }
+  }
+  if(S.invul>0) S.invul-=dt;
+  if(S.toastT>0) S.toastT-=dt;
+  if(S.shake>0) S.shake=Math.max(0,S.shake-dt*3);
+
+  // --- 生成 ---
+  while(S.nextSpawn < S.camX+W+120) spawnObstacle();
+  S.obstacles=S.obstacles.filter(o=>o.x-S.camX > -160);
+  S.items=S.items.filter(o=>o.x-S.camX > -60 && !o.got);
+
+  // --- 追跡者の投入 ---
+  for(const def of CHASER_DEFS){
+    if(S.t>=def.at && !S.chasers.some(c=>c.def.id===def.id)) spawnChaser(def);
+  }
+
+  // --- 当たり判定 ---
+  const px0=S.camX+PLAYER_X, px1=px0+PW;
+  const ph=S.ducking&&S.onGround?PH_DUCK:PH;
+  const py1=GROUND+S.y, py0=py1-ph;
+
+  for(const o of S.obstacles){
+    if(o.x>px1||o.x+o.w<px0) continue;
+    if(o.kind==="low"){
+      if(py1 > GROUND-o.h) crash("障害物");
+    }else if(o.kind==="high"){
+      if(py0 < o.bot && py1 > o.top) crash("架線");
+    }else{ // gap
+      if(S.onGround) crash("橋の欠損");
+    }
+  }
+  for(const it of S.items){
+    if(it.got) continue;
+    if(it.x<px1&&it.x+16>px0&&py0<it.y+16&&py1>it.y){
+      it.got=true; S.boost=2.0;
+      for(const c of S.chasers) c.gap=Math.min(MAX_GAP,c.gap+5);
+      for(let i=0;i<14;i++) burst(PLAYER_X, GROUND-40, "#ffd98a");
+      beep(660,.08,"triangle",.06); beep(990,.12,"triangle",.05);
+      toast("灯油＋　加速");
+    }
+  }
+
+  // --- マイルストーン（廃駅） ---
+  if(S.dist>=S.nextMile){
+    S.nextMile+=800;
+    for(const c of S.chasers) c.gap=Math.min(MAX_GAP,c.gap+3);
+    toast(Math.round(S.dist)+"m　廃駅を通過");
+    beep(520,.1,"triangle",.05);
+  }
+
+  // --- 追跡者 ---
+  for(const c of S.chasers){
+    if(c.def.id==="sprint"){ c.ph=(c.ph+dt)%5.5; }
+    if(c.def.id==="hunter"){
+      // 逃げ切るほど、時間が経つほど賢くなる
+      c.learn=Math.min(0.30, c.learn + dt*0.012 + (c.justLearned||0));
+      c.justLearned=0;
+    }
+    const sp=c.def.speed(S.t,c);
+    c.gap += (S.speed-sp)*dt;
+    if(c.gap>MAX_GAP) c.gap=MAX_GAP;
+    if(c.gap<=0 && !S.over) gameOver(c);
+    c.bob+=dt*9;
+  }
+
+  // --- 粒子 ---
+  if(S.onGround && Math.random()<0.55){
+    S.parts.push({x:PLAYER_X-4,y:GROUND-2,vx:-60-Math.random()*90,vy:-20-Math.random()*40,
+      life:.4,col:"#6b5c48",s:2});
+  }
+  for(const p of S.parts){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=500*dt; p.life-=dt; }
+  S.parts=S.parts.filter(p=>p.life>0);
+
+  drawHud();
+}
+
+function burst(x,y,col){
+  S.parts.push({x,y,vx:(Math.random()-.5)*220,vy:-60-Math.random()*180,
+    life:.5+Math.random()*.3,col,s:2});
+}
+
+function crash(what){
+  if(S.invul>0||S.over) return;
+  S.invul=1.0; S.penalty=0.85; S.hits++; S.shake=1;
+  for(const c of S.chasers){
+    c.gap=Math.max(0.1,c.gap-6.5);
+    if(c.def.id==="hunter") c.justLearned=0.03;   // ミスを見て学ぶ
+  }
+  for(let i=0;i<16;i++) burst(PLAYER_X+10, GROUND-18, "#c9702c");
+  noise(.3,.16); beep(120,.25,"sawtooth",.07);
+  flash(); toast(what+"に接触");
+}
+const flashEl=document.getElementById("flash");
+function flash(){
+  flashEl.style.transition="none"; flashEl.style.opacity=".28";
+  requestAnimationFrame(()=>{ flashEl.style.transition="opacity .3s"; flashEl.style.opacity="0"; });
+}
+
+/* ============ 描画 ============ */
+function drawSky(){
+  const grd=g.createLinearGradient(0,0,0,GROUND);
+  grd.addColorStop(0,"#120c1e"); grd.addColorStop(.55,"#2a1a35"); grd.addColorStop(1,"#5a3340");
+  g.fillStyle=grd; g.fillRect(0,0,W,GROUND);
+  // 月
+  g.fillStyle="#f0e2b8"; g.beginPath(); g.arc(392,44,14,0,7); g.fill();
+  g.fillStyle="#2a1a35"; g.beginPath(); g.arc(386,39,13,0,7); g.fill();
+  // 星
+  g.fillStyle="rgba(240,230,200,.5)";
+  for(let i=0;i<40;i++){
+    const x=(i*97+((i*31)%53))%W, y=(i*41)%110;
+    if((i+Math.floor(S.t*2))%13!==0) g.fillRect(x,y,1,1);
+  }
+}
+function layer(offset,speed,fn){ const o=(S.camX*speed)%offset; fn(-o,offset); }
+
+function drawMountains(){
+  g.fillStyle="#241a30";
+  layer(320,.12,(ox,per)=>{
+    for(let k=-1;k<3;k++){
+      const bx=ox+k*per;
+      g.beginPath(); g.moveTo(bx,GROUND);
+      g.lineTo(bx+70,96); g.lineTo(bx+140,GROUND);
+      g.lineTo(bx+180,GROUND); g.lineTo(bx+240,116); g.lineTo(bx+310,GROUND);
+      g.closePath(); g.fill();
+    }
+  });
+}
+function drawForest(){
+  layer(180,.38,(ox,per)=>{
+    for(let k=-1;k<5;k++){
+      const bx=ox+k*per;
+      g.fillStyle="#16121f";
+      for(let i=0;i<7;i++){
+        const x=bx+i*26+((i*13)%9), h=40+((i*37)%34);
+        g.beginPath(); g.moveTo(x,GROUND-6); g.lineTo(x+9,GROUND-6-h); g.lineTo(x+18,GROUND-6);
+        g.closePath(); g.fill();
+      }
+    }
+  });
+}
+function drawPoles(){
+  layer(150,.82,(ox,per)=>{
+    for(let k=-1;k<5;k++){
+      const bx=ox+k*per;
+      g.fillStyle="#0d0a14"; g.fillRect(bx,GROUND-92,3,92);
+      g.fillRect(bx-7,GROUND-88,17,2);
+      g.strokeStyle="rgba(13,10,20,.9)"; g.lineWidth=1;
+      g.beginPath(); g.moveTo(bx+1,GROUND-86);
+      g.quadraticCurveTo(bx+per/2,GROUND-64,bx+per+1,GROUND-86); g.stroke();
+    }
+  });
+}
+function drawTrack(){
+  // バラスト
+  g.fillStyle="#241d1a"; g.fillRect(0,GROUND-2,W,H-GROUND+2);
+  g.fillStyle="#2f2621"; g.fillRect(0,GROUND+16,W,H-GROUND);
+  // 雑草（奥）
+  g.fillStyle="#1d2a1e";
+  for(let i=0;i<60;i++){
+    const x=((i*67)-(S.camX*.9))%(W+40)-20, hh=3+((i*13)%6);
+    g.fillRect(x,GROUND-4-hh,1,hh);
+  }
+  // 枕木（台形＝奥行き）
+  const sp=26, off=S.camX%sp;
+  for(let x=-sp; x<W+sp; x+=sp){
+    const sx=x-off;
+    g.fillStyle="#4a3a2c";
+    g.beginPath();
+    g.moveTo(sx-15,GROUND); g.lineTo(sx+15,GROUND);
+    g.lineTo(sx+23,GROUND+18); g.lineTo(sx-23,GROUND+18);
+    g.closePath(); g.fill();
+    g.fillStyle="rgba(0,0,0,.28)"; g.fillRect(sx-23,GROUND+17,46,1);
+  }
+  // レール（奥・手前の2本で遠近を出す）
+  g.fillStyle="#7d4a24"; g.fillRect(0,GROUND-3,W,3);
+  g.fillStyle="#b5642a"; g.fillRect(0,GROUND-3,W,1);
+  g.fillStyle="#93542a"; g.fillRect(0,GROUND+12,W,4);
+  g.fillStyle="#d98f4a"; g.fillRect(0,GROUND+12,W,1);
+  // 錆のきらめき
+  g.fillStyle="rgba(255,200,140,.35)";
+  for(let i=0;i<14;i++){
+    const x=((i*113)-(S.camX*1.0))%(W+30)-15;
+    g.fillRect(x,GROUND+12,6,1);
+  }
+}
+function drawObstacles(){
+  for(const o of S.obstacles){
+    const x=o.x-S.camX;
+    if(x>W+60||x<-120) continue;
+    if(o.kind==="low"){
+      if(o.rock){
+        g.fillStyle="#3d3a3f"; g.beginPath();
+        g.moveTo(x,GROUND); g.lineTo(x+4,GROUND-o.h); g.lineTo(x+o.w-5,GROUND-o.h+4);
+        g.lineTo(x+o.w,GROUND); g.closePath(); g.fill();
+        g.fillStyle="#565059"; g.fillRect(x+5,GROUND-o.h+4,7,4);
+      }else{
+        g.fillStyle="#463424"; g.fillRect(x,GROUND-o.h,o.w,o.h);
+        g.fillStyle="#5c452e"; g.fillRect(x,GROUND-o.h,o.w,4);
+        g.fillStyle="#2b1f15";
+        for(let i=0;i<3;i++) g.fillRect(x+4+i*10,GROUND-o.h+7,2,o.h-9);
+        g.fillStyle="#2f4026"; g.fillRect(x+o.w-8,GROUND-o.h-5,3,6);
+      }
+    }else if(o.kind==="high"){
+      // 垂れ下がった架線＋腐った梁
+      g.fillStyle="#1a1520"; g.fillRect(x,o.top,o.w,10);
+      g.strokeStyle="#2b2430"; g.lineWidth=2;
+      for(let i=0;i<3;i++){
+        const cx=x+6+i*(o.w/3);
+        g.beginPath(); g.moveTo(cx,o.top+9);
+        g.quadraticCurveTo(cx+5,o.bot-14,cx+2,o.bot); g.stroke();
+      }
+      g.fillStyle="rgba(99,216,189,.5)";
+      const sp=(Math.sin(S.t*7)+1)/2;
+      g.fillRect(x+8,o.bot-3+sp*2,2,2);
+    }else{
+      // 橋の欠損
+      g.fillStyle="#07060c"; g.fillRect(x,GROUND-3,o.w,H-GROUND+3);
+      g.fillStyle="#3a2d22"; g.fillRect(x-4,GROUND-4,4,10); g.fillRect(x+o.w,GROUND-4,4,10);
+      g.fillStyle="#5a4634";
+      g.fillRect(x-2,GROUND+6,6,2); g.fillRect(x+o.w-4,GROUND+9,7,2);
+    }
+  }
+}
+function drawItems(){
+  for(const it of S.items){
+    if(it.got) continue;
+    const x=it.x-S.camX; if(x<-30||x>W+30) continue;
+    const y=it.y+Math.sin(S.t*4+it.bob)*3;
+    g.fillStyle="rgba(255,217,138,.18)"; g.beginPath(); g.arc(x+8,y+8,12,0,7); g.fill();
+    g.fillStyle="#8a6b3a"; g.fillRect(x+2,y+2,12,13);
+    g.fillStyle="#ffd98a"; g.fillRect(x+4,y+5,8,7);
+    g.fillStyle="#5c4526"; g.fillRect(x+6,y,4,3);
+  }
+}
+function drawPlayer(){
+  const ph=S.ducking&&S.onGround?PH_DUCK:PH;
+  const y=GROUND+S.y-ph, x=PLAYER_X;
+  if(S.invul>0 && Math.floor(S.t*22)%2===0) return;
+
+  // ランプの光
+  const gr=g.createRadialGradient(x+30,y+4,2,x+30,y+4,54);
+  gr.addColorStop(0,"rgba(255,217,138,.34)"); gr.addColorStop(1,"rgba(255,217,138,0)");
+  g.fillStyle=gr; g.fillRect(x-26,y-50,110,100);
+
+  // トロッコ台車
+  const by=GROUND+S.y;
+  g.fillStyle="#3a2f26"; g.fillRect(x-3,by-10,PW+6,8);
+  g.fillStyle="#20191a"; 
+  const wob=(S.camX*0.35)%6<3?0:1;
+  g.fillRect(x+1,by-3,7,5); g.fillRect(x+PW-8,by-3,7,5);
+  g.fillStyle="#c9702c"; g.fillRect(x+2+wob,by-2,2,2); g.fillRect(x+PW-7+wob,by-2,2,2);
+
+  // 人
+  const bob=S.onGround?Math.sin(S.camX*0.09)*1:0;
+  g.fillStyle="#d8cbb0";
+  if(ph===PH_DUCK){
+    g.fillRect(x+3,by-18,20,10);            // 伏せた胴
+    g.fillStyle="#2a2028"; g.fillRect(x+18,by-19,7,6); // 頭
+  }else{
+    g.fillRect(x+8,by-26+bob,10,16);        // 胴
+    g.fillStyle="#2a2028"; g.fillRect(x+7,by-34+bob,12,9); // 頭
+    g.fillStyle="#d8cbb0"; g.fillRect(x+17,by-24+bob,7,3); // 腕（レバー）
+  }
+  // ランプ
+  g.fillStyle="#ffd98a"; g.fillRect(x+PW-2,by-16,4,5);
+}
+function drawChasers(){
+  for(const c of S.chasers){
+    const x=PLAYER_X - c.gap*PX;
+    if(x<-70) continue;
+    const d=c.def, by=GROUND, sway=Math.sin(c.bob)*2;
+
+    // 靄
+    const gr=g.createRadialGradient(x+12,by-20,4,x+12,by-20,42);
+    gr.addColorStop(0,"rgba(0,0,0,.55)"); gr.addColorStop(1,"rgba(0,0,0,0)");
+    g.fillStyle=gr; g.fillRect(x-32,by-62,90,80);
+
+    g.fillStyle=d.color;
+    if(d.id==="shadow"){
+      g.beginPath(); g.moveTo(x+2,by);
+      g.lineTo(x+4,by-30+sway); g.lineTo(x+12,by-40+sway); g.lineTo(x+20,by-30+sway);
+      g.lineTo(x+22,by); g.closePath(); g.fill();
+    }else if(d.id==="sprint"){
+      const run=Math.sin(c.bob*1.6)*5;
+      g.fillRect(x+6,by-32,12,22);
+      g.fillRect(x+4+run,by-11,7,11); g.fillRect(x+13-run,by-11,7,11);
+      g.fillRect(x+7,by-40,11,9);
+    }else{
+      g.fillRect(x+5,by-34,15,24);
+      g.fillRect(x+7,by-44,11,11);
+      g.strokeStyle="rgba(99,216,189,"+(0.28*(1-((S.t*0.7)%1))).toFixed(3)+")";
+      g.lineWidth=1; g.beginPath();
+      g.arc(x+12,by-38,8+((S.t*26)%30),0,7); g.stroke();
+      g.fillStyle=d.color;
+    }
+    // 眼
+    g.fillStyle=d.eye;
+    g.fillRect(x+8,by-(d.id==="sprint"?36:d.id==="hunter"?40:34)+sway,3,2);
+    g.fillRect(x+14,by-(d.id==="sprint"?36:d.id==="hunter"?40:34)+sway,3,2);
+  }
+}
+function drawParts(){
+  for(const p of S.parts){ g.fillStyle=p.col; g.globalAlpha=Math.max(0,p.life*2);
+    g.fillRect(p.x,p.y,p.s,p.s); }
+  g.globalAlpha=1;
+}
+function drawVignette(){
+  // 一番近い追跡者が近いほど画面が暗く狭くなる
+  let near=MAX_GAP;
+  for(const c of S.chasers) near=Math.min(near,c.gap);
+  const tension=Math.max(0,1-near/26);
+  if(tension<=0) return;
+  const gr=g.createRadialGradient(W/2,H/2,60,W/2,H/2,300);
+  gr.addColorStop(0,"rgba(0,0,0,0)");
+  gr.addColorStop(1,"rgba(30,0,6,"+(0.65*tension).toFixed(3)+")");
+  g.fillStyle=gr; g.fillRect(0,0,W,H);
+}
+
+function render(){
+  g.save();
+  if(S.shake>0){
+    g.translate((Math.random()-.5)*6*S.shake,(Math.random()-.5)*5*S.shake);
+  }
+  drawSky(); drawMountains(); drawForest(); drawPoles();
+  drawTrack(); drawObstacles(); drawItems();
+  drawChasers(); drawPlayer(); drawParts();
+  g.restore();
+  drawVignette();
+}
+
+/* ============ HUD 更新 ============ */
+const mEl=document.getElementById("m"), clkEl=document.getElementById("clk");
+function fmtT(s){ const m=Math.floor(s/60); return m+":"+String(Math.floor(s%60)).padStart(2,"0"); }
+function drawHud(){
+  mEl.textContent=Math.round(S.dist);
+  clkEl.textContent=fmtT(S.t);
+  for(const c of S.chasers){
+    const el=document.getElementById("ch_"+c.def.id); if(!el) continue;
+    el.querySelector(".dv").textContent=Math.max(0,Math.round(c.gap))+"m";
+    el.querySelector(".fill").style.transform="scaleX("+(1-Math.min(1,c.gap/MAX_GAP)).toFixed(3)+")";
+    if(c.def.id==="hunter"){
+      const l=el.querySelector(".learn");
+      if(l) l.textContent="学習度 "+Math.round(c.learn/0.30*100)+"%";
+    }
+  }
+  toastEl.style.opacity = S.toastT>0 ? Math.min(1,S.toastT).toFixed(2) : "0";
+}
+
+/* ============ ループ ============ */
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!running) return;
+  const dt=Math.min(0.05,(ts-last)/1000||0); last=ts;
+  if(!S.over) update(dt);
+  render();
+}
+requestAnimationFrame(t=>{ last=t; requestAnimationFrame(loop); });
+
+/* ============ 開始 / 終了 ============ */
+const titleEl=document.getElementById("title"), overEl=document.getElementById("over");
+const EPITAPH={
+  shadow:"影は速くない。ぶつからなければ、まだ勝てた。",
+  sprint:"疾駆は波で来る。休んでいる隙に、離すべきだった。",
+  hunter:"追跡AIは、あなたの逃げ方を全部覚えていた。"
+};
+function start(){
+  audioInit();
+  hudBox.innerHTML="";
+  S=newState(); running=true; last=performance.now();
+  titleEl.classList.add("hide"); overEl.classList.add("hide");
+  toast("静かだ。まだ、何もいない。");
+}
+function gameOver(c){
+  S.over=true; S.killer=c.def;
+  noise(.7,.2); beep(60,1.0,"sawtooth",.08);
+  best=Math.max(best,Math.round(S.dist));
+  document.getElementById("byWhom").textContent=c.def.name+"に追いつかれた";
+  document.getElementById("fm").textContent=Math.round(S.dist);
+  document.getElementById("ft").textContent=fmtT(S.t);
+  document.getElementById("epitaph").textContent=EPITAPH[c.def.id];
+  document.getElementById("best").textContent="この端末の最長記録 "+best+"m";
+  overEl.classList.remove("hide");
+}
+document.getElementById("btnStart").addEventListener("click",start);
+document.getElementById("btnAgain").addEventListener("click",start);
+
+// タイトル背景を静かに動かす
+S=newState(); render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+/* ============================================
+   フィールド別スタイル
+   ============================================
+   
+   役割: 各フィールド（エリア）ごとの背景色と雰囲気のスタイル
+   
+   含まれる内容:
+   - フィールド別マップグリッドスタイル（#map-grid.field-*）
+   - フィールド別セルスタイル（.field-* .cell）
+   ============================================ */
+
+#map-grid.field-town_inside {
+    background: linear-gradient(135deg, #3a2a1a 0%, #5a4a3a 100%);
+    border: 3px solid #d4a574;
+    box-shadow: 0 0 25px rgba(212, 165, 116, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+#map-grid.field-green_field {
+    background: linear-gradient(135deg, #1a3a1a 0%, #2a5a2a 100%);
+    border: 3px solid #4a8a4a;
+    box-shadow: 0 0 25px rgba(74, 138, 74, 0.4), inset 0 0 10px rgba(100, 200, 100, 0.1);
+}
+
+#map-grid.field-wasteland {
+    background: linear-gradient(135deg, #2a1a0a 0%, #4a3a2a 100%);
+    border: 3px solid #8a6a4a;
+    box-shadow: 0 0 25px rgba(138, 106, 74, 0.3), inset 0 0 10px rgba(100, 80, 60, 0.1);
+}
+
+#map-grid.field-lonely_desert {
+    background: linear-gradient(135deg, #5a4a2a 0%, #8a7a5a 100%);
+    border: 3px solid #d4b884;
+    box-shadow: 0 0 30px rgba(212, 184, 132, 0.5), inset 0 0 15px rgba(255, 240, 200, 0.2);
+}
+
+#map-grid.field-lava_cave {
+    background: linear-gradient(135deg, #2a0000 0%, #4a1a00 100%);
+    border: 3px solid #ff4400;
+    box-shadow: 0 0 35px rgba(255, 68, 0, 0.6), inset 0 0 20px rgba(255, 100, 0, 0.3);
+    animation: lavaGlow 3s ease-in-out infinite;
+}
+
+#map-grid.field-demon_castle {
+    background: linear-gradient(135deg, #001a2a 0%, #003a5a 100%);
+    border: 3px solid #4aa4ff;
+    box-shadow: 0 0 35px rgba(74, 164, 255, 0.6), inset 0 0 20px rgba(150, 220, 255, 0.3);
+    animation: waterFlow 4s ease-in-out infinite;
+}
+
+#map-grid.field-ruined_village {
+    background: linear-gradient(135deg, #1a1a1a 0%, #3a3a3a 100%);
+    border: 3px solid #6a6a6a;
+    box-shadow: 0 0 25px rgba(106, 106, 106, 0.4), inset 0 0 10px rgba(150, 150, 150, 0.1);
+}
+
+#map-grid.field-dark_forest {
+    background: linear-gradient(135deg, #001a00 0%, #003a1a 100%);
+    border: 3px solid #2a5a2a;
+    box-shadow: 0 0 25px rgba(42, 90, 42, 0.4), inset 0 0 10px rgba(50, 120, 50, 0.1);
+}
+
+#map-grid.field-tropical_south {
+    background: linear-gradient(135deg, #1a4a5a 0%, #2a6a7a 50%, #0a3a4a 100%);
+    border: 3px solid #4ab4c4;
+    box-shadow: 0 0 30px rgba(74, 180, 196, 0.5), inset 0 0 15px rgba(150, 220, 230, 0.2);
+}
+
+/* 南国フィールドのセルスタイル */
+.field-tropical_south .cell.plain,
+.field-tropical_south .cell[class*="plain"] { }
+.field-tropical_south .cell.wall {
+    background: linear-gradient(135deg, #2a5a6a 0%, #1a4a5a 100%);
+    border: 1px solid #3a6a7a;
+}
+.field-tropical_south .cell.sea {
+    background: linear-gradient(135deg, #1e90ff 0%, #0077be 50%, #005a8a 100%);
+    border: 1px solid #4ab4ff;
+    box-shadow: inset 0 0 15px rgba(100, 200, 255, 0.4);
+}
+.field-tropical_south .cell.palm {
+    background: linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%);
+    border: 1px solid #3d7a3d;
+}
+/* 南国は0=ビーチとしてplain扱いにするため、.cellにビーチ色をデフォルトで */
+.field-tropical_south .cell {
+    background: linear-gradient(135deg, #f4e4b4 0%, #e8d498 100%);
+    border: 1px solid #f8ecc8;
+}
+.field-tropical_south .cell.wall { background: linear-gradient(135deg, #2a5a6a 0%, #1a4a5a 100%); border-color: #3a6a7a; }
+.field-tropical_south .cell.sea { background: linear-gradient(135deg, #1e90ff 0%, #0077be 100%); border-color: #4ab4ff; }
+.field-tropical_south .cell.palm { background: linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%); border-color: #3d7a3d; }
+/* 橋（浜⇔村を繋ぐ） */
+.field-tropical_south .cell.bridge,
+.field-tropical_village .cell.bridge {
+    background: repeating-linear-gradient(90deg, #8B4513 0px, #8B4513 3px, #6d3410 3px, #6d3410 6px);
+    border: 1px solid #5d2a0a;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
+}
+/* 南国の浜・装飾タイル（上を通れる） */
+.field-tropical_south .cell.beach,
+.field-tropical_south .cell.hibiscus,
+.field-tropical_south .cell.coconut,
+.field-tropical_south .cell.mango {
+    background: linear-gradient(135deg, #f4e4b4 0%, #e8d498 100%);
+    border: 1px solid #f8ecc8;
+}
+
+#map-grid.field-tropical_village {
+    background: linear-gradient(135deg, #1a4a3a 0%, #2a6a5a 50%, #0a3a2a 100%);
+    border: 3px solid #4a9a6a;
+    box-shadow: 0 0 25px rgba(74, 154, 106, 0.5), inset 0 0 12px rgba(120, 200, 150, 0.2);
+}
+.field-tropical_village .cell {
+    background: linear-gradient(135deg, #e8d8a8 0%, #d4c490 100%);
+    border: 1px solid #eae0b0;
+}
+.field-tropical_village .cell.wall {
+    background: linear-gradient(135deg, #3a5a4a 0%, #2a4a3a 100%);
+    border-color: #4a6a5a;
+}
+.field-tropical_village .cell.palm {
+    background: linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%);
+    border-color: #3d7a3d;
+}
+
+/* 水の精霊のすみか */
+#map-grid.field-water_spirit_dwelling {
+    background: linear-gradient(135deg, #0a3a4a 0%, #1a5a6a 50%, #0a2a3a 100%);
+    border: 3px solid #4ab4d4;
+    box-shadow: 0 0 30px rgba(74, 180, 212, 0.5), inset 0 0 15px rgba(100, 220, 255, 0.15);
+}
+.field-water_spirit_dwelling .cell {
+    background: linear-gradient(135deg, #b8e0f0 0%, #88c0e0 100%);
+    border: 1px solid #a0d8f0;
+}
+.field-water_spirit_dwelling .cell.wall {
+    background: linear-gradient(135deg, #2a5a6a 0%, #1a4a5a 100%);
+    border-color: #3a6a7a;
+}
+/* 水の精霊のすみかへの入口：橋を通って入る */
+.field-water_spirit_dwelling .cell.bridge {
+    background: repeating-linear-gradient(90deg, #8B4513 0px, #8B4513 3px, #6d3410 3px, #6d3410 6px);
+    border: 1px solid #5d2a0a;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
+}
+.field-water_spirit_dwelling .cell.obj-water-spirit {
+    background: linear-gradient(135deg, #4ab4e0 0%, #2a94c0 100%);
+    border-color: #5ac4f0;
+    color: #fff;
+}
+
+/* 魔物の森（水の精霊で「森へ行く」を選ぶと東に出現） */
+#map-grid.field-monster_forest {
+    background: linear-gradient(135deg, #001a0a 0%, #003a1a 100%);
+    border: 3px solid #2a5a2a;
+    box-shadow: 0 0 25px rgba(42, 90, 42, 0.4), inset 0 0 10px rgba(50, 120, 50, 0.1);
+}
+.field-monster_forest .cell {
+    background: linear-gradient(135deg, #1a3a1a 0%, #0a2a0a 100%);
+    border: 1px solid #2a4a2a;
+}
+.field-monster_forest .cell.wall {
+    background: linear-gradient(135deg, #001a00 0%, #000a00 100%);
+    border-color: #0a2a0a;
+}
+.field-monster_forest .cell.forest {
+    background: linear-gradient(135deg, #2a6a2a 0%, #1a5a1a 100%);
+    border-color: #3a7a3a;
+}
+.field-monster_forest #area-title {
+    color: #228b22;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(34, 139, 34, 0.5);
+}
+
+/* 猫NPC（125-猫アニメの4コマアニメ） */
+.pixelated {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+.cat-npc-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cat-npc-bounce {
+    position: relative;
+    width: 80%;
+    height: 80%;
+    min-width: 24px;
+    min-height: 24px;
+}
+.cat-npc-container .cat-npc-frame {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    animation: cat-sprite-step 0.4s infinite;
+    display: block;
+}
+.cat-npc-container .cat-npc-f1 { animation-delay: 0s; }
+.cat-npc-container .cat-npc-f2 { animation-delay: 0.1s; }
+.cat-npc-container .cat-npc-f3 { animation-delay: 0.2s; }
+.cat-npc-container .cat-npc-f4 { animation-delay: 0.3s; }

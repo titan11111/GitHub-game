@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>蒼穹への配達 — Chronicle Run</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Noto+Serif+JP:wght@500;700;900&display=swap');
+        :root {
+            --ff-deep: #0c0a14;
+            --ff-panel: rgba(18, 14, 32, 0.88);
+            --ff-gold: #d4af37;
+            --ff-gold-dim: #8a7030;
+            --ff-cream: #f5e9d7;
+            --ff-blue-mid: #1e2a4a;
+        }
+        body {
+            margin: 0; overflow: hidden;
+            background: radial-gradient(ellipse at 50% 120%, #2a1f45 0%, var(--ff-deep) 50%, #050308 100%);
+            font-family: 'Noto Serif JP', serif; touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        canvas { display: block; }
+        .ff-ornate-border {
+            border: 2px solid var(--ff-gold-dim);
+            box-shadow:
+                inset 0 0 0 1px rgba(212, 175, 55, 0.25),
+                0 0 0 1px rgba(0, 0, 0, 0.6),
+                0 12px 40px rgba(0, 0, 0, 0.45);
+            border-radius: 4px;
+        }
+        .hud-glass {
+            background: var(--ff-panel);
+            backdrop-filter: blur(12px);
+            padding: 14px 18px;
+        }
+        .ff-title-en {
+            font-family: 'Cinzel', serif;
+            letter-spacing: 0.15em;
+            color: var(--ff-cream);
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.35), 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        .btn-action {
+            pointer-events: all; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;
+            background: linear-gradient(180deg, #5c4a2a 0%, #3d3018 45%, #2a2210 100%);
+            border: 2px solid var(--ff-gold);
+            color: var(--ff-cream);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+        .btn-action:active { transform: scale(0.96); }
+        .ff-label-small {
+            font-size: 9px; letter-spacing: 0.25em; color: rgba(245, 233, 215, 0.55);
+            text-transform: uppercase; font-family: 'Cinzel', serif;
+        }
+        .ff-stat-big {
+            font-family: 'Noto Serif JP', serif;
+            color: var(--ff-cream);
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+        }
+        .ff-hpbar-outer {
+            height: 18px;
+            background: linear-gradient(180deg, #0a0812 0%, #151025 100%);
+            border: 2px solid var(--ff-gold-dim);
+            border-radius: 2px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7);
+        }
+        .ff-hpbar-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(180deg, #4a8fc4 0%, #2d5a8c 45%, #1a3d66 100%);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            transition: width 0.25s ease;
+        }
+        .ff-hpbar-fill.ff-hpbar-fill--warn {
+            background: linear-gradient(180deg, #c9a050 0%, #8b6220 100%);
+        }
+        .ff-hpbar-fill.ff-hpbar-fill--danger {
+            background: linear-gradient(180deg, #c04040 0%, #701818 100%);
+        }
+        #start-screen {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(80, 60, 120, 0.35) 0%, transparent 55%),
+                linear-gradient(180deg, rgba(25, 18, 45, 0.97) 0%, rgba(8, 6, 18, 0.99) 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
+        }
+        /* ID の display:flex が Tailwind .hidden より詳細度で勝つため、非表示は専用クラスで上書きする */
+        #start-screen.start-screen--hidden {
+            display: none !important;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        #game-over { z-index: 200; }
+        .ff-overlay-frame {
+            pointer-events: none;
+            position: fixed; inset: 0; z-index: 5;
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(212, 175, 55, 0.12);
+        }
+    </style>
+</head>
+<body>
+
+<div class="ff-overlay-frame" aria-hidden="true"></div>
+
+<div id="overlay" class="absolute inset-0 pointer-events-none p-4 sm:p-6 flex flex-col justify-between text-white z-10 opacity-0 transition-opacity duration-500">
+    <div class="flex justify-between items-stretch gap-2 sm:gap-4">
+        <div class="hud-glass ff-ornate-border min-w-[130px] sm:min-w-[155px] flex-shrink-0">
+            <div class="ff-label-small mb-1">残り距離</div>
+            <div id="remaining" class="text-3xl sm:text-4xl font-black ff-stat-big tracking-tighter">500m</div>
+            <div id="zone-tag" class="text-[10px] mt-2 px-2 py-1 inline-block text-[rgba(245,233,215,0.85)] border border-[rgba(212,175,55,0.35)] bg-black/30 font-bold">城門前・石畳りの大通り</div>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-start min-w-0 max-w-[220px] mx-auto">
+            <div class="hud-glass ff-ornate-border px-3 py-2">
+                <div class="ff-label-small mb-1 text-center">荷物の耐久度</div>
+                <div class="ff-hpbar-outer mb-1">
+                    <div id="durability-fill" class="ff-hpbar-fill"></div>
+                </div>
+                <div id="durability-text" class="text-[11px] text-center font-bold tracking-wider text-[rgba(245,233,215,0.9)]">100 / 100</div>
+            </div>
+        </div>
+
+        <div class="hud-glass ff-ornate-border text-right min-w-[120px] sm:min-w-[140px] flex-shrink-0">
+            <div class="ff-label-small mb-1">いまの速度</div>
+            <div id="speed" class="text-2xl sm:text-3xl font-black ff-stat-big">0.0 <span class="text-sm opacity-90">km/h</span></div>
+        </div>
+    </div>
+
+    <div class="flex justify-between items-end pb-6 sm:pb-10 pt-2">
+        <div class="hud-glass ff-ornate-border text-[10px] sm:text-[11px] leading-relaxed max-w-[170px] border-l-[3px] border-[rgba(212,175,55,0.6)]">
+            <div class="font-bold text-[rgba(212,175,55,0.95)] mb-1 ff-label-small">操作</div>
+            <span class="text-[rgba(245,233,215,0.95)]"><span class="inline-block px-1 border border-[rgba(212,175,55,0.5)] bg-black/40 mr-1">押し続け</span>ダッシュ</span><br>
+            <span class="text-[rgba(245,233,215,0.95)]"><span class="inline-block px-1 border border-[rgba(212,175,55,0.5)] bg-black/40 mr-1">スワイプ</span>列替え</span><br>
+            <span class="text-[rgba(245,233,215,0.95)]"><span class="inline-block px-1 border border-[rgba(212,175,55,0.5)] bg-black/40 mr-1">タップ</span>跳躍</span>
+        </div>
+        <button id="jump-btn" type="button" class="btn-action w-20 h-20 sm:w-24 sm:h-24 rounded-full font-black text-base sm:text-lg pointer-events-auto flex items-center justify-center">
+            跳躍
+        </button>
+    </div>
+</div>
+
+<div id="start-screen">
+    <div class="text-center mb-8 px-6">
+        <div class="text-[rgba(212,175,55,0.85)] text-[11px] sm:text-xs font-bold tracking-[0.5em] mb-3 ff-label-small">届け物クエスト</div>
+        <h1 class="text-4xl sm:text-6xl font-black mb-3 ff-title-en tracking-tight leading-tight">Azure Delivery</h1>
+        <p class="text-[rgba(245,233,215,0.9)] font-bold text-sm sm:text-base tracking-[0.2em] border-y border-[rgba(212,175,55,0.35)] py-3">蒼穹への配達 — 第1章</p>
+    </div>
+    <div class="ff-ornate-border bg-[rgba(12,10,24,0.75)] p-6 sm:p-8 mb-8 border max-w-md mx-4 text-center">
+        <p class="text-lg sm:text-xl font-bold text-[rgba(245,233,215,0.95)] mb-6 leading-relaxed">「王都より託された荷物じゃ。<br>500m先の酒場の主まで届けてくれ」</p>
+        <div class="grid grid-cols-1 gap-3 text-left text-xs sm:text-sm text-[rgba(245,233,215,0.82)]">
+            <div class="flex items-start gap-2"><span class="text-[rgba(212,175,55,0.9)] mt-0.5">◇</span> 画面を長押しで疾走する</div>
+            <div class="flex items-start gap-2"><span class="text-[rgba(212,175,55,0.9)] mt-0.5">◇</span> 指を離すと止まる</div>
+            <div class="flex items-start gap-2"><span class="text-[rgba(212,175,55,0.9)] mt-0.5">◇</span> 障害物にぶつかると<span class="text-[rgba(180,200,255,0.95)] font-bold">耐久度</span>が減る。ゼロで荷物消失…</div>
+            <div class="flex items-start gap-2"><span class="text-[rgba(212,175,55,0.9)] mt-0.5">◇</span> 「跳躍」で障害を越えよう</div>
+        </div>
+    </div>
+    <button id="ready-btn" type="button" class="btn-action px-12 sm:px-20 py-5 sm:py-6 rounded-sm font-black text-lg sm:text-2xl tracking-[0.15em]">冒険を始める</button>
+</div>
+
+<div id="game-over" class="hidden fixed inset-0 bg-[rgba(5,4,12,0.96)] flex flex-col items-center justify-center text-[rgba(245,233,215,0.95)] p-6 z-[200]">
+    <h2 id="result-title" class="text-3xl sm:text-5xl font-black mb-6 text-center ff-title-en leading-tight">MISSION COMPLETE</h2>
+    <p id="final-stats" class="text-base sm:text-xl mb-10 opacity-90 text-center leading-relaxed max-w-lg font-medium whitespace-pre-line"></p>
+    <button type="button" onclick="location.reload()" class="btn-action px-12 sm:px-16 py-4 sm:py-5 rounded-sm font-black text-lg sm:text-xl tracking-wider">もう一度挑む</button>
+</div>
+
+<script>
+const TARGET_DISTANCE = 500;
+const PACK_MAX = 100;
+const DURABILITY_PER_HIT = 20;
+
+let gameState = 'START';
+let distanceCovered = 0;
+let currentSpeed = 0;
+let packageDurability = PACK_MAX; 
+const MAX_SPEED_UNITS = 0.105; // ~22.7 km/h max
+const ACCEL = 0.0018;
+const DECEL = 0.003;
+
+let isPressing = false;
+let currentLane = 0;
+let targetLane = 0;
+const LANE_WIDTH = 4.5;
+
+// Physics
+let isJumping = false;
+let jumpVelocity = 0;
+const GRAVITY = -0.018;
+const JUMP_FORCE = 0.42;
+
+// Three.js variables
+let scene, camera, renderer, clock;
+let player, leftLeg, rightLeg, torso, packageBox;
+let roadSegments = [];
+let obstacles = [];
+let sceneryObjects = [];
+let particles = [];
+let goalCustomerGroup = null;
+let goalSpawned = false;
+
+function updateDurabilityUI() {
+    const fill = document.getElementById('durability-fill');
+    const text = document.getElementById('durability-text');
+    const pct = Math.max(0, (packageDurability / PACK_MAX) * 100);
+    fill.style.width = pct + '%';
+    text.textContent = Math.max(0, Math.ceil(packageDurability)) + ' / ' + PACK_MAX;
+    fill.classList.remove('ff-hpbar-fill--warn', 'ff-hpbar-fill--danger');
+    if (pct <= 30) fill.classList.add('ff-hpbar-fill--danger');
+    else if (pct <= 55) fill.classList.add('ff-hpbar-fill--warn');
+}
+
+function flashPackageHit() {
+    if (!packageBox || !packageBox.material) return;
+    const m = packageBox.material;
+    const prevE = m.emissive ? m.emissive.getHex() : 0;
+    if (m.emissive) m.emissive.setHex(0x883322);
+    setTimeout(() => {
+        if (m.emissive) m.emissive.setHex(prevE);
+    }, 140);
+}
+
+function applyPackageDamage() {
+    packageDurability = Math.max(0, packageDurability - DURABILITY_PER_HIT);
+    updateDurabilityUI();
+    flashPackageHit();
+    if (packageDurability <= 0) {
+        packageDurability = 0;
+        endGame(false, 'durability');
+    }
+}
+
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1c2038);
+    scene.fog = new THREE.FogExp2(0x1c2038, 0.0048);
+
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1500);
+    camera.position.set(0, 6, 14);
+    camera.lookAt(0, 2, 0);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+    
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(10, 20, 10);
+    scene.add(dirLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x8899cc, 0x2a1810, 0.55);
+    scene.add(hemiLight);
+
+    createPlayer();
+    initRoad();
+    setupInputs();
+
+    clock = new THREE.Clock();
+    updateDurabilityUI();
+    animate();
+}
+
+function createPlayer() {
+    player = new THREE.Group();
+    const skinMat = new THREE.MeshPhongMaterial({ color: 0xc9a87c });
+    const clothesMat = new THREE.MeshPhongMaterial({ color: 0x2c3258 });
+    const darkMat = new THREE.MeshPhongMaterial({ color: 0x181820 });
+
+    // Torso (Lean slightly forward)
+    torso = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.3, 0.6), clothesMat);
+    torso.position.y = 1.8;
+    
+    // Head
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), skinMat);
+    head.position.y = 1.0;
+    torso.add(head);
+
+    // Package (Held in front) — FFっぽい封緘のイメージ
+    const packGeo = new THREE.BoxGeometry(1.5, 1.0, 1.2);
+    const packMat = new THREE.MeshPhongMaterial({ color: 0x5a4a2a, emissive: 0x110a05 });
+    packageBox = new THREE.Mesh(packGeo, packMat);
+    packageBox.position.set(0, 0, -0.8);
+    torso.add(packageBox);
+
+    // Arms (Holding the box)
+    const armGeo = new THREE.BoxGeometry(0.25, 0.9, 0.25);
+    const lArm = new THREE.Mesh(armGeo, clothesMat);
+    lArm.position.set(-0.6, 0, -0.4);
+    lArm.rotation.x = -Math.PI/2.5;
+    torso.add(lArm);
+    const rArm = new THREE.Mesh(armGeo, clothesMat);
+    rArm.position.set(0.6, 0, -0.4);
+    rArm.rotation.x = -Math.PI/2.5;
+    torso.add(rArm);
+
+    player.add(torso);
+
+    // Legs
+    const legGeo = new THREE.BoxGeometry(0.38, 1.2, 0.38);
+    leftLeg = new THREE.Mesh(legGeo, darkMat);
+    leftLeg.position.set(-0.28, 0.6, 0);
+    player.add(leftLeg);
+    
+    rightLeg = new THREE.Mesh(legGeo, darkMat);
+    rightLeg.position.set(0.28, 0.6, 0);
+    player.add(rightLeg);
+
+    scene.add(player);
+}
+
+function createBuilding(z) {
+    const h = 20 + Math.random() * 40;
+    const w = 10 + Math.random() * 6;
+    const geo = new THREE.BoxGeometry(w, h, w);
+    const mat = new THREE.MeshPhongMaterial({ color: 0x3a3848 });
+    const b = new THREE.Mesh(geo, mat);
+    b.position.set((Math.random() > 0.5 ? 1 : -1) * (25 + Math.random() * 10), h/2 - 1, z);
+    
+    // Windows / Neon Lights
+    for(let i=0; i<40; i++) {
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), new THREE.MeshBasicMaterial({color: Math.random() > 0.5 ? 0xc9a040 : 0x6080c0}));
+        win.position.set(w/2 + 0.1, Math.random() * h - h/2, (Math.random()-0.5)*w);
+        win.rotation.y = Math.PI/2;
+        b.add(win);
+    }
+    return b;
+}
+
+function createHouse(z) {
+    const house = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(7, 5, 7), new THREE.MeshPhongMaterial({color: 0x776655}));
+    body.position.y = 2.5;
+    house.add(body);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(6, 4, 4), new THREE.MeshPhongMaterial({color: 0xaa5533}));
+    roof.position.y = 6.5;
+    roof.rotation.y = Math.PI/4;
+    house.add(roof);
+    
+    // Home Windows
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({color: 0xffcc00}));
+    win.position.set(0, 2.5, 3.6);
+    house.add(win);
+    
+    const x = (Math.random() > 0.5 ? 1 : -1) * (18 + Math.random() * 6);
+    house.position.set(x, 0, z);
+    return house;
+}
+
+function createTree(z) {
+    const tree = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.7, 4), new THREE.MeshPhongMaterial({color: 0x4a3728}));
+    trunk.position.y = 2;
+    tree.add(trunk);
+    const leaves = new THREE.Mesh(new THREE.SphereGeometry(2.8, 8, 8), new THREE.MeshPhongMaterial({color: 0x2d8a37}));
+    leaves.position.y = 5.5;
+    tree.add(leaves);
+    
+    const x = (Math.random() > 0.5 ? 1 : -1) * (12 + Math.random() * 12);
+    tree.position.set(x, 0, z);
+    return tree;
+}
+
+function spawnScenery(z) {
+    let obj;
+    if (distanceCovered < 168) obj = createBuilding(z);
+    else if (distanceCovered < 336) obj = createHouse(z);
+    else obj = createTree(z);
+    
+    scene.add(obj);
+    sceneryObjects.push(obj);
+}
+
+/** Canvas から石畳テクスチャ（グレー系の石＋目地） */
+function createCobblestoneTexture() {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#2a2c33';
+    ctx.fillRect(0, 0, size, size);
+    const cols = 9;
+    const rows = 18;
+    const cellW = size / cols;
+    const cellH = size / rows;
+    for (let row = 0; row < rows; row++) {
+        const stagger = (row % 2) * (cellW * 0.35);
+        for (let col = 0; col < cols + 1; col++) {
+            const x = col * cellW + stagger + (Math.random() - 0.5) * 6;
+            const y = row * cellH + (Math.random() - 0.5) * 5;
+            const w = cellW * 0.88;
+            const h = cellH * 0.82;
+            const base = 55 + Math.random() * 45;
+            ctx.fillStyle = 'rgb(' + Math.floor(base + 12) + ',' + Math.floor(base + 8) + ',' + Math.floor(base + 4) + ')';
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = 'rgba(0,0,0,0.42)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, w, h);
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(8, 20);
+    tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+    return tex;
+}
+
+function destroyGoalCustomer() {
+    if (goalCustomerGroup) {
+        scene.remove(goalCustomerGroup);
+        goalCustomerGroup = null;
+    }
+    goalSpawned = false;
+}
+
+/** ゴール前で待つお客さん（シンプルな立体モデル） */
+function spawnGoalCustomer() {
+    if (goalSpawned) return;
+    goalSpawned = true;
+    const g = new THREE.Group();
+    const coatMat = new THREE.MeshPhongMaterial({ color: 0x4a5868 });
+    const skinMat = new THREE.MeshPhongMaterial({ color: 0xe5c9a8 });
+    const darkMat = new THREE.MeshPhongMaterial({ color: 0x2a2220 });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.25, 0.5), coatMat);
+    body.position.y = 1.4;
+    g.add(body);
+
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.48, 0.45), skinMat);
+    head.position.y = 2.2;
+    g.add(head);
+
+    const legGeo = new THREE.BoxGeometry(0.28, 0.7, 0.32);
+    const lLeg = new THREE.Mesh(legGeo, darkMat);
+    lLeg.position.set(-0.24, 0.48, 0);
+    g.add(lLeg);
+    const rLeg = new THREE.Mesh(legGeo, darkMat);
+    rLeg.position.set(0.24, 0.48, 0);
+    g.add(rLeg);
+
+    const armGeo = new THREE.BoxGeometry(0.22, 0.55, 0.22);
+    const lArm = new THREE.Mesh(armGeo, coatMat);
+    lArm.position.set(-0.62, 1.35, 0.15);
+    lArm.rotation.x = -0.35;
+    g.add(lArm);
+    const rArm = new THREE.Mesh(armGeo, coatMat);
+    rArm.position.set(0.62, 1.35, 0.15);
+    rArm.rotation.x = -0.35;
+    g.add(rArm);
+
+    const purse = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 0.28), new THREE.MeshPhongMaterial({ color: 0x5c3d2e }));
+    purse.position.set(0.45, 1.15, 0.35);
+    g.add(purse);
+
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10), new THREE.MeshPhongMaterial({ color: 0xffdd88, emissive: 0x332208 }));
+    lamp.position.set(-1.0, 1.65, 0.1);
+    g.add(lamp);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.55, 6), new THREE.MeshPhongMaterial({ color: 0x3a3530 }));
+    pole.position.set(-1.0, 1.1, 0.1);
+    g.add(pole);
+
+    g.rotation.y = Math.PI;
+    g.position.set(0, 0, -455);
+    scene.add(g);
+    goalCustomerGroup = g;
+}
+
+function initRoad() {
+    const cobbleTex = createCobblestoneTexture();
+    const roadMat = new THREE.MeshPhongMaterial({
+        map: cobbleTex,
+        color: 0x888888,
+        shininess: 12,
+        specular: 0x222222
+    });
+    const roadGeo = new THREE.PlaneGeometry(40, 100);
+    for (let i = 0; i < 12; i++) {
+        const road = new THREE.Mesh(roadGeo, roadMat);
+        road.rotation.x = -Math.PI / 2;
+        road.position.z = -i * 100;
+        scene.add(road);
+        roadSegments.push(road);
+    }
+    for (let i = 0; i < 40; i++) spawnScenery(-i * 15);
+}
+
+function setupInputs() {
+    const handleDown = () => { if(gameState === 'PLAYING') isPressing = true; };
+    const handleUp = () => isPressing = false;
+
+    // Ready Button + モバイルは pointerdown で即時反応
+    const readyBtn = document.getElementById('ready-btn');
+    const handleStart = (e) => {
+        e.preventDefault();
+        startGame();
+    };
+    readyBtn.addEventListener('pointerdown', handleStart);
+    readyBtn.addEventListener('click', (e) => { e.preventDefault(); startGame(); });
+
+    window.addEventListener('mousedown', handleDown);
+    window.addEventListener('mouseup', handleUp);
+    
+    // Lane movement Swipe Logic
+    let startX = 0;
+    window.addEventListener('touchstart', (e) => { 
+        handleDown(); 
+        startX = e.touches[0].clientX; 
+    }, { passive: false });
+    
+    window.addEventListener('touchend', (e) => { 
+        handleUp(); 
+        const endX = e.changedTouches[0].clientX;
+        const diffX = endX - startX;
+        if (Math.abs(diffX) > 40) {
+            targetLane = Math.max(-1, Math.min(1, targetLane + (diffX > 0 ? 1 : -1)));
+        }
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if(e.code === 'Space' || e.key === 'ArrowUp') handleDown();
+        if(e.key === 'ArrowLeft') targetLane = Math.max(-1, targetLane - 1);
+        if(e.key === 'ArrowRight') targetLane = Math.min(1, targetLane + 1);
+    });
+    window.addEventListener('keyup', (e) => {
+        if(e.code === 'Space' || e.key === 'ArrowUp') handleUp();
+    });
+
+    document.getElementById('jump-btn').addEventListener('pointerdown', (e) => { 
+        e.stopPropagation(); 
+        jump(); 
+    });
+}
+
+function startGame() {
+    if (gameState !== 'START') return;
+    destroyGoalCustomer();
+    packageDurability = PACK_MAX;
+    updateDurabilityUI();
+    document.getElementById('start-screen').classList.add('start-screen--hidden');
+    document.getElementById('overlay').classList.remove('opacity-0');
+    gameState = 'PLAYING';
+}
+
+function jump() {
+    if(!isJumping && gameState === 'PLAYING') {
+        isJumping = true;
+        jumpVelocity = JUMP_FORCE;
+    }
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    const time = clock.getElapsedTime();
+
+    if (gameState === 'PLAYING') {
+        // Velocity Logic
+        if (isPressing) currentSpeed = Math.min(MAX_SPEED_UNITS, currentSpeed + ACCEL);
+        else currentSpeed = Math.max(0, currentSpeed - DECEL);
+
+        distanceCovered += currentSpeed;
+        const remaining = Math.max(0, TARGET_DISTANCE - Math.floor(distanceCovered));
+        
+        // Speed Display (Units/Frame * 60FPS * 3.6 for km/h)
+        const kmh = (currentSpeed * 60 * 3.6).toFixed(1);
+        document.getElementById('remaining').innerText = remaining + 'm';
+        document.getElementById('speed').innerHTML = `${kmh} <span class="text-sm">km/h</span>`;
+
+        if (remaining <= 0) endGame(true);
+
+        if (!goalSpawned && distanceCovered >= TARGET_DISTANCE - 100) {
+            spawnGoalCustomer();
+        }
+
+        updateEnvironmentZones();
+
+        // Lane Physics
+        currentLane = THREE.MathUtils.lerp(currentLane, targetLane * LANE_WIDTH, 0.12);
+        player.position.x = currentLane;
+
+        // Jump Physics
+        if (isJumping) {
+            player.position.y += jumpVelocity;
+            jumpVelocity += GRAVITY;
+            if (player.position.y <= 0) { player.position.y = 0; isJumping = false; }
+        }
+
+        // Procedural Running Animation
+        const runFactor = currentSpeed * 100;
+        if (currentSpeed > 0.002) {
+            leftLeg.rotation.x = Math.sin(time * runFactor) * 0.8;
+            rightLeg.rotation.x = Math.sin(time * runFactor + Math.PI) * 0.8;
+            torso.position.y = 1.8 + Math.sin(time * runFactor * 2) * 0.1;
+            torso.rotation.z = Math.sin(time * runFactor) * 0.05;
+        } else {
+            leftLeg.rotation.x = THREE.MathUtils.lerp(leftLeg.rotation.x, 0, 0.1);
+            rightLeg.rotation.x = THREE.MathUtils.lerp(rightLeg.rotation.x, 0, 0.1);
+            torso.position.y = THREE.MathUtils.lerp(torso.position.y, 1.8, 0.1);
+        }
+
+        // World Scroll
+        const moveStep = currentSpeed * 60; 
+        roadSegments.forEach(r => {
+            r.position.z += moveStep;
+            if (r.position.z > 100) r.position.z -= 1200;
+        });
+
+        sceneryObjects.forEach((obj, idx) => {
+            obj.position.z += moveStep;
+            if (obj.position.z > 30) {
+                scene.remove(obj);
+                sceneryObjects.splice(idx, 1);
+                spawnScenery(-550 - Math.random() * 50);
+            }
+        });
+
+        // Obstacles (Reduced spawning for playability)
+        if (Math.random() < 0.012 && currentSpeed > 0.03) spawnObstacle();
+        updateObstacles(moveStep);
+
+        if (goalCustomerGroup && gameState === 'PLAYING') {
+            goalCustomerGroup.position.z += moveStep;
+        }
+    }
+
+    renderer.render(scene, camera);
+}
+
+function updateEnvironmentZones() {
+    const zoneTag = document.getElementById('zone-tag');
+    let targetBg = 0x1c2038;
+    
+    if (distanceCovered < 168) {
+        zoneTag.textContent = '城門前・石畳りの大通り';
+        targetBg = 0x1c2038;
+    } else if (distanceCovered < 336) {
+        zoneTag.textContent = '町外れ・古びた宿場';
+        targetBg = 0x4a3840;
+    } else {
+        zoneTag.textContent = '酒場まであとわずか';
+        targetBg = 0x1e4028;
+    }
+    
+    const tc = new THREE.Color(targetBg);
+    scene.background.lerp(tc, 0.01);
+    scene.fog.color.lerp(tc, 0.01);
+}
+
+function spawnObstacle() {
+    const lane = [ -LANE_WIDTH, 0, LANE_WIDTH ][Math.floor(Math.random()*3)];
+    const isTall = Math.random() > 0.8;
+    const h = isTall ? 3.8 : 1.2;
+    const obs = new THREE.Mesh(
+        new THREE.BoxGeometry(2.8, h, 1.2),
+        new THREE.MeshPhongMaterial({ color: 0x9966cc, emissive: 0x220033 })
+    );
+    obs.userData.damageApplied = false;
+    obs.position.set(lane, h/2, -450);
+    scene.add(obs);
+    obstacles.push(obs);
+}
+
+function updateObstacles(moveStep) {
+    for(let i = obstacles.length-1; i>=0; i--) {
+        if (gameState !== 'PLAYING') break;
+        const o = obstacles[i];
+        o.position.z += moveStep;
+        
+        // Collision Detection
+        const dx = Math.abs(o.position.x - player.position.x);
+        const dz = Math.abs(o.position.z - player.position.z);
+        const dy = player.position.y;
+        
+        if (dx < 2.0 && dz < 1.2 && dy < o.geometry.parameters.height - 0.2) {
+            if (!o.userData.damageApplied) {
+                o.userData.damageApplied = true;
+                applyPackageDamage();
+                if (gameState !== 'PLAYING') break;
+            }
+        }
+
+        if (o.position.z > 30) { scene.remove(o); obstacles.splice(i, 1); }
+    }
+}
+
+function endGame(success, failKind) {
+    gameState = 'END';
+    const screen = document.getElementById('game-over');
+    const title = document.getElementById('result-title');
+    const stats = document.getElementById('final-stats');
+    
+    if (success) {
+        title.textContent = 'クエスト完了';
+        title.style.textShadow = '0 0 24px rgba(212, 175, 55, 0.45)';
+        stats.textContent =
+            'お客様のもとへ荷物を届けました。\n' +
+            '総走行距離: ' + Math.floor(distanceCovered) + 'm\n' +
+            '残り耐久: ' + Math.ceil(packageDurability) + ' — 評価・エクセレント';
+    } else if (failKind === 'durability') {
+        title.textContent = '荷物が砕け散った…';
+        title.style.textShadow = '0 0 22px rgba(200, 60, 60, 0.55)';
+        stats.textContent =
+            '耐久度が尽き、封じられた荷物は光の粒となって消えてしまいました。\n' +
+            '障害を跳び越えるか、ルートをよく見てもう一度挑みましょう。';
+    } else {
+        title.textContent = 'ミッション失敗';
+        title.style.textShadow = '0 0 18px rgba(180, 40, 40, 0.45)';
+        stats.textContent =
+            '荷物を無事に届けられませんでした。\n' +
+            '目的地まであと ' + Math.floor(Math.max(0, TARGET_DISTANCE - distanceCovered)) + 'm の地点でした。';
+    }
+    screen.classList.remove('hidden');
+    document.getElementById('overlay').classList.add('opacity-0');
+}
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+window.onload = init;
+</script>
+</body>
+</html>

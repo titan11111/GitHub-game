@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>焚き火の夜 - Interactive Bonfire Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            background-color: #090a0f;
+            color: #e2e8f0;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(245, 158, 11, 0.5);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(245, 158, 11, 0.8);
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-amber {
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.3);
+        }
+        .glow-orange {
+            box-shadow: 0 0 35px rgba(234, 88, 12, 0.4);
+        }
+        @keyframes pulse-light {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        .animate-pulse-light {
+            animation: pulse-light 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- Canvas for Bonfire & Night Background -->
+    <div class="relative flex-1 h-full w-full bg-black overflow-hidden flex items-center justify-center">
+        <canvas id="bonfireCanvas" class="w-full h-full block absolute inset-0 z-0"></canvas>
+        
+        <!-- Top Overlay Info -->
+        <div class="absolute top-4 left-4 z-10 flex items-center gap-3">
+            <div class="glass-panel px-4 py-2 rounded-full flex items-center gap-3 shadow-lg">
+                <i class="fa-solid fa-fire text-amber-500 animate-bounce"></i>
+                <div>
+                    <div class="text-xs text-gray-400">火の勢い</div>
+                    <div class="text-sm font-bold text-amber-400" id="fireLevelText">75% (適温)</div>
+                </div>
+            </div>
+            <div class="glass-panel px-4 py-2 rounded-full flex items-center gap-3 shadow-lg">
+                <i class="fa-solid fa-temperature-three-quarters text-orange-400"></i>
+                <div>
+                    <div class="text-xs text-gray-400">温度</div>
+                    <div class="text-sm font-bold text-orange-300" id="tempText">650℃</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Right Controls -->
+        <div class="absolute top-4 right-4 z-10 flex gap-2">
+            <button id="soundToggleBtn" class="glass-panel w-11 h-11 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition">
+                <i class="fa-solid fa-volume-high text-lg"></i>
+            </button>
+            <button id="fullscreenBtn" class="glass-panel w-11 h-11 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition">
+                <i class="fa-solid fa-expand text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Marshmallow Roasting Floating Widget (Canvas Overlay) -->
+        <div id="marshmallowWidget" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 hidden flex-col items-center">
+            <div class="glass-panel p-4 rounded-2xl flex flex-col items-center gap-2 border border-amber-500/30 glow-amber">
+                <div class="text-xs font-bold text-amber-300 flex items-center gap-1">
+                    <i class="fa-solid fa-cookie"></i> マシュマロ焼き挑戦中
+                </div>
+                <div class="w-48 h-3 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
+                    <div id="marshmallowHeatBar" class="h-full bg-gradient-to-r from-yellow-100 via-amber-500 to-red-600 w-0 transition-all duration-75"></div>
+                </div>
+                <div class="text-xs text-gray-300" id="marshmallowStateText">じっくり炙っています...</div>
+                <button id="pullMarshmallowBtn" class="mt-1 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg text-xs font-bold shadow hover:brightness-110 active:scale-95 transition">
+                    火から離して食べる！
+                </button>
+            </div>
+        </div>
+
+        <!-- Initial Start Overlay -->
+        <div id="startOverlay" class="absolute inset-0 z-30 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+            <div class="w-20 h-20 bg-gradient-to-tr from-amber-600 to-orange-500 rounded-full flex items-center justify-center shadow-2xl mb-6 glow-orange animate-pulse-light">
+                <i class="fa-solid fa-campground text-4xl text-white"></i>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-bold text-amber-100 mb-2">焚き火の夜 - Bonfire Haven</h1>
+            <p class="text-gray-400 max-w-md text-sm mb-8 leading-relaxed">
+                静寂な夜の空気、パチパチとはじける薪の音、揺らめく温かな炎。<br>薪をくべたり、マシュマロを焼いたり、好きな音楽とともに心やすらぐ時間をお過ごしください。
+            </p>
+            <button id="startBtn" class="px-8 py-3.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold text-lg rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-3">
+                <i class="fa-solid fa-fire text-xl"></i> 焚き火をはじめる
+            </button>
+        </div>
+    </div>
+
+    <!-- Control Panel Sidebar -->
+    <div id="sidebar" class="w-full md:w-96 h-2/5 md:h-full glass-panel border-t md:border-t-0 md:border-l border-white/10 z-20 flex flex-col">
+        
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-white/10 bg-slate-950/40">
+            <button class="tab-btn active flex-1 py-3 text-xs font-bold text-amber-400 border-b-2 border-amber-500 flex flex-col items-center gap-1" data-tab="fireControl">
+                <i class="fa-solid fa-fire-burner text-base"></i> 焚き火
+            </button>
+            <button class="tab-btn flex-1 py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent hover:text-amber-300 flex flex-col items-center gap-1" data-tab="activities">
+                <i class="fa-solid fa-utensils text-base"></i> アプリ・体験
+            </button>
+            <button class="tab-btn flex-1 py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent hover:text-amber-300 flex flex-col items-center gap-1" data-tab="soundSet">
+                <i class="fa-solid fa-music text-base"></i> 環境音・BGM
+            </button>
+            <button class="tab-btn flex-1 py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent hover:text-amber-300 flex flex-col items-center gap-1" data-tab="relaxTimer">
+                <i class="fa-solid fa-hourglass-half text-base"></i> タイマー・メモ
+            </button>
+        </div>
+
+        <!-- Tab Content Area -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            
+            <!-- TAB 1: Fire Controls -->
+            <div id="tab-fireControl" class="tab-content space-y-4">
+                <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-cubes"></i> 薪を投入する
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="add-wood-btn bg-slate-800/80 hover:bg-slate-700/80 border border-amber-500/20 p-2.5 rounded-lg flex flex-col items-start transition group" data-type="twig">
+                            <span class="text-xs font-bold text-amber-200 group-hover:text-amber-400">小枝 (Twig)</span>
+                            <span class="text-[10px] text-gray-400">すぐ燃えて火力が急上昇</span>
+                            <span class="mt-1 text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded ml-auto" id="count-twig">在庫: 5</span>
+                        </button>
+                        <button class="add-wood-btn bg-slate-800/80 hover:bg-slate-700/80 border border-amber-500/20 p-2.5 rounded-lg flex flex-col items-start transition group" data-type="log">
+                            <span class="text-xs font-bold text-amber-200 group-hover:text-amber-400">広葉樹の薪 (Log)</span>
+                            <span class="text-[10px] text-gray-400">長持ちして安定燃焼</span>
+                            <span class="mt-1 text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded ml-auto" id="count-log">在庫: 3</span>
+                        </button>
+                        <button class="add-wood-btn bg-slate-800/80 hover:bg-slate-700/80 border border-amber-500/20 p-2.5 rounded-lg flex flex-col items-start transition group" data-type="pinecone">
+                            <span class="text-xs font-bold text-amber-200 group-hover:text-amber-400">松ぼっくり</span>
+                            <span class="text-[10px] text-gray-400">火花が美しく舞う</span>
+                            <span class="mt-1 text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded ml-auto" id="count-pinecone">在庫: 2</span>
+                        </button>
+                        <button class="add-wood-btn bg-slate-800/80 hover:bg-slate-700/80 border border-amber-500/20 p-2.5 rounded-lg flex flex-col items-start transition group" data-type="wetwood">
+                            <span class="text-xs font-bold text-amber-200 group-hover:text-amber-400">湿った薪</span>
+                            <span class="text-[10px] text-gray-400">煙が多く立ち上る</span>
+                            <span class="mt-1 text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded ml-auto" id="count-wetwood">在庫: 1</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-2">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-wind"></i> 火の管理・アクション
+                    </h3>
+                    <div class="flex gap-2">
+                        <button id="blowAirBtn" class="flex-1 py-2.5 bg-gradient-to-r from-blue-900/40 to-cyan-900/40 hover:from-blue-800/60 hover:to-cyan-800/60 border border-cyan-500/30 rounded-lg text-xs font-bold text-cyan-200 flex items-center justify-center gap-2 transition active:scale-95">
+                            <i class="fa-solid fa-wind"></i> うちわで仰ぐ (酸素供給)
+                        </button>
+                        <button id="pokeFireBtn" class="flex-1 py-2.5 bg-gradient-to-r from-orange-900/40 to-red-900/40 hover:from-orange-800/60 hover:to-red-800/60 border border-orange-500/30 rounded-lg text-xs font-bold text-orange-200 flex items-center justify-center gap-2 transition active:scale-95">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> 薪を組替える (火花)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-amber-400"><i class="fa-solid fa-tree"></i> 周辺で素材を集める</span>
+                        <button id="gatherWoodBtn" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-lg text-xs transition active:scale-95">
+                            木を拾いに行く
+                        </button>
+                    </div>
+                    <p id="gatherStatusText" class="text-[11px] text-gray-400">森の中を探して薪を補給できます。</p>
+                </div>
+            </div>
+
+            <!-- TAB 2: Activities -->
+            <div id="tab-activities" class="tab-content hidden space-y-4">
+                <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-3">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-cookie-bite"></i> マシュマロを焼く
+                    </h3>
+                    <p class="text-xs text-gray-300 leading-relaxed">
+                        串に刺したマシュマロをかざし、絶妙な「きつね色」に焼き上げましょう！焦げすぎに注意。
+                    </p>
+                    <button id="startMarshmallowBtn" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-lg text-xs transition shadow flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-fire-burner"></i> マシュマロを火にかざす
+                    </button>
+                    <div class="text-[11px] text-gray-400 flex justify-between pt-1 border-t border-white/5">
+                        <span>焼き上げた実績: <strong id="roastCount" class="text-amber-300">0</strong> 個</span>
+                        <span>最高評価: <strong id="bestRoastScore" class="text-amber-300">なし</strong></span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-2">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-mug-hot"></i> 温かい飲み物を淹れる
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="drink-btn bg-slate-800 hover:bg-slate-700 p-2 rounded-lg text-left text-xs border border-white/5 transition" data-drink="coffee">
+                            <div class="font-bold text-amber-200">☕ 焼きたて珈琲</div>
+                            <div class="text-[10px] text-gray-400">深く香ばしい薫り</div>
+                        </button>
+                        <button class="drink-btn bg-slate-800 hover:bg-slate-700 p-2 rounded-lg text-left text-xs border border-white/5 transition" data-drink="cocoa">
+                            <div class="font-bold text-amber-200">🍫 ホットココア</div>
+                            <div class="text-[10px] text-gray-400">心ほどける甘さ</div>
+                        </button>
+                    </div>
+                    <div id="drinkMsg" class="text-xs text-emerald-400 min-h-[1.25rem] italic"></div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Sound Settings -->
+            <div id="tab-soundSet" class="tab-content hidden space-y-4">
+                <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-3">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-sliders"></i> 音量ミキサー
+                    </h3>
+                    
+                    <!-- Crackle Volume -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-gray-300"><i class="fa-solid fa-fire text-amber-500 mr-1"></i> 焚き火のパチパチ音</span>
+                            <span id="crackleVolVal" class="text-amber-400 font-mono">80%</span>
+                        </div>
+                        <input type="range" id="crackleVol" min="0" max="100" value="80" class="w-full accent-amber-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <!-- Wind / Night Volume -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-gray-300"><i class="fa-solid fa-wind text-blue-400 mr-1"></i> 夜風・虫の声</span>
+                            <span id="windVolVal" class="text-blue-400 font-mono">40%</span>
+                        </div>
+                        <input type="range" id="windVol" min="0" max="100" value="40" class="w-full accent-blue-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <!-- Ambient BGM Volume -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-gray-300"><i class="fa-solid fa-music text-purple-400 mr-1"></i> 癒やしのアンビエントBGM</span>
+                            <span id="bgmVolVal" class="text-purple-400 font-mono">30%</span>
+                        </div>
+                        <input type="range" id="bgmVol" min="0" max="100" value="30" class="w-full accent-purple-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-2">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-moon"></i> 天候・環境の切り替え
+                    </h3>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button class="weather-btn active bg-amber-500/20 text-amber-300 border border-amber-500/40 py-1.5 rounded text-xs font-bold transition" data-weather="clear">
+                            <i class="fa-solid fa-star"></i> 快晴
+                        </button>
+                        <button class="weather-btn bg-slate-800 text-gray-400 border border-white/5 py-1.5 rounded text-xs font-bold hover:text-gray-200 transition" data-weather="breeze">
+                            <i class="fa-solid fa-wind"></i> そよ風
+                        </button>
+                        <button class="weather-btn bg-slate-800 text-gray-400 border border-white/5 py-1.5 rounded text-xs font-bold hover:text-gray-200 transition" data-weather="rain">
+                            <i class="fa-solid fa-cloud-rain"></i> 静かな雨
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: Relax & Timer & Notes -->
+            <div id="tab-relaxTimer" class="tab-content hidden space-y-4">
+                <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-3">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-clock"></i> 瞑想・作業タイマー
+                    </h3>
+                    <div class="text-center py-2">
+                        <div id="timerDisplay" class="text-4xl font-mono font-bold text-amber-300 tracking-wider">15:00</div>
+                    </div>
+                    <div class="flex justify-center gap-2">
+                        <button class="timer-set-btn px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs text-gray-300" data-min="5">5分</button>
+                        <button class="timer-set-btn px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs text-gray-300" data-min="15">15分</button>
+                        <button class="timer-set-btn px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs text-gray-300" data-min="25">25分</button>
+                        <button class="timer-set-btn px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs text-gray-300" data-min="45">45分</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="toggleTimerBtn" class="flex-1 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-lg text-xs transition">
+                            タイマー開始
+                        </button>
+                        <button id="resetTimerBtn" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 rounded-lg text-xs transition">
+                            リセット
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-2">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-book"></i> 焚き火メモ・つぶやき
+                    </h3>
+                    <textarea id="bonfireNote" rows="3" class="w-full bg-slate-950/80 border border-white/10 rounded-lg p-2.5 text-xs text-gray-200 focus:outline-none focus:border-amber-500/50 resize-none" placeholder="考えごとや今日の振り返りを自由にメモ..."></textarea>
+                    <div class="flex justify-between items-center text-[10px] text-gray-500">
+                        <span>ブラウザに自動保存されます</span>
+                        <span id="noteSaveStatus" class="text-emerald-400"></span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bottom Status Log -->
+        <div class="p-3 bg-slate-950/80 border-t border-white/5 text-[11px] text-gray-400 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="logText" class="truncate">焚き火が穏やかに燃えています...</span>
+        </div>
+    </div>
+
+    <script>
+        // Game & Physics State
+        const state = {
+            fireLevel: 75,       // 0 to 100
+            temperature: 650,    // Degree Celsius
+            woodStock: {
+                twig: 5,
+                log: 3,
+                pinecone: 2,
+                wetwood: 1
+            },
+            weather: 'clear',    // clear, breeze, rain
+            roastScore: 0,
+            bestScore: 0,
+            marshmallowState: 'none', // none, roasting
+            marshmallowHeat: 0,
+            timer: {
+                remainingSeconds: 15 * 60,
+                isRunning: false,
+                interval: null
+            }
+        };
+
+        // DOM Element references
+        const canvas = document.getElementById('bonfireCanvas');
+        const ctx = canvas.getContext('2d');
+        const fireLevelText = document.getElementById('fireLevelText');
+        const tempText = document.getElementById('tempText');
+        const logText = document.getElementById('logText');
+
+        // Sound Engine using Web Audio API (Synthesizing sounds without external files)
+        class BonfireAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = false;
+                this.volumes = {
+                    crackle: 0.8,
+                    wind: 0.4,
+                    bgm: 0.3
+                };
+                
+                // Audio Nodes
+                this.crackleGain = null;
+                this.rumbleGain = null;
+                this.windGain = null;
+                this.bgmGain = null;
+                
+                this.bgmTimer = null;
+            }
+
+            init() {
+                if (this.ctx) return;
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioCtx();
+
+                // Master Gain
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.connect(this.ctx.destination);
+
+                // Crackle sound setup
+                this.crackleGain = this.ctx.createGain();
+                this.crackleGain.gain.value = this.volumes.crackle;
+                this.crackleGain.connect(this.masterGain);
+
+                // Low Flame Rumble setup
+                this.rumbleGain = this.ctx.createGain();
+                this.rumbleGain.gain.value = 0.15;
+                this.rumbleGain.connect(this.masterGain);
+                this.startFlameRumble();
+
+                // Wind Noise setup
+                this.windGain = this.ctx.createGain();
+                this.windGain.gain.value = this.volumes.wind;
+                this.windGain.connect(this.masterGain);
+                this.startWindNoise();
+
+                // BGM Ambient Gain
+                this.bgmGain = this.ctx.createGain();
+                this.bgmGain.gain.value = this.volumes.bgm;
+                this.bgmGain.connect(this.masterGain);
+                this.startAmbientBGM();
+
+                // Start Crackle Loop
+                this.scheduleCrackle();
+            }
+
+            resume() {
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // Fire crackle generator
+            triggerPop() {
+                if (!this.ctx || this.isMuted) return;
+                
+                // Short noise burst for crackle
+                const bufferSize = Math.floor(this.ctx.sampleRate * (0.005 + Math.random() * 0.015));
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1000 + Math.random() * 3500;
+                filter.Q.value = 2 + Math.random() * 5;
+
+                const popGain = this.ctx.createGain();
+                popGain.gain.value = (0.2 + Math.random() * 0.6) * (state.fireLevel / 100);
+
+                noise.connect(filter);
+                filter.connect(popGain);
+                popGain.connect(this.crackleGain);
+
+                noise.start();
+            }
+
+            scheduleCrackle() {
+                const loop = () => {
+                    if (this.ctx && !this.isMuted) {
+                        this.triggerPop();
+                    }
+                    // Delay depends on fire level
+                    const minInterval = Math.max(10, 150 - state.fireLevel * 1.2);
+                    const randomDelay = Math.random() * minInterval + 20;
+                    setTimeout(loop, randomDelay);
+                };
+                loop();
+            }
+
+            // Low frequency flame burning rumble
+            startFlameRumble() {
+                const bufferSize = this.ctx.sampleRate * 2;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                let lastOut = 0.0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    data[i] = (lastOut + (0.02 * white)) / 1.02; // Brown noise approximation
+                    lastOut = data[i];
+                }
+
+                const brownNoise = this.ctx.createBufferSource();
+                brownNoise.buffer = buffer;
+                brownNoise.loop = true;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 180;
+
+                brownNoise.connect(filter);
+                filter.connect(this.rumbleGain);
+                brownNoise.start();
+            }
+
+            // Ambient Wind sound
+            startWindNoise() {
+                const bufferSize = this.ctx.sampleRate * 3;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                noise.loop = true;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 350;
+                filter.Q.value = 3.0;
+
+                // LFO for gentle wind oscillation
+                const lfo = this.ctx.createOscillator();
+                lfo.frequency.value = 0.15;
+                const lfoGain = this.ctx.createGain();
+                lfoGain.gain.value = 150;
+                lfo.connect(lfoGain);
+                lfoGain.connect(filter.frequency);
+
+                noise.connect(filter);
+                filter.connect(this.windGain);
+
+                lfo.start();
+                noise.start();
+            }
+
+            // Generative Ambient Musical Chords
+            startAmbientBGM() {
+                const notes = [261.63, 329.63, 392.00, 493.88, 523.25]; // C major pentatonic / relaxed chord
+                const playChordNote = () => {
+                    if (!this.ctx || this.isMuted) return;
+                    
+                    const freq = notes[Math.floor(Math.random() * notes.length)];
+                    const osc = this.ctx.createOscillator();
+                    const noteGain = this.ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+
+                    const now = this.ctx.currentTime;
+                    noteGain.gain.setValueAtTime(0, now);
+                    noteGain.gain.linearRampToValueAtTime(0.08, now + 2);
+                    noteGain.gain.exponentialRampToValueAtTime(0.0001, now + 8);
+
+                    osc.connect(noteGain);
+                    noteGain.connect(this.bgmGain);
+
+                    osc.start(now);
+                    osc.stop(now + 8.5);
+                };
+
+                const scheduleBgm = () => {
+                    playChordNote();
+                    this.bgmTimer = setTimeout(scheduleBgm, 4000 + Math.random() * 4000);
+                };
+                scheduleBgm();
+            }
+
+            setVolume(type, val) {
+                this.volumes[type] = val;
+                if (!this.ctx) return;
+                const targetGain = this.isMuted ? 0 : val;
+                
+                if (type === 'crackle' && this.crackleGain) this.crackleGain.gain.value = targetGain;
+                if (type === 'wind' && this.windGain) this.windGain.gain.value = targetGain;
+                if (type === 'bgm' && this.bgmGain) this.bgmGain.gain.value = targetGain;
+            }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                if (this.masterGain) {
+                    this.masterGain.gain.value = this.isMuted ? 0 : 1;
+                }
+                return this.isMuted;
+            }
+        }
+
+        const audio = new BonfireAudioEngine();
+
+        // Canvas Particle Engine
+        class Particle {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'flame', 'ember', 'smoke', 'spark'
+                this.reset();
+            }
+
+            reset() {
+                const intensity = state.fireLevel / 100;
+                this.life = 0;
+                this.maxLife = 40 + Math.random() * 60;
+
+                if (this.type === 'flame') {
+                    this.x = canvas.width / 2 + (Math.random() - 0.5) * 40 * intensity;
+                    this.y = canvas.height * 0.72 + (Math.random() - 0.5) * 10;
+                    this.vx = (Math.random() - 0.5) * 1.5;
+                    this.vy = -(2.5 + Math.random() * 3.5) * (0.5 + intensity * 0.8);
+                    this.size = (20 + Math.random() * 30) * (0.4 + intensity * 0.8);
+                } else if (this.type === 'ember') {
+                    this.x = canvas.width / 2 + (Math.random() - 0.5) * 60;
+                    this.y = canvas.height * 0.72;
+                    this.vx = (Math.random() - 0.5) * 2;
+                    if (state.weather === 'breeze') this.vx += 1.2;
+                    this.vy = -(1.5 + Math.random() * 3);
+                    this.size = 1.5 + Math.random() * 2.5;
+                    this.maxLife = 80 + Math.random() * 80;
+                } else if (this.type === 'smoke') {
+                    this.x = canvas.width / 2 + (Math.random() - 0.5) * 30;
+                    this.y = canvas.height * 0.68;
+                    this.vx = (Math.random() - 0.5) * 1.8;
+                    if (state.weather === 'breeze') this.vx += 2.0;
+                    this.vy = -(1.0 + Math.random() * 1.8);
+                    this.size = 15 + Math.random() * 25;
+                    this.maxLife = 100 + Math.random() * 80;
+                }
+            }
+
+            update() {
+                this.life++;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.type === 'flame') {
+                    this.size *= 0.96;
+                    this.vx += (Math.random() - 0.5) * 0.3;
+                } else if (this.type === 'smoke') {
+                    this.size += 0.4;
+                } else if (this.type === 'ember') {
+                    this.vx += Math.sin(this.life * 0.1) * 0.1;
+                }
+
+                if (this.life >= this.maxLife || this.size <= 0.5) {
+                    this.reset();
+                }
+            }
+
+            draw(ctx) {
+                const progress = this.life / this.maxLife;
+                ctx.save();
+
+                if (this.type === 'flame') {
+                    const alpha = 1 - progress;
+                    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+                    if (progress < 0.2) {
+                        grad.addColorStop(0, `rgba(255, 255, 220, ${alpha})`);
+                        grad.addColorStop(0.5, `rgba(245, 158, 11, ${alpha * 0.8})`);
+                    } else if (progress < 0.6) {
+                        grad.addColorStop(0, `rgba(245, 158, 11, ${alpha * 0.8})`);
+                        grad.addColorStop(0.8, `rgba(220, 38, 38, ${alpha * 0.5})`);
+                    } else {
+                        grad.addColorStop(0, `rgba(185, 28, 28, ${alpha * 0.4})`);
+                        grad.addColorStop(1, `rgba(50, 10, 10, 0)`);
+                    }
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, Math.max(0.1, this.size), 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.type === 'ember') {
+                    const alpha = Math.sin(progress * Math.PI);
+                    ctx.fillStyle = `rgba(251, 191, 36, ${alpha})`;
+                    ctx.shadowBlur = 6;
+                    ctx.shadowColor = '#f59e0b';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.type === 'smoke') {
+                    const alpha = (1 - progress) * 0.15;
+                    ctx.fillStyle = `rgba(150, 160, 180, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Particle System Manager
+        let particles = [];
+        const numFlames = 60;
+        const numEmbers = 40;
+        const numSmoke = 25;
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < numFlames; i++) particles.push(new Particle(0, 0, 'flame'));
+            for (let i = 0; i < numEmbers; i++) particles.push(new Particle(0, 0, 'ember'));
+            for (let i = 0; i < numSmoke; i++) particles.push(new Particle(0, 0, 'smoke'));
+        }
+
+        // Stars Background
+        let stars = [];
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 120; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height * 0.6),
+                    size: Math.random() * 1.8 + 0.5,
+                    alpha: Math.random(),
+                    speed: Math.random() * 0.02 + 0.005
+                });
+            }
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            initParticles();
+            initStars();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawLogs(ctx, centerX, centerY) {
+            ctx.save();
+            ctx.translate(centerX, centerY);
+
+            // Base glowing embers under log
+            const glowGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 80 * (state.fireLevel / 100));
+            glowGrad.addColorStop(0, 'rgba(245, 158, 11, 0.8)');
+            glowGrad.addColorStop(0.5, 'rgba(220, 38, 38, 0.4)');
+            glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = glowGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 10, 90, 30, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw Wood Logs
+            ctx.fillStyle = '#291810';
+            ctx.strokeStyle = '#170d08';
+            ctx.lineWidth = 4;
+
+            // Log 1
+            ctx.save();
+            ctx.rotate(-0.3);
+            ctx.beginPath();
+            ctx.roundRect(-70, -10, 140, 24, 12);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // Log 2
+            ctx.save();
+            ctx.rotate(0.35);
+            ctx.beginPath();
+            ctx.roundRect(-65, -8, 130, 22, 11);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // Log 3 (Center Top)
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(-50, -18, 100, 20, 10);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.restore();
+        }
+
+        function drawMarshmallowStick(ctx) {
+            if (state.marshmallowState === 'none') return;
+
+            const targetX = canvas.width / 2;
+            const targetY = canvas.height * 0.65;
+
+            ctx.save();
+            // Wooden Stick
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(targetX + 180, targetY + 180);
+            ctx.lineTo(targetX, targetY);
+            ctx.stroke();
+
+            // Marshmallow Color based on heat
+            const heat = state.marshmallowHeat;
+            let marshmallowColor = '#f8fafc'; // White
+            if (heat > 20 && heat <= 70) {
+                marshmallowColor = '#fde047'; // Golden yellow
+            } else if (heat > 70 && heat <= 95) {
+                marshmallowColor = '#d97706'; // Perfect Golden Brown
+            } else if (heat > 95) {
+                marshmallowColor = '#1c1917'; // Carbonized Black
+            }
+
+            // Marshmallow Body
+            ctx.fillStyle = marshmallowColor;
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(targetX - 12, targetY - 18, 24, 30, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawRain(ctx) {
+            if (state.weather !== 'rain') return;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(186, 230, 253, 0.25)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 40; i++) {
+                const rx = Math.random() * canvas.width;
+                const ry = Math.random() * canvas.height;
+                ctx.beginPath();
+                ctx.moveTo(rx, ry);
+                ctx.lineTo(rx - 4, ry + 15);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function render() {
+            // Clear Background with Night Sky Gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGrad.addColorStop(0, '#030712');
+            skyGrad.addColorStop(0.6, '#0f172a');
+            skyGrad.addColorStop(1, '#020617');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Stars
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(star => {
+                star.alpha += star.speed;
+                const opacity = (Math.sin(star.alpha) + 1) / 2;
+                ctx.globalAlpha = opacity;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+
+            // Ground Silhouette
+            ctx.fillStyle = '#050811';
+            ctx.beginPath();
+            ctx.ellipse(canvas.width / 2, canvas.height * 0.9, canvas.width * 0.8, canvas.height * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Fire Light Reflection on Ground
+            const lightGlow = ctx.createRadialGradient(
+                canvas.width / 2, canvas.height * 0.75, 10,
+                canvas.width / 2, canvas.height * 0.75, 300 * (state.fireLevel / 100)
+            );
+            lightGlow.addColorStop(0, 'rgba(245, 158, 11, 0.25)');
+            lightGlow.addColorStop(0.6, 'rgba(217, 119, 6, 0.08)');
+            lightGlow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = lightGlow;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Logs
+            drawLogs(ctx, canvas.width / 2, canvas.height * 0.73);
+
+            // Update & Draw Particles
+            particles.forEach(p => {
+                p.update();
+                p.draw(ctx);
+            });
+
+            // Marshmallow Roasting
+            drawMarshmallowStick(ctx);
+
+            // Rain Effect
+            drawRain(ctx);
+
+            // Fire Level Decay & Physics Simulation
+            decayFireLogic();
+
+            requestAnimationFrame(render);
+        }
+
+        function decayFireLogic() {
+            // Slow decay of fire level over time
+            if (state.fireLevel > 5) {
+                let decayRate = 0.015;
+                if (state.weather === 'rain') decayRate = 0.04;
+                state.fireLevel = Math.max(5, state.fireLevel - decayRate);
+            }
+
+            // Update Temperature
+            state.temperature = Math.round(200 + (state.fireLevel / 100) * 600);
+
+            // Marshmallow roasting mechanics
+            if (state.marshmallowState === 'roasting') {
+                const heatGain = (state.fireLevel / 100) * 0.35;
+                state.marshmallowHeat += heatGain;
+
+                const bar = document.getElementById('marshmallowHeatBar');
+                const stateText = document.getElementById('marshmallowStateText');
+                
+                if (bar) bar.style.width = `${Math.min(100, state.marshmallowHeat)}%`;
+
+                if (stateText) {
+                    if (state.marshmallowHeat <= 30) stateText.innerText = "じっくり温めています...";
+                    else if (state.marshmallowHeat <= 70) stateText.innerText = "ほんのり黄色く色づいてきました！";
+                    else if (state.marshmallowHeat <= 95) stateText.innerText = "最高のきつね色！今が食べごろ！";
+                    else stateText.innerText = "ああっ！焦げて真っ黒になってしまった！";
+                }
+            }
+
+            // Update UI
+            if (fireLevelText) {
+                let status = "弱火";
+                if (state.fireLevel > 80) status = "強火";
+                else if (state.fireLevel > 40) status = "適温";
+                fireLevelText.innerText = `${Math.round(state.fireLevel)}% (${status})`;
+            }
+            if (tempText) tempText.innerText = `${state.temperature}℃`;
+        }
+
+        // UI Event Handlers
+        document.getElementById('startBtn').addEventListener('click', () => {
+            document.getElementById('startOverlay').classList.add('hidden');
+            audio.init();
+            audio.resume();
+            addLog("焚き火に火が灯りました。心ゆくまでお楽しみください。");
+        });
+
+        document.getElementById('soundToggleBtn').addEventListener('click', (e) => {
+            const isMuted = audio.toggleMute();
+            e.currentTarget.innerHTML = isMuted 
+                ? '<i class="fa-solid fa-volume-xmark text-lg text-red-400"></i>' 
+                : '<i class="fa-solid fa-volume-high text-lg"></i>';
+            addLog(isMuted ? "音声をミュートしました" : "音声を再開しました");
+        });
+
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        });
+
+        // Tab Switching Logic
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active', 'text-amber-400', 'border-amber-500');
+                    b.classList.add('text-gray-400', 'border-transparent');
+                });
+                btn.classList.add('active', 'text-amber-400', 'border-amber-500');
+                btn.classList.remove('text-gray-400', 'border-transparent');
+
+                const tabId = btn.getAttribute('data-tab');
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.add('hidden');
+                });
+                document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            });
+        });
+
+        // Add Wood Logic
+        document.querySelectorAll('.add-wood-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.getAttribute('data-type');
+                if (state.woodStock[type] > 0) {
+                    state.woodStock[type]--;
+                    updateStockUI();
+
+                    if (type === 'twig') {
+                        state.fireLevel = Math.min(100, state.fireLevel + 15);
+                        addLog("小枝を投入しました。パチパチと勢いよく燃えています！");
+                    } else if (type === 'log') {
+                        state.fireLevel = Math.min(100, state.fireLevel + 30);
+                        addLog("大きな広葉樹の薪を投入しました。火が長持ちします。");
+                    } else if (type === 'pinecone') {
+                        state.fireLevel = Math.min(100, state.fireLevel + 10);
+                        addLog("松ぼっくりを投入しました。綺麗な火花が舞いました。");
+                    } else if (type === 'wetwood') {
+                        state.fireLevel = Math.min(100, state.fireLevel + 5);
+                        addLog("湿った薪を投入しました。白い煙が立ち上っています。");
+                    }
+                    audio.triggerPop();
+                } else {
+                    addLog("薪の在庫がありません。「木を拾いに行く」で集めましょう。");
+                }
+            });
+        });
+
+        function updateStockUI() {
+            document.getElementById('count-twig').innerText = `在庫: ${state.woodStock.twig}`;
+            document.getElementById('count-log').innerText = `在庫: ${state.woodStock.log}`;
+            document.getElementById('count-pinecone').innerText = `在庫: ${state.woodStock.pinecone}`;
+            document.getElementById('count-wetwood').innerText = `在庫: ${state.woodStock.wetwood}`;
+        }
+
+        // Action Buttons
+        document.getElementById('blowAirBtn').addEventListener('click', () => {
+            state.fireLevel = Math.min(100, state.fireLevel + 12);
+            audio.triggerPop();
+            addLog("うちわで仰いで風を送りました！赤々と火力が上がります。");
+        });
+
+        document.getElementById('pokeFireBtn').addEventListener('click', () => {
+            state.fireLevel = Math.min(100, state.fireLevel + 5);
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(canvas.width / 2, canvas.height * 0.72, 'ember'));
+            }
+            audio.triggerPop();
+            addLog("火バサミで薪の位置を整えました。火花が夜空へ散っていきます。");
+        });
+
+        document.getElementById('gatherWoodBtn').addEventListener('click', () => {
+            const status = document.getElementById('gatherStatusText');
+            status.innerText = "静かな森を探索中...";
+            setTimeout(() => {
+                const found = Math.floor(Math.random() * 3) + 1;
+                state.woodStock.twig += found;
+                state.woodStock.log += 1;
+                updateStockUI();
+                status.innerText = `森で【小枝 × ${found}】と【広葉樹の薪 × 1】を見つけました！`;
+                addLog("薪拾いから戻りました。新たな燃料を確保しました。");
+            }, 1200);
+        });
+
+        // Marshmallow Game
+        document.getElementById('startMarshmallowBtn').addEventListener('click', () => {
+            state.marshmallowState = 'roasting';
+            state.marshmallowHeat = 0;
+            document.getElementById('marshmallowWidget').classList.remove('hidden');
+            document.getElementById('marshmallowWidget').classList.add('flex');
+            addLog("マシュマロを串に刺し、火にかざしました。焦がさないように注意！");
+        });
+
+        document.getElementById('pullMarshmallowBtn').addEventListener('click', () => {
+            if (state.marshmallowState !== 'roasting') return;
+
+            const heat = state.marshmallowHeat;
+            let msg = "";
+            let points = 0;
+
+            if (heat >= 70 && heat <= 95) {
+                msg = "【最高評価！】外はサクッ、中はトロトロ絶品の黄金マシュマロ！";
+                points = 100;
+            } else if (heat > 30 && heat < 70) {
+                msg = "【成功】ほんのり温かくて美味しいマシュマロです。";
+                points = 60;
+            } else if (heat > 95) {
+                msg = "【失敗】焦げて真っ黒になってしまいました...。";
+                points = 10;
+            } else {
+                msg = "【生焼け】まだ少し冷たいようです。";
+                points = 20;
+            }
+
+            state.roastScore++;
+            if (points > state.bestScore) state.bestScore = points;
+
+            document.getElementById('roastCount').innerText = state.roastScore;
+            document.getElementById('bestRoastScore').innerText = `${state.bestScore}点`;
+            addLog(msg);
+
+            state.marshmallowState = 'none';
+            document.getElementById('marshmallowWidget').classList.add('hidden');
+            document.getElementById('marshmallowWidget').classList.remove('flex');
+        });
+
+        // Drink Buttons
+        document.querySelectorAll('.drink-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const drink = btn.getAttribute('data-drink');
+                const msgEl = document.getElementById('drinkMsg');
+                if (drink === 'coffee') msgEl.innerText = "☕ 香ばしいコーヒーを味わい、心が落ち着きます。";
+                else msgEl.innerText = "🍫 甘くて暖かいココアが全身に染み渡ります。";
+            });
+        });
+
+        // Sound Sliders
+        document.getElementById('crackleVol').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('crackleVolVal').innerText = `${val}%`;
+            audio.setVolume('crackle', val / 100);
+        });
+        document.getElementById('windVol').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('windVolVal').innerText = `${val}%`;
+            audio.setVolume('wind', val / 100);
+        });
+        document.getElementById('bgmVol').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('bgmVolVal').innerText = `${val}%`;
+            audio.setVolume('bgm', val / 100);
+        });
+
+        // Weather Buttons
+        document.querySelectorAll('.weather-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.weather-btn').forEach(b => {
+                    b.classList.remove('active', 'bg-amber-500/20', 'text-amber-300', 'border-amber-500/40');
+                    b.classList.add('bg-slate-800', 'text-gray-400');
+                });
+                btn.classList.add('active', 'bg-amber-500/20', 'text-amber-300', 'border-amber-500/40');
+
+                state.weather = btn.getAttribute('data-weather');
+                addLog(`天候を【${btn.innerText.trim()}】に変更しました。`);
+            });
+        });
+
+        // Timer Logic
+        function updateTimerDisplay() {
+            const mins = Math.floor(state.timer.remainingSeconds / 60);
+            const secs = state.timer.remainingSeconds % 60;
+            document.getElementById('timerDisplay').innerText = 
+                `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        document.querySelectorAll('.timer-set-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const min = parseInt(btn.getAttribute('data-min'));
+                state.timer.remainingSeconds = min * 60;
+                updateTimerDisplay();
+            });
+        });
+
+        document.getElementById('toggleTimerBtn').addEventListener('click', (e) => {
+            if (state.timer.isRunning) {
+                clearInterval(state.timer.interval);
+                state.timer.isRunning = false;
+                e.target.innerText = "タイマー再開";
+                addLog("タイマーを一時停止しました。");
+            } else {
+                state.timer.isRunning = true;
+                e.target.innerText = "一時停止";
+                addLog("タイマーを開始しました。リラックスした時間をお過ごしください。");
+                state.timer.interval = setInterval(() => {
+                    if (state.timer.remainingSeconds > 0) {
+                        state.timer.remainingSeconds--;
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(state.timer.interval);
+                        state.timer.isRunning = false;
+                        e.target.innerText = "タイマー開始";
+                        addLog("時間になりました。深呼吸をしてリフレッシュしましょう。");
+                    }
+                }, 1000);
+            }
+        });
+
+        document.getElementById('resetTimerBtn').addEventListener('click', () => {
+            clearInterval(state.timer.interval);
+            state.timer.isRunning = false;
+            state.timer.remainingSeconds = 15 * 60;
+            document.getElementById('toggleTimerBtn').innerText = "タイマー開始";
+            updateTimerDisplay();
+        });
+
+        // Notes Auto-Save
+        const noteArea = document.getElementById('bonfireNote');
+        const noteStatus = document.getElementById('noteSaveStatus');
+        
+        if (localStorage.getItem('bonfireNote')) {
+            noteArea.value = localStorage.getItem('bonfireNote');
+        }
+
+        noteArea.addEventListener('input', () => {
+            localStorage.setItem('bonfireNote', noteArea.value);
+            noteStatus.innerText = "保存されました";
+            setTimeout(() => { noteStatus.innerText = ""; }, 1500);
+        });
+
+        function addLog(text) {
+            logText.innerText = text;
+        }
+
+        window.onload = () => {
+            resizeCanvas();
+            render();
+            updateTimerDisplay();
+        };
+    </script>
+</body>
+</html>

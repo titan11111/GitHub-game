@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ゲームランチャー | titan11111</title>
+  <meta name="description" content="ボタンを押してすぐ遊べる、titan11111 のゲームランチャー。">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero">
+      <p class="eyebrow">000-gamesight2</p>
+      <h1>ボタンを押せば、すぐゲームです。</h1>
+      <p class="hero-copy">
+        余計な説明は削って、まず遊べる形に整理しました。
+        主要操作は <code>PLAY</code> だけです。
+      </p>
+      <div class="hero-actions">
+        <a id="play-now" class="game-btn primary-btn" href="#" target="_blank" rel="noopener noreferrer">PLAY</a>
+      </div>
+      <div id="summary" class="summary" aria-live="polite"></div>
+    </section>
+
+    <section class="section-header">
+      <div>
+        <p class="eyebrow">Game List</p>
+        <h2>一覧</h2>
+      </div>
+      <p class="section-copy">画像があるものはそのまま表示し、画像が無いものは軽いプレースホルダーにしています。</p>
+    </section>
+
+    <section id="game-grid" class="game-grid" aria-label="ゲーム一覧"></section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>アンドロメダ・ロケット</title>
+<style>
+    body { margin:0; background:#000; overflow:hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+    canvas { display:block; }
+    #ui {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; color: #0ff;
+        text-shadow: 0 0 10px #0ff;
+    }
+    .hud { position: absolute; font-size: 18px; font-weight: bold; }
+    #title {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        text-align: center; color: #0ff; text-shadow: 0 0 20px #0ff; pointer-events: all;
+    }
+    h1 { font-size: 52px; margin:0; letter-spacing: 4px; }
+    .subtitle { font-size: 22px; margin: 10px 0 30px; opacity: 0.9; }
+    button {
+        background: rgba(0, 255, 255, 0.1); color: #0ff; border: 2px solid #0ff;
+        padding: 12px 32px; font-size: 18px; cursor: pointer; margin: 8px;
+        box-shadow: 0 0 15px #0ff;
+    }
+    button:hover { background: rgba(0, 255, 255, 0.3); }
+</style>
+</head>
+<body>
+
+<canvas id="canvas" width="900" height="650"></canvas>
+
+<div id="ui">
+    <div id="title">
+        <h1>ANDROMEDA<br>ROCKET</h1>
+        <div class="subtitle">地球からアンドロメダ銀河へ — 果てなき宇宙の旅</div>
+        <button onclick="startGame()">ゲーム開始</button><br>
+        <small style="opacity:0.7">↑/W：噴射　　←→/A D：回転　　Shift：ブースト　　R：リスタート</small>
+    </div>
+
+    <div class="hud" style="top:15px; left:20px;" id="phase">PHASE: 地球大気圏</div>
+    
+    <div class="hud" style="top:20px; right:20px; text-align:right; font-size:15px;">
+        <div>高度: <span id="alt">0</span> km</div>
+        <div>速度: <span id="speed">0</span> km/s</div>
+        <div>アンドロメダまで: <span id="dist">2,537,000</span> 光年</div>
+    </div>
+
+    <div class="hud" style="bottom:20px; left:20px; width:280px;">
+        <div style="margin-bottom:6px;">燃料 <span id="fueltext">100</span>%</div>
+        <div style="height:12px; background:#111; border:2px solid #0ff; position:relative; overflow:hidden;">
+            <div id="fuelbar" style="height:100%; width:100%; background:linear-gradient(90deg, #0f0, #ff0, #f00); transition:width 0.1s;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ====================== アンドロメダ・ロケット ======================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = 900, H = 650;
+
+let gameState = 'title'; // title, playing, gameover, won
+let altitude = 0;
+let maxAltitude = 0;
+let distanceToAndromeda = 2537000;
+let timePlayed = 0;
+let phase = 0; // 0:大気圏 1:地球軌道 2:太陽系 3:星間 4:アンドロメダ接近
+const phaseNames = ["地球大気圏", "地球軌道", "太陽系", "星間空間", "アンドロメダ接近"];
+
+let rocket = {
+    x: W/2,
+    y: H * 0.75,
+    vx: 0,
+    vy: 0,
+    angle: -Math.PI / 2,
+    fuel: 100,
+    thrustPower: 420,
+    rotationSpeed: 2.8,
+    size: 18
+};
+
+let keys = {};
+let particles = [];
+let asteroids = [];
+let stars = [];
+let shake = 0;
+let lastTime = 0;
+
+// Web Audio for simple sound
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playThrustSound(intensity) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80 + intensity * 40, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.15 * intensity, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.12);
+}
+
+function playExplosion() {
+    const noise = audioCtx.createBufferSource();
+    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.8, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < buffer.length; i++) data[i] = Math.random() * 2 - 1;
+    noise.buffer = buffer;
+    
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 800;
+    
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(1.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+    
+    noise.connect(filter).connect(gain).connect(audioCtx.destination);
+    noise.start();
+}
+
+// 星の生成
+function createStars() {
+    stars = [];
+    for (let i = 0; i < 450; i++) {
+        stars.push({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            size: Math.random() * 2.2 + 0.6,
+            speed: Math.random() * 0.4 + 0.1,
+            brightness: Math.random() * 0.6 + 0.4
+        });
+    }
+}
+
+// パーティクル生成
+function createParticle(x, y, vx, vy, life, color, size) {
+    particles.push({x, y, vx, vy, life, maxLife: life, color, size, alpha: 1});
+}
+
+// ロケットの噴射パーティクル
+function createThrustParticles(count) {
+    const backX = rocket.x + Math.cos(rocket.angle + Math.PI) * 22;
+    const backY = rocket.y + Math.sin(rocket.angle + Math.PI) * 22;
+    
+    for (let i = 0; i < count; i++) {
+        const spread = (Math.random() - 0.5) * 0.6;
+        const speed = 2 + Math.random() * 3.5;
+        createParticle(
+            backX, backY,
+            rocket.vx + Math.cos(rocket.angle + Math.PI) * speed + spread,
+            rocket.vy + Math.sin(rocket.angle + Math.PI) * speed + spread * 1.5,
+            28 + Math.random() * 22,
+            Math.random() > 0.6 ? '#ffeb3b' : '#f57c00',
+            4 + Math.random() * 5
+        );
+    }
+}
+
+// 小惑星生成
+function spawnAsteroid() {
+    const side = Math.random() > 0.5 ? -30 : W + 30;
+    const speed = 0.8 + Math.random() * 2.2;
+    const angleToRocket = Math.atan2(rocket.y - H/2, rocket.x - side) + (Math.random()-0.5)*0.8;
+    
+    asteroids.push({
+        x: side,
+        y: Math.random() * H * 0.6 + 50,
+        vx: Math.cos(angleToRocket) * speed,
+        vy: Math.sin(angleToRocket) * speed,
+        size: 14 + Math.random() * 18,
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.08
+    });
+}
+
+// 物理更新
+function update(delta) {
+    if (gameState !== 'playing') return;
+    
+    timePlayed += delta;
+    const thrust = (keys['ArrowUp'] || keys['w'] || keys['W']) && rocket.fuel > 0;
+    const boost = (keys['Shift']) && thrust;
+    
+    // 回転
+    if (keys['ArrowLeft'] || keys['a'] || keys['A']) rocket.angle -= rocket.rotationSpeed * delta;
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) rocket.angle += rocket.rotationSpeed * delta;
+
+    // 推進
+    let currentThrustPower = rocket.thrustPower;
+    if (boost) currentThrustPower *= 2.1;
+
+    if (thrust && rocket.fuel > 0) {
+        const ax = Math.cos(rocket.angle) * currentThrustPower * delta;
+        const ay = Math.sin(rocket.angle) * currentThrustPower * delta;
+        rocket.vx += ax;
+        rocket.vy += ay;
+        
+        rocket.fuel -= (boost ? 65 : 32) * delta;
+        if (rocket.fuel < 0) rocket.fuel = 0;
+        
+        createThrustParticles(boost ? 7 : 4);
+        if (Math.random() < 0.6) playThrustSound(boost ? 1.1 : 0.7);
+    }
+
+    // 重力（高度によって減少）
+    const gravity = altitude < 120 ? 180 : (altitude < 800 ? 35 : 0);
+    rocket.vy += gravity * delta;
+
+    // 空気抵抗（大気圏）
+    if (altitude < 80) {
+        rocket.vx *= 0.985;
+        rocket.vy *= 0.982;
+    } else {
+        rocket.vx *= 0.998;
+        rocket.vy *= 0.998;
+    }
+
+    // 位置更新
+    rocket.x += rocket.vx * delta * 38;
+    rocket.y += rocket.vy * delta * 38;
+
+    // 高度計算（上方進行を強くカウント）
+    const upwardSpeed = Math.max(0, -rocket.vy * 0.12);
+    altitude += upwardSpeed * delta * (phase >= 3 ? 8 : 1);
+    maxAltitude = Math.max(maxAltitude, altitude);
+
+    // フェーズ管理
+    if (altitude > 180 && phase === 0) { phase = 1; showPhaseText(); }
+    if (altitude > 1800 && phase === 1) { phase = 2; showPhaseText(); }
+    if (altitude > 80000 && phase === 2) { phase = 3; showPhaseText(); }
+    if (altitude > 1200000 && phase === 3) { phase = 4; showPhaseText(); }
+
+    // アンドロメダ進行度
+    const progressSpeed = (Math.hypot(rocket.vx, rocket.vy) * 0.008) * (phase >= 3 ? 4.5 : 1);
+    distanceToAndromeda = Math.max(0, distanceToAndromeda - progressSpeed * delta);
+
+    if (distanceToAndromeda <= 10) {
+        gameState = 'won';
+        setTimeout(() => alert("おめでとうございます！\n\nあなたはアンドロメダ銀河に到達しました！\n\n人類の夢がまた一つ叶いました。"), 400);
+    }
+
+    // 画面端（左右はループ）
+    if (rocket.x < 0) rocket.x = W;
+    if (rocket.x > W) rocket.x = 0;
+
+    // 落下死
+    if (rocket.y > H + 80 && altitude < 300) {
+        explode();
+    }
+
+    // 小惑星生成
+    if (phase >= 1 && Math.random() < 0.028) spawnAsteroid();
+
+    // 更新：パーティクル
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 55 * delta;
+        p.alpha = p.life / p.maxLife;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // 更新：小惑星
+    for (let i = asteroids.length - 1; i >= 0; i--) {
+        const a = asteroids[i];
+        a.x += a.vx * 28 * delta;
+        a.y += a.vy * 28 * delta;
+        a.rotation += a.rotSpeed;
+        
+        // 画面外削除
+        if (a.x < -100 || a.x > W + 100 || a.y < -100 || a.y > H + 100) {
+            asteroids.splice(i, 1);
+            continue;
+        }
+
+        // 衝突判定
+        const dx = a.x - rocket.x;
+        const dy = a.y - rocket.y;
+        if (Math.sqrt(dx*dx + dy*dy) < a.size + 18) {
+            explode();
+            return;
+        }
+    }
+
+    // UI更新
+    document.getElementById('alt').textContent = Math.floor(altitude).toLocaleString('ja-JP');
+    document.getElementById('speed').textContent = Math.hypot(rocket.vx, rocket.vy).toFixed(1);
+    document.getElementById('dist').textContent = Math.floor(distanceToAndromeda).toLocaleString('ja-JP');
+    document.getElementById('fueltext').textContent = Math.floor(rocket.fuel);
+    document.getElementById('fuelbar').style.width = rocket.fuel + '%';
+    document.getElementById('phase').textContent = `PHASE: ${phaseNames[phase]}`;
+    
+    if (rocket.fuel < 25) document.getElementById('fuelbar').style.background = '#f44';
+}
+
+// 爆発
+function explode() {
+    gameState = 'gameover';
+    shake = 18;
+    playExplosion();
+    
+    for (let i = 0; i < 55; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const vel = 1.5 + Math.random() * 6;
+        createParticle(rocket.x, rocket.y, 
+            Math.cos(angle) * vel, 
+            Math.sin(angle) * vel, 
+            55 + Math.random() * 60, 
+            i % 3 === 0 ? '#ff9800' : '#f44336', 
+            6 + Math.random() * 8);
+    }
+    
+    setTimeout(() => {
+        if (gameState === 'gameover') {
+            alert(`ゲームオーバー\n\n最大高度: ${Math.floor(maxAltitude).toLocaleString()} km\nプレイ時間: ${timePlayed.toFixed(1)} 秒\n\nRキーで再挑戦`);
+        }
+    }, 600);
+}
+
+function showPhaseText() {
+    const el = document.getElementById('phase');
+    el.style.transition = 'none';
+    el.style.transform = 'scale(1.4)';
+    el.style.color = '#ff0';
+    setTimeout(() => {
+        el.style.transition = 'all 1.2s';
+        el.style.transform = 'scale(1)';
+        el.style.color = '#0ff';
+    }, 10);
+}
+
+function drawBackground() {
+    // 宇宙のグラデーション
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    if (altitude < 120) {
+        grad.addColorStop(0, '#0b1026');
+        grad.addColorStop(1, '#1e4a7a');
+    } else {
+        grad.addColorStop(0, '#05070f');
+        grad.addColorStop(1, '#0a0e22');
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // 星（パララックス）
+    ctx.globalAlpha = 0.9;
+    for (let s of stars) {
+        const parallax = 1 + s.speed * (phase >= 2 ? 2.5 : 0.6);
+        const sx = (s.x - rocket.vx * parallax * 0.8) % W;
+        const sy = (s.y - rocket.vy * parallax * 0.6) % H;
+        ctx.fillStyle = `rgba(255,255,255,${s.brightness})`;
+        ctx.fillRect(sx < 0 ? sx + W : sx, sy < 0 ? sy + H : sy, s.size, s.size);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // 薄い星雲
+    if (phase >= 3) {
+        ctx.globalAlpha = 0.07;
+        ctx.fillStyle = '#a0b0ff';
+        ctx.beginPath();
+        ctx.ellipse(W*0.3, H*0.4, 280, 120, 0.8, 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+function drawRocket() {
+    ctx.save();
+    ctx.translate(rocket.x, rocket.y);
+    ctx.rotate(rocket.angle);
+
+    // 本体
+    ctx.fillStyle = '#e0e0e0';
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2.5;
+    
+    // 胴体
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(-14, -11);
+    ctx.lineTo(-14, 11);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // ノーズコーン
+    ctx.fillStyle = '#f44336';
+    ctx.beginPath();
+    ctx.moveTo(19, 0);
+    ctx.lineTo(4, -7);
+    ctx.lineTo(4, 7);
+    ctx.fill();
+    ctx.stroke();
+
+    // 翼
+    ctx.fillStyle = '#212121';
+    ctx.beginPath();
+    ctx.moveTo(-8, -13);
+    ctx.lineTo(-22, -28);
+    ctx.lineTo(-14, -8);
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(-8, 13);
+    ctx.lineTo(-22, 28);
+    ctx.lineTo(-14, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // 窓
+    ctx.fillStyle = '#00ddff';
+    ctx.beginPath();
+    ctx.arc(4, 0, 5.5, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawFlame() {
+    if (!(keys['ArrowUp'] || keys['w'] || keys['W'])) return;
+    
+    const intensity = (keys['Shift']) ? 1.8 : 1.0;
+    const backX = rocket.x + Math.cos(rocket.angle + Math.PI) * 19;
+    const backY = rocket.y + Math.sin(rocket.angle + Math.PI) * 19;
+    
+    ctx.save();
+    ctx.translate(backX, backY);
+    ctx.rotate(rocket.angle);
+    
+    const flameLength = 18 + Math.random() * 14 * intensity;
+    
+    const grad = ctx.createLinearGradient(0, 0, -flameLength, 0);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.3, '#ffff00');
+    grad.addColorStop(0.7, '#ff8800');
+    grad.addColorStop(1, 'transparent');
+    
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-flameLength*0.6, -12*intensity, -flameLength, 0);
+    ctx.quadraticCurveTo(-flameLength*0.6, 12*intensity, 0, 0);
+    ctx.fill();
+    ctx.restore();
+}
+
+function draw() {
+    ctx.clearRect(0, 0, W, H);
+    
+    if (shake > 0) {
+        ctx.save();
+        ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
+        shake *= 0.85;
+    }
+    
+    drawBackground();
+    drawRocket();
+    drawFlame();
+
+    // パーティクル描画
+    for (let p of particles) {
+        const alpha = p.alpha * 0.9;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // 小惑星
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 2.5;
+    for (let a of asteroids) {
+        ctx.save();
+        ctx.translate(a.x, a.y);
+        ctx.rotate(a.rotation);
+        ctx.beginPath();
+        ctx.moveTo(-a.size, 0);
+        for (let i = 1; i < 8; i++) {
+            const ang = (i / 8) * Math.PI * 2;
+            const r = a.size * (0.7 + Math.sin(i) * 0.3);
+            ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+        }
+        ctx.closePath();
+        ctx.fillStyle = '#555';
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    if (shake > 0) ctx.restore();
+}
+
+// メインループ
+function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const delta = Math.min((timestamp - lastTime) / 1000, 0.1);
+    lastTime = timestamp;
+
+    update(delta);
+    draw();
+
+    requestAnimationFrame(loop);
+}
+
+// 入力
+window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if ((e.key === 'r' || e.key === 'R') && (gameState === 'gameover' || gameState === 'won')) {
+        location.reload();
+    }
+});
+
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+function startGame() {
+    document.getElementById('title').style.display = 'none';
+    gameState = 'playing';
+    rocket.fuel = 100;
+    altitude = 0;
+    distanceToAndromeda = 2537000;
+    timePlayed = 0;
+    phase = 0;
+    particles = [];
+    asteroids = [];
+    rocket.x = W/2;
+    rocket.y = H * 0.65;
+    rocket.vx = 0;
+    rocket.vy = -8;
+    rocket.angle = -Math.PI / 2;
+}
+
+// 初期化
+createStars();
+requestAnimationFrame(loop);
+
+// スタートメッセージ
+console.log('%cアンドロメダ・ロケット 起動完了！\n↑で噴射して宇宙を目指せ！', 'color:#0ff; font-size:14px');
+</script>
+</body>
+</html>

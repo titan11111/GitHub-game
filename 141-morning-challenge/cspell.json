@@ -1,0 +1,18 @@
+{
+  "version": "0.2",
+  "language": "en,ja",
+  "words": [
+    "famicom", "FAMICOM",
+    "spriteplayer", "SPRITEPLAYER",
+    "accum", "Mult",
+    "dpad", "windup",
+    "desynchronized", "pixelated",
+    "easeout", "easeOutCubic",
+    "gosho", "noreply"
+  ],
+  "ignorePaths": [
+    "unity/**",
+    "*.min.js",
+    "package-lock.json"
+  ]
+}

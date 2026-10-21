@@ -1,0 +1,1697 @@
+/* ============================================
+   戦闘システム
+   ============================================ */
+
+/**
+ * 通常戦闘開始
+ */
+function startBattle() {
+    gameState.isBattle = true;
+    gameState.isBattleEnding = false;
+    
+    // 4%の確率で「レア猫がみさま」を出現
+    if (Math.random() < 0.04) {
+        gameState.currentEnemy = {
+            name: "レア猫がみさま",
+            hp: 2000,
+            maxHp: 2000,
+            atk: 80,
+            exp: 5000,
+            gold: 2000,
+            img: "images/catgod.png",
+            isRareCatGod: true // 特殊フラグ
+        };
+    } else {
+        // 通常の敵を選択
+        const areaMonsters = monsterTable[hero.currentArea] || monsterTable["green_field"];
+        const randomIndex = Math.floor(Math.random() * areaMonsters.length);
+        gameState.currentEnemy = { ...areaMonsters[randomIndex] };
+    }
+    
+    // 敵エンカウント効果音を再生
+    if (typeof playSfxEncounter === 'function') {
+        playSfxEncounter();
+    }
+    
+    initBattle();
+}
+
+/**
+ * 仲間との試練戦闘開始（話しかけた後、勝てば仲間・負けてもゲームオーバーにならない）
+ * @param {number} tile - 仲間タイル（TILE.ALLY_DOG 等）
+ */
+function startAllyTrialBattle(tile) {
+    const ally = allyData[tile];
+    if (!ally || party.find(m => m.name === ally.name)) return;
+    gameState.isBattle = true;
+    gameState.isBattleEnding = false;
+    gameState.isAllyTrialBattle = true;
+    gameState.allyTrialTile = tile;
+    // 仲間のタイルの位置を保存（勝利後にタイルを削除するため）
+    gameState.allyTrialTilePosition = { x: hero.x, y: hero.y, area: hero.currentArea };
+    gameState.currentEnemy = {
+        name: ally.name,
+        hp: ally.maxHp,
+        maxHp: ally.maxHp,
+        atk: ally.atk,
+        exp: 0,
+        gold: 0,
+        img: ally.battleImg || "images/dog.png"
+    };
+    if (typeof playSfxEncounter === 'function') {
+        playSfxEncounter();
+    }
+    initBattle();
+    addBattleLog(`${ally.name}:「${ally.trialMsg}」`);
+    addBattleLog("戦いが始まった！");
+}
+
+/**
+ * 水の精霊に勝利後の報酬選択（1:武器 2:レベル倍増 3:森へ行く）
+ */
+function showWaterSpiritRewardMenu() {
+    const msg = "水の精霊が望みを叶えてくれた！\n\n1: 武器\n2: レベルが倍増\n3: 森へ行く";
+    const choice = prompt(msg + "\n\n番号を入力（1〜3）:");
+    const map = worldMaps[hero.currentArea];
+    const wx = hero.x;
+    const wy = hero.y;
+    
+    if (choice === "1") {
+        hero.atk += 25;
+        if (typeof playSfxPurchase === 'function') playSfxPurchase();
+        showAlert("精霊の剣を授かった！\n攻撃力が25上がった！");
+    } else if (choice === "2") {
+        const oldLv = hero.lv;
+        hero.lv = hero.lv * 2;
+        const levelsGained = hero.lv - oldLv;
+        hero.atk += (typeof LEVEL_UP !== 'undefined' ? LEVEL_UP.ATK_BONUS : 10) * levelsGained;
+        hero.maxHp += (typeof LEVEL_UP !== 'undefined' ? LEVEL_UP.HP_BONUS : 20) * levelsGained;
+        hero.hp = hero.maxHp;
+        if (hero.mgc != null) hero.mgc += (typeof LEVEL_UP !== 'undefined' && LEVEL_UP.MGC_BONUS ? LEVEL_UP.MGC_BONUS : 5) * levelsGained;
+        if (hero.maxMp != null) {
+            hero.maxMp += (typeof LEVEL_UP !== 'undefined' && LEVEL_UP.MP_BONUS ? LEVEL_UP.MP_BONUS : 5) * levelsGained;
+            hero.mp = hero.maxMp;
+        }
+        if (typeof playSfxLevelUp === 'function') playSfxLevelUp();
+        showAlert(`レベルが倍増した！ LV${oldLv} → LV${hero.lv}\n攻撃力とHPが大きく上がった！`);
+    } else if (choice === "3") {
+        if (map && map.data[wy] && map.data[wy][wx] === TILE.WATER_SPIRIT) {
+            map.data[wy][wx] = TILE.EMPTY;
+        }
+        if (!worldMaps["water_spirit_dwelling"].exits.right) {
+            worldMaps["water_spirit_dwelling"].exits.right = "monster_forest";
+        }
+        showAlert("水の精霊が森へ消えた。\n東に魔物の森が現れた。");
+    } else {
+        showAlert("望みを選ばなかった。水の精霊は静かに見送った。");
+    }
+    
+    // 1または2を選んだときは精霊が残るので、次に戦うと強くなる
+    if (choice === "1" || choice === "2") {
+        gameState.waterSpiritDefeatCount = (gameState.waterSpiritDefeatCount || 0) + 1;
+    }
+    
+    showScreen('main-screen');
+    drawMap();
+    updateStatus();
+    playAreaBGM(hero.currentArea);
+}
+
+/**
+ * 仲間との試練戦闘で負けた時（ゲームオーバーにせずマップに戻る）
+ */
+function endAllyTrialDefeat() {
+    const enemy = gameState.currentEnemy;
+    const ally = enemy && allyData ? Object.values(allyData).find(a => a.name === enemy.name) : null;
+    const defeatMsg = ally ? ally.defeatMsg : "まだまだだな…";
+    gameState.isBattle = false;
+    gameState.isBattleEnding = false;
+    gameState.isAllyTrialBattle = false;
+    gameState.allyTrialTile = null;
+    // 戦闘BGMを確実に停止してからエリアBGMに切り替え
+    if (typeof stopAllBGM === 'function') stopAllBGM();
+    showScreen('main-screen');
+    drawMap();
+    updateStatus();
+    setTimeout(() => {
+        playAreaBGM(hero.currentArea);
+    }, 100);
+    showAlert(`${enemy ? enemy.name : ''}:「${defeatMsg}」\n\n負けたが、ゲームオーバーにはならない。もう一度挑戦できる。`);
+}
+
+/**
+ * 水の精霊戦闘開始（水の精霊のすみか・話すと戦闘・再戦のたびに強くなる）
+ */
+function startWaterSpiritBattle() {
+    const count = gameState.waterSpiritDefeatCount || 0;
+    const hpBonus = 220 + count * 80;
+    const atkBonus = 28 + count * 6;
+    const expBonus = 450 + count * 100;
+    const goldBonus = 220 + count * 50;
+    gameState.isBattle = true;
+    gameState.isBattleEnding = false;
+    gameState.currentEnemy = {
+        name: "水の精霊",
+        hp: hpBonus,
+        maxHp: hpBonus,
+        atk: atkBonus,
+        exp: expBonus,
+        gold: goldBonus,
+        img: "images/水龍.png"
+    };
+    if (typeof playSfxEncounter === 'function') {
+        playSfxEncounter();
+    }
+    initBattle();
+    if (count > 0) {
+        addBattleLog(`水の精霊がさらに力を解放した！（${count + 1}度目の対決）`);
+    }
+    addBattleLog("水の精霊:「もし私に勝ったとしたら、出来る限りの望みを叶えてやろう。」");
+    addBattleLog("戦いが始まった！");
+}
+
+/**
+ * 森の魔女戦闘開始（魔物の森の強敵・話すと戦闘）
+ */
+function startForestWitchBattle() {
+    gameState.isBattle = true;
+    gameState.isBattleEnding = false;
+    gameState.currentEnemy = {
+        name: "森の魔女",
+        hp: 380,
+        maxHp: 380,
+        atk: 42,
+        exp: 680,
+        gold: 350,
+        img: "images/うらみ.png"
+    };
+    if (typeof playSfxEncounter === 'function') {
+        playSfxEncounter();
+    }
+    initBattle();
+    addBattleLog("森の魔女があらわれた！");
+}
+
+/**
+ * ボス戦闘開始
+ */
+function startBossBattle() {
+    gameState.isBattle = true;
+    gameState.isBattleEnding = false;
+    gameState.currentEnemy = { 
+        name: "魔王", 
+        hp: 1000, 
+        atk: 60, 
+        exp: 0, 
+        gold: 0, 
+        img: "images/魔王.png" 
+    };
+    initBattle();
+}
+
+/**
+ * 戦闘初期化処理
+ */
+function initBattle() {
+    gameState.canAttack = true;
+    const enemy = gameState.currentEnemy;
+    
+    // 敵名表示
+    document.getElementById('monster-name').innerText = enemy.name;
+    
+    // 敵の最大HPを保存（HPバー表示用）
+    if (!enemy.maxHp) {
+        enemy.maxHp = enemy.hp;
+    }
+    
+    // 敵スプライト表示（画像か絵文字かを判定）
+    const isImage = IMAGE_EXTENSIONS.some(ext => enemy.img.endsWith(ext));
+    const spriteElement = document.getElementById('monster-sprite');
+    if (isImage) {
+        spriteElement.innerHTML = `<img src="${enemy.img}" alt="${enemy.name}">`;
+    } else {
+        spriteElement.innerHTML = enemy.img;
+    }
+
+    // 戦闘ログをクリア
+    document.getElementById('battle-log').innerHTML = '';
+    
+    // UI更新
+    updateBattleStatus();
+    updateEnemyHPBar();
+    
+    // コマンド選択をリセット
+    gameState.battleCommandIndex = 0;
+    gameState.isSelectingMagic = false;
+    gameState.enemyStatus = {};
+    gameState.heroBuffs = {
+        ironGuard: false,
+        diamondSkin: false,
+        diamondSkinTurns: 0,
+        selfStun: 0
+    };
+    updateCommandCursor();
+    hideMagicList();
+    
+    // iOS: コマンドリストのタッチ操作対応
+    setupCommandTouchHandlers();
+    
+    // 即座に戦闘画面を表示（フェードイン効果付き）
+    showScreen('battle-screen');
+    
+    // フィールドBGMを確実に停止してから戦闘BGMを再生
+    stopAllBGM();
+    
+    // ボス戦か通常戦闘かでBGMを切り替え（少し待機してから再生、音量1.2）
+    const bossNames = ["オウサマニア", "桃仙人", "森の魔女"];
+    const catGodName = "レア猫がみさま";
+    const lastBossName = "魔王";
+    setTimeout(() => {
+        if (enemy.name === lastBossName) {
+            // ラスボス（魔王）専用BGM
+            playBGM('bgm-lastboss', 1.2);
+        } else if (enemy.name === catGodName) {
+            // レア猫がみさま専用BGM
+            playBGM('bgm-catgod', 1.2);
+        } else if (bossNames.includes(enemy.name)) {
+            // 通常ボスBGM
+            playBGM('bgm-boss', 1.2);
+        } else {
+            // 通常戦闘BGM
+            playBGM('bgm-battle', 1.2);
+        }
+    }, 50); // 50ms待機してから再生（確実に停止を待つ）
+    
+    // 戦闘開始演出を短縮して表示
+    showBattleStartAnimation();
+}
+
+/**
+ * FF風戦闘開始演出
+ */
+function showBattleStartAnimation() {
+    // 即座にログを追加（画面遷移と同時）
+    addBattleLog(`${gameState.currentEnemy.name}があらわれた！`);
+    
+    // 戦闘開始効果音を再生
+    if (typeof playSfxBattleStart === 'function') {
+        playSfxBattleStart();
+    }
+    
+    // 短縮された戦闘開始アニメーション（1秒）
+    const overlay = document.createElement('div');
+    overlay.className = 'battle-start-overlay';
+    const text = document.createElement('div');
+    text.className = 'battle-start-text';
+    text.innerText = '戦闘開始！';
+    overlay.appendChild(text);
+    document.body.appendChild(overlay);
+    
+    // アニメーション時間を短縮（2秒→1秒）
+    setTimeout(() => {
+        overlay.remove();
+        addBattleLog("コマンドを選んでください (Aボタン)");
+    }, 1000);
+}
+
+/**
+ * 戦闘画面のパーティステータスを更新
+ */
+function updateBattleStatus() {
+    const area = document.getElementById('party-status-area');
+    if (!area) {
+        console.error('[updateBattleStatus] party-status-area要素が見つかりません');
+        return;
+    }
+    
+    area.innerHTML = '';  // ヘッダーを削除（2×2グリッドに変更）
+    
+    // 最大4人の枠を確保（パーティメンバー + 空き枠）
+    const maxSlots = 4;
+    for (let i = 0; i < maxSlots; i++) {
+        if (i < party.length) {
+            // パーティメンバーがいる場合
+            const m = party[i];
+            if (!m) {
+                console.warn(`[updateBattleStatus] party[${i}]が未定義です`);
+                continue;
+            }
+            
+            const displayHp = (m.hp !== undefined && m.hp > 0) ? m.hp : 0;
+            const maxHp = m.maxHp || 100;
+            const displayMp = (m.mp !== undefined && m.mp > 0) ? m.mp : 0;
+            const maxMp = m.maxMp || 0;
+            const hpPercent = maxHp > 0 ? Math.max(0, Math.min(100, (displayHp / maxHp) * 100)) : 0;
+            const mpPercent = maxMp > 0 ? Math.max(0, Math.min(100, (displayMp / maxMp) * 100)) : 0;
+            
+            area.innerHTML += `
+                <div class="party-member-card">
+                    <div class="party-member-name">${m.name || '---'}</div>
+                    <div class="party-member-lv">LV: ${m.lv || 1}</div>
+                    <div class="stat-row">
+                        <span class="stat-label">HP:</span>
+                        <span class="stat-value hp-value">${displayHp}/${maxHp}</span>
+                    </div>
+                    <div class="mini-bar">
+                        <div class="mini-bar-fill hp-bar-fill" style="width: ${hpPercent}%"></div>
+                    </div>
+                    ${maxMp > 0 ? `
+                    <div class="stat-row">
+                        <span class="stat-label">MP:</span>
+                        <span class="stat-value mp-value">${displayMp}/${maxMp}</span>
+                    </div>
+                    <div class="mini-bar">
+                        <div class="mini-bar-fill mp-bar-fill" style="width: ${mpPercent}%"></div>
+                    </div>
+                    ` : ''}
+                </div>`;
+        } else {
+            // 空き枠（薄く表示）
+            area.innerHTML += `
+                <div class="party-member-card" style="opacity: 0.3;">
+                    <div class="party-member-name">---</div>
+                    <div class="party-member-lv">LV: -</div>
+                    <div class="stat-row">
+                        <span class="stat-label">HP:</span>
+                        <span class="stat-value">-/-</span>
+                    </div>
+                    <div class="mini-bar">
+                        <div class="mini-bar-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">MP:</span>
+                        <span class="stat-value">-/-</span>
+                    </div>
+                    <div class="mini-bar">
+                        <div class="mini-bar-fill" style="width: 0%"></div>
+                    </div>
+                </div>`;
+        }
+    }
+}
+
+/**
+ * 敵のHPバーを更新
+ */
+function updateEnemyHPBar() {
+    const enemy = gameState.currentEnemy;
+    if (!enemy || !enemy.maxHp) return;
+    
+    const hpBar = document.getElementById('enemy-hp-bar');
+    const hpBarFill = document.getElementById('enemy-hp-bar-fill');
+    const hpBarText = document.getElementById('enemy-hp-bar-text');
+    
+    const hpPercent = Math.max(0, (enemy.hp / enemy.maxHp) * 100);
+    hpBar.style.display = 'block';
+    hpBarFill.style.width = `${hpPercent}%`;
+    hpBarText.innerText = `HP: ${Math.max(0, enemy.hp)}/${enemy.maxHp}`;
+}
+
+/**
+ * 戦闘ログにメッセージを追加（スクロール対応）
+ * @param {string} message - ログメッセージ
+ */
+function addBattleLog(message) {
+    const battleLog = document.getElementById('battle-log');
+    battleLog.innerHTML += `<div>${message}</div>`;
+    // 最新のメッセージにスクロール
+    battleLog.scrollTop = battleLog.scrollHeight;
+}
+
+/**
+ * iOS: コマンドリストのタッチ操作ハンドラーを設定
+ */
+function setupCommandTouchHandlers() {
+    const commandList = document.getElementById('command-list');
+    if (!commandList) return;
+    
+    // 既存のイベントリスナーを削除（重複防止）
+    const commands = commandList.querySelectorAll('li');
+    commands.forEach(cmd => {
+        // 既存のイベントリスナーを削除するために、新しい要素に置き換え
+        const newCmd = cmd.cloneNode(true);
+        cmd.parentNode.replaceChild(newCmd, cmd);
+    });
+    
+    // 新しいイベントリスナーを追加
+    const newCommands = commandList.querySelectorAll('li');
+    newCommands.forEach((cmd, index) => {
+        // タッチ/クリックイベントでコマンドを直接選択
+        const handleCommandSelect = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (!gameState.canAttack || gameState.isSelectingMagic) return;
+            
+            // 選択インデックスを更新
+            gameState.battleCommandIndex = index;
+            updateCommandCursor();
+            
+            // タッチフィードバック：一時的にハイライト
+            cmd.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                cmd.style.transform = '';
+            }, 150);
+            
+            // 少し待ってから実行（視覚的フィードバックのため）
+            setTimeout(() => {
+                executeSelectedCommand();
+            }, 150);
+        };
+        
+        cmd.addEventListener('click', handleCommandSelect);
+        cmd.addEventListener('touchend', handleCommandSelect, { passive: false });
+    });
+}
+
+/**
+ * コマンドカーソルを更新
+ */
+function updateCommandCursor() {
+    const commandList = document.getElementById('command-list');
+    const commands = commandList.querySelectorAll('li');
+    commands.forEach((cmd, index) => {
+        const commandText = cmd.getAttribute('data-command');
+        let displayText = '';
+        switch (commandText) {
+            case 'attack':
+                displayText = 'たたかう';
+                break;
+            case 'magic':
+                displayText = 'まほう';
+                break;
+            case 'item':
+                displayText = 'アイテム';
+                break;
+            case 'escape':
+                displayText = 'にげる';
+                break;
+        }
+        
+        if (index === gameState.battleCommandIndex) {
+            cmd.innerHTML = `<span class="command-cursor">▶</span> ${displayText}`;
+            cmd.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            cmd.classList.add('selected');  /* クラスを追加してCSSを確実に適用 */
+        } else {
+            cmd.innerHTML = ` ${displayText}`;
+            cmd.style.backgroundColor = 'transparent';
+            cmd.classList.remove('selected');  /* クラスを削除 */
+        }
+    });
+}
+
+/**
+ * コマンド選択を移動
+ * @param {number} direction - 移動方向（-1: 上, 1: 下）
+ */
+function moveCommandCursor(direction) {
+    if (gameState.isSelectingMagic) {
+        moveMagicCursor(direction);
+        return;
+    }
+    
+    const commandList = document.getElementById('command-list');
+    const commands = commandList.querySelectorAll('li');
+    const maxIndex = commands.length - 1;
+    
+    gameState.battleCommandIndex += direction;
+    
+    if (gameState.battleCommandIndex < 0) {
+        gameState.battleCommandIndex = maxIndex;
+    } else if (gameState.battleCommandIndex > maxIndex) {
+        gameState.battleCommandIndex = 0;
+    }
+    
+    updateCommandCursor();
+}
+
+/**
+ * 使用可能な魔法リストを取得
+ */
+function getAvailableMagic() {
+    return MAGIC_SPELLS.filter(spell => {
+        // レベルチェック
+        if (hero.lv < spell.level) return false;
+        // MPチェック
+        if (hero.mp < spell.mpCost) return false;
+        return true;
+    });
+}
+
+/**
+ * 魔法リストを表示
+ */
+function showMagicList() {
+    gameState.isSelectingMagic = true;
+    gameState.battleMagicIndex = 0;
+    
+    const commandList = document.getElementById('command-list');
+    const magicList = document.getElementById('magic-list');
+    
+    commandList.style.display = 'none';
+    magicList.style.display = 'block';
+    magicList.innerHTML = '';
+    
+    const availableMagic = getAvailableMagic();
+    
+    if (availableMagic.length === 0) {
+        magicList.innerHTML = '<li style="opacity: 0.5;">使用可能な魔法がありません</li>';
+        addBattleLog("使用可能な魔法がない！");
+        setTimeout(() => {
+            hideMagicList();
+        }, 1000);
+        return;
+    }
+    
+    availableMagic.forEach((spell, index) => {
+        const li = document.createElement('li');
+        li.setAttribute('data-magic-id', spell.id);
+        const mpText = hero.mp >= spell.mpCost ? `${spell.mpCost}MP` : `<span style="color: #f00;">MP不足</span>`;
+        li.innerHTML = ` ${spell.name} (${mpText})`;
+        
+        // iOS: タッチ操作対応（コマンドリストと同じスタイルを適用）
+        li.style.padding = '12px 10px';
+        li.style.fontSize = '16px';
+        li.style.minHeight = '48px';
+        li.style.display = 'flex';
+        li.style.alignItems = 'center';
+        li.style.cursor = 'pointer';
+        li.style.transition = 'all 0.2s ease';
+        li.style.borderRadius = '4px';
+        li.style.margin = '2px 0';
+        li.style.borderBottom = '1px solid rgba(255,255,255,0.15)';
+        
+        const handleMagicSelect = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            gameState.battleMagicIndex = index;
+            updateMagicCursor();
+            
+            // タッチフィードバック：一時的にハイライト
+            li.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                li.style.transform = '';
+            }, 150);
+            
+            setTimeout(() => {
+                executeSelectedMagic();
+            }, 150);
+        };
+        
+        li.addEventListener('click', handleMagicSelect);
+        li.addEventListener('touchend', handleMagicSelect, { passive: false });
+        
+        magicList.appendChild(li);
+    });
+    
+    updateMagicCursor();
+}
+
+/**
+ * 魔法リストを非表示
+ */
+function hideMagicList() {
+    gameState.isSelectingMagic = false;
+    const commandList = document.getElementById('command-list');
+    const magicList = document.getElementById('magic-list');
+    
+    commandList.style.display = 'block';
+    magicList.style.display = 'none';
+}
+
+/**
+ * 魔法カーソルを更新
+ */
+function updateMagicCursor() {
+    const magicList = document.getElementById('magic-list');
+    const magics = magicList.querySelectorAll('li');
+    const availableMagic = getAvailableMagic();
+    
+    magics.forEach((magic, index) => {
+        const spell = availableMagic[index];
+        if (!spell) return;
+        
+        const mpText = hero.mp >= spell.mpCost ? `${spell.mpCost}MP` : `<span style="color: #f00;">MP不足</span>`;
+        
+        if (index === gameState.battleMagicIndex) {
+            magic.innerHTML = `<span class="command-cursor">▶</span> ${spell.name} (${mpText})`;
+            magic.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            magic.classList.add('selected');  /* クラスを追加してCSSを確実に適用 */
+        } else {
+            magic.innerHTML = ` ${spell.name} (${mpText})`;
+            magic.style.backgroundColor = 'transparent';
+            magic.classList.remove('selected');  /* クラスを削除 */
+        }
+    });
+}
+
+/**
+ * 魔法カーソルを移動
+ * @param {number} direction - 移動方向（-1: 上, 1: 下）
+ */
+function moveMagicCursor(direction) {
+    const availableMagic = getAvailableMagic();
+    const maxIndex = availableMagic.length - 1;
+    
+    gameState.battleMagicIndex += direction;
+    
+    if (gameState.battleMagicIndex < 0) {
+        gameState.battleMagicIndex = maxIndex;
+    } else if (gameState.battleMagicIndex > maxIndex) {
+        gameState.battleMagicIndex = 0;
+    }
+    
+    updateMagicCursor();
+}
+
+/**
+ * 選択中のコマンドを実行
+ */
+function executeSelectedCommand() {
+    if (gameState.isSelectingMagic) {
+        executeSelectedMagic();
+        return;
+    }
+    
+    const commandList = document.getElementById('command-list');
+    const commands = commandList.querySelectorAll('li');
+    const selectedCommand = commands[gameState.battleCommandIndex];
+    const commandType = selectedCommand.getAttribute('data-command');
+    
+    switch (commandType) {
+        case 'attack':
+            heroTurn('attack');
+            break;
+        case 'magic':
+            showMagicList();
+            break;
+        case 'item':
+            heroTurn('item');
+            break;
+        case 'escape':
+            heroTurn('escape');
+            break;
+    }
+}
+
+/**
+ * 選択中の魔法を実行
+ */
+function executeSelectedMagic() {
+    const availableMagic = getAvailableMagic();
+    if (availableMagic.length === 0) {
+        hideMagicList();
+        return;
+    }
+    
+    const selectedSpell = availableMagic[gameState.battleMagicIndex];
+    
+    // MPチェック
+    if (hero.mp < selectedSpell.mpCost) {
+        addBattleLog("MPが足りない！");
+        return;
+    }
+    
+    // MP消費
+    hero.mp = Math.max(0, hero.mp - selectedSpell.mpCost);
+    
+    // 魔法を実行
+    castMagic(selectedSpell);
+    
+    // 魔法リストを非表示
+    hideMagicList();
+}
+
+/**
+ * ヒーローのターン処理
+ * @param {string} action - アクションタイプ（'attack', 'magic', 'item', 'escape'）
+ */
+function heroTurn(action) {
+    if (!gameState.canAttack) return;
+    
+    // 自己スタン状態のチェック
+    if (gameState.heroBuffs.selfStun && gameState.heroBuffs.selfStun > 0) {
+        addBattleLog(`${hero.name}は動けない！`);
+        gameState.heroBuffs.selfStun = 0;
+        setTimeout(() => {
+            if (gameState.currentEnemy.hp > 0) {
+                setTimeout(enemyTurn, BATTLE.TURN_DELAY);
+            } else {
+                winBattle();
+            }
+        }, BATTLE.TURN_DELAY);
+        return;
+    }
+    
+    gameState.canAttack = false;
+    
+    switch (action) {
+        case 'attack':
+            performAttack(hero);
+            // 敵が倒れたかどうかで分岐
+            if (gameState.currentEnemy.hp > 0) {
+                setTimeout(partyTurn, BATTLE.TURN_DELAY);
+            } else {
+                setTimeout(winBattle, BATTLE.TURN_DELAY);
+            }
+            break;
+            
+        case 'magic':
+            // 魔法選択画面を表示（executeSelectedCommandで処理）
+            break;
+            
+        case 'item':
+            // アイテムの実装
+            useItem();
+            break;
+            
+        case 'escape':
+            // にげるの実装
+            tryEscape();
+            break;
+    }
+}
+
+/**
+ * アイテム使用処理
+ */
+function useItem() {
+    // アイテムがない場合
+    if (!hero.items || hero.items.length === 0) {
+        addBattleLog(`${hero.name}はアイテムを持っていない！`);
+        setTimeout(() => {
+            gameState.canAttack = true;
+            addBattleLog("コマンドを選んでください (Aボタン)");
+        }, BATTLE.TURN_DELAY);
+        return;
+    }
+    
+    // 簡易実装：最初のアイテムを使用（今後拡張可能）
+    addBattleLog(`${hero.name}はアイテムを使った！`);
+    addBattleLog("（アイテム機能は今後拡張予定）");
+    
+    // とりあえずターンを終了
+    setTimeout(() => {
+        if (gameState.currentEnemy.hp > 0) {
+            setTimeout(enemyTurn, BATTLE.TURN_DELAY);
+        } else {
+            winBattle();
+        }
+    }, BATTLE.TURN_DELAY);
+}
+
+/**
+ * 逃走処理
+ */
+function tryEscape() {
+    // 逃走成功率は50%
+    const escapeSuccess = Math.random() < 0.5;
+    
+    if (escapeSuccess) {
+        // 逃走成功効果音を再生
+        if (typeof playSfxEscape === 'function') {
+            playSfxEscape();
+        }
+        addBattleLog(`${hero.name}は逃げ出した！`);
+        setTimeout(() => {
+            gameState.isBattle = false;
+            gameState.isBattleEnding = false;
+            // 戦闘BGMを確実に停止してからエリアBGMに切り替え
+            if (typeof stopAllBGM === 'function') stopAllBGM();
+            showScreen('main-screen');
+            drawMap();
+            updateStatus();
+            setTimeout(() => {
+                playAreaBGM(hero.currentArea);
+            }, 100);
+        }, 1000);
+    } else {
+        addBattleLog("逃げ切れなかった！");
+        setTimeout(() => {
+            if (gameState.currentEnemy.hp > 0) {
+                setTimeout(enemyTurn, BATTLE.TURN_DELAY);
+            } else {
+                winBattle();
+            }
+        }, BATTLE.TURN_DELAY);
+    }
+}
+
+/**
+ * 魔法を実行
+ * @param {Object} spell - 魔法データ
+ */
+function castMagic(spell) {
+    gameState.canAttack = false;
+    addBattleLog(`${hero.name}は${spell.name}を唱えた！`);
+    
+    // 魔法効果音を再生
+    if (typeof playSfxMagic === 'function') {
+        playSfxMagic();
+    }
+    
+    // エフェクト表示（回復魔法以外）
+    if (spell.type !== 'heal') {
+        showMagicEffect(spell.id);
+    }
+    
+    // エフェクト表示後に魔法効果を実行
+    const effectDelay = getEffectDuration(spell.id);
+    setTimeout(() => {
+        switch (spell.type) {
+            case 'attack':
+                handleAttackMagic(spell);
+                break;
+            case 'heal':
+                handleHealMagic(spell);
+                break;
+            case 'shield':
+                handleShieldMagic(spell);
+                break;
+            case 'attack_status':
+                handleAttackStatusMagic(spell);
+                break;
+        }
+        
+        // UI更新
+        updateBattleStatus();
+        updateEnemyHPBar();
+    }, effectDelay);
+}
+
+/**
+ * エフェクトの表示時間を取得
+ * @param {string} spellId - 魔法ID
+ * @returns {number} 表示時間（ミリ秒）
+ */
+function getEffectDuration(spellId) {
+    const durations = {
+        'flame_shot': 1000,
+        'iron_guard': 800,
+        'sonic_blade': 600,
+        'gravity_storm': 1500,
+        'giga_burst': 1200,
+        'diamond_skin': 2000,
+        'judgment_ray': 1000,
+        'zero_disaster': 2000
+    };
+    return durations[spellId] || 500;
+}
+
+/**
+ * 魔法エフェクトを表示
+ * @param {string} spellId - 魔法ID
+ */
+function showMagicEffect(spellId) {
+    // ゼロ・ディザスターは画面全体エフェクト
+    if (spellId === 'zero_disaster') {
+        const effect = document.createElement('div');
+        effect.className = 'magic-effect-zero';
+        document.body.appendChild(effect);
+        
+        const duration = getEffectDuration(spellId);
+        setTimeout(() => {
+            effect.remove();
+        }, duration);
+        return;
+    }
+    
+    const enemyArea = document.querySelector('.enemy-area');
+    if (!enemyArea) return;
+    
+    // エフェクトコンテナを作成
+    const container = document.createElement('div');
+    container.className = 'magic-effect-container';
+    enemyArea.appendChild(container);
+    
+    // 魔法IDからCSSクラス名に変換
+    const effectClassMap = {
+        'flame_shot': 'flame',
+        'iron_guard': 'iron-guard',
+        'sonic_blade': 'sonic',
+        'gravity_storm': 'gravity',
+        'giga_burst': 'giga',
+        'diamond_skin': 'diamond',
+        'judgment_ray': 'judgment',
+        'zero_disaster': 'zero'
+    };
+    
+    const effectClass = effectClassMap[spellId] || spellId.replace('_', '-');
+    
+    // エフェクト要素を作成
+    const effect = document.createElement('div');
+    effect.className = `magic-effect-${effectClass}`;
+    container.appendChild(effect);
+    
+    // エフェクト終了後に削除
+    const duration = getEffectDuration(spellId);
+    setTimeout(() => {
+        container.remove();
+    }, duration);
+}
+
+/**
+ * 攻撃魔法を処理
+ * @param {Object} spell - 魔法データ
+ */
+function handleAttackMagic(spell) {
+    const enemy = gameState.currentEnemy;
+    let damage = 0;
+    
+    // パーセンテージダメージの場合（ジャッジメント光線）
+    if (spell.damagePercent) {
+        damage = Math.floor(enemy.hp * spell.damagePercent);
+    } else {
+        // 魔法力ベースのダメージ計算
+        const baseDamage = spell.damage || 0;
+        const multiplier = spell.damageMultiplier || 1.0;
+        
+        // 魔法力 × 倍率 + 基本ダメージ
+        const magicDamage = Math.floor(hero.mgc * multiplier);
+        const baseValue = Math.floor(baseDamage * 0.5); // 基本ダメージの50%を加算
+        
+        // ランダム要素（80%-120%）
+        const minMultiplier = (typeof MAGIC !== 'undefined' && MAGIC.MIN_DAMAGE_MULTIPLIER) ? MAGIC.MIN_DAMAGE_MULTIPLIER : 0.8;
+        const maxMultiplier = (typeof MAGIC !== 'undefined' && MAGIC.MAX_DAMAGE_MULTIPLIER) ? MAGIC.MAX_DAMAGE_MULTIPLIER : 1.2;
+        const randomFactor = minMultiplier + Math.random() * (maxMultiplier - minMultiplier);
+        
+        damage = Math.floor((magicDamage + baseValue) * randomFactor);
+    }
+    
+    // ソニックブレードの空中敵ボーナス（鳥系の敵に1.5倍・画像差し替え時も敵名で判定）
+    if (spell.id === 'sonic_blade' && enemy.name === 'ハゲタカ') {
+        damage = Math.floor(damage * spell.flyingBonus);
+        addBattleLog("空中の敵に効果抜群！");
+    }
+    
+    // ゼロ・ディザスターの全敵ダメージ（現在は1体のみだが、将来の拡張に備えて）
+    if (spell.target === 'enemy_all') {
+        // 全敵へのダメージ（現在は1体のみ）
+        // damageは既に計算済み
+    }
+    
+    // ダメージ適用
+    enemy.hp = Math.max(0, enemy.hp - damage);
+    
+    // エフェクト表示
+    showBattleFlash();
+    showDamageNumber(damage, false);
+    
+    if (spell.target === 'enemy_all') {
+        addBattleLog(`敵全体に${damage}のダメージ！`);
+    } else {
+        addBattleLog(`${enemy.name}に${damage}のダメージ！`);
+    }
+    
+    // ゼロ・ディザスターの特殊演出
+    if (spell.id === 'zero_disaster') {
+        addBattleLog("背景が闇に包まれた...");
+    }
+    
+    // 状態異常の適用
+    if (spell.effect && spell.effectChance) {
+        if (Math.random() < spell.effectChance) {
+            applyStatusEffect(enemy, spell.effect);
+        }
+    }
+    
+    // ギガバーストの自己スタン効果
+    if (spell.selfStun) {
+        gameState.heroBuffs.selfStun = spell.selfStun;
+        addBattleLog(`${hero.name}は1ターン動けなくなった！`);
+    }
+    
+    // ターン終了処理
+    if (enemy.hp > 0) {
+        // 自己スタンがある場合は敵のターンをスキップ
+        if (spell.selfStun) {
+            setTimeout(() => {
+                gameState.canAttack = false; // 次のターンも動けない
+                addBattleLog(`${hero.name}は動けない...`);
+                setTimeout(() => {
+                    gameState.canAttack = true;
+                    gameState.heroBuffs.selfStun = 0;
+                    addBattleLog("コマンドを選んでください (Aボタン)");
+                }, BATTLE.TURN_DELAY);
+            }, BATTLE.TURN_DELAY);
+        } else {
+            setTimeout(partyTurn, BATTLE.TURN_DELAY);
+        }
+    } else {
+        setTimeout(winBattle, BATTLE.TURN_DELAY);
+    }
+}
+
+/**
+ * 回復魔法を処理
+ * @param {Object} spell - 魔法データ
+ */
+function handleHealMagic(spell) {
+    if (spell.target === 'ally_single') {
+        // 単体回復
+        const target = hero; // 簡易実装：自分を回復
+        const oldHp = target.hp;
+        target.hp = Math.min(target.maxHp, target.hp + spell.heal);
+        const actualHeal = target.hp - oldHp;
+        addBattleLog(`${target.name}のHPが${actualHeal}回復した！`);
+    } else if (spell.target === 'ally_all') {
+        // 全体回復
+        party.forEach(member => {
+            if (member.hp > 0) {
+                const oldHp = member.hp;
+                member.hp = Math.min(member.maxHp, member.hp + spell.heal);
+                const actualHeal = member.hp - oldHp;
+                if (actualHeal > 0) {
+                    addBattleLog(`${member.name}のHPが${actualHeal}回復した！`);
+                }
+            }
+        });
+    }
+    
+    updateBattleStatus();
+    
+    // ターン終了処理
+    if (gameState.currentEnemy.hp > 0) {
+        setTimeout(partyTurn, BATTLE.TURN_DELAY);
+    } else {
+        setTimeout(winBattle, BATTLE.TURN_DELAY);
+    }
+}
+
+/**
+ * シールド魔法を処理
+ * @param {Object} spell - 魔法データ
+ */
+function handleShieldMagic(spell) {
+    if (spell.id === 'iron_guard') {
+        gameState.heroBuffs.ironGuard = true;
+        gameState.heroBuffs.ironGuardValue = spell.shield;
+        addBattleLog(`${hero.name}に防御のバリアが張られた！`);
+    } else if (spell.id === 'diamond_skin') {
+        gameState.heroBuffs.diamondSkin = true;
+        gameState.heroBuffs.diamondSkinTurns = spell.duration;
+        addBattleLog(`${hero.name}の体がダイヤモンドのように輝いた！`);
+    }
+    
+    // ターン終了処理
+    if (gameState.currentEnemy.hp > 0) {
+        setTimeout(partyTurn, BATTLE.TURN_DELAY);
+    } else {
+        setTimeout(winBattle, BATTLE.TURN_DELAY);
+    }
+}
+
+/**
+ * 攻撃＋状態異常魔法を処理
+ * @param {Object} spell - 魔法データ
+ */
+function handleAttackStatusMagic(spell) {
+    const enemy = gameState.currentEnemy;
+    
+    // ダメージ適用（全敵に適用する場合は拡張可能）
+    enemy.hp = Math.max(0, enemy.hp - spell.damage);
+    
+    // エフェクト表示
+    showBattleFlash();
+    showDamageNumber(spell.damage, false);
+    addBattleLog(`${enemy.name}に${spell.damage}のダメージ！`);
+    
+    // 状態異常の適用
+    if (spell.status) {
+        applyStatusEffect(enemy, spell.status);
+    }
+    
+    // ターン終了処理
+    if (enemy.hp > 0) {
+        setTimeout(partyTurn, BATTLE.TURN_DELAY);
+    } else {
+        setTimeout(winBattle, BATTLE.TURN_DELAY);
+    }
+}
+
+/**
+ * 状態異常を適用
+ * @param {Object} target - 対象（敵または味方）
+ * @param {string} effect - 状態異常の種類
+ */
+function applyStatusEffect(target, effect) {
+    if (!gameState.enemyStatus) {
+        gameState.enemyStatus = {};
+    }
+    
+    switch (effect) {
+        case 'burn':
+            gameState.enemyStatus.burn = true;
+            addBattleLog(`${target.name}は火だるま状態になった！`);
+            break;
+        case 'stun':
+            gameState.enemyStatus.stun = 1;
+            addBattleLog(`${target.name}は行動不能になった！`);
+            break;
+    }
+}
+
+/**
+ * 状態異常の処理（ターン開始時）
+ */
+function processStatusEffects() {
+    if (!gameState.enemyStatus) return;
+    
+    // 火だるま状態：毎ターン5ダメージ
+    if (gameState.enemyStatus.burn) {
+        const burnDamage = 5;
+        gameState.currentEnemy.hp = Math.max(0, gameState.currentEnemy.hp - burnDamage);
+        addBattleLog(`${gameState.currentEnemy.name}は火だるまで${burnDamage}のダメージ！`);
+        updateEnemyHPBar();
+        
+        // 30%の確率で解除
+        if (Math.random() < 0.3) {
+            gameState.enemyStatus.burn = false;
+            addBattleLog(`${gameState.currentEnemy.name}の火だるまが消えた！`);
+        }
+    }
+    
+    // 行動不能状態：ターン数を減らす
+    if (gameState.enemyStatus.stun && gameState.enemyStatus.stun > 0) {
+        gameState.enemyStatus.stun--;
+        if (gameState.enemyStatus.stun <= 0) {
+            gameState.enemyStatus.stun = null;
+            addBattleLog(`${gameState.currentEnemy.name}は動けるようになった！`);
+        }
+    }
+}
+
+/**
+ * パーティメンバーのターン処理
+ */
+function partyTurn() {
+    let index = 1;
+    
+    function nextAlly() {
+        // 敵が既に倒れている場合は勝利処理
+        if (gameState.currentEnemy.hp <= 0) { 
+            winBattle(); 
+            return; 
+        }
+        
+        // パーティメンバーが残っている場合
+        if (index < party.length) {
+            const member = party[index];
+            if (member.hp > 0) { 
+                performAttack(member); 
+                index++; 
+                setTimeout(nextAlly, BATTLE.TURN_DELAY); 
+            } else {
+                // HPが0のメンバーはスキップ
+                index++; 
+                nextAlly(); 
+            }
+        } else {
+            // 全メンバーの攻撃終了、敵のターンへ
+            if (gameState.currentEnemy.hp > 0) {
+                setTimeout(enemyTurn, BATTLE.TURN_DELAY);
+            } else {
+                winBattle();
+            }
+        }
+    }
+    
+    nextAlly();
+}
+
+/**
+ * 攻撃処理
+ * @param {Object} attacker - 攻撃者（heroまたはpartyメンバー）
+ */
+function performAttack(attacker) {
+    const enemy = gameState.currentEnemy;
+    
+    // 攻撃効果音を再生
+    if (typeof playSfxAttack === 'function') {
+        playSfxAttack();
+    }
+    
+    // ダメージ計算
+    const damageResult = calculateDamage(attacker);
+    const { damage, isCritical } = damageResult;
+    
+    // ダメージ適用
+    enemy.hp = Math.max(0, enemy.hp - damage);
+    
+    // エフェクト表示
+    showBattleFlash();
+    showDamageNumber(damage, isCritical);
+    
+    // ログ出力
+    if (isCritical) {
+        showCriticalText();
+        addBattleLog(`${attacker.name}の起死回生の一打！${enemy.name}に${damage}のダメージ！`);
+    } else {
+        addBattleLog(`${attacker.name}の攻撃！${enemy.name}に${damage}のダメージ！`);
+    }
+    
+    // UI更新
+    updateBattleStatus();
+    updateEnemyHPBar();
+}
+
+/**
+ * ダメージ計算
+ * @param {Object} attacker - 攻撃者
+ * @returns {Object} { damage: number, isCritical: boolean }
+ */
+function calculateDamage(attacker) {
+    // クリティカル判定
+    const isCritical = Math.random() < BATTLE.CRITICAL_RATE;
+    
+    // 基本ダメージ計算（攻撃力 + ランダム変動）
+    let damage = attacker.atk + Math.floor(Math.random() * BATTLE.DAMAGE_VARIANCE);
+    
+    // クリティカルの場合、ダメージを倍率分増やす
+    if (isCritical) {
+        damage = Math.floor(damage * BATTLE.CRITICAL_MULTIPLIER);
+    }
+    
+    return { damage, isCritical };
+}
+
+/**
+ * ダメージ数値を表示
+ * @param {number} damage - ダメージ値
+ * @param {boolean} isCritical - クリティカルかどうか
+ */
+function showDamageNumber(damage, isCritical) {
+    const enemyArea = document.querySelector('.enemy-area');
+    const damageElement = document.createElement('div');
+    damageElement.className = 'damage-number';
+    damageElement.innerText = `-${damage}`;
+    
+    if (isCritical) {
+        damageElement.style.color = '#ffff00';
+        damageElement.style.fontSize = '56px';
+        damageElement.style.textShadow = '2px 2px 0 #000, 0 0 15px #ffff00';
+    }
+    
+    // 敵の中心位置に配置
+    const rect = enemyArea.getBoundingClientRect();
+    damageElement.style.left = `${rect.left + rect.width / 2 - 50}px`;
+    damageElement.style.top = `${rect.top + rect.height / 2 - 40}px`;
+    
+    document.body.appendChild(damageElement);
+    
+    // アニメーション終了後に削除
+    setTimeout(() => {
+        damageElement.remove();
+    }, 1000);
+}
+
+/**
+ * クリティカルテキストを表示
+ */
+function showCriticalText() {
+    const enemyArea = document.querySelector('.enemy-area');
+    const criticalElement = document.createElement('div');
+    criticalElement.className = 'critical-text';
+    criticalElement.innerText = '起死回生の一打！';
+    
+    const rect = enemyArea.getBoundingClientRect();
+    criticalElement.style.left = `${rect.left + rect.width / 2 - 100}px`;
+    criticalElement.style.top = `${rect.top + 20}px`;
+    
+    document.body.appendChild(criticalElement);
+    
+    setTimeout(() => {
+        criticalElement.remove();
+    }, 1500);
+}
+
+/**
+ * 画面フラッシュエフェクト（攻撃時の視覚効果）
+ */
+function showBattleFlash() {
+    const flash = document.createElement('div');
+    flash.className = 'battle-flash';
+    document.body.appendChild(flash);
+    
+    setTimeout(() => {
+        flash.remove();
+    }, 200);
+}
+
+/**
+ * 敵のターン処理
+ */
+function enemyTurn() {
+    const enemy = gameState.currentEnemy;
+    const aliveMembers = party.filter(m => m.hp > 0);
+    
+    // 生存メンバーがいない場合は終了
+    if (aliveMembers.length === 0) return;
+    
+    // 状態異常の処理
+    processStatusEffects();
+    
+    // 行動不能状態のチェック
+    if (gameState.enemyStatus && gameState.enemyStatus.stun > 0) {
+        addBattleLog(`${enemy.name}は動けない！`);
+        setTimeout(() => {
+            gameState.canAttack = true;
+            addBattleLog("コマンドを選んでください (Aボタン)");
+        }, BATTLE.TURN_DELAY);
+        return;
+    }
+    
+    // レア猫がみさまの特殊攻撃：5%の確率でネコネコギャラクシー砲
+    if (enemy.isRareCatGod && Math.random() < 0.05) {
+        addBattleLog(`${enemy.name}のネコネコギャラクシー砲！`);
+        addBattleLog("宇宙の力が降り注ぐ...");
+        
+        // 全パーティメンバーに1000ダメージ
+        aliveMembers.forEach(member => {
+            const oldHp = member.hp;
+            member.hp = Math.max(0, member.hp - 1000);
+            const actualDamage = oldHp - member.hp;
+            
+            // エフェクト表示
+            showBattleFlash();
+            showDamageNumberOnParty(actualDamage, member);
+            
+            addBattleLog(`${member.name}に${actualDamage}のダメージ！`);
+        });
+        
+        updateBattleStatus();
+        
+        // ゲームオーバー判定（仲間試練戦闘では負けてもゲームオーバーにしない）
+        if (hero.hp <= 0) {
+            if (gameState.isAllyTrialBattle) {
+                addBattleLog("力尽きた...");
+                setTimeout(() => endAllyTrialDefeat(), 800);
+                return;
+            }
+            if (typeof playSfxGameOver === 'function') {
+                playSfxGameOver();
+            }
+            addBattleLog("勇者が力尽きた...");
+            showAlert("勇者が力尽きた...");
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            setTimeout(() => {
+                gameState.canAttack = true;
+                addBattleLog("コマンドを選んでください (Aボタン)");
+            }, BATTLE.TURN_DELAY);
+        }
+        return;
+    }
+    
+    // ランダムにターゲットを選択
+    const target = aliveMembers[Math.floor(Math.random() * aliveMembers.length)];
+    
+    // ダメージ計算
+    let dmg = Math.max(1, enemy.atk - BATTLE.DEFENSE_REDUCTION);
+    
+    // アイアンガードの効果
+    if (gameState.heroBuffs.ironGuard && target === hero) {
+        const blocked = Math.min(dmg, gameState.heroBuffs.ironGuardValue);
+        dmg -= blocked;
+        addBattleLog(`バリアが${blocked}のダメージを防いだ！`);
+        gameState.heroBuffs.ironGuard = false; // 1回限り
+    }
+    
+    // ダイヤモンドスキンの効果（物理ダメージを100%反射）
+    if (gameState.heroBuffs.diamondSkin && target === hero) {
+        addBattleLog(`${hero.name}のダイヤモンドスキンがダメージを反射した！`);
+        // 敵にダメージを反射
+        const reflectDamage = dmg;
+        enemy.hp = Math.max(0, enemy.hp - reflectDamage);
+        addBattleLog(`${enemy.name}に${reflectDamage}のダメージが反射した！`);
+        dmg = 0; // 自分はダメージを受けない
+        
+        // ターン数を減らす
+        gameState.heroBuffs.diamondSkinTurns--;
+        if (gameState.heroBuffs.diamondSkinTurns <= 0) {
+            gameState.heroBuffs.diamondSkin = false;
+            addBattleLog(`${hero.name}のダイヤモンドスキンが切れた！`);
+        }
+        
+        updateEnemyHPBar();
+    }
+    
+    // ダメージ適用
+    if (dmg > 0) {
+        target.hp = Math.max(0, target.hp - dmg);
+        
+        // エフェクト表示
+        showBattleFlash();
+        showDamageNumberOnParty(dmg, target);
+        
+        // ログ出力
+        addBattleLog(`${enemy.name}の攻撃！${target.name}は${dmg}のダメージ！`);
+    }
+    
+    updateBattleStatus();
+
+    // ゲームオーバー判定（仲間試練戦闘では負けてもゲームオーバーにしない）
+    if (hero.hp <= 0) { 
+        if (gameState.isAllyTrialBattle) {
+            addBattleLog("力尽きた...");
+            setTimeout(() => endAllyTrialDefeat(), 800);
+            return;
+        }
+        if (typeof playSfxGameOver === 'function') {
+            playSfxGameOver();
+        }
+        addBattleLog("勇者が力尽きた...");
+        showAlert("勇者が力尽きた..."); 
+        setTimeout(() => location.reload(), 2000); 
+    } else { 
+        // 次のターンへ
+        setTimeout(() => { 
+            gameState.canAttack = true; 
+            addBattleLog("コマンドを選んでください (Aボタン)");
+        }, BATTLE.TURN_DELAY); 
+    }
+}
+
+/**
+ * 味方へのダメージ数値を表示
+ * @param {number} damage - ダメージ値
+ * @param {Object} target - 被ダメージ対象
+ */
+function showDamageNumberOnParty(damage, target) {
+    const statusArea = document.getElementById('party-status-area');
+    const damageElement = document.createElement('div');
+    damageElement.className = 'damage-number';
+    damageElement.innerText = `-${damage}`;
+    damageElement.style.color = '#ff6666'; // 味方へのダメージは少し薄めの赤
+    
+    // ステータスエリア内の該当メンバーの位置に表示
+    const rect = statusArea.getBoundingClientRect();
+    damageElement.style.left = `${rect.right - 100}px`;
+    damageElement.style.top = `${rect.top + 30}px`; // 最初のメンバーの位置
+    
+    document.body.appendChild(damageElement);
+    
+    setTimeout(() => {
+        damageElement.remove();
+    }, 1000);
+}
+
+/**
+ * 戦闘勝利処理
+ */
+function winBattle() {
+    gameState.isBattleEnding = true;
+    addBattleLog(`${gameState.currentEnemy.name}を倒した！`);
+    
+    // 戦闘勝利効果音を再生
+    if (typeof playSfxVictory === 'function') {
+        playSfxVictory();
+    }
+    
+    // FF風勝利演出
+    showVictoryAnimation();
+}
+
+/**
+ * FF風勝利演出を表示
+ */
+function showVictoryAnimation() {
+    const overlay = document.createElement('div');
+    overlay.className = 'victory-overlay';
+    
+    const victoryText = document.createElement('div');
+    victoryText.className = 'victory-text';
+    victoryText.innerText = '勝利！';
+    overlay.appendChild(victoryText);
+    
+    const rewards = document.createElement('div');
+    rewards.className = 'victory-rewards';
+    const enemy = gameState.currentEnemy;
+    let rewardText;
+    if (gameState.isAllyTrialBattle && enemy) {
+        rewardText = `${enemy.name}が仲間に加わった！`;
+    } else {
+        rewardText = `経験値: ${enemy.exp}`;
+        if (enemy.gold > 0) {
+            rewardText += `\nゴールド: ${enemy.gold}G`;
+        }
+    }
+    rewards.innerText = rewardText;
+    overlay.appendChild(rewards);
+    
+    document.body.appendChild(overlay);
+    
+    setTimeout(() => {
+        overlay.remove();
+        addBattleLog('(Aボタンで進む)');
+    }, 2500);
+}
+
+/**
+ * 戦闘結果確定処理
+ */
+function confirmBattleResult() {
+    gameState.isBattle = false;
+    gameState.isBattleEnding = false;
+    const enemy = gameState.currentEnemy;
+    
+    // 仲間との試練戦闘に勝利した場合：仲間に加える（経験値・ゴールドはなし）
+    if (gameState.isAllyTrialBattle && gameState.allyTrialTile !== null) {
+        const tile = gameState.allyTrialTile;
+        const tilePosition = gameState.allyTrialTilePosition;
+        gameState.isAllyTrialBattle = false;
+        gameState.allyTrialTile = null;
+        gameState.allyTrialTilePosition = null;
+        // 戦闘BGMを確実に停止してからエリアBGMに切り替え
+        if (typeof stopAllBGM === 'function') stopAllBGM();
+        showScreen('main-screen');
+        // 仲間のタイルを削除（保存された位置を使用）
+        if (tilePosition && worldMaps[tilePosition.area]) {
+            const map = worldMaps[tilePosition.area];
+            if (map.data[tilePosition.y] && map.data[tilePosition.y][tilePosition.x] === tile) {
+                map.data[tilePosition.y][tilePosition.x] = TILE.EMPTY;
+            }
+        }
+        drawMap();
+        updateStatus();
+        setTimeout(() => {
+            if (typeof playAreaBGM === 'function') {
+                playAreaBGM(hero.currentArea);
+            }
+        }, 200);
+        addAlly(tile);
+        return;
+    }
+    
+    // エンディング判定
+    if (enemy.name === "魔王") {
+        // エンディング効果音を再生
+        if (typeof playSfxEnding === 'function') {
+            playSfxEnding();
+        }
+        // 戦闘BGMを停止
+        if (typeof stopAllBGM === 'function') stopAllBGM();
+        document.getElementById('ending-msg').innerText = `こうして街の川は穏やかな流れを取り戻した。`;
+        showScreen('ending-screen');
+        setTimeout(() => {
+            if (typeof playBGM === 'function') playBGM('bgm-ending');
+        }, 200);
+        return;
+    }
+    
+    if (enemy.name === "オウサマニア") {
+        // エンディング効果音を再生
+        if (typeof playSfxEnding === 'function') {
+            playSfxEnding();
+        }
+        // 戦闘BGMを停止
+        if (typeof stopAllBGM === 'function') stopAllBGM();
+        document.getElementById('ending-title').innerText = "TRUE ENDING";
+        document.getElementById('ending-msg').innerText = `偽の王を追い出し、本物の王が街に戻った！`;
+        showScreen('ending-screen');
+        setTimeout(() => {
+            if (typeof playBGM === 'function') playBGM('bgm-ending');
+        }, 200);
+        return;
+    }
+    
+    // 水の精霊に勝利：ショップのように選択肢（1:武器 2:レベル倍増 3:森へ行く）
+    if (enemy.name === "水の精霊") {
+        if (typeof showWaterSpiritRewardMenu === 'function') {
+            showWaterSpiritRewardMenu();
+        } else {
+            handleBattleRewards(enemy);
+            // 戦闘BGMを確実に停止してからエリアBGMに切り替え
+            if (typeof stopAllBGM === 'function') stopAllBGM();
+            showScreen('main-screen');
+            drawMap();
+            updateStatus();
+            setTimeout(() => {
+                playAreaBGM(hero.currentArea);
+            }, 100);
+            checkLevelUp();
+            if (typeof checkAllyLevelUps === 'function') checkAllyLevelUps();
+        }
+        return;
+    }
+    
+    // 通常戦闘の報酬処理
+    handleBattleRewards(enemy);
+    
+    // マップに戻る（戦闘BGMを確実に停止してからエリアBGMに切り替え）
+    if (typeof stopAllBGM === 'function') stopAllBGM();
+    showScreen('main-screen'); 
+    drawMap(); 
+    updateStatus();
+    setTimeout(() => {
+        playAreaBGM(hero.currentArea);
+    }, 100);
+    checkLevelUp();
+    if (typeof checkAllyLevelUps === 'function') checkAllyLevelUps();
+}
+
+/**
+ * 戦闘報酬処理
+ * @param {Object} enemy - 倒した敵
+ */
+function handleBattleRewards(enemy) {
+    // 桃仙人を倒した場合の特別報酬
+    if (enemy.name === "桃仙人") {
+        showAlert("桃仙人:「見事だ。お主に真の力を授けよう。」\n勇者の攻撃力が大幅にアップした！");
+        hero.atk += 30;
+        worldMaps["ruined_village"].data[3][6] = TILE.RUINS; // 桃仙人を床に戻す
+    }
+    
+    // レア猫がみさまを倒した場合の特別報酬
+    if (enemy.name === "レア猫がみさま") {
+        // マボロシの杖を手に入れる
+        if (!hero.items) {
+            hero.items = [];
+        }
+        hero.items.push({ name: "マボロシの杖", type: "weapon", atk: 100 });
+        showAlert("レア猫がみさまを倒した！\n「マボロシの杖」を手に入れた！\n攻撃力が100アップした！");
+        hero.atk += 100;
+    }
+    
+    // 水の精霊は報酬メニューで処理するためここでは経験値・ゴールド・タイル変更なし
+    if (enemy.name === "水の精霊") {
+        return;
+    }
+    
+    // 経験値とゴールド獲得（主人公・仲間全員に経験値）
+    party.forEach(m => {
+        m.exp = (m.exp || 0) + enemy.exp;
+    });
+    hero.gold += (enemy.gold || 0); 
+    
+    // マップ上の敵タイルを削除
+    const map = worldMaps[hero.currentArea];
+    if (map.data[hero.y][hero.x] === TILE.ENEMY) {
+        map.data[hero.y][hero.x] = TILE.RUINS;
+    }
+    // 魔物の森で森の魔女を倒したらそのマスを空に
+    if (hero.currentArea === "monster_forest" && enemy.name === "森の魔女" && map.data[hero.y] && map.data[hero.y][hero.x] === TILE.FOREST_WITCH) {
+        map.data[hero.y][hero.x] = TILE.EMPTY;
+    }
+}

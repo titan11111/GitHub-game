@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>見積書メーカー</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #07090f;
+      --surface:  #0c1018;
+      --raised:   #101520;
+      --border:   #1a2540;
+      --text:     #b8c8e0;
+      --muted:    #3c5070;
+      --bright:   #dce8f8;
+      --cyan:     #38bdf8;
+      --cyan-dim: #0c2840;
+      --green:    #4ade80;
+      --red:      #f87171;
+      --mono:     'IBM Plex Mono', monospace;
+      --sans:     'Outfit', sans-serif;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); }
+
+    /* ── PAGE GRID ── */
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 1.1rem 2.6rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: baseline; gap: 1rem; }
+
+    header h1 {
+      font-family: var(--mono);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+
+    header span {
+      font-size: .7rem;
+      color: var(--muted);
+      letter-spacing: .1em;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 1.4rem;
+    }
+
+    .meta-field {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .72rem;
+    }
+
+    .meta-field label { color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+
+    .meta-field input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      padding: .2rem .4rem;
+      font-family: var(--mono);
+      font-size: .72rem;
+      color: var(--text);
+      outline: none;
+      width: 120px;
+      transition: border-color .2s;
+    }
+
+    .meta-field input:focus { border-color: var(--cyan); }
+
+    /* ── MAIN ── */
+    main { padding: 2rem 2.6rem; overflow-y: auto; }
+
+    /* ── TABLE SECTION ── */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+
+    /* Header row */
+    thead tr {
+      background: var(--raised);
+      border-bottom: 1px solid var(--border);
+    }
+
+    thead th {
+      padding: .75rem 1rem;
+      font-family: var(--mono);
+      font-size: .64rem;
+      font-weight: 500;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    thead th.right { text-align: right; }
+    thead th.center { text-align: center; }
+
+    /* Body rows */
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      transition: background .15s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--raised); }
+
+    /* Row animation */
+    tbody tr {
+      animation: rowIn .22s ease forwards;
+    }
+
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    tbody tr.removing {
+      animation: rowOut .2s ease forwards;
+    }
+
+    @keyframes rowOut {
+      to { opacity: 0; transform: translateX(12px); height: 0; padding: 0; }
+    }
+
+    td {
+      padding: .6rem 1rem;
+      vertical-align: middle;
+    }
+
+    td.num-cell {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--muted);
+      text-align: center;
+      width: 44px;
+    }
+
+    td.del-cell { width: 40px; text-align: center; }
+
+    /* Inputs inside table */
+    td input[type="text"],
+    td input[type="number"] {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: .35rem .5rem;
+      font-family: var(--sans);
+      font-size: .88rem;
+      color: var(--bright);
+      outline: none;
+      transition: border-color .18s, background .18s;
+      width: 100%;
+    }
+
+    td input[type="text"]:focus,
+    td input[type="number"]:focus {
+      border-color: var(--cyan);
+      background: var(--cyan-dim);
+    }
+
+    td input[type="number"] {
+      font-family: var(--mono);
+      text-align: right;
+    }
+
+    td input[type="number"]::-webkit-inner-spin-button,
+    td input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .col-item  { min-width: 240px; }
+    .col-qty   { width: 90px; }
+    .col-unit  { width: 80px; }
+    .col-price { width: 140px; }
+    .col-amount { width: 140px; }
+
+    .amount-cell {
+      font-family: var(--mono);
+      font-size: .88rem;
+      font-weight: 600;
+      text-align: right;
+      color: var(--green);
+      padding-right: 1.2rem;
+      letter-spacing: .03em;
+      white-space: nowrap;
+    }
+
+    .amount-cell.zero { color: var(--muted); }
+
+    /* Delete button */
+    .del-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: .75rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+      line-height: 1;
+    }
+
+    .del-btn:hover { border-color: var(--red); color: var(--red); background: rgba(248,113,113,.08); }
+
+    /* ── ADD ROW BUTTON ── */
+    .add-row-btn {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-top: .8rem;
+      padding: .55rem 1rem;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--sans);
+      font-size: .78rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      width: 100%;
+      transition: all .18s;
+    }
+
+    .add-row-btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+
+    .add-row-btn svg { flex-shrink: 0; }
+
+    /* ── BOTTOM BAR ── */
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 2rem;
+      gap: 2rem;
+    }
+
+    /* Tax toggle */
+    .tax-section { display: flex; flex-direction: column; gap: .8rem; }
+
+    .tax-label {
+      font-size: .65rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .tax-toggle {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .tax-btn {
+      flex: 1;
+      padding: .5rem .9rem;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: .78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .18s;
+      letter-spacing: .06em;
+    }
+
+    .tax-btn.active {
+      background: var(--cyan);
+      color: #07090f;
+    }
+
+    .tax-btn:not(:last-child) { border-right: 1px solid var(--border); }
+
+    /* Summary box */
+    .summary {
+      min-width: 300px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .7rem 1.4rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .85rem;
+    }
+
+    .summary-row:last-child { border-bottom: none; }
+
+    .summary-row .label {
+      color: var(--muted);
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .summary-row .value {
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: .04em;
+    }
+
+    .summary-row.total {
+      background: var(--raised);
+      padding: 1rem 1.4rem;
+    }
+
+    .summary-row.total .label {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--cyan);
+      letter-spacing: .14em;
+    }
+
+    .summary-row.total .value {
+      font-size: 1.25rem;
+      color: var(--cyan);
+    }
+
+    .summary-row.tax-excl .value { color: var(--text); }
+    .summary-row.tax-amount .value { color: var(--muted); }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: .9rem 2.6rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      justify-content: flex-end;
+      gap: .7rem;
+    }
+
+    .btn {
+      font-family: var(--sans);
+      font-size: .73rem;
+      font-weight: 500;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .55rem 1.2rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all .18s;
+    }
+
+    .btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    .btn-primary {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #07090f;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover { background: #7dd3fc; border-color: #7dd3fc; color: #07090f; }
+
+    /* ── PRINT ── */
+    @media print {
+      :root {
+        --bg: #fff; --surface: #fff; --raised: #f8f8f8; --border: #e0e0e0;
+        --text: #222; --muted: #888; --bright: #111; --cyan: #0369a1;
+        --green: #16a34a; --red: #dc2626; --cyan-dim: #eff6ff;
+      }
+      header { position: static; }
+      .add-row-btn, footer, .del-btn, .del-cell, .num-cell-head { display: none; }
+      tbody tr:hover { background: var(--surface); }
+      main { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="header-left">
+    <h1>Estimate</h1>
+    <span>見積書メーカー</span>
+  </div>
+  <div class="header-meta">
+    <div class="meta-field">
+      <label>No.</label>
+      <input type="text" id="meta-no" placeholder="EST-001" style="width:90px">
+    </div>
+    <div class="meta-field">
+      <label>宛先</label>
+      <input type="text" id="meta-client" placeholder="株式会社〇〇 御中">
+    </div>
+    <div class="meta-field">
+      <label>日付</label>
+      <input type="text" id="meta-date" placeholder="2026-06-10" style="width:100px">
+    </div>
+  </div>
+</header>
+
+<!-- ── MAIN ── -->
+<main>
+  <div class="table-wrap">
+    <table id="estimate-table">
+      <thead>
+        <tr>
+          <th class="del-cell"></th>
+          <th class="center num-cell-head">#</th>
+          <th class="col-item">品目・内容</th>
+          <th class="right col-qty">数量</th>
+          <th class="col-unit">単位</th>
+          <th class="right col-price">単価</th>
+          <th class="right col-amount">金額</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <!-- rows injected by JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <button class="add-row-btn" onclick="addRow()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    行を追加
+  </button>
+
+  <div class="bottom-bar">
+    <!-- Tax toggle + memo -->
+    <div class="tax-section">
+      <div class="tax-label">消費税率</div>
+      <div class="tax-toggle">
+        <button class="tax-btn" data-rate="0"   onclick="setTax(0,   this)">非課税</button>
+        <button class="tax-btn" data-rate="8"   onclick="setTax(8,   this)">8%</button>
+        <button class="tax-btn active" data-rate="10" onclick="setTax(10, this)">10%</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary">
+      <div class="summary-row tax-excl">
+        <span class="label">小計（税抜）</span>
+        <span class="value" id="s-subtotal">¥ 0</span>
+      </div>
+      <div class="summary-row tax-amount">
+        <span class="label" id="s-tax-label">消費税（10%）</span>
+        <span class="value" id="s-tax">¥ 0</span>
+      </div>
+      <div class="summary-row total">
+        <span class="label">合計（税込）</span>
+        <span class="value" id="s-total">¥ 0</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <button class="btn" onclick="clearAll()">全クリア</button>
+  <button class="btn btn-primary" onclick="window.print()">印刷 / 保存</button>
+</footer>
+
+<script>
+  let taxRate = 10;
+  let rowCount = 0;
+
+  /* ── フォーマット ── */
+  function fmt(n) {
+    if (!n && n !== 0) return '—';
+    return '¥ ' + Math.floor(n).toLocaleString('ja-JP');
+  }
+
+  /* ── 行追加 ── */
+  function addRow() {
+    rowCount++;
+    const tbody = document.getElementById('tbody');
+    const tr = document.createElement('tr');
+    tr.dataset.id = rowCount;
+    tr.innerHTML = `
+      <td class="del-cell">
+        <button class="del-btn" onclick="removeRow(this)" title="削除">×</button>
+      </td>
+      <td class="num-cell">${tbody.children.length + 1}</td>
+      <td class="col-item">
+        <input type="text" placeholder="品目・サービス名を入力" oninput="recalc()">
+      </td>
+      <td class="col-qty">
+        <input type="number" min="0" step="1" placeholder="1" value="" oninput="recalc()">
+      </td>
+      <td class="col-unit">
+        <input type="text" placeholder="式" style="text-align:center">
+      </td>
+      <td class="col-price">
+        <input type="number" min="0" step="1" placeholder="0" value="" oninput="recalc()">
+      </td>
+      <td class="amount-cell zero" data-amount="0">¥ 0</td>
+    `;
+    tbody.appendChild(tr);
+    renumber();
+    tr.querySelector('input[type="text"]').focus();
+  }
+
+  /* ── 行削除 ── */
+  function removeRow(btn) {
+    const tr = btn.closest('tr');
+    tr.classList.add('removing');
+    setTimeout(() => { tr.remove(); renumber(); recalc(); }, 200);
+  }
+
+  /* ── 連番振り直し ── */
+  function renumber() {
+    document.querySelectorAll('#tbody tr').forEach((tr, i) => {
+      tr.querySelector('.num-cell').textContent = i + 1;
+    });
+  }
+
+  /* ── 再計算 ── */
+  function recalc() {
+    let subtotal = 0;
+
+    document.querySelectorAll('#tbody tr').forEach(tr => {
+      const qty   = parseFloat(tr.querySelectorAll('input[type="number"]')[0]?.value) || 0;
+      const price = parseFloat(tr.querySelectorAll('input[type="number"]')[1]?.value) || 0;
+      const amount = qty * price;
+      subtotal += amount;
+
+      const cell = tr.querySelector('.amount-cell');
+      if (amount === 0) {
+        cell.textContent = '¥ 0';
+        cell.classList.add('zero');
+      } else {
+        cell.textContent = fmt(amount);
+        cell.classList.remove('zero');
+      }
+      cell.dataset.amount = amount;
+    });
+
+    const tax   = Math.floor(subtotal * taxRate / 100);
+    const total = subtotal + tax;
+
+    document.getElementById('s-subtotal').textContent = fmt(subtotal);
+    document.getElementById('s-tax').textContent      = fmt(tax);
+    document.getElementById('s-total').textContent    = fmt(total);
+  }
+
+  /* ── 税率変更 ── */
+  function setTax(rate, btn) {
+    taxRate = rate;
+    document.querySelectorAll('.tax-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const label = rate === 0 ? '非課税（0%）' : `消費税（${rate}%）`;
+    document.getElementById('s-tax-label').textContent = label;
+    recalc();
+  }
+
+  /* ── 全クリア ── */
+  function clearAll() {
+    if (!confirm('全ての行を削除しますか？')) return;
+    document.getElementById('tbody').innerHTML = '';
+    rowCount = 0;
+    recalc();
+  }
+
+  /* ── 初期行 ── */
+  const today = new Date();
+  const ymd = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  document.getElementById('meta-date').value = ymd;
+
+  addRow();
+  addRow();
+  addRow();
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>149 Horrafumi — 3Dホラー</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" tabindex="0"></canvas>
+
+    <div id="hud" class="hud hidden" aria-hidden="true">
+      <p id="hudHint" class="hud-hint"></p>
+    </div>
+
+    <div id="pointerLockHint" class="pointer-hint hidden">クリックでマウス視点（再度ESC）</div>
+
+    <button type="button" id="muteBtn" class="mute-btn" aria-label="ミュート切替" title="ミュート">🔊</button>
+
+    <!-- スタート画面 -->
+    <div id="startScreen" class="screen">
+      <h1 id="gameTitle">Horrafumi</h1>
+      <p id="gameDesc">暗い廃ビルから、外光の差す出口ドアを目指して脱出します。WASD / 矢印で移動。マウスで視点（モバイルはボタン＋画面上部スワイプ）。</p>
+      <p class="warn-text">光の届く範囲だけが頼りです。気配が近いほど音がうるさくなります。</p>
+      <button type="button" id="startBtn" class="btn-primary">タップして開始</button>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div id="gameoverScreen" class="screen hidden">
+      <h2>…気づいたときには</h2>
+      <p id="gameoverMsg" class="submsg">暗闇の中で何かに捕まった。</p>
+      <button type="button" id="retryBtn" class="btn-primary">もう一度</button>
+    </div>
+
+    <!-- クリア画面 -->
+    <div id="clearScreen" class="screen hidden">
+      <h2>脱出</h2>
+      <p class="submsg">出口の冷たい風を感じた。</p>
+      <button type="button" id="clearRetryBtn" class="btn-primary">もう一度</button>
+    </div>
+
+    <!-- モバイル操作 -->
+    <div id="mobileControls" class="hidden">
+      <div class="mobile-cluster left">
+        <button type="button" id="btnLeft" class="mobile-btn" aria-label="左を向く">↶</button>
+        <button type="button" id="btnRight" class="mobile-btn" aria-label="右を向く">↷</button>
+      </div>
+      <div class="mobile-cluster center">
+        <button type="button" id="btnUp" class="mobile-btn" aria-label="前進">▲</button>
+        <button type="button" id="btnDown" class="mobile-btn" aria-label="後退">▼</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="config.js"></script>
+  <script src="horror-3d.js"></script>
+</body>
+</html>

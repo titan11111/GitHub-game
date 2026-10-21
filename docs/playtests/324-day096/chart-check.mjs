@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { songs, Performance } from '../../../324-day096/chart.js';
+import { songs, Performance } from '../../../324-odaiko-datsuryoku/chart.js';
 for (const song of songs) {
   const game = new Performance(song);
   for (const note of game.notes) {

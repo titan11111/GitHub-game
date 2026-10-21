@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="毎日の習慣を魔物にして倒し、レベルを上げる習慣RPG。">
+<title>299｜ならわしクエスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#ffffff;
+    --bg:#000000;
+    --sky:#0b1a3a;
+    --gold:#ffd76a;
+    --dmg:#ff8a5c;
+    --dim:#9aa6c4;
+    --win-pad:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'DotGothic16','MS Gothic','Hiragino Kaku Gothic ProN',monospace;
+    background:
+      radial-gradient(120% 70% at 50% 0%, #16305e 0%, #060a18 55%, #000 100%);
+    color:var(--ink);
+    min-height:100vh;
+    padding:16px 12px 40px;
+    -webkit-font-smoothing:none;
+    letter-spacing:.04em;
+  }
+  .stage{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+
+  .win{
+    background:#000;
+    border:3px solid var(--ink);
+    border-radius:8px;
+    box-shadow:0 0 0 3px #000, 0 3px 0 3px rgba(255,255,255,.08);
+    padding:var(--win-pad);
+  }
+
+  .title{text-align:center;padding:10px 0 2px}
+  .title h1{font-size:22px;font-weight:400;line-height:1.5}
+  .title p{font-size:12px;color:var(--dim);margin-top:4px}
+
+  /* ステータス */
+  .status{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;font-size:15px}
+  .status .name{grid-column:1 / -1;font-size:17px;border-bottom:2px dotted rgba(255,255,255,.25);padding-bottom:6px;margin-bottom:4px}
+  .row{display:flex;justify-content:space-between;gap:8px}
+  .row b{font-weight:400;color:var(--dim)}
+  .row span{font-variant-numeric:tabular-nums}
+  .gold{color:var(--gold)}
+
+  /* 戦闘フィールド */
+  .field{display:flex;justify-content:space-around;align-items:flex-end;gap:6px;min-height:120px;padding:10px 4px 6px}
+  .mon{text-align:center;width:31%;transition:opacity .2s}
+  .mon .face{font-size:40px;line-height:1.1;display:block}
+  .mon .nm{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.3}
+  .mon.hit{animation:shake .28s steps(2) 3}
+  .mon.down{opacity:.28;filter:grayscale(1)}
+  @keyframes shake{0%{transform:translateX(-6px)}100%{transform:translateX(6px)}}
+  .pop{color:var(--dmg);font-size:15px;height:18px}
+
+  /* メッセージ */
+  .msg{min-height:96px;font-size:15px;line-height:1.75;position:relative;cursor:pointer}
+  .msg .cursor{position:absolute;right:10px;bottom:6px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  /* コマンド */
+  .cmds{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}
+  button{
+    font-family:inherit;font-size:16px;color:var(--ink);background:none;
+    border:0;text-align:left;padding:7px 6px 7px 22px;cursor:pointer;position:relative;
+    border-radius:4px;letter-spacing:.06em;
+  }
+  button:hover,button:focus-visible{background:rgba(255,255,255,.12);outline:none}
+  button:hover::before,button:focus-visible::before{content:"▶";position:absolute;left:4px}
+  button[disabled]{color:#5a6480;cursor:default}
+  button[disabled]:hover{background:none}
+  button[disabled]:hover::before{content:none}
+
+  /* 入力 */
+  .quest{display:flex;flex-direction:column;gap:12px}
+  .q{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
+  .q label{line-height:1.4}
+  .q em{font-style:normal;color:var(--dim);font-size:11px;display:block}
+  input[type=number]{
+    font-family:inherit;font-size:18px;width:104px;text-align:right;
+    background:#000;color:var(--gold);border:2px solid var(--ink);border-radius:5px;padding:5px 8px;
+  }
+  input[type=number]:focus{outline:2px solid var(--gold);outline-offset:1px}
+  .unit{font-size:12px;color:var(--dim);width:26px}
+
+  /* にっし */
+  .log{font-size:13px;line-height:1.9;max-height:230px;overflow:auto}
+  .log div{display:flex;justify-content:space-between;border-bottom:1px dotted rgba(255,255,255,.18);gap:8px}
+  .empty{color:var(--dim);font-size:13px;line-height:1.8}
+
+  .lvup{color:var(--gold);text-shadow:0 0 10px rgba(255,215,106,.7)}
+  .hide{display:none}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="title">
+    <h1>ならわし クエスト</h1>
+    <p>まいにちの まものを たおして レベルを あげよう</p>
+  </div>
+
+  <div class="win" id="statusWin">
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="win hide" id="fieldWin">
+    <div class="field" id="field"></div>
+  </div>
+
+  <div class="win msg" id="msgWin" onclick="advance()">
+    <span id="msgText"></span><span class="cursor hide" id="cursor">▼</span>
+  </div>
+
+  <div class="win" id="panel"></div>
+</div>
+
+<script>
+const SAVE_KEY = 'dqhabit:save';
+
+const MONSTERS = [
+  {id:'squat', face:'👾', name:'スクワットン',    label:'スクワット', unit:'かい',  goal:30, exp:2,  step:1},
+  {id:'sleep', face:'🫧', name:'ねむりスライム',  label:'すいみん',   unit:'じかん', goal:7,  exp:12, step:0.5},
+  {id:'study', face:'🐉', name:'まなびのドラゴン', label:'べんきょう', unit:'ページ', goal:5,  exp:15, step:1}
+];
+
+let S = {
+  name:'タイタン', level:1, exp:0, streak:0, last:null, best:0,
+  power:5, guts:5, wits:5,
+  goals:{squat:30, sleep:7, study:5},
+  logs:{}
+};
+
+const need = lv => lv * 80;
+const today = () => new Date().toLocaleDateString('sv-SE');
+const $ = id => document.getElementById(id);
+
+/* ---------- セーブ ---------- */
+async function load(){
+  try{
+    const r = await window.storage.get(SAVE_KEY);
+    if(r && r.value) S = Object.assign(S, JSON.parse(r.value));
+  }catch(e){ /* はじめての ぼうけん */ }
+}
+async function save(){
+  try{ await window.storage.set(SAVE_KEY, JSON.stringify(S)); }
+  catch(e){ say(['きろくに しっぱいした！ でんぱの ぐあいを たしかめよう。']); }
+}
+
+/* ---------- メッセージ ---------- */
+let queue = [], typing = false, after = null;
+function say(lines, done){
+  queue = lines.slice(); after = done || null; next();
+}
+function next(){
+  if(!queue.length){ $('cursor').classList.add('hide'); const f=after; after=null; if(f) f(); return; }
+  const line = queue.shift();
+  const t = $('msgText'); t.innerHTML = ''; typing = true; $('cursor').classList.add('hide');
+  const plain = line.replace(/<[^>]*>/g,'');
+  let i = 0;
+  const timer = setInterval(()=>{
+    i++;
+    t.innerHTML = line.startsWith('<') ? line.slice(0, line.indexOf('>')+1) + plain.slice(0,i) + '</span>'
+                                       : plain.slice(0,i);
+    if(i >= plain.length){ clearInterval(timer); typing=false; t.innerHTML = line;
+      if(queue.length) $('cursor').classList.remove('hide'); else next(); }
+  }, 26);
+}
+function advance(){
+  if(typing) return;
+  if(queue.length) next();
+}
+document.addEventListener('keydown', e => { if(e.key===' '||e.key==='Enter') advance(); });
+
+/* ---------- がめん ---------- */
+function drawStatus(){
+  const done = !!S.logs[today()];
+  $('status').innerHTML = `
+    <div class="name">${S.name} <span style="font-size:12px;color:var(--dim)">${done?'きょうは たたかった':'きょうは まだ'}</span></div>
+    <div class="row"><b>レベル</b><span class="gold">${S.level}</span></div>
+    <div class="row"><b>けいけんち</b><span>${S.exp}</span></div>
+    <div class="row"><b>つぎまで</b><span>${need(S.level)-S.exp}</span></div>
+    <div class="row"><b>れんぞく</b><span>${S.streak} にち</span></div>
+    <div class="row"><b>ちから</b><span>${S.power}</span></div>
+    <div class="row"><b>こんき</b><span>${S.guts}</span></div>`;
+}
+
+function menu(){
+  $('fieldWin').classList.add('hide');
+  const fought = !!S.logs[today()];
+  $('panel').innerHTML = `<div class="cmds">
+    <button onclick="quest()">${fought?'たたかいなおす':'たたかう'}</button>
+    <button onclick="showLog()">にっし</button>
+    <button onclick="showGoals()">さくせん</button>
+    <button onclick="showStrength()">つよさ</button>
+  </div>`;
+  drawStatus();
+}
+
+function quest(){
+  $('fieldWin').classList.remove('hide');
+  $('field').innerHTML = MONSTERS.map(m=>`
+    <div class="mon" id="mon-${m.id}">
+      <div class="pop" id="pop-${m.id}"></div>
+      <span class="face">${m.face}</span>
+      <div class="nm">${m.name}</div>
+    </div>`).join('');
+  const prev = S.logs[today()] || {};
+  $('panel').innerHTML = `<div class="quest">
+    ${MONSTERS.map(m=>`<div class="q">
+      <label>${m.label}<em>もくひょう ${S.goals[m.id]}${m.unit}</em></label>
+      <div><input type="number" id="in-${m.id}" min="0" step="${m.step}" value="${prev[m.id] ?? ''}" placeholder="0"><span class="unit">${m.unit}</span></div>
+    </div>`).join('')}
+    <div class="cmds"><button onclick="battle()">こうげきする</button><button onclick="menu()">にげる</button></div>
+  </div>`;
+  say(['まいにちの まものが あらわれた！','きょうの きろくを にゅうりょくしよう。']);
+}
+
+/* ---------- せんとう ---------- */
+function battle(){
+  const rec = {}, lines = [], pops = [];
+  let gained = 0, cleared = 0;
+  MONSTERS.forEach(m=>{
+    const v = Math.max(0, parseFloat($('in-'+m.id).value) || 0);
+    rec[m.id] = v;
+    const goal = S.goals[m.id];
+    const dmg = Math.round(v * m.exp * (1 + S.power/40));
+    gained += dmg;
+    if(v >= goal) cleared++;
+    pops.push({id:m.id, dmg, miss:v===0});
+    lines.push(v===0
+      ? `${m.name} は みのがしてくれた…`
+      : (v>=goal ? `<span class="gold">かいしんの いちげき！ ${m.name}に ${dmg}の ダメージ！</span>`
+                 : `${m.name}に ${dmg}の ダメージ！`));
+  });
+
+  if(cleared === MONSTERS.length){ gained += 60; }
+
+  const t = today();
+  const isNew = !S.logs[t];
+  S.logs[t] = Object.assign(rec, {exp:gained});
+
+  if(isNew){
+    const y = new Date(Date.now()-86400000).toLocaleDateString('sv-SE');
+    S.streak = (S.last === y) ? S.streak+1 : 1;
+    S.last = t;
+    S.best = Math.max(S.best, S.streak);
+    S.exp += gained;
+  }
+
+  const ups = [];
+  while(S.exp >= need(S.level)){
+    S.exp -= need(S.level); S.level++;
+    S.power += 2 + (cleared>=2?1:0); S.guts += 2; S.wits += 1;
+    ups.push(`<span class="lvup">レベルが ${S.level}に あがった！ ちから ${S.power} / こんき ${S.guts}</span>`);
+  }
+
+  // ダメージ演出
+  pops.forEach((p,i)=>setTimeout(()=>{
+    const el = $('mon-'+p.id);
+    $('pop-'+p.id).textContent = p.miss ? 'ミス' : p.dmg;
+    el.classList.add(p.miss ? 'down' : 'hit');
+    setTimeout(()=>el.classList.remove('hit'), 900);
+  }, i*260));
+
+  const tail = [];
+  tail.push(cleared===MONSTERS.length
+    ? '<span class="gold">すべての まものを たおした！ ボーナス 60！</span>'
+    : 'まものたちは にげていった…');
+  if(!isNew) tail.push('きょうの きろくを かきなおした。けいけんちは そのまま。');
+  else tail.push(`けいけんち ${gained}てんを かくとく！`);
+  if(S.streak>1) tail.push(`${S.streak}にち れんぞくで たたかっている！`);
+  ups.forEach(u=>tail.push(u));
+  if(ups.length) fanfare();
+
+  say([`${S.name}の こうげき！`, ...lines, ...tail], ()=>{ save(); menu(); });
+}
+
+function fanfare(){
+  try{
+    const ac = new (window.AudioContext||window.webkitAudioContext)();
+    [523,659,784,1046].forEach((f,i)=>{
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type='square'; o.frequency.value=f;
+      g.gain.setValueAtTime(.06, ac.currentTime+i*.09);
+      g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+i*.09+.22);
+      o.connect(g).connect(ac.destination);
+      o.start(ac.currentTime+i*.09); o.stop(ac.currentTime+i*.09+.24);
+    });
+  }catch(e){}
+}
+
+/* ---------- そのほかの コマンド ---------- */
+function showLog(){
+  $('fieldWin').classList.add('hide');
+  const keys = Object.keys(S.logs).sort().reverse().slice(0,30);
+  const body = keys.length
+    ? `<div class="log">${keys.map(k=>{
+        const l = S.logs[k];
+        return `<div><span>${k.slice(5).replace('-','/')}</span><span>${l.squat||0}かい ${l.sleep||0}h ${l.study||0}p</span><span class="gold">+${l.exp||0}</span></div>`;
+      }).join('')}</div>`
+    : `<p class="empty">まだ ぼうけんの きろくは ない。<br>「たたかう」から はじめよう。</p>`;
+  $('panel').innerHTML = body + `<div class="cmds" style="margin-top:12px"><button onclick="menu()">もどる</button></div>`;
+  say([`ぼうけんの しょ：${keys.length}にちぶんの きろく。さいこう れんぞくは ${S.best}にち。`]);
+}
+
+function showGoals(){
+  $('fieldWin').classList.add('hide');
+  $('panel').innerHTML = `<div class="quest">
+    ${MONSTERS.map(m=>`<div class="q">
+      <label>${m.label}の もくひょう<em>${m.name}</em></label>
+      <div><input type="number" id="g-${m.id}" min="0" step="${m.step}" value="${S.goals[m.id]}"><span class="unit">${m.unit}</span></div>
+    </div>`).join('')}
+    <div class="q"><label>なまえ</label><div><input type="text" id="g-name" value="${S.name}" style="font-family:inherit;font-size:16px;width:140px;background:#000;color:var(--gold);border:2px solid #fff;border-radius:5px;padding:5px 8px;text-align:right"></div></div>
+    <div class="cmds"><button onclick="saveGoals()">きめる</button><button onclick="menu()">もどる</button></div>
+  </div>`;
+  say(['もくひょうを きめよう。ちいさく はじめるのが つよさの ひけつ。']);
+}
+function saveGoals(){
+  MONSTERS.forEach(m=>{ S.goals[m.id] = Math.max(0, parseFloat($('g-'+m.id).value)||0); });
+  S.name = ($('g-name').value || 'タイタン').slice(0,8);
+  save(); say([`${S.name}は さくせんを きめた！`], menu);
+}
+
+function showStrength(){
+  $('fieldWin').classList.add('hide');
+  const days = Object.keys(S.logs).length;
+  const sum = k => Object.values(S.logs).reduce((a,l)=>a+(l[k]||0),0);
+  $('panel').innerHTML = `<div class="status">
+    <div class="row"><b>たたかった日</b><span>${days} にち</span></div>
+    <div class="row"><b>さいこう れんぞく</b><span class="gold">${S.best} にち</span></div>
+    <div class="row"><b>スクワット</b><span>${sum('squat')} かい</span></div>
+    <div class="row"><b>すいみん</b><span>${sum('sleep')} じかん</span></div>
+    <div class="row"><b>べんきょう</b><span>${sum('study')} ページ</span></div>
+    <div class="row"><b>そうけいけんち</b><span>${sum('exp')}</span></div>
+  </div><div class="cmds" style="margin-top:12px"><button onclick="menu()">もどる</button></div>`;
+  say([`${S.name} レベル${S.level}。ここまで よく つづけている。`]);
+}
+
+/* ---------- はじまり ---------- */
+(async ()=>{
+  await load();
+  menu();
+  const done = !!S.logs[today()];
+  say(done
+    ? [`ようこそ もどった ${S.name}。`, 'きょうの まものは もう たおしてある。ゆっくり やすもう。']
+    : [`${S.name}よ、よくきた。`, 'きょうも まものが まっている。「たたかう」を えらぼう。']);
+})();
+</script>
+</body>
+</html>

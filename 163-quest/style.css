@@ -1,0 +1,59 @@
+  :root{
+    --bg:#0b1020; --panel:#141b33; --ink:#e8eefc; --dim:#8aa0c8;
+    --blue:#4aa3ff; --red:#ff5a5a; --gold:#ffd24a; --green:#5ce06b;
+    --grid:#26345c; --shadow:#060912;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;touch-action:manipulation}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'Courier New',monospace; font-weight:bold;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding:10px;
+    -webkit-font-smoothing:none;
+  }
+  #wrap{
+    width:880px; max-width:100%;
+    background:var(--panel);
+    border:4px solid var(--grid);
+    border-radius:8px;
+    box-shadow:0 0 0 4px var(--shadow), 0 18px 40px rgba(0,0,0,.6);
+    overflow:hidden;
+  }
+  #topbar{
+    display:flex; align-items:center; gap:14px;
+    padding:8px 12px; background:#0e1530;
+    border-bottom:3px solid var(--grid);
+    font-size:13px; letter-spacing:1px;
+  }
+  #topbar .tag{color:var(--gold)}
+  #topbar .blue{color:var(--blue)}
+  #topbar .red{color:var(--red)}
+  #topbar .turn{margin-left:auto;color:var(--dim)}
+  canvas{display:block; width:100%; image-rendering:pixelated; background:#070b18}
+  #controls{
+    display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+    padding:8px 12px; background:#0e1530; border-top:3px solid var(--grid);
+  }
+  button{
+    font-family:inherit; font-weight:bold; font-size:12px;
+    color:var(--ink); background:#1c294d; border:2px solid #34507f;
+    padding:6px 10px; border-radius:5px; cursor:pointer; letter-spacing:1px;
+    transition:transform .08s ease, opacity .08s ease, background .12s ease, border-color .12s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button:active:not(:disabled){transform:scale(.94);opacity:.9}
+  button.pulse{animation:btnPulse .2s ease}
+  button:hover:not(:disabled){background:#264070; border-color:#4aa3ff}
+  button:disabled{opacity:.35; cursor:not-allowed}
+  button.warn{border-color:#7a3b3b;background:#3a1c1c}
+  button.warn:hover:not(:disabled){background:#5a2424;border-color:#ff5a5a}
+  button.warn.confirm{border-color:#ffd24a;background:#5a4620;color:#ffd24a}
+  #msg{margin-left:auto;color:var(--dim);font-size:12px;min-height:16px}
+  #legend{padding:6px 12px;font-size:11px;color:var(--dim);background:#0b1228;border-top:2px solid var(--grid);line-height:1.6}
+  .k{color:var(--gold)}
+  @keyframes btnPulse{
+    0%{transform:scale(1)}
+    40%{transform:scale(.9)}
+    100%{transform:scale(1)}
+  }

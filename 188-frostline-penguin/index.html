@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#061728">
+  <meta name="description" content="ペンギンが空を駆ける縦スクロールシューティング、FROSTLINE PENGUIN">
+  <title>FROSTLINE PENGUIN</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="game" aria-label="FROSTLINE PENGUIN ゲーム画面">
+    <canvas id="gameCanvas"></canvas>
+    <div id="hud" class="hidden" aria-live="polite">
+      <div class="hud-row">
+        <span>SCORE <b id="score">0000000</b></span>
+        <span>×<b id="multiplier">1.0</b></span>
+        <span>POWER <b id="power">1</b></span>
+      </div>
+      <div class="meters">
+        <label>HP <i><em id="hpFill"></em></i></label>
+        <label>FROST <i><em id="frostFill"></em></i></label>
+      </div>
+      <div id="bossHud" class="hidden"><span id="bossPhase">PHASE 1</span><i><em id="bossFill"></em></i></div>
+    </div>
+
+    <button id="muteButton" class="icon-button" type="button" aria-label="音声をミュート">🔊</button>
+    <button id="bombButton" class="bomb-button hidden" type="button" aria-label="フロストシールド">
+      <b>ICE</b><span>×<em id="bombs">3</em></span>
+    </button>
+
+    <section id="titleScreen" class="screen active">
+      <div class="eyebrow">ARCTIC SKY PATROL / 188</div>
+      <h1>FROSTLINE<br><span>PENGUIN</span></h1>
+      <div class="penguin-mark" aria-hidden="true"><i></i><b>▲</b></div>
+      <p>かすめて凍らせ、空を取り戻せ。</p>
+      <button id="startButton" class="primary-button" type="button">TAP TO START</button>
+      <small id="bestScore">BEST 0000000</small>
+      <ol id="topScores" aria-label="ハイスコア TOP 5"></ol>
+    </section>
+
+    <section id="howScreen" class="screen">
+      <div class="card">
+        <p class="eyebrow">HOW TO FLY</p>
+        <h2>氷弾のそばほど、強くなる。</h2>
+        <div class="how-grid">
+          <p><b>MOVE</b>画面をドラッグ<br>PC: WASD / 矢印</p>
+          <p><b>AUTO SHOT</b>自動連射<br>POWER 2で拡散、3で追尾</p>
+          <p><b>GRAZE</b>敵弾をかすめて<br>倍率とFROSTを上げる</p>
+          <p><b>ICE SHIELD</b>右下 / Xキー<br>弾を凍らせ経験値に変換</p>
+        </div>
+        <button id="playButton" class="primary-button" type="button">出撃する</button>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen">
+      <div class="card result-card">
+        <p class="eyebrow" id="resultKicker">MISSION COMPLETE</p>
+        <h2 id="resultTitle">氷空を奪還！</h2>
+        <strong id="finalScore">0000000</strong>
+        <p id="rankText">RANK A</p>
+        <p id="achievementText"></p>
+        <button id="retryButton" class="primary-button" type="button">タイトルへ</button>
+      </div>
+    </section>
+
+    <div id="warning" class="warning hidden"><span>WARNING</span><small>HEAT SIGNATURE APPROACHING</small></div>
+    <div id="message" aria-live="assertive"></div>
+    <div id="fatalError" class="hidden" role="alert">ゲームを読み込めませんでした。ページを再読み込みしてください。</div>
+  </main>
+  <script src="stage2.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

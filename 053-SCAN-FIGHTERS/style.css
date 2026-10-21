@@ -1,0 +1,114 @@
+:root{
+    --bg:#0f1115;
+    --panel:#171a21;
+    --panel-2:#1e232d;
+    --text:#e8ecf1;
+    --muted:#9aa3af;
+    --accent:#8ab4ff;
+    --good:#34d399;
+    --bad:#f87171;
+    --warn:#fbbf24;
+    --radius:16px;
+    --gap:10px;
+    --tap:52px; /* 最低タップ領域 */
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    --size: 17px; /* 文字サイズの基準（ボタンで変更） */
+  }
+  
+  * { box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); margin:0; font-family: var(--font); font-size: var(--size); line-height: 1.6; -webkit-text-size-adjust: 100%; }
+  .safe-top   { padding-top: env(safe-area-inset-top); }
+  .safe-bottom{ padding-bottom: calc(env(safe-area-inset-bottom) + 8px); }
+  
+  #topbar{
+    position: sticky; top:0; z-index:10;
+    background: linear-gradient(180deg, rgba(15,17,21,.98), rgba(15,17,21,.88));
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid #262a33;
+    padding: 8px 12px;
+  }
+  .game-title{ font-weight: 700; letter-spacing:.02em; margin-bottom:4px; }
+  .status{ display:flex; gap:12px; flex-wrap: wrap; color: var(--muted); font-size: .92em; }
+  .toolbar{ position: absolute; right:8px; top:8px; display:flex; gap:8px; }
+  .icon-btn{
+    min-width: var(--tap); height: var(--tap);
+    border-radius: 12px; border:1px solid #2a2f3a; background: var(--panel);
+    color: var(--text); padding:0 12px;
+  }
+  
+  #log{
+    padding: 10px 12px 80px;
+    max-width: 720px; margin: 0 auto;
+  }
+  .entry{
+    background: var(--panel);
+    border: 1px solid #262a33;
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: var(--gap);
+    box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  }
+  .entry small{ color: var(--muted); display:block; margin-bottom:4px; }
+  .entry.gm { border-left: 4px solid var(--accent); }
+  .entry.sys{ border-left: 4px solid var(--warn); }
+  .entry.player{ border-left: 4px solid #6ee7b7; }
+  .entry .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono", monospace; }
+  
+  .choices{
+    position: sticky; bottom: calc(env(safe-area-inset-bottom) + 64px);
+    display: grid; gap: 8px; grid-template-columns: 1fr; max-width:720px; margin: 0 auto; padding: 0 12px 8px;
+  }
+  .choice{
+    min-height: var(--tap);
+    display:flex; align-items:center; justify-content:center;
+    background: var(--panel-2); border:1px solid #2c3240; color: var(--text);
+    border-radius: 14px; padding: 10px 14px; text-align:center;
+  }
+  .choice:active{ transform: translateY(1px); }
+  
+  .command{
+    position: fixed; left:0; right:0; bottom: 0; z-index: 15;
+    display:flex; gap:8px; padding: 8px 12px;
+    background: linear-gradient(180deg, rgba(15,17,21,.1), rgba(15,17,21,.9) 30%, rgba(15,17,21,1));
+    backdrop-filter: blur(8px);
+    border-top: 1px solid #262a33;
+  }
+  #cmd{
+    flex:1; min-height: var(--tap);
+    border-radius: 14px; border:1px solid #2a2f3a; background: var(--panel);
+    color: var(--text); padding: 0 14px; outline: none;
+  }
+  .primary{
+    min-width: 88px; min-height: var(--tap);
+    border-radius: 14px; border:1px solid #2a2f3a; background: var(--accent);
+    color: #0b1020; font-weight: 700;
+  }
+  
+  dialog#menu::backdrop{ background: rgba(0,0,0,.5); }
+  #menu .sheet{
+    width: min(720px, 96vw); margin: 0 auto;
+    background: var(--panel); border:1px solid #2a2f3a; border-radius: 18px; padding: 12px;
+  }
+  .menu-grid{ display:grid; gap:12px; grid-template-columns: 1fr; }
+  .list{ margin:0; padding-left: 1em; }
+  .progress{ background: #11151d; border:1px solid #2a2f3a; border-radius: 12px; padding: 10px; }
+  .menu-actions{ display:flex; gap:8px; flex-wrap: wrap; }
+  .sheet-actions{ text-align:right; margin-top:8px; }
+  .secondary{ min-height: var(--tap); border-radius: 12px; background:#2a2f3a; color: var(--text); border:1px solid #2f3644; padding:0 14px; }
+  
+  /* 読みやすさ */
+  p{ margin: .4em 0; }
+  button{ font-size: 1em; }
+  #log .entry p + ul{ margin-top: .2em; }
+  kbd{ background:#263043; border-radius:6px; padding:2px 6px; }
+  
+  @media (min-width: 560px){
+    .choices{ grid-template-columns: 1fr 1fr; }
+    .menu-grid{ grid-template-columns: 1fr 1fr 1fr; }
+  }
+  
+  /* アクセシビリティ */
+  @media (prefers-reduced-motion: reduce){
+    *{ animation: none !important; transition: none !important; }
+  }
+  

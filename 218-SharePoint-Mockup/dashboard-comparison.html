@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>営業支援ダッシュボード - 3案比較</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .navbar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .navbar-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .comparison-info {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            border-left: 4px solid #667eea;
+            padding-left: 16px;
+        }
+
+        .info-card.b {
+            border-left-color: #f093fb;
+        }
+
+        .info-card.c {
+            border-left-color: #43e97b;
+        }
+
+        .info-card-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .info-card-description {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            min-height: 600px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-content iframe {
+            width: 100%;
+            height: 800px;
+            border: none;
+            display: block;
+        }
+
+        .comparison-table {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            background: #f5f7fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .badge.a {
+            background: #e0e7ff;
+            color: #667eea;
+        }
+
+        .badge.b {
+            background: #fce7f3;
+            color: #f093fb;
+        }
+
+        .badge.c {
+            background: #dcfce7;
+            color: #43e97b;
+        }
+
+        .check {
+            color: #43e97b;
+        }
+
+        .close {
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <!-- ナビバー -->
+    <div class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-title">📊 営業支援ダッシュボード - 3案比較</div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('a')">
+                    A案 | シンプル・モダン型
+                </button>
+                <button class="tab-btn" onclick="switchTab('b')">
+                    B案 | データ重視型
+                </button>
+                <button class="tab-btn" onclick="switchTab('c')">
+                    C案 | ビジュアル重視型
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- コンテナ -->
+    <div class="container">
+        <!-- 比較情報 -->
+        <div class="comparison-info">
+            <h2>3つのデザイン案の特徴</h2>
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-title">✨ A案：シンプル・モダン型</div>
+                    <div class="info-card-description">
+                        最初の5秒で情報を把握できるよう、シンプルなカード配置。
+                        営業サポーターが「今日何をするか」を素早く判断できるUI。
+                        Web標準で実装可能。最もバランスの取れた案。
+                    </div>
+                </div>
+                <div class="info-card b">
+                    <div class="info-card-title">📊 B案：データ重視型</div>
+                    <div class="info-card-description">
+                        Excelライクな詳細データ表示。数字を重視するユーザー向け。
+                        案件進捗やチーム比較が一目瞭然。
+                        現場管理者向けの詳細な情報密度。
+                    </div>
+                </div>
+                <div class="info-card c">
+                    <div class="info-card-title">🎨 C案：ビジュアル重視型</div>
+                    <div class="info-card-description">
+                        グラフ・チャート多用で、視覚的な直感性を重視。
+                        トレンド・ランキング・内訳が一目で分かる。
+                        ダッシュボードらしい豪華さ。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- タブコンテンツ -->
+        <div class="tab-content active" id="tab-a">
+            <iframe src="dashboard-ui-prototype.html"></iframe>
+        </div>
+        <div class="tab-content" id="tab-b">
+            <iframe src="dashboard-mockup-B案.html"></iframe>
+        </div>
+        <div class="tab-content" id="tab-c">
+            <iframe src="dashboard-mockup-C案.html"></iframe>
+        </div>
+
+        <!-- 比較表 -->
+        <div class="comparison-table">
+            <h2 style="margin-bottom: 20px;">機能・特性比較表</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>項目</th>
+                        <th><span class="badge a">A案：シンプル・モダン</span></th>
+                        <th><span class="badge b">B案：データ重視</span></th>
+                        <th><span class="badge c">C案：ビジュアル重視</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>情報把握の速さ</strong></td>
+                        <td><span class="check">★★★★★</span> 最速</td>
+                        <td><span class="check">★★★☆☆</span> 中程度</td>
+                        <td><span class="check">★★★★☆</span> 高速</td>
+                    </tr>
+                    <tr>
+                        <td><strong>情報量・詳細度</strong></td>
+                        <td><span class="check">★★★☆☆</span> 必要十分</td>
+                        <td><span class="check">★★★★★</span> 詳細</td>
+                        <td><span class="check">★★★★☆</span> 多い</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ビジュアル</strong></td>
+                        <td><span class="check">★★★★☆</span> モダン</td>
+                        <td><span class="close">★★☆☆☆</span> 地味</td>
+                        <td><span class="check">★★★★★</span> 豪華</td>
+                    </tr>
+                    <tr>
+                        <td><strong>実装難易度</strong></td>
+                        <td><span class="check">★★★☆☆</span> 中</td>
+                        <td><span class="check">★★☆☆☆</span> 低</td>
+                        <td><span class="check">★★★★☆</span> 高</td>
+                    </tr>
+                    <tr>
+                        <td><strong>レスポンシブ対応</strong></td>
+                        <td><span class="check">✓</span> 対応</td>
+                        <td><span class="close">△</span> 限定</td>
+                        <td><span class="check">✓</span> 対応</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ダークモード</strong></td>
+                        <td><span class="check">✓</span> 対応</td>
+                        <td><span class="close">✕</span> 非対応</td>
+                        <td><span class="close">△</span> 部分対応</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ターゲットユーザー</strong></td>
+                        <td>全員（バランス型）</td>
+                        <td>データ重視の管理者</td>
+                        <td>ビジュアル重視の若手</td>
+                    </tr>
+                    <tr>
+                        <td><strong>向いているシーン</strong></td>
+                        <td>日常の営業支援</td>
+                        <td>詳細な進捗管理</td>
+                        <td>説明会・デモ</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 推奨 -->
+        <div class="comparison-info" style="margin-top: 30px; background: #f0f4ff;">
+            <h2 style="color: #667eea;">📌 推奨案</h2>
+            <p style="margin-top: 12px; font-size: 14px; color: #333; line-height: 1.6;">
+                <strong style="color: #667eea;">A案（シンプル・モダン型）</strong> をベースに実装し、
+                B案のデータテーブル、C案のグラフ機能を段階的に追加する方式が最適です。<br>
+                <br>
+                理由：<br>
+                • 初期リリースは A案で速度重視（2026-09-19 まで）<br>
+                • Phase 2（10月）で B案の詳細テーブル追加<br>
+                • Phase 3（11月）で C案のチャート・ビジュアル拡張<br>
+                <br>
+                これにより、ユーザーフィードバックを踏まえながら、段階的に機能を充実させられます。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            // 全タブを非表示
+            document.getElementById('tab-a').classList.remove('active');
+            document.getElementById('tab-b').classList.remove('active');
+            document.getElementById('tab-c').classList.remove('active');
+
+            // 全ボタンを非アクティブ
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // 選択タブを表示
+            document.getElementById('tab-' + tab).classList.add('active');
+
+            // 選択ボタンをアクティブ
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

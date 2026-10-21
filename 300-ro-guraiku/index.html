@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0c0818">
+<meta name="description" content="無限深層サバイバー。敵を倒して強化を選び、何層まで耐えるか。">
+<title>300｜深層サバイバー</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-shell">
+  <footer id="control-deck" aria-label="操作盤">
+    <div class="dpad" id="dpad" aria-label="移動">
+      <span class="arr u">▲</span>
+      <span class="arr l">◀</span>
+      <span class="arr r">▶</span>
+      <span class="arr d">▼</span>
+      <span class="dpad-nub"></span>
+    </div>
+    <button type="button" class="game-btn slash" id="btnSlash" aria-label="斬る">斬</button>
+    <button type="button" class="game-btn dash" id="btnDash" aria-label="回避">避</button>
+    <div class="sys">
+      <button type="button" class="game-btn" id="btnMute" aria-label="ミュート">♪</button>
+      <button type="button" class="game-btn" id="btnPause" aria-label="ポーズ">Ⅱ</button>
+    </div>
+  </footer>
+  <div id="game-stage">
+    <div id="screen-wrap">
+      <canvas id="c" aria-label="戦場"></canvas>
+      <div id="hud">
+        <span id="hudStage">第1層</span>
+        <span id="hudHp"></span>
+        <span id="hudScore">0</span>
+      </div>
+      <div id="banner" aria-live="polite"></div>
+      <div id="title" class="screen">
+        <h1>深層サバイバー</h1>
+        <p>層をクリアするたび<strong>強化を1つ</strong>選べる。<br>斬る・避ける。障害物なしの開けた戦場で、何層まで耐える？</p>
+        <p id="titleBest" class="hint"></p>
+        <p class="hint">画面タップでも開始</p>
+        <button type="button" class="start-btn" id="btnStart">はじめる</button>
+      </div>
+      <div id="upgrade" class="screen hidden" aria-live="polite">
+        <h2 class="upgrade-head">強化を1つ選ぶ</h2>
+        <p id="upgradeSub"></p>
+        <div id="upgradeChoices" class="upgrade-col"></div>
+      </div>
+      <div id="end" class="screen hidden">
+        <h1 id="endTitle"></h1>
+        <p id="endMsg"></p>
+        <p class="hint">タップでもう一度</p>
+        <button type="button" class="start-btn" id="btnRetry">もう一度</button>
+      </div>
+    </div>
+  </div>
+</div>
+<dialog id="pauseDlg" aria-labelledby="pauseTitle">
+  <h2 id="pauseTitle">一時停止</h2>
+  <div class="col">
+    <button type="button" class="game-btn" id="btnResume">再開</button>
+    <button type="button" class="game-btn" id="btnMuteDlg">音の切り替え</button>
+    <button type="button" class="game-btn" id="btnQuit">タイトルへ</button>
+  </div>
+</dialog>
+<script src="script.js"></script>
+</body>
+</html>

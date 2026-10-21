@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>焚き火メシ 火加減マイスター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --sumi:#0B0F14;      /* 墨夜 */
+    --mori:#141D1B;      /* 森影 */
+    --okibi:#FF7A18;     /* 熾火 */
+    --honoo:#FFD36B;     /* 炎芯 */
+    --hai:#8C9A93;       /* 灰 */
+    --nama:#6FB3D2;      /* 生 */
+    --koge:#B3402A;      /* 焦げ */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    background:
+      radial-gradient(1200px 700px at 50% 12%, #16211f 0%, var(--sumi) 62%),
+      var(--sumi);
+    color:var(--hai);
+    font-family:"Zen Kaku Gothic New",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    gap:14px; padding:18px 14px 34px;
+    min-height:100%;
+  }
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;justify-content:center}
+  h1{
+    font-family:"Yuji Syuku",serif; font-weight:400;
+    font-size:clamp(22px,3.4vw,34px); letter-spacing:.12em;
+    color:var(--honoo); margin:0;
+    text-shadow:0 0 22px rgba(255,122,24,.35);
+  }
+  header .sub{font-size:12px;letter-spacing:.22em;color:#5d6b66;text-transform:uppercase}
+  #wrap{
+    width:min(960px,100%); position:relative;
+    border:1px solid #22302c; border-radius:4px;
+    box-shadow:0 24px 70px rgba(0,0,0,.65), 0 0 0 1px rgba(255,122,24,.06) inset;
+    overflow:hidden; background:#05080a;
+  }
+  canvas{display:block;width:100%;height:auto;touch-action:manipulation}
+  .keys{
+    width:min(960px,100%); display:flex; flex-wrap:wrap; gap:8px 18px;
+    justify-content:center; font-size:12.5px; letter-spacing:.04em; color:#6f7d78;
+  }
+  .keys b{
+    color:var(--honoo); font-weight:500;
+    border:1px solid #3a4a44; border-radius:3px;
+    padding:1px 7px; margin-right:6px; background:#111a18;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px;
+  }
+  footer{font-size:11.5px;color:#4c5854;letter-spacing:.08em}
+  @media (max-width:640px){ .keys{font-size:11.5px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>焚き火メシ・火加減マイスター</h1>
+  <span class="sub">Bonfire Heat Control</span>
+</header>
+
+<div id="wrap"><canvas id="cv" width="960" height="700"></canvas></div>
+
+<div class="keys">
+  <span><b>Space</b>薪をくべる</span>
+  <span><b>F</b>あおぐ</span>
+  <span><b>Q / W / E</b>火にかける・退避</span>
+  <span><b>1 / 2 / 3</b>裏返す・ゆする・あおる</span>
+  <span><b>Enter</b>開始・リトライ</span>
+  <span>※カードのクリック／タップでも操作可</span>
+</div>
+
+<footer>single-file vanilla JS + Canvas / no dependencies</footer>
+
+<script>
+(() => {
+"use strict";
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = 960, H = 700;
+
+/* ---------- palette ---------- */
+const C = {
+  sumi:'#0B0F14', mori:'#141D1B', okibi:'#FF7A18', honoo:'#FFD36B',
+  hai:'#8C9A93', nama:'#6FB3D2', koge:'#B3402A', panel:'#101917',
+  line:'#2a3a35', dim:'#5d6b66'
+};
+const F_DISP = '"Yuji Syuku", serif';
+const F_UI   = '"Zen Kaku Gothic New", system-ui, sans-serif';
+
+/* ---------- utils ---------- */
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function rr(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+function txt(s,x,y,{size=14,font=F_UI,color=C.hai,align='left',base='alphabetic',ls=0,weight=400}={}){
+  ctx.save(); ctx.font=`${weight} ${size}px ${font}`; ctx.fillStyle=color;
+  ctx.textBaseline=base;
+  if(ls===0){ ctx.textAlign=align; ctx.fillText(s,x,y); }
+  else{
+    ctx.textAlign='left';
+    let total=0; for(const ch of s) total+=ctx.measureText(ch).width+ls;
+    let cx = align==='center' ? x-total/2 : align==='right' ? x-total : x;
+    for(const ch of s){ ctx.fillText(ch,cx,y); cx+=ctx.measureText(ch).width+ls; }
+  }
+  ctx.restore();
+}
+
+/* ---------- game constants ---------- */
+const TIME_LIMIT = 150;
+const LOG_MAX = 18;
+
+const STATIONS = [
+  { key:'fish', name:'魚の串焼き', short:'魚', hot:{x:356,y:446}, cold:{x:232,y:452},
+    actName:'裏返す', actKey:'1', toggleKey:'Q',
+    zone:[22,52], dur:20, tip:'遠火でじっくり。中盤で裏返す' },
+  { key:'hangou', name:'飯盒炊爨', short:'飯盒', hot:{x:470,y:396}, cold:{x:470,y:286},
+    actName:'ゆする', actKey:'2', toggleKey:'W',
+    zone:[15,38], dur:26, tip:'チョロチョロ→パッパ→火から下ろして蒸らす' },
+  { key:'wok', name:'中華鍋の野菜炒め', short:'中華鍋', hot:{x:592,y:438}, cold:{x:712,y:424},
+    actName:'あおる', actKey:'3', toggleKey:'E', gotoku:true,
+    zone:[70,100], dur:13, tip:'強火で一気に。休まずあおり続ける' }
+];
+
+const HANGOU_PHASES = [
+  { label:'はじめチョロチョロ', zone:[15,38], until:30 },
+  { label:'なかパッパ',       zone:[62,92], until:72 },
+  { label:'火から下ろして蒸らす', zone:null,   until:100 }
+];
+
+/* ---------- state ---------- */
+let mode='title', t=0, timeLeft=TIME_LIMIT;
+let heat=40, logs=LOG_MAX, logCd=0, fanning=false, fanHeld=0;
+let flames=[], sparks=[], smoke=[], steam=[], veg=[];
+let toasts=[];
+let st=[];
+let flicker=0, shakeT=0;
+let finalResult=null;
+
+function newStation(def){
+  return {
+    def, progress:0, burn:0, onFire:true, done:false,
+    flipped:false, flipQuality:0, bonus:0, phase:0, shakeTimer:0,
+    lastShake:0, shakeUsed:[false,false,false], pos:{x:def.hot.x,y:def.hot.y},
+    wobble:0, quality:0
+  };
+}
+function reset(){
+  t=0; timeLeft=TIME_LIMIT; heat=34; logs=LOG_MAX; logCd=0;
+  flames=[]; sparks=[]; smoke=[]; steam=[]; veg=[]; toasts=[];
+  st = STATIONS.map(newStation);
+  st[2].onFire=false; st[2].pos={x:STATIONS[2].cold.x,y:STATIONS[2].cold.y};
+  finalResult=null;
+}
+function toast(msg,color){ toasts.push({msg,color:color||C.honoo,life:1.6,max:1.6}); }
+
+/* ---------- input ---------- */
+const keys={};
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if([' ','arrowup','arrowdown','enter'].includes(k)) e.preventDefault();
+  if(keys[k]) return; keys[k]=true;
+  if(mode==='title' && (k==='enter'||k===' ')){ mode='play'; reset(); return; }
+  if(mode==='result' && k==='enter'){ mode='play'; reset(); return; }
+  if(mode!=='play') return;
+  if(k===' ') addLog();
+  if(k==='1') doAction(0);
+  if(k==='2') doAction(1);
+  if(k==='3') doAction(2);
+  if(k==='q') toggleFire(0);
+  if(k==='w') toggleFire(1);
+  if(k==='e') toggleFire(2);
+});
+addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+
+const hits=[];
+function hitTest(mx,my){
+  for(let i=hits.length-1;i>=0;i--){
+    const h=hits[i];
+    if(mx>=h.x&&mx<=h.x+h.w&&my>=h.y&&my<=h.y+h.h){ h.fn(); return true; }
+  }
+  return false;
+}
+function canvasPos(e){
+  const r=cv.getBoundingClientRect();
+  const p = e.touches ? e.touches[0] : e;
+  return { x:(p.clientX-r.left)*(W/r.width), y:(p.clientY-r.top)*(H/r.height) };
+}
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  if(mode==='title'){ mode='play'; reset(); return; }
+  if(mode==='result'){ mode='play'; reset(); return; }
+  const p=canvasPos(e);
+  hitTest(p.x,p.y);
+});
+
+/* ---------- actions ---------- */
+function addLog(){
+  if(logCd>0) return;
+  if(logs<=0){ toast('薪がもうない！','#B3402A'); return; }
+  logs--; logCd=0.42; heat=clamp(heat+22,0,100);
+  for(let i=0;i<26;i++) sparks.push(mkSpark(470+rnd(-34,34),468,rnd(-60,60),rnd(-230,-90)));
+  for(let i=0;i<10;i++) smoke.push({x:470+rnd(-30,30),y:452,vx:rnd(-14,14),vy:rnd(-42,-22),life:1,max:rnd(1.1,2.0),r:rnd(10,22)});
+  shakeT=0.18;
+}
+function toggleFire(i){
+  const s=st[i]; if(!s||s.done) return;
+  s.onFire=!s.onFire;
+  if(s.def.key==='hangou' && s.phase===2 && !s.onFire) toast('蒸らし開始。あとは待つだけ',C.honoo);
+}
+function doAction(i){
+  const s=st[i]; if(!s||s.done) return;
+  const k=s.def.key;
+  if(k==='fish'){
+    if(s.flipped){ toast('もう裏返してるよ',C.dim); return; }
+    s.flipped=true; s.wobble=1;
+    if(s.progress>=38 && s.progress<=66){ s.bonus+=10; toast('ナイス裏返し！両面こんがり',C.honoo); }
+    else if(s.progress<38){ s.bonus-=4; toast('早すぎ。身が崩れた…',C.koge); }
+    else { s.bonus-=4; toast('遅い！片面が焦げ気味',C.koge); }
+    for(let j=0;j<10;j++) sparks.push(mkSpark(s.pos.x,s.pos.y-10,rnd(-40,40),rnd(-120,-40)));
+  }
+  if(k==='hangou'){
+    const ph=s.phase;
+    if(ph>1){ toast('蒸らし中はさわらない',C.dim); return; }
+    if(s.shakeUsed[ph]){ toast('この工程ではもう十分',C.dim); return; }
+    s.shakeUsed[ph]=true; s.bonus+=5; s.wobble=1;
+    toast(ph===0?'水を吸わせながらゆすった':'吹きこぼれを散らした',C.honoo);
+    for(let j=0;j<8;j++) steam.push({x:s.pos.x+rnd(-16,16),y:s.pos.y-26,vx:rnd(-16,16),vy:rnd(-46,-24),life:1,max:rnd(.7,1.3),r:rnd(6,13)});
+  }
+  if(k==='wok'){
+    s.shakeTimer=0; s.wobble=1;
+    if(s.onFire && heat>=s.def.zone[0]){ s.bonus=Math.min(12,s.bonus+1.2); }
+    for(let j=0;j<9;j++) veg.push({x:s.pos.x+rnd(-16,16),y:s.pos.y-8,vx:rnd(-55,55),vy:rnd(-210,-140),life:1,max:.72,
+      c:[C.honoo,'#7FB069','#E8663D','#F2E8C9'][Math.floor(Math.random()*4)],r:rnd(2.2,4)});
+    for(let j=0;j<6;j++) sparks.push(mkSpark(s.pos.x,s.pos.y+4,rnd(-70,70),rnd(-150,-60)));
+  }
+}
+function mkSpark(x,y,vx,vy){ return {x,y,vx,vy,life:1,max:rnd(.7,1.7)}; }
+
+/* ---------- update ---------- */
+function zoneOf(s){
+  if(s.def.key==='hangou') return HANGOU_PHASES[s.phase].zone;
+  return s.def.zone;
+}
+function update(dt){
+  t+=dt; flicker+=dt;
+  if(shakeT>0) shakeT-=dt;
+  if(mode!=='play'){ updateParticles(dt); return; }
+
+  timeLeft-=dt;
+  logCd=Math.max(0,logCd-dt);
+  fanning = !!keys['f'];
+  if(fanning){ fanHeld+=dt; heat=clamp(heat+30*dt,0,100);
+    if(Math.random()<dt*26) sparks.push(mkSpark(470+rnd(-40,40),462,rnd(-120,120),rnd(-260,-120)));
+  } else fanHeld=0;
+
+  heat = clamp(heat - (2.2+heat*0.045)*dt, 0, 100);
+
+  for(const s of st) updateStation(s,dt);
+  spawnFire(dt);
+  updateParticles(dt);
+
+  for(let i=toasts.length-1;i>=0;i--){ toasts[i].life-=dt; if(toasts[i].life<=0) toasts.splice(i,1); }
+
+  const allDone = st.every(s=>s.done);
+  if(allDone || timeLeft<=0){ timeLeft=Math.max(0,timeLeft); finish(allDone); }
+}
+
+function updateStation(s,dt){
+  s.wobble=Math.max(0,s.wobble-dt*2.6);
+  const target = s.onFire ? s.def.hot : s.def.cold;
+  s.pos.x = lerp(s.pos.x,target.x,1-Math.pow(0.0012,dt));
+  s.pos.y = lerp(s.pos.y,target.y,1-Math.pow(0.0012,dt));
+  if(s.done) return;
+
+  const k=s.def.key;
+  const z=zoneOf(s);
+  const rate = 100/s.def.dur;
+
+  if(k==='hangou'){
+    const ph=HANGOU_PHASES[s.phase];
+    if(s.phase===2){
+      if(s.onFire){ s.burn+=12*dt; }
+      else { s.progress+=rate*1.15*dt;
+        if(Math.random()<dt*7) steam.push({x:s.pos.x+rnd(-14,14),y:s.pos.y-28,vx:rnd(-12,12),vy:rnd(-38,-18),life:1,max:rnd(.9,1.6),r:rnd(6,14)});
+      }
+    } else {
+      if(s.onFire){
+        const inZ = heat>=z[0] && heat<=z[1];
+        const near = heat>=z[0]-10 && heat<=z[1]+10;
+        if(inZ) s.progress+=rate*dt;
+        else if(near) s.progress+=rate*0.4*dt;
+        if(heat>z[1]+6) s.burn += (heat-z[1]-6)*0.42*dt;
+        if(s.phase===1 && heat>90 && Math.random()<dt*10)
+          steam.push({x:s.pos.x+rnd(-18,18),y:s.pos.y-26,vx:rnd(-30,30),vy:rnd(-56,-30),life:1,max:rnd(.6,1.1),r:rnd(8,16)});
+        else if(Math.random()<dt*3.2)
+          steam.push({x:s.pos.x+rnd(-12,12),y:s.pos.y-26,vx:rnd(-10,10),vy:rnd(-34,-18),life:1,max:rnd(.7,1.2),r:rnd(5,11)});
+      }
+    }
+    if(s.progress>=ph.until && s.phase<2){
+      s.phase++;
+      toast(s.phase===1?'「なかパッパ」火力を上げて！':'炊き上がり。火から下ろして蒸らす（W）',C.honoo);
+    }
+  }
+
+  if(k==='fish'){
+    if(s.onFire){
+      const inZ = heat>=z[0] && heat<=z[1];
+      const near = heat>=z[0]-10 && heat<=z[1]+10;
+      if(inZ) s.progress+=rate*dt;
+      else if(near) s.progress+=rate*0.4*dt;
+      if(heat>z[1]+6) s.burn += (heat-z[1]-6)*0.45*dt;
+      if(!s.flipped && s.progress>=52) s.burn += 5*dt;
+      if(Math.random()<dt*2.4) smoke.push({x:s.pos.x+rnd(-14,14),y:s.pos.y-8,vx:rnd(-10,10),vy:rnd(-30,-14),life:1,max:rnd(.8,1.5),r:rnd(5,11)});
+    }
+  }
+
+  if(k==='wok'){
+    if(s.onFire){
+      s.shakeTimer+=dt;
+      const inZ = heat>=z[0];
+      if(inZ) s.progress+=rate*dt;
+      else if(heat>=z[0]-14) s.progress+=rate*0.35*dt;
+      if(s.shakeTimer>1.6) s.burn += 11*dt;
+      if(heat>=z[0] && Math.random()<dt*6) smoke.push({x:s.pos.x+rnd(-18,18),y:s.pos.y-10,vx:rnd(-18,18),vy:rnd(-46,-24),life:1,max:rnd(.5,1.1),r:rnd(6,13)});
+    } else s.shakeTimer=0;
+  }
+
+  s.burn=clamp(s.burn,0,100);
+  if(s.progress>=100){
+    s.progress=100; s.done=true; s.onFire=false;
+    s.quality=scoreOf(s);
+    toast(`${s.def.name} 完成！ ${rankOf(s.quality)}`, s.quality>=75?C.honoo:C.koge);
+  }
+}
+
+function scoreOf(s){
+  let q = 100 - s.burn*1.05 + s.bonus;
+  if(s.def.key==='fish' && !s.flipped) q -= 18;
+  if(s.progress<100) q = q * (s.progress/100) * 0.85;
+  return clamp(Math.round(q),0,100);
+}
+function rankOf(q){ return q>=90?'S':q>=75?'A':q>=55?'B':q>=35?'C':'D'; }
+
+function finish(allDone){
+  mode='result';
+  const dishes = st.map(s=>{ const q=scoreOf(s); return {name:s.def.name,q,rank:rankOf(q),done:s.done,burn:Math.round(s.burn),prog:Math.round(s.progress)}; });
+  const total = dishes.reduce((a,d)=>a+d.q,0);
+  let comment;
+  if(total>=255) comment='完璧。焚き火の神が降りてる。';
+  else if(total>=200) comment='うまい。火の見方がわかってきた。';
+  else if(total>=140) comment='食える。あと一歩、薪の入れどきだね。';
+  else comment='炭と生煮え。もう一回いこう。';
+  finalResult={dishes,total,comment,allDone,timeUsed:Math.round(TIME_LIMIT-timeLeft)};
+}
+
+/* ---------- particles ---------- */
+function spawnFire(dt){
+  const n = (2 + heat*0.16) * dt * 60;
+  const count = Math.floor(n) + (Math.random()<n%1?1:0);
+  const spread = 12 + heat*0.28;
+  for(let i=0;i<count;i++){
+    flames.push({
+      x:470+rnd(-spread,spread), y:470+rnd(-4,6),
+      vx:rnd(-16,16), vy:-rnd(50,60+heat*1.5),
+      life:1, max:rnd(.45,.95)*(0.55+heat/130), r:rnd(9,20)*(0.6+heat/180)
+    });
+  }
+  if(heat<18 && Math.random()<dt*8)
+    smoke.push({x:470+rnd(-24,24),y:462,vx:rnd(-12,12),vy:rnd(-34,-16),life:1,max:rnd(1.2,2.2),r:rnd(9,18)});
+  if(Math.random()<dt*(1+heat*0.09))
+    sparks.push(mkSpark(470+rnd(-30,30),464,rnd(-45,45),rnd(-180,-70)));
+}
+function stepArr(arr,dt,f){
+  for(let i=arr.length-1;i>=0;i--){ const p=arr[i]; p.life-=dt/p.max; if(p.life<=0){arr.splice(i,1);continue;} f(p,dt); }
+}
+function updateParticles(dt){
+  stepArr(flames,dt,(p)=>{
+    p.x+=p.vx*dt + Math.sin(p.y*0.045 + t*5.2)*26*dt;
+    p.y+=p.vy*dt; p.vy*=1-1.3*dt; p.vx*=1-2.2*dt;
+  });
+  stepArr(sparks,dt,(p)=>{ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=42*dt; p.vx*=1-0.7*dt; });
+  stepArr(smoke,dt,(p)=>{ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy*=1-0.5*dt; p.r+=16*dt; });
+  stepArr(steam,dt,(p)=>{ p.x+=p.vx*dt; p.y+=p.vy*dt; p.r+=14*dt; });
+  stepArr(veg,dt,(p)=>{ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=430*dt; });
+  if(flames.length>900) flames.splice(0,flames.length-900);
+}
+
+/* ---------- drawing: scene ---------- */
+const stars=[]; for(let i=0;i<90;i++) stars.push({x:Math.random()*W,y:Math.random()*330,r:Math.random()*1.3+.25,p:Math.random()*6.28});
+const trees=[];
+(function(){ let x=-40; while(x<W+40){ const h=rnd(120,240); trees.push({x,h,w:rnd(34,64),d:Math.random()}); x+=rnd(42,86);} })();
+
+function glowAmt(){ return heat/100 * (0.86 + 0.14*Math.sin(flicker*13.7) * Math.sin(flicker*7.1)); }
+
+function drawSky(){
+  const g=ctx.createLinearGradient(0,0,0,420);
+  g.addColorStop(0,'#070B10'); g.addColorStop(.55,'#0C1219'); g.addColorStop(1,'#141C1C');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,430);
+  for(const s of stars){
+    const a=.28+.42*Math.abs(Math.sin(t*1.1+s.p));
+    ctx.fillStyle=`rgba(210,225,235,${a*(1-glowAmt()*0.35)})`;
+    ctx.fillRect(s.x,s.y,s.r,s.r);
+  }
+  // 月
+  ctx.save(); ctx.globalAlpha=.5;
+  ctx.fillStyle='#C9D6D2'; ctx.beginPath(); ctx.arc(196,84,26,0,6.284); ctx.fill();
+  ctx.globalCompositeOperation='destination-out';
+  ctx.beginPath(); ctx.arc(184,76,24,0,6.284); ctx.fill(); ctx.restore();
+}
+function drawTrees(){
+  const gl=glowAmt();
+  for(const tr of trees){
+    const base=430, lit = clamp(1-Math.abs(tr.x-470)/560,0,1)*gl;
+    ctx.fillStyle=`rgb(${Math.round(9+lit*44)},${Math.round(14+lit*22)},${Math.round(15+lit*12)})`;
+    ctx.beginPath(); ctx.moveTo(tr.x,base);
+    ctx.lineTo(tr.x+tr.w/2,base-tr.h); ctx.lineTo(tr.x+tr.w,base); ctx.closePath(); ctx.fill();
+    ctx.fillRect(tr.x+tr.w/2-2,base-14,4,16);
+  }
+}
+function drawGround(){
+  const gl=glowAmt();
+  ctx.fillStyle='#0D1412'; ctx.fillRect(0,424,W,H-424);
+  const g=ctx.createRadialGradient(470,472,10,470,472,430);
+  g.addColorStop(0,`rgba(255,150,50,${.42*gl})`);
+  g.addColorStop(.35,`rgba(210,95,30,${.20*gl})`);
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(470,474,420,110,0,0,6.284); ctx.fill();
+  // 小石
+  ctx.fillStyle=`rgba(120,110,95,${.10+.16*gl})`;
+  for(let i=0;i<70;i++){
+    const a=(i*2.399), r=90+((i*37)%320);
+    const x=470+Math.cos(a)*r, y=474+Math.sin(a)*r*0.28;
+    if(y>428) ctx.fillRect(x,y,2+((i%3)),1.6);
+  }
+}
+function drawPit(){
+  const gl=glowAmt();
+  // 石の輪
+  for(let i=0;i<11;i++){
+    const a=Math.PI*(0.08+ i*0.075) + Math.PI*0.02;
+    const x=470+Math.cos(a)*104, y=486+Math.sin(a)*30;
+    const lit=clamp((Math.sin(a)+1.1)/2,0,1);
+    ctx.fillStyle=`rgb(${Math.round(38+lit*gl*150)},${Math.round(36+lit*gl*78)},${Math.round(34+lit*gl*40)})`;
+    ctx.beginPath(); ctx.ellipse(x,y,15,10,rnd(0,0),0,6.284); ctx.fill();
+  }
+  // 熾き
+  const g=ctx.createRadialGradient(470,472,4,470,472,74);
+  g.addColorStop(0,`rgba(255,220,140,${.85*gl+.06})`);
+  g.addColorStop(.4,`rgba(255,110,30,${.55*gl+.04})`);
+  g.addColorStop(1,'rgba(60,12,0,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(470,474,80,26,0,0,6.284); ctx.fill();
+  // 薪（クロス）
+  const logsDraw=[[-72,486,60,-0.30],[54,490,-58,0.26],[-30,478,66,0.08]];
+  for(const [dx,y,len,rot] of logsDraw){
+    ctx.save(); ctx.translate(470+dx,y); ctx.rotate(rot);
+    const lg=ctx.createLinearGradient(0,-8,0,8);
+    lg.addColorStop(0,`rgb(${Math.round(58+gl*90)},${Math.round(42+gl*44)},${Math.round(32+gl*18)})`);
+    lg.addColorStop(1,'#1B1410');
+    ctx.fillStyle=lg; rr(0,-8,len,16,7); ctx.fill();
+    ctx.fillStyle=`rgba(255,140,40,${.30*gl})`;
+    for(let i=0;i<5;i++) ctx.fillRect(6+i*(len/6), -5+ (i%2)*6, len/12, 2);
+    ctx.restore();
+  }
+}
+function drawFlames(){
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for(const p of flames){
+    const l=p.life, r=p.r*(0.35+l*0.9);
+    let col;
+    if(l>.80) col=`rgba(255,244,206,${(l-.80)*1.9})`;
+    else if(l>.45) col=`rgba(255,178,58,${l*0.44})`;
+    else col=`rgba(255,78,14,${l*0.42})`;
+    const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
+    g.addColorStop(0,col); g.addColorStop(1,'rgba(255,60,0,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.284); ctx.fill();
+  }
+  for(const p of sparks){
+    ctx.fillStyle=`rgba(255,${Math.round(180+70*p.life)},110,${p.life})`;
+    ctx.fillRect(p.x,p.y,2,2);
+  }
+  ctx.restore();
+  for(const p of smoke){
+    ctx.fillStyle=`rgba(150,150,145,${p.life*0.10})`;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.284); ctx.fill();
+  }
+  for(const p of steam){
+    ctx.fillStyle=`rgba(228,238,236,${p.life*0.20})`;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.284); ctx.fill();
+  }
+  for(const p of veg){
+    ctx.fillStyle=p.c; ctx.globalAlpha=clamp(p.life*1.4,0,1);
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.284); ctx.fill(); ctx.globalAlpha=1;
+  }
+}
+
+/* ---------- drawing: 調理器具 ---------- */
+function cookColor(s){
+  // 生 → こんがり → 焦げ
+  const p=s.progress/100, b=s.burn/100;
+  const raw=[126,150,164], done=[196,132,52], burnt=[38,26,22];
+  let c=[0,0,0];
+  for(let i=0;i<3;i++) c[i]=lerp(raw[i],done[i],clamp(p*1.15,0,1));
+  for(let i=0;i<3;i++) c[i]=lerp(c[i],burnt[i],clamp(b*1.1,0,1));
+  return `rgb(${c.map(v=>Math.round(v)).join(',')})`;
+}
+function drawFish(s){
+  const {x,y}=s.pos; const w=Math.sin(t*9)*s.wobble*0.22;
+  const body=cookColor(s);
+  ctx.save(); ctx.translate(x,y);
+  // 串（地面に刺さった竹串）
+  ctx.save(); ctx.rotate(-0.34+w);
+  ctx.strokeStyle='#7A6647'; ctx.lineWidth=3.6; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(2,62); ctx.lineTo(-2,-52); ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.lineWidth=1.2;
+  ctx.beginPath(); ctx.moveTo(3,60); ctx.lineTo(-1,-50); ctx.stroke();
+  // 魚体（頭が上・S字にくねる）
+  ctx.rotate(s.flipped?0.14:-0.06);
+  ctx.fillStyle=body;
+  ctx.beginPath();
+  ctx.moveTo(0,-40);                              // 口
+  ctx.bezierCurveTo(20,-24, 26,6, 8,34);          // 背側
+  ctx.bezierCurveTo(2,40, -4,40, -8,34);
+  ctx.bezierCurveTo(-24,4, -18,-22, 0,-40);       // 腹側
+  ctx.closePath(); ctx.fill();
+  // 尾びれ
+  ctx.beginPath(); ctx.moveTo(2,32); ctx.lineTo(20,52); ctx.lineTo(-14,50); ctx.closePath(); ctx.fill();
+  // 背びれ
+  ctx.fillStyle=`rgba(0,0,0,.28)`;
+  ctx.beginPath(); ctx.moveTo(14,-8); ctx.lineTo(26,4); ctx.lineTo(12,10); ctx.closePath(); ctx.fill();
+  // 腹（白）
+  ctx.fillStyle=`rgba(245,238,220,${clamp(0.34-s.burn/160,0,.34)})`;
+  ctx.beginPath(); ctx.moveTo(-2,-32); ctx.bezierCurveTo(-16,-8,-13,14,-6,30);
+  ctx.bezierCurveTo(-4,12,-4,-12,-2,-32); ctx.closePath(); ctx.fill();
+  // 焼き目
+  ctx.strokeStyle=`rgba(52,28,12,${clamp(s.progress/110,0,.7)})`; ctx.lineWidth=1.8;
+  for(let i=0;i<4;i++){ ctx.beginPath(); ctx.moveTo(-11+i*1.5,-18+i*13); ctx.lineTo(13-i*1.2,-22+i*13); ctx.stroke(); }
+  // 目 / えら
+  ctx.fillStyle='#0d0f10'; ctx.beginPath(); ctx.arc(5,-28,2.6,0,6.284); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.4;
+  ctx.beginPath(); ctx.moveTo(11,-22); ctx.quadraticCurveTo(4,-16,-4,-20); ctx.stroke();
+  // 塩
+  if(s.progress>4){
+    ctx.fillStyle=`rgba(255,255,255,${clamp(.5-s.burn/120,0,.5)})`;
+    for(let i=0;i<7;i++) ctx.fillRect(-8+((i*11)%20), -30+((i*17)%56), 1.6,1.6);
+  }
+  ctx.restore();
+  ctx.restore();
+}
+function drawHangou(s){
+  const {x,y}=s.pos; const w=Math.sin(t*11)*s.wobble*4;
+  // 三脚
+  ctx.strokeStyle='#3B3630'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(408,500); ctx.lineTo(470,258); ctx.lineTo(532,500); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(470,258); ctx.lineTo(470,y-46); ctx.stroke();
+  ctx.save(); ctx.translate(x+w,y);
+  // 本体（そら豆型飯盒）
+  const body=ctx.createLinearGradient(0,-30,0,34);
+  body.addColorStop(0,'#4B5350'); body.addColorStop(.5,'#2E3634'); body.addColorStop(1,'#151A19');
+  ctx.fillStyle=body;
+  ctx.beginPath();
+  ctx.moveTo(-30,-24); ctx.quadraticCurveTo(0,-14,30,-24);
+  ctx.lineTo(26,30); ctx.quadraticCurveTo(0,40,-26,30); ctx.closePath(); ctx.fill();
+  // 煤
+  ctx.fillStyle=`rgba(10,10,10,${clamp(s.burn/90,0,.8)})`;
+  ctx.beginPath(); ctx.moveTo(-26,4); ctx.quadraticCurveTo(0,20,26,4); ctx.lineTo(26,30);
+  ctx.quadraticCurveTo(0,40,-26,30); ctx.closePath(); ctx.fill();
+  // ふた
+  ctx.fillStyle='#5A6360';
+  ctx.beginPath(); ctx.moveTo(-33,-24); ctx.quadraticCurveTo(0,-36,33,-24);
+  ctx.quadraticCurveTo(0,-16,-33,-24); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#7A857F'; ctx.lineWidth=2.4;
+  ctx.beginPath(); ctx.arc(0,-30,7,Math.PI,0); ctx.stroke();
+  // つり手
+  ctx.strokeStyle='#4A524F'; ctx.lineWidth=2.2;
+  ctx.beginPath(); ctx.arc(0,-24,32,Math.PI*1.15,Math.PI*1.85); ctx.stroke();
+  ctx.restore();
+}
+function drawWok(s){
+  const {x,y}=s.pos; const w=Math.sin(t*20)*s.wobble*7;
+  // 五徳
+  ctx.strokeStyle='#3B3630'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(556,500); ctx.lineTo(566,452); ctx.lineTo(618,452); ctx.lineTo(628,500); ctx.stroke();
+  ctx.save(); ctx.translate(x+w, y-Math.abs(w)*0.35);
+  ctx.rotate(-0.06+ (s.wobble>0?Math.sin(t*20)*0.14*s.wobble:0));
+  // 柄
+  ctx.strokeStyle='#5C4A34'; ctx.lineWidth=7; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(34,-8); ctx.lineTo(84,-24); ctx.stroke();
+  // 鍋
+  const g=ctx.createLinearGradient(0,-16,0,26);
+  g.addColorStop(0,'#4A4238'); g.addColorStop(1,'#12100E');
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(0,0,42,24,0,0,Math.PI); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#2A2620'; ctx.beginPath(); ctx.ellipse(0,0,42,10,0,0,6.284); ctx.fill();
+  // 具材
+  const n=9;
+  for(let i=0;i<n;i++){
+    const a=i*2.399+t*(s.onFire?1.6:0.2);
+    const rx=Math.cos(a)*26, ry=Math.sin(a)*6;
+    const cols=['#7FB069','#E8A33D','#E8663D','#EFE6CC'];
+    let c=cols[i%4];
+    if(s.burn>45) c = i%2? '#3A2A20':'#54402E';
+    ctx.fillStyle=c; ctx.beginPath(); ctx.arc(rx,ry-2,3.6,0,6.284); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---------- drawing: HUD ---------- */
+function drawGauge(){
+  const gx=34, gy=140, gw=30, gh=300;
+  txt('火力',gx+gw/2,gy-30,{size:13,color:C.dim,align:'center',ls:3});
+  ctx.fillStyle='rgba(8,12,14,.75)'; rr(gx-2,gy-2,gw+4,gh+4,4); ctx.fill();
+  ctx.strokeStyle=C.line; ctx.lineWidth=1; rr(gx-2,gy-2,gw+4,gh+4,4); ctx.stroke();
+  // ゾーン表示
+  for(let i=0;i<st.length;i++){
+    const s=st[i]; if(s.done) continue;
+    const z=zoneOf(s); if(!z) continue;
+    const y1=gy+gh-(z[1]/100)*gh, y2=gy+gh-(z[0]/100)*gh;
+    const col = s.onFire? ['rgba(111,179,210,.55)','rgba(255,211,107,.5)','rgba(255,122,24,.5)'][i] : 'rgba(120,132,128,.22)';
+    ctx.fillStyle=col; ctx.fillRect(gx+gw+6+i*9, y1, 6, y2-y1);
+    txt(s.def.short.slice(0,1), gx+gw+9+i*9, y2+13, {size:9,color:s.onFire?C.hai:'#4a544f',align:'center'});
+  }
+  // 火力バー
+  const hh=(heat/100)*gh;
+  const bg=ctx.createLinearGradient(0,gy+gh,0,gy);
+  bg.addColorStop(0,'#8C3B12'); bg.addColorStop(.5,C.okibi); bg.addColorStop(1,C.honoo);
+  ctx.fillStyle=bg; ctx.fillRect(gx,gy+gh-hh,gw,hh);
+  ctx.fillStyle=`rgba(255,255,220,${.18+.18*Math.sin(flicker*12)})`;
+  ctx.fillRect(gx,gy+gh-hh,gw,Math.min(6,hh));
+  // 目盛
+  ctx.strokeStyle='rgba(255,255,255,.10)';
+  for(let v=25;v<100;v+=25){ const y=gy+gh-(v/100)*gh; ctx.beginPath(); ctx.moveTo(gx,y); ctx.lineTo(gx+gw,y); ctx.stroke(); }
+  txt(Math.round(heat)+'', gx+gw/2, gy+gh+26, {size:20,color:C.honoo,align:'center',weight:700});
+}
+function drawTopBar(){
+  txt('残り時間', 700, 40, {size:11,color:C.dim,ls:2});
+  const secs=Math.max(0,timeLeft);
+  txt(secs.toFixed(1)+'s', 700, 68, {size:26,color:secs<25?C.koge:C.hai,weight:700});
+  txt('薪', 838, 40, {size:11,color:C.dim,ls:2});
+  for(let i=0;i<LOG_MAX;i++){
+    ctx.fillStyle = i<logs ? (i<3?C.koge:'#6B5432') : '#1c2422';
+    ctx.fillRect(838+(i%9)*10, 52+Math.floor(i/9)*9, 7, 6);
+  }
+  txt(logs+' / '+LOG_MAX, 838, 84, {size:12,color:C.dim});
+  // 中央ステータス
+  const done=st.filter(s=>s.done).length;
+  txt('完成 '+done+' / 3', 470, 44, {size:12,color:C.dim,align:'center',ls:3});
+}
+function statusOf(s){
+  if(s.done) return {label:'完成 '+rankOf(s.quality), col:C.honoo};
+  const z=zoneOf(s);
+  if(s.def.key==='hangou' && s.phase===2) return s.onFire? {label:'火から下ろして！',col:C.koge} : {label:'蒸らし中',col:C.honoo};
+  if(!s.onFire) return {label:'退避中',col:C.dim};
+  if(s.def.key==='wok' && s.shakeTimer>1.6) return {label:'焦げてる！あおって',col:C.koge};
+  if(s.def.key==='fish' && !s.flipped && s.progress>=52) return {label:'片面が焦げてる',col:C.koge};
+  if(heat>z[1]+6) return {label:'火が強すぎ',col:C.koge};
+  if(heat<z[0]-4) return {label:'火が弱い',col:C.nama};
+  return {label:'いい火加減',col:'#7FB069'};
+}
+function drawCards(){
+  hits.length=0;
+  // 薪 / あおぐ ボタン
+  const btns=[
+    {x:30,y:530,w:146,h:44,label:'薪をくべる',sub:'Space',fn:addLog,hot:logCd>0},
+    {x:30,y:584,w:146,h:44,label:'あおぐ',sub:'F',fn:()=>{heat=clamp(heat+9,0,100);},hot:fanning}
+  ];
+  for(const b of btns){
+    ctx.fillStyle = b.hot? 'rgba(255,122,24,.18)':'rgba(16,25,23,.9)';
+    rr(b.x,b.y,b.w,b.h,3); ctx.fill();
+    ctx.strokeStyle= b.hot? C.okibi : C.line; ctx.lineWidth=1; rr(b.x,b.y,b.w,b.h,3); ctx.stroke();
+    txt(b.label,b.x+12,b.y+20,{size:14,color:b.hot?C.honoo:C.hai,weight:500});
+    txt(b.sub,b.x+12,b.y+35,{size:10.5,color:C.dim,ls:1});
+    hits.push({x:b.x,y:b.y,w:b.w,h:b.h,fn:b.fn});
+  }
+
+  const x0=190, cw=246, gap=12;
+  for(let i=0;i<st.length;i++){
+    const s=st[i], x=x0+i*(cw+gap), y=530, h=98;
+    const stat=statusOf(s);
+    ctx.fillStyle= s.done? 'rgba(20,30,26,.92)' : s.onFire? 'rgba(26,20,16,.94)':'rgba(14,20,19,.9)';
+    rr(x,y,cw,h,3); ctx.fill();
+    ctx.strokeStyle = s.done? '#2f4436' : s.onFire? 'rgba(255,122,24,.42)' : C.line;
+    ctx.lineWidth=1; rr(x,y,cw,h,3); ctx.stroke();
+    // 火にかけ中のインジケータ
+    ctx.fillStyle = s.done? '#3f6b48' : s.onFire? C.okibi : '#333f3b';
+    ctx.fillRect(x,y,3,h);
+
+    txt(s.def.name, x+14, y+22, {size:14,color:s.done?C.hai:'#C9D6D2',weight:500});
+    txt(s.def.toggleKey+' / '+s.def.actKey, x+cw-12, y+21, {size:10.5,color:C.dim,align:'right'});
+    txt(stat.label, x+14, y+40, {size:11.5,color:stat.col});
+
+    // 進捗バー
+    const bx=x+14, by=y+50, bw=cw-28;
+    ctx.fillStyle='#0a100e'; ctx.fillRect(bx,by,bw,7);
+    ctx.fillStyle=C.honoo; ctx.fillRect(bx,by,bw*(s.progress/100),7);
+    if(s.def.key==='hangou'){
+      for(const ph of HANGOU_PHASES.slice(0,2)){
+        ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(bx+bw*(ph.until/100),by-1,1.5,9);
+      }
+    }
+    // 焦げバー
+    ctx.fillStyle='#0a100e'; ctx.fillRect(bx,by+11,bw,4);
+    ctx.fillStyle=C.koge; ctx.fillRect(bx,by+11,bw*(s.burn/100),4);
+    txt('焼き', bx, by+30, {size:10,color:C.dim});
+    txt(Math.round(s.progress)+'%', bx+34, by+30, {size:10,color:C.hai});
+    txt('焦げ', bx+80, by+30, {size:10,color:C.dim});
+    txt(Math.round(s.burn)+'%', bx+114, by+30, {size:10,color:s.burn>40?C.koge:C.hai});
+
+    // アクションボタン
+    const ax=x+cw-84, ay=y+h-30, aw=72, ah=22;
+    const usable=!s.done;
+    ctx.fillStyle= usable?'rgba(255,211,107,.13)':'rgba(255,255,255,.03)';
+    rr(ax,ay,aw,ah,2); ctx.fill();
+    ctx.strokeStyle= usable? 'rgba(255,211,107,.4)':C.line; rr(ax,ay,aw,ah,2); ctx.stroke();
+    txt(s.def.actName, ax+aw/2, ay+15, {size:11.5,color:usable?C.honoo:C.dim,align:'center'});
+
+    if(!s.done){
+      hits.push({x,y,w:cw,h,fn:()=>toggleFire(i)});
+      hits.push({x:ax,y:ay,w:aw,h:ah,fn:()=>doAction(i)});
+    }
+  }
+}
+function drawToasts(){
+  for(let i=0;i<toasts.length;i++){
+    const to=toasts[i], a=clamp(to.life/to.max*1.8,0,1);
+    ctx.globalAlpha=a;
+    txt(to.msg, 470, 470 - i*24 - 250, {size:15,color:to.color,align:'center',weight:500});
+    ctx.globalAlpha=1;
+  }
+}
+function drawHint(){
+  const active=st.find(s=>!s.done && s.onFire) || st.find(s=>!s.done);
+  if(!active) return;
+  let tip=active.def.tip;
+  if(active.def.key==='hangou') tip = HANGOU_PHASES[active.phase].label + ' — ' + tip;
+  txt(tip, 470, 72, {size:12.5,color:'#7d8c86',align:'center'});
+}
+
+/* ---------- screens ---------- */
+function drawTitle(){
+  ctx.fillStyle='rgba(5,8,10,.62)'; ctx.fillRect(0,0,W,H);
+  txt('焚き火メシ', 470, 210, {size:56,font:F_DISP,color:C.honoo,align:'center',ls:8});
+  txt('火加減マイスター', 470, 268, {size:26,font:F_DISP,color:C.okibi,align:'center',ls:6});
+  txt('薪をくべ、あおぎ、火力を操る。', 470, 330, {size:15,color:C.hai,align:'center'});
+  txt('魚は遠火でじっくり。飯盒はチョロチョロ→パッパ→蒸らし。中華鍋は強火で一気に。', 470, 358, {size:13,color:C.dim,align:'center'});
+  txt('３品を150秒で仕上げろ。', 470, 388, {size:15,color:C.hai,align:'center'});
+  const a=.55+.45*Math.sin(t*3.2);
+  ctx.globalAlpha=a;
+  txt('Enter またはタップで開始', 470, 452, {size:16,color:C.honoo,align:'center',ls:2});
+  ctx.globalAlpha=1;
+}
+function drawResult(){
+  const r=finalResult;
+  ctx.fillStyle='rgba(5,8,10,.80)'; ctx.fillRect(0,0,W,H);
+  txt(r.allDone?'３品 完成':'時間切れ', 470, 128, {size:34,font:F_DISP,color:r.allDone?C.honoo:C.koge,align:'center',ls:6});
+  const bx=230, bw=500;
+  for(let i=0;i<r.dishes.length;i++){
+    const d=r.dishes[i], y=190+i*74;
+    ctx.fillStyle='rgba(16,25,23,.9)'; rr(bx,y,bw,58,3); ctx.fill();
+    ctx.strokeStyle=C.line; rr(bx,y,bw,58,3); ctx.stroke();
+    ctx.fillStyle = d.q>=75?C.honoo : d.q>=55? C.okibi : C.koge;
+    ctx.fillRect(bx,y,3,58);
+    txt(d.name, bx+18, y+25, {size:16,color:'#C9D6D2',weight:500});
+    txt(d.done? `焦げ ${d.burn}%` : `火通り ${d.prog}%・焦げ ${d.burn}%`, bx+18, y+45, {size:11.5,color:C.dim});
+    txt(d.rank, bx+bw-40, y+40, {size:32,font:F_DISP,color:d.q>=75?C.honoo:d.q>=55?C.okibi:C.koge,align:'center'});
+    txt(d.q+'点', bx+bw-96, y+38, {size:15,color:C.hai,align:'right'});
+  }
+  txt('合計', 470, 448, {size:12,color:C.dim,align:'center',ls:3});
+  txt(r.total+' / 300', 470, 486, {size:38,color:C.honoo,align:'center',weight:700});
+  txt(r.comment, 470, 522, {size:16,color:C.hai,align:'center'});
+  txt(`所要 ${r.timeUsed}秒`, 470, 550, {size:12,color:C.dim,align:'center'});
+  const a=.55+.45*Math.sin(t*3.2); ctx.globalAlpha=a;
+  txt('Enter またはタップでもう一回', 470, 600, {size:15,color:C.honoo,align:'center',ls:2});
+  ctx.globalAlpha=1;
+}
+
+/* ---------- vignette ---------- */
+function drawVignette(){
+  const g=ctx.createRadialGradient(470,420,180,470,420,620);
+  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.72)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+}
+
+/* ---------- main loop ---------- */
+function render(){
+  ctx.save();
+  if(shakeT>0){ ctx.translate(rnd(-3,3),rnd(-3,3)); }
+  ctx.clearRect(-10,-10,W+20,H+20);
+  drawSky(); drawTrees(); drawGround(); drawPit();
+
+  if(mode!=='title'){
+    // 手前・奥の順に
+    drawHangou(st[1]); drawFish(st[0]); drawWok(st[2]);
+  }
+  drawFlames();
+  drawVignette();
+
+  if(mode!=='title'){
+    drawGauge(); drawTopBar(); drawCards(); drawHint(); drawToasts();
+  }
+  if(mode==='title') drawTitle();
+  if(mode==='result') drawResult();
+  ctx.restore();
+}
+
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  update(dt); render();
+  requestAnimationFrame(loop);
+}
+st = STATIONS.map(newStation);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{});
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

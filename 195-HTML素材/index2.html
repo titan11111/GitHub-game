@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVG Sprite Character - Action Prototype</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #eee;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    margin: 20px 0 5px;
+    font-size: 1.6rem;
+    background: linear-gradient(90deg, #00d2ff, #7b2ff7);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+  }
+  .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 18px; }
+
+  .main-stage {
+    background: linear-gradient(180deg, #16213e 0%, #0f3460 100%);
+    border: 2px solid #7b2ff755;
+    border-radius: 16px;
+    width: 520px;
+    height: 340px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 40px #7b2ff722;
+    margin-bottom: 18px;
+  }
+  .ground {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+    background: linear-gradient(180deg, #533483 0%, #2a1a4e 100%);
+    border-top: 2px solid #7b2ff7;
+  }
+  .ground-line {
+    position: absolute;
+    bottom: 58px;
+    width: 100%;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, transparent, transparent 20px, #7b2ff744 20px, #7b2ff744 22px);
+  }
+  .stage-character {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: bottom 0.08s;
+  }
+  .stage-character.jumping {
+    animation: jumpAnim 0.6s ease-out;
+  }
+  @keyframes jumpAnim {
+    0%   { bottom: 60px; }
+    40%  { bottom: 200px; }
+    70%  { bottom: 180px; }
+    100% { bottom: 60px; }
+  }
+  .stage-character.crouching { bottom: 60px; }
+
+  .action-label {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #7b2ff7cc;
+    padding: 5px 22px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 1.05rem;
+    letter-spacing: 1px;
+    pointer-events: none;
+  }
+
+  .muzzle-flash {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .muzzle-flash.visible {
+    animation: flashAnim 0.3s ease-out;
+  }
+  @keyframes flashAnim {
+    0%   { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.5); }
+  }
+
+  .bullet {
+    position: absolute;
+    width: 18px;
+    height: 4px;
+    background: linear-gradient(90deg, #ffe44d, #ff6b35);
+    border-radius: 2px;
+    box-shadow: 0 0 8px #ffe44d;
+    pointer-events: none;
+  }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .controls button {
+    padding: 10px 22px;
+    border: 2px solid #7b2ff7;
+    background: #16213e;
+    color: #ddd;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    min-width: 100px;
+  }
+  .controls button:hover {
+    background: #7b2ff7;
+    color: #fff;
+    box-shadow: 0 0 16px #7b2ff744;
+  }
+  .controls button.active {
+    background: #7b2ff7;
+    color: #fff;
+  }
+  .controls button .key-hint {
+    display: block;
+    font-size: 0.65rem;
+    color: #aaa;
+    margin-top: 2px;
+  }
+  .controls button:hover .key-hint,
+  .controls button.active .key-hint { color: #ddd; }
+
+  .sprite-sheet {
+    background: #0d1117;
+    border: 2px solid #333;
+    border-radius: 14px;
+    padding: 20px 28px 16px;
+    margin-bottom: 30px;
+    width: 700px;
+    max-width: 95vw;
+  }
+  .sprite-sheet h2 {
+    font-size: 1rem;
+    color: #7b9ff7;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .sheet-grid {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .sheet-cell {
+    text-align: center;
+  }
+  .sheet-cell .label {
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 6px;
+  }
+  .sheet-cell svg { filter: drop-shadow(0 2px 6px #0008); }
+
+  .stars {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #fff;
+    border-radius: 50%;
+    animation: twinkle 2s infinite alternate;
+  }
+  @keyframes twinkle {
+    0% { opacity: 0.3; }
+    100% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<h1>ACTION SPRITE PROTOTYPE</h1>
+<p class="subtitle">SVG Character Sprite Sheet &mdash; Idle / Jump / Crouch / Shoot</p>
+
+<!-- ====== MAIN STAGE ====== -->
+<div class="main-stage" id="stage">
+  <div class="stars" id="stars"></div>
+  <div class="ground"></div>
+  <div class="ground-line"></div>
+  <div class="action-label" id="actionLabel">IDLE</div>
+  <div class="stage-character" id="stageChar"></div>
+</div>
+
+<!-- ====== CONTROLS ====== -->
+<div class="controls">
+  <button id="btnIdle" class="active" onclick="setAction('idle')">
+    Idle<span class="key-hint">Key: 1</span>
+  </button>
+  <button id="btnJump" onclick="setAction('jump')">
+    Jump<span class="key-hint">Key: 2 / W</span>
+  </button>
+  <button id="btnCrouch" onclick="setAction('crouch')">
+    Crouch<span class="key-hint">Key: 3 / S</span>
+  </button>
+  <button id="btnShoot" onclick="setAction('shoot')">
+    Shoot<span class="key-hint">Key: 4 / Space</span>
+  </button>
+  <button id="btnCrouchShoot" onclick="setAction('crouchShoot')">
+    Crouch+Shoot<span class="key-hint">Key: 5</span>
+  </button>
+  <button id="btnJumpShoot" onclick="setAction('jumpShoot')">
+    Jump+Shoot<span class="key-hint">Key: 6</span>
+  </button>
+</div>
+
+<!-- ====== SPRITE SHEET ====== -->
+<div class="sprite-sheet">
+  <h2>SPRITE SHEET &mdash; All Poses</h2>
+  <div class="sheet-grid" id="sheetGrid"></div>
+</div>
+
+<script>
+// ========== SVG CHARACTER BUILDER ==========
+
+function buildCharSVG(pose, w = 120, h = 160) {
+  // Colors
+  const C = {
+    helmet: '#3a86ff',
+    helmetShade: '#2667cc',
+    visor: '#00f5d4',
+    visorGlow: '#72efdd',
+    armor: '#4a5568',
+    armorLight: '#718096',
+    armorDark: '#2d3748',
+    undersuit: '#1a202c',
+    belt: '#e53e3e',
+    gun: '#a0aec0',
+    gunDark: '#4a5568',
+    muzzle: '#ffe44d',
+    boot: '#2d3748',
+    bootSole: '#e53e3e',
+    glow: '#3a86ff',
+    jetpack: '#4a5568',
+    jetpackAccent: '#e53e3e'
+  };
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`;
+  svg += `<defs>
+    <radialGradient id="visorGrad_${pose}"><stop offset="0%" stop-color="${C.visorGlow}"/><stop offset="100%" stop-color="${C.visor}"/></radialGradient>
+    <linearGradient id="helmetGrad_${pose}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${C.helmet}"/><stop offset="100%" stop-color="${C.helmetShade}"/></linearGradient>
+    <filter id="glow_${pose}"><feGaussianBlur stdDeviation="2" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`;
+
+  // ---------- IDLE ----------
+  if (pose === 'idle') {
+    // Jetpack
+    svg += `<rect x="36" y="52" width="14" height="28" rx="4" fill="${C.jetpack}"/>`;
+    svg += `<rect x="38" y="56" width="4" height="8" rx="2" fill="${C.jetpackAccent}"/>`;
+    svg += `<rect x="44" y="56" width="4" height="8" rx="2" fill="${C.jetpackAccent}"/>`;
+    // Left leg
+    svg += `<rect x="46" y="110" width="13" height="28" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="44" y="134" width="16" height="12" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="44" y="143" width="18" height="4" rx="2" fill="${C.bootSole}"/>`;
+    // Right leg
+    svg += `<rect x="63" y="110" width="13" height="28" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="62" y="134" width="16" height="12" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="62" y="143" width="18" height="4" rx="2" fill="${C.bootSole}"/>`;
+    // Body / Torso
+    svg += `<rect x="43" y="50" width="36" height="40" rx="6" fill="${C.armor}"/>`;
+    svg += `<rect x="48" y="54" width="26" height="14" rx="3" fill="${C.armorLight}"/>`;
+    svg += `<rect x="55" y="70" width="12" height="4" rx="2" fill="${C.armorDark}"/>`;
+    // Belt
+    svg += `<rect x="42" y="88" width="38" height="8" rx="3" fill="${C.belt}"/>`;
+    svg += `<rect x="56" y="89" width="10" height="6" rx="2" fill="#fc8181"/>`;
+    // Upper body detail
+    svg += `<rect x="43" y="95" width="36" height="18" rx="4" fill="${C.armorDark}"/>`;
+    // Left arm
+    svg += `<rect x="30" y="52" width="14" height="30" rx="5" fill="${C.armor}"/>`;
+    svg += `<rect x="31" y="78" width="12" height="10" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="32" y="85" width="10" height="8" rx="3" fill="${C.armorLight}"/>`;
+    // Right arm
+    svg += `<rect x="78" y="52" width="14" height="30" rx="5" fill="${C.armor}"/>`;
+    svg += `<rect x="79" y="78" width="12" height="10" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="80" y="85" width="10" height="8" rx="3" fill="${C.armorLight}"/>`;
+    // Helmet
+    svg += `<ellipse cx="61" cy="30" rx="22" ry="24" fill="url(#helmetGrad_${pose})"/>`;
+    svg += `<ellipse cx="61" cy="28" rx="19" ry="20" fill="${C.helmetShade}"/>`;
+    // Visor
+    svg += `<ellipse cx="65" cy="32" rx="14" ry="9" fill="url(#visorGrad_${pose})" filter="url(#glow_${pose})"/>`;
+    svg += `<ellipse cx="67" cy="30" rx="5" ry="3" fill="#fff" opacity="0.35"/>`;
+    // Antenna
+    svg += `<line x1="55" y1="8" x2="55" y2="18" stroke="${C.armorLight}" stroke-width="2" stroke-linecap="round"/>`;
+    svg += `<circle cx="55" cy="7" r="3" fill="${C.jetpackAccent}"/>`;
+    // Shoulder pads
+    svg += `<ellipse cx="38" cy="54" rx="8" ry="5" fill="${C.armorLight}"/>`;
+    svg += `<ellipse cx="84" cy="54" rx="8" ry="5" fill="${C.armorLight}"/>`;
+  }
+
+  // ---------- JUMP ----------
+  else if (pose === 'jump') {
+    // Jetpack flames
+    svg += `<ellipse cx="42" cy="92" rx="5" ry="14" fill="#ffe44d" opacity="0.8" filter="url(#glow_${pose})"/>`;
+    svg += `<ellipse cx="42" cy="90" rx="3" ry="9" fill="#ff6b35" opacity="0.9"/>`;
+    svg += `<rect x="36" y="42" width="14" height="28" rx="4" fill="${C.jetpack}"/>`;
+    svg += `<rect x="38" y="46" width="4" height="8" rx="2" fill="${C.jetpackAccent}"/>`;
+    svg += `<rect x="44" y="46" width="4" height="8" rx="2" fill="${C.jetpackAccent}"/>`;
+    // Left leg (bent back)
+    svg += `<rect x="44" y="100" width="13" height="20" rx="4" fill="${C.undersuit}" transform="rotate(-20,50,100)"/>`;
+    svg += `<rect x="36" y="115" width="13" height="16" rx="4" fill="${C.undersuit}" transform="rotate(25,42,115)"/>`;
+    svg += `<rect x="30" y="126" width="15" height="10" rx="3" fill="${C.boot}" transform="rotate(15,37,126)"/>`;
+    svg += `<rect x="28" y="133" width="17" height="4" rx="2" fill="${C.bootSole}" transform="rotate(15,37,133)"/>`;
+    // Right leg (bent forward)
+    svg += `<rect x="64" y="100" width="13" height="20" rx="4" fill="${C.undersuit}" transform="rotate(15,70,100)"/>`;
+    svg += `<rect x="72" y="115" width="13" height="16" rx="4" fill="${C.undersuit}" transform="rotate(-20,78,115)"/>`;
+    svg += `<rect x="68" y="127" width="15" height="10" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="66" y="134" width="17" height="4" rx="2" fill="${C.bootSole}"/>`;
+    // Body
+    svg += `<rect x="43" y="40" width="36" height="40" rx="6" fill="${C.armor}"/>`;
+    svg += `<rect x="48" y="44" width="26" height="14" rx="3" fill="${C.armorLight}"/>`;
+    svg += `<rect x="55" y="60" width="12" height="4" rx="2" fill="${C.armorDark}"/>`;
+    svg += `<rect x="42" y="78" width="38" height="8" rx="3" fill="${C.belt}"/>`;
+    svg += `<rect x="56" y="79" width="10" height="6" rx="2" fill="#fc8181"/>`;
+    svg += `<rect x="43" y="85" width="36" height="18" rx="4" fill="${C.armorDark}"/>`;
+    // Arms raised
+    svg += `<rect x="26" y="38" width="14" height="30" rx="5" fill="${C.armor}" transform="rotate(-15,33,38)"/>`;
+    svg += `<rect x="25" y="62" width="12" height="10" rx="4" fill="${C.undersuit}" transform="rotate(-15,31,62)"/>`;
+    svg += `<rect x="82" y="38" width="14" height="30" rx="5" fill="${C.armor}" transform="rotate(15,89,38)"/>`;
+    svg += `<rect x="85" y="62" width="12" height="10" rx="4" fill="${C.undersuit}" transform="rotate(15,91,62)"/>`;
+    // Shoulder pads
+    svg += `<ellipse cx="36" cy="43" rx="8" ry="5" fill="${C.armorLight}" transform="rotate(-15,36,43)"/>`;
+    svg += `<ellipse cx="86" cy="43" rx="8" ry="5" fill="${C.armorLight}" transform="rotate(15,86,43)"/>`;
+    // Helmet
+    svg += `<ellipse cx="61" cy="20" rx="22" ry="24" fill="url(#helmetGrad_${pose})"/>`;
+    svg += `<ellipse cx="61" cy="18" rx="19" ry="20" fill="${C.helmetShade}"/>`;
+    svg += `<ellipse cx="65" cy="22" rx="14" ry="9" fill="url(#visorGrad_${pose})" filter="url(#glow_${pose})"/>`;
+    svg += `<ellipse cx="67" cy="20" rx="5" ry="3" fill="#fff" opacity="0.35"/>`;
+    svg += `<line x1="55" y1="0" x2="55" y2="8" stroke="${C.armorLight}" stroke-width="2" stroke-linecap="round"/>`;
+    svg += `<circle cx="55" cy="0" r="3" fill="${C.jetpackAccent}"/>`;
+  }
+
+  // ---------- CROUCH ----------
+  else if (pose === 'crouch') {
+    // Jetpack
+    svg += `<rect x="34" y="72" width="14" height="24" rx="4" fill="${C.jetpack}"/>`;
+    svg += `<rect x="36" y="75" width="4" height="7" rx="2" fill="${C.jetpackAccent}"/>`;
+    svg += `<rect x="42" y="75" width="4" height="7" rx="2" fill="${C.jetpackAccent}"/>`;
+    // Legs (tucked)
+    svg += `<rect x="42" y="118" width="16" height="12" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="40" y="127" width="19" height="10" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="38" y="134" width="22" height="4" rx="2" fill="${C.bootSole}"/>`;
+    svg += `<rect x="62" y="118" width="16" height="12" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="61" y="127" width="19" height="10" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="59" y="134" width="22" height="4" rx="2" fill="${C.bootSole}"/>`;
+    // Bent body
+    svg += `<rect x="41" y="70" width="38" height="34" rx="6" fill="${C.armor}"/>`;
+    svg += `<rect x="46" y="73" width="28" height="12" rx="3" fill="${C.armorLight}"/>`;
+    svg += `<rect x="55" y="87" width="12" height="4" rx="2" fill="${C.armorDark}"/>`;
+    svg += `<rect x="40" y="102" width="40" height="8" rx="3" fill="${C.belt}"/>`;
+    svg += `<rect x="55" y="103" width="10" height="6" rx="2" fill="#fc8181"/>`;
+    svg += `<rect x="41" y="109" width="38" height="12" rx="4" fill="${C.armorDark}"/>`;
+    // Arms (lowered)
+    svg += `<rect x="28" y="74" width="14" height="24" rx="5" fill="${C.armor}"/>`;
+    svg += `<rect x="29" y="95" width="12" height="10" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="78" y="74" width="14" height="24" rx="5" fill="${C.armor}"/>`;
+    svg += `<rect x="79" y="95" width="12" height="10" rx="4" fill="${C.undersuit}"/>`;
+    // Shoulder pads
+    svg += `<ellipse cx="36" cy="76" rx="8" ry="5" fill="${C.armorLight}"/>`;
+    svg += `<ellipse cx="84" cy="76" rx="8" ry="5" fill="${C.armorLight}"/>`;
+    // Helmet (ducked)
+    svg += `<ellipse cx="61" cy="54" rx="22" ry="22" fill="url(#helmetGrad_${pose})"/>`;
+    svg += `<ellipse cx="61" cy="52" rx="19" ry="19" fill="${C.helmetShade}"/>`;
+    svg += `<ellipse cx="65" cy="56" rx="14" ry="8" fill="url(#visorGrad_${pose})" filter="url(#glow_${pose})"/>`;
+    svg += `<ellipse cx="67" cy="54" rx="5" ry="3" fill="#fff" opacity="0.35"/>`;
+    svg += `<line x1="55" y1="34" x2="55" y2="42" stroke="${C.armorLight}" stroke-width="2" stroke-linecap="round"/>`;
+    svg += `<circle cx="55" cy="33" r="3" fill="${C.jetpackAccent}"/>`;
+  }
+
+  // ---------- SHOOT ----------
+  else if (pose === 'shoot') {
+    // Jetpack
+    svg += `<rect x="33" y="52" width="14" height="28" rx="4" fill="${C.jetpack}"/>`;
+    svg += `<rect x="35" y="56" width="4" height="8" rx="2" fill="${C.jetpackAccent}"/>`;
+    svg += `<rect x="41" y="56" width="4" height="8" rx="2" fill="${C.jetpackAccent}"/>`;
+    // Legs
+    svg += `<rect x="44" y="110" width="13" height="28" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="42" y="134" width="16" height="12" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="42" y="143" width="18" height="4" rx="2" fill="${C.bootSole}"/>`;
+    svg += `<rect x="61" y="110" width="13" height="28" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="60" y="134" width="16" height="12" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="60" y="143" width="18" height="4" rx="2" fill="${C.bootSole}"/>`;
+    // Body
+    svg += `<rect x="41" y="50" width="36" height="40" rx="6" fill="${C.armor}"/>`;
+    svg += `<rect x="46" y="54" width="26" height="14" rx="3" fill="${C.armorLight}"/>`;
+    svg += `<rect x="53" y="70" width="12" height="4" rx="2" fill="${C.armorDark}"/>`;
+    svg += `<rect x="40" y="88" width="38" height="8" rx="3" fill="${C.belt}"/>`;
+    svg += `<rect x="54" y="89" width="10" height="6" rx="2" fill="#fc8181"/>`;
+    svg += `<rect x="41" y="95" width="36" height="18" rx="4" fill="${C.armorDark}"/>`;
+    // Left arm (supporting gun)
+    svg += `<rect x="28" y="52" width="14" height="20" rx="5" fill="${C.armor}"/>`;
+    svg += `<rect x="29" y="68" width="12" height="10" rx="4" fill="${C.undersuit}" transform="rotate(60,35,68)"/>`;
+    // Right arm + GUN (extended)
+    svg += `<rect x="76" y="50" width="14" height="14" rx="5" fill="${C.armor}"/>`;
+    svg += `<rect x="86" y="50" width="22" height="12" rx="4" fill="${C.armor}"/>`;
+    svg += `<rect x="79" y="56" width="6" height="10" rx="3" fill="${C.undersuit}"/>`;
+    // Gun
+    svg += `<rect x="96" y="48" width="24" height="14" rx="3" fill="${C.gunDark}"/>`;
+    svg += `<rect x="100" y="50" width="22" height="10" rx="2" fill="${C.gun}"/>`;
+    svg += `<rect x="96" y="60" width="8" height="8" rx="2" fill="${C.gunDark}"/>`;
+    svg += `<rect x="118" y="50" width="4" height="10" rx="1" fill="${C.armorDark}"/>`;
+    // Muzzle flash
+    svg += `<polygon points="122,55 138,50 135,55 140,55 135,60 138,60" fill="${C.muzzle}" filter="url(#glow_${pose})" opacity="0.9"/>`;
+    svg += `<circle cx="125" cy="55" r="4" fill="#fff" opacity="0.6"/>`;
+    // Shoulder pads
+    svg += `<ellipse cx="35" cy="54" rx="8" ry="5" fill="${C.armorLight}"/>`;
+    svg += `<ellipse cx="82" cy="52" rx="8" ry="5" fill="${C.armorLight}"/>`;
+    // Helmet (leaning)
+    svg += `<ellipse cx="59" cy="30" rx="22" ry="24" fill="url(#helmetGrad_${pose})"/>`;
+    svg += `<ellipse cx="59" cy="28" rx="19" ry="20" fill="${C.helmetShade}"/>`;
+    svg += `<ellipse cx="63" cy="32" rx="14" ry="9" fill="url(#visorGrad_${pose})" filter="url(#glow_${pose})"/>`;
+    svg += `<ellipse cx="65" cy="30" rx="5" ry="3" fill="#fff" opacity="0.35"/>`;
+    svg += `<line x1="53" y1="8" x2="53" y2="18" stroke="${C.armorLight}" stroke-width="2" stroke-linecap="round"/>`;
+    svg += `<circle cx="53" cy="7" r="3" fill="${C.jetpackAccent}"/>`;
+  }
+
+  // ---------- CROUCH + SHOOT ----------
+  else if (pose === 'crouchShoot') {
+    // Jetpack
+    svg += `<rect x="32" y="72" width="14" height="24" rx="4" fill="${C.jetpack}"/>`;
+    svg += `<rect x="34" y="75" width="4" height="7" rx="2" fill="${C.jetpackAccent}"/>`;
+    svg += `<rect x="40" y="75" width="4" height="7" rx="2" fill="${C.jetpackAccent}"/>`;
+    // Legs (tucked)
+    svg += `<rect x="40" y="118" width="16" height="12" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="38" y="127" width="19" height="10" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="36" y="134" width="22" height="4" rx="2" fill="${C.bootSole}"/>`;
+    svg += `<rect x="60" y="118" width="16" height="12" rx="4" fill="${C.undersuit}"/>`;
+    svg += `<rect x="59" y="127" width="19" height="10" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="57" y="134" width="22" height="4" rx="2" fill="${C.bootSole}"/>`;
+    // Body (crouched)
+    svg += `<rect x="39" y="70" width="38" height="34" rx="6" fill="${C.armor}"/>`;
+    svg += `<rect x="44" y="73" width="28" height="12" rx="3" fill="${C.armorLight}"/>`;
+    svg += `<rect x="53" y="87" width="12" height="4" rx="2" fill="${C.armorDark}"/>`;
+    svg += `<rect x="38" y="102" width="40" height="8" rx="3" fill="${C.belt}"/>`;
+    svg += `<rect x="53" y="103" width="10" height="6" rx="2" fill="#fc8181"/>`;
+    svg += `<rect x="39" y="109" width="38" height="12" rx="4" fill="${C.armorDark}"/>`;
+    // Left arm
+    svg += `<rect x="26" y="74" width="14" height="20" rx="5" fill="${C.armor}"/>`;
+    svg += `<rect x="27" y="90" width="12" height="10" rx="4" fill="${C.undersuit}" transform="rotate(50,33,90)"/>`;
+    // Right arm + GUN
+    svg += `<rect x="76" y="70" width="14" height="14" rx="5" fill="${C.armor}"/>`;
+    svg += `<rect x="86" y="70" width="18" height="12" rx="4" fill="${C.armor}"/>`;
+    // Gun
+    svg += `<rect x="94" y="68" width="24" height="14" rx="3" fill="${C.gunDark}"/>`;
+    svg += `<rect x="98" y="70" width="22" height="10" rx="2" fill="${C.gun}"/>`;
+    svg += `<rect x="94" y="80" width="8" height="8" rx="2" fill="${C.gunDark}"/>`;
+    svg += `<rect x="116" y="70" width="4" height="10" rx="1" fill="${C.armorDark}"/>`;
+    // Muzzle flash
+    svg += `<polygon points="120,75 136,70 133,75 138,75 133,80 136,80" fill="${C.muzzle}" filter="url(#glow_${pose})" opacity="0.9"/>`;
+    svg += `<circle cx="123" cy="75" r="4" fill="#fff" opacity="0.6"/>`;
+    // Shoulder pads
+    svg += `<ellipse cx="34" cy="76" rx="8" ry="5" fill="${C.armorLight}"/>`;
+    svg += `<ellipse cx="82" cy="73" rx="8" ry="5" fill="${C.armorLight}"/>`;
+    // Helmet
+    svg += `<ellipse cx="59" cy="54" rx="22" ry="22" fill="url(#helmetGrad_${pose})"/>`;
+    svg += `<ellipse cx="59" cy="52" rx="19" ry="19" fill="${C.helmetShade}"/>`;
+    svg += `<ellipse cx="63" cy="56" rx="14" ry="8" fill="url(#visorGrad_${pose})" filter="url(#glow_${pose})"/>`;
+    svg += `<ellipse cx="65" cy="54" rx="5" ry="3" fill="#fff" opacity="0.35"/>`;
+    svg += `<line x1="53" y1="34" x2="53" y2="42" stroke="${C.armorLight}" stroke-width="2" stroke-linecap="round"/>`;
+    svg += `<circle cx="53" cy="33" r="3" fill="${C.jetpackAccent}"/>`;
+  }
+
+  // ---------- JUMP + SHOOT ----------
+  else if (pose === 'jumpShoot') {
+    // Jetpack flames
+    svg += `<ellipse cx="40" cy="92" rx="5" ry="16" fill="#ffe44d" opacity="0.8" filter="url(#glow_${pose})"/>`;
+    svg += `<ellipse cx="40" cy="90" rx="3" ry="10" fill="#ff6b35" opacity="0.9"/>`;
+    svg += `<rect x="34" y="42" width="14" height="28" rx="4" fill="${C.jetpack}"/>`;
+    svg += `<rect x="36" y="46" width="4" height="8" rx="2" fill="${C.jetpackAccent}"/>`;
+    svg += `<rect x="42" y="46" width="4" height="8" rx="2" fill="${C.jetpackAccent}"/>`;
+    // Legs
+    svg += `<rect x="42" y="100" width="13" height="20" rx="4" fill="${C.undersuit}" transform="rotate(-15,48,100)"/>`;
+    svg += `<rect x="34" y="115" width="13" height="16" rx="4" fill="${C.undersuit}" transform="rotate(20,40,115)"/>`;
+    svg += `<rect x="28" y="126" width="15" height="10" rx="3" fill="${C.boot}" transform="rotate(10,35,126)"/>`;
+    svg += `<rect x="26" y="133" width="17" height="4" rx="2" fill="${C.bootSole}" transform="rotate(10,35,133)"/>`;
+    svg += `<rect x="62" y="100" width="13" height="20" rx="4" fill="${C.undersuit}" transform="rotate(10,68,100)"/>`;
+    svg += `<rect x="68" y="115" width="13" height="16" rx="4" fill="${C.undersuit}" transform="rotate(-15,74,115)"/>`;
+    svg += `<rect x="64" y="127" width="15" height="10" rx="3" fill="${C.boot}"/>`;
+    svg += `<rect x="62" y="134" width="17" height="4" rx="2" fill="${C.bootSole}"/>`;
+    // Body
+    svg += `<rect x="41" y="40" width="36" height="40" rx="6" fill="${C.armor}"/>`;
+    svg += `<rect x="46" y="44" width="26" height="14" rx="3" fill="${C.armorLight}"/>`;
+    svg += `<rect x="53" y="60" width="12" height="4" rx="2" fill="${C.armorDark}"/>`;
+    svg += `<rect x="40" y="78" width="38" height="8" rx="3" fill="${C.belt}"/>`;
+    svg += `<rect x="54" y="79" width="10" height="6" rx="2" fill="#fc8181"/>`;
+    svg += `<rect x="41" y="85" width="36" height="18" rx="4" fill="${C.armorDark}"/>`;
+    // Left arm
+    svg += `<rect x="26" y="40" width="14" height="22" rx="5" fill="${C.armor}" transform="rotate(-20,33,40)"/>`;
+    svg += `<rect x="22" y="56" width="12" height="10" rx="4" fill="${C.undersuit}" transform="rotate(40,28,56)"/>`;
+    // Right arm + GUN
+    svg += `<rect x="76" y="38" width="14" height="14" rx="5" fill="${C.armor}"/>`;
+    svg += `<rect x="86" y="38" width="20" height="12" rx="4" fill="${C.armor}"/>`;
+    // Gun
+    svg += `<rect x="96" y="36" width="24" height="14" rx="3" fill="${C.gunDark}"/>`;
+    svg += `<rect x="100" y="38" width="22" height="10" rx="2" fill="${C.gun}"/>`;
+    svg += `<rect x="96" y="48" width="8" height="8" rx="2" fill="${C.gunDark}"/>`;
+    svg += `<rect x="118" y="38" width="4" height="10" rx="1" fill="${C.armorDark}"/>`;
+    // Muzzle flash
+    svg += `<polygon points="122,43 140,37 136,43 142,43 136,49 140,49" fill="${C.muzzle}" filter="url(#glow_${pose})" opacity="0.9"/>`;
+    svg += `<circle cx="125" cy="43" r="4" fill="#fff" opacity="0.6"/>`;
+    // Shoulder pads
+    svg += `<ellipse cx="34" cy="43" rx="8" ry="5" fill="${C.armorLight}" transform="rotate(-15,34,43)"/>`;
+    svg += `<ellipse cx="82" cy="41" rx="8" ry="5" fill="${C.armorLight}"/>`;
+    // Helmet
+    svg += `<ellipse cx="59" cy="20" rx="22" ry="24" fill="url(#helmetGrad_${pose})"/>`;
+    svg += `<ellipse cx="59" cy="18" rx="19" ry="20" fill="${C.helmetShade}"/>`;
+    svg += `<ellipse cx="63" cy="22" rx="14" ry="9" fill="url(#visorGrad_${pose})" filter="url(#glow_${pose})"/>`;
+    svg += `<ellipse cx="65" cy="20" rx="5" ry="3" fill="#fff" opacity="0.35"/>`;
+    svg += `<line x1="53" y1="0" x2="53" y2="8" stroke="${C.armorLight}" stroke-width="2" stroke-linecap="round"/>`;
+    svg += `<circle cx="53" cy="0" r="3" fill="${C.jetpackAccent}"/>`;
+  }
+
+  svg += `</svg>`;
+  return svg;
+}
+
+// ========== STAGE LOGIC ==========
+const stageChar = document.getElementById('stageChar');
+const actionLabel = document.getElementById('actionLabel');
+const stage = document.getElementById('stage');
+let currentAction = 'idle';
+let jumpLock = false;
+
+const labelMap = {
+  idle: 'IDLE',
+  jump: 'JUMP',
+  crouch: 'CROUCH',
+  shoot: 'SHOOT',
+  crouchShoot: 'CROUCH + SHOOT',
+  jumpShoot: 'JUMP + SHOOT'
+};
+
+function setAction(action) {
+  if (jumpLock && action !== 'idle') return;
+  currentAction = action;
+  actionLabel.textContent = labelMap[action];
+
+  // Clear active buttons
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  const btnMap = { idle:'btnIdle', jump:'btnJump', crouch:'btnCrouch', shoot:'btnShoot', crouchShoot:'btnCrouchShoot', jumpShoot:'btnJumpShoot' };
+  document.getElementById(btnMap[action])?.classList.add('active');
+
+  // Render SVG
+  if (action === 'shoot' || action === 'crouchShoot' || action === 'jumpShoot') {
+    stageChar.innerHTML = buildCharSVG(action, 150, 160);
+  } else {
+    stageChar.innerHTML = buildCharSVG(action);
+  }
+
+  // Jump animation
+  stageChar.classList.remove('jumping','crouching');
+  if (action === 'jump' || action === 'jumpShoot') {
+    jumpLock = true;
+    stageChar.classList.add('jumping');
+    setTimeout(() => {
+      jumpLock = false;
+      if (currentAction === 'jump' || currentAction === 'jumpShoot') {
+        setAction('idle');
+      }
+    }, 600);
+  }
+  if (action === 'crouch' || action === 'crouchShoot') {
+    stageChar.classList.add('crouching');
+  }
+
+  // Bullet for shoot
+  if (action === 'shoot' || action === 'crouchShoot' || action === 'jumpShoot') {
+    fireBullet(action);
+  }
+}
+
+function fireBullet(action) {
+  const bullet = document.createElement('div');
+  bullet.className = 'bullet';
+  const charRect = stageChar.getBoundingClientRect();
+  const stageRect = stage.getBoundingClientRect();
+  let bx = charRect.right - stageRect.left - 10;
+  let by;
+  if (action === 'shoot') by = charRect.top - stageRect.top + 52;
+  else if (action === 'crouchShoot') by = charRect.top - stageRect.top + 72;
+  else by = charRect.top - stageRect.top + 40;
+
+  bullet.style.left = bx + 'px';
+  bullet.style.top = by + 'px';
+  stage.appendChild(bullet);
+
+  let pos = bx;
+  const speed = 12;
+  function moveBullet() {
+    pos += speed;
+    bullet.style.left = pos + 'px';
+    if (pos < stage.offsetWidth + 20) {
+      requestAnimationFrame(moveBullet);
+    } else {
+      bullet.remove();
+    }
+  }
+  requestAnimationFrame(moveBullet);
+}
+
+// ========== KEYBOARD ==========
+document.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === '1') setAction('idle');
+  else if (k === '2' || k === 'w') setAction('jump');
+  else if (k === '3' || k === 's') setAction('crouch');
+  else if (k === '4' || k === ' ') { e.preventDefault(); setAction('shoot'); }
+  else if (k === '5') setAction('crouchShoot');
+  else if (k === '6') setAction('jumpShoot');
+});
+
+// ========== STARS ==========
+const starsDiv = document.getElementById('stars');
+for (let i = 0; i < 30; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top = Math.random() * 65 + '%';
+  s.style.animationDelay = (Math.random() * 2) + 's';
+  s.style.width = s.style.height = (1 + Math.random() * 2) + 'px';
+  starsDiv.appendChild(s);
+}
+
+// ========== SPRITE SHEET ==========
+const sheetGrid = document.getElementById('sheetGrid');
+const poses = [
+  { id:'idle', label:'Idle' },
+  { id:'jump', label:'Jump' },
+  { id:'crouch', label:'Crouch' },
+  { id:'shoot', label:'Shoot' },
+  { id:'crouchShoot', label:'Crouch+Shoot' },
+  { id:'jumpShoot', label:'Jump+Shoot' },
+];
+poses.forEach(p => {
+  const cell = document.createElement('div');
+  cell.className = 'sheet-cell';
+  const w = (p.id === 'shoot' || p.id === 'crouchShoot' || p.id === 'jumpShoot') ? 150 : 120;
+  cell.innerHTML = buildCharSVG(p.id, w, 160) + `<div class="label">${p.label}</div>`;
+  sheetGrid.appendChild(cell);
+});
+
+// Init
+setAction('idle');
+</script>
+</body>
+</html>

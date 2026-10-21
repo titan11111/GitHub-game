@@ -1,0 +1,143 @@
+
+/* ============================================
+   マップアニメーションとエリアタイトル
+   ============================================
+   
+   役割: マップ関連のアニメーションとエリアタイトルのスタイル
+   
+   含まれる内容:
+   - フィールドごとのセル基本スタイル調整
+   - エリアタイトル（#area-title）
+   - アニメーション（@keyframes）
+   ============================================ */
+
+/* フィールドごとのセル基本スタイル調整 */
+.field-town_inside .cell {
+    border-radius: 3px;
+}
+
+.field-green_field .cell {
+    border-radius: 2px;
+}
+
+.field-wasteland .cell {
+    border-radius: 1px;
+}
+
+.field-lonely_desert .cell {
+    border-radius: 2px;
+}
+
+.field-lava_cave .cell {
+    border-radius: 3px;
+}
+
+.field-demon_castle .cell {
+    border-radius: 4px;
+}
+
+.field-ruined_village .cell {
+    border-radius: 1px;
+}
+
+.field-dark_forest .cell {
+    border-radius: 2px;
+}
+
+.field-tropical_south .cell {
+    border-radius: 3px;
+}
+
+.field-tropical_village .cell {
+    border-radius: 3px;
+}
+
+.field-water_spirit_dwelling .cell {
+    border-radius: 3px;
+}
+
+.field-monster_forest .cell {
+    border-radius: 2px;
+}
+
+/* エリアタイトルのスタイル強化 */
+#area-title {
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    padding: 8px;
+    transition: all 0.3s ease;
+}
+
+/* フィールドごとのエリアタイトルスタイル */
+.field-town_inside #area-title {
+    color: #ffd4a3;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 212, 163, 0.5);
+}
+
+.field-green_field #area-title {
+    color: #90ee90;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(144, 238, 144, 0.5);
+}
+
+.field-wasteland #area-title {
+    color: #d2b48c;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(210, 180, 140, 0.4);
+}
+
+.field-lonely_desert #area-title {
+    color: #f4a460;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(244, 164, 96, 0.6);
+}
+
+.field-lava_cave #area-title {
+    color: #ff6347;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 99, 71, 0.8);
+    animation: titleFireGlow 2s ease-in-out infinite;
+}
+
+.field-demon_castle #area-title {
+    color: #87ceeb;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(135, 206, 235, 0.8);
+    animation: titleWaterGlow 3s ease-in-out infinite;
+}
+
+.field-ruined_village #area-title {
+    color: #c0c0c0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(192, 192, 192, 0.5);
+}
+
+.field-dark_forest #area-title {
+    color: #228b22;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(34, 139, 34, 0.5);
+}
+
+.field-tropical_south #area-title {
+    color: #7fffd4;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(127, 255, 212, 0.6);
+}
+
+.field-tropical_village #area-title {
+    color: #98fb98;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(152, 251, 152, 0.6);
+}
+
+.field-water_spirit_dwelling #area-title {
+    color: #87ceeb;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px rgba(135, 206, 235, 0.6);
+}
+
+@keyframes titleFireGlow {
+    0%, 100% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 99, 71, 0.8);
+    }
+    50% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 150, 100, 1);
+    }
+}
+
+@keyframes titleWaterGlow {
+    0%, 100% {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(135, 206, 235, 0.8);
+    }
+    50% {

@@ -1,0 +1,74 @@
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    overscroll-behavior: none;
+}
+
+body {
+    font-family: 'Fredoka', 'Zen Maru Gothic', sans-serif;
+    background: linear-gradient(135deg, #eef2f3 0%, #8e9eab 100%);
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    overscroll-behavior: none;
+}
+
+button {
+    touch-action: manipulation;
+}
+
+.pop-button {
+    transition: transform 0.08s ease, filter 0.08s ease, box-shadow 0.15s ease;
+}
+
+.pop-button:active {
+    transform: scale(0.92);
+    filter: brightness(0.96);
+}
+
+.best-score-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(241, 245, 249, 0.9);
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.result-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    font-weight: 900;
+    box-shadow: 0 8px 18px rgba(245, 158, 11, 0.2);
+}
+
+/* アニメーション */
+@keyframes bounce-slow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.animate-bounce-slow {
+    animation: bounce-slow 3s infinite ease-in-out;
+}
+
+.correct-flash {
+    animation: correct-anim 0.5s ease-out;
+}
+
+@keyframes correct-anim {
+    0% { background-color: rgba(74, 222, 128, 0.2); }
+    50% { background-color: rgba(74, 222, 128, 0.6); }
+    100% { background-color: transparent; }
+}

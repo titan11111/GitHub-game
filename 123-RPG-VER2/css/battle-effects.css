@@ -1,0 +1,425 @@
+/* ============================================
+   戦闘エフェクトスタイル
+   ============================================
+   
+   役割: ダメージ表示、フラッシュ、勝利演出などのエフェクトスタイル
+   
+   含まれる内容:
+   - ダメージ数値表示（.damage-number）
+   - クリティカルヒット表示（.critical-text）
+   - 画面フラッシュエフェクト（.battle-flash）
+   - HPバー（.hp-bar）
+   - 戦闘開始・勝利・レベルアップ演出
+   ============================================ */
+
+/* ダメージ数値表示 */
+.damage-number {
+    position: absolute;
+    font-size: 48px;
+    font-weight: bold;
+    color: #ff0000;
+    text-shadow: 2px 2px 0 #000, 0 0 10px #ff0000;
+    pointer-events: none;
+    z-index: 100;
+    animation: damageFloat 1s ease-out forwards;
+}
+
+@keyframes damageFloat {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-80px) scale(1.5);
+    }
+}
+
+/* クリティカルヒット表示 */
+.critical-text {
+    position: absolute;
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 2px 2px 0 #000, 0 0 15px #ffff00;
+    pointer-events: none;
+    z-index: 101;
+    animation: criticalPulse 1.5s ease-out forwards;
+}
+
+@keyframes criticalPulse {
+    0% {
+        opacity: 1;
+        transform: scale(0.5);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1);
+    }
+}
+
+/* 画面フラッシュエフェクト */
+.battle-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    z-index: 200;
+    animation: flashEffect 0.2s ease-out;
+}
+
+@keyframes flashEffect {
+    0% { opacity: 0.8; }
+    100% { opacity: 0; }
+}
+
+/* HPバー */
+.hp-bar-container {
+    width: 100%;
+    height: 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #fff;
+    margin: 2px 0;
+    position: relative;
+}
+
+.hp-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff00 0%, #ffff00 50%, #ff0000 100%);
+    transition: width 0.5s ease-out;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.hp-bar-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+    z-index: 10;
+}
+
+/* ステータス行のコンパクト化 */
+.status-row {
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.status-row-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+    font-size: 11px;
+}
+
+/* 敵のHPバー */
+.enemy-hp-bar {
+    width: 80%;
+    max-width: 300px;
+    margin: 10px auto;
+}
+
+/* FF風戦闘開始演出 */
+.battle-start-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 300;
+    pointer-events: none;
+    animation: overlayFadeIn 0.2s ease-in, overlayFadeOut 0.3s ease-out 0.7s forwards;
+}
+
+.battle-start-text {
+    font-size: 48px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    animation: battleStartAnimation 1s ease-out forwards;
+}
+
+@keyframes overlayFadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes overlayFadeOut {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes battleStartAnimation {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    30% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+}
+
+/* FF風勝利演出 */
+.victory-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 300;
+    pointer-events: none;
+}
+
+.victory-text {
+    font-size: 36px;
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff00;
+    margin-bottom: 20px;
+    animation: victoryPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes victoryPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.9;
+    }
+}
+
+.victory-rewards {
+    font-size: 20px;
+    color: #fff;
+    text-align: center;
+    line-height: 1.8;
+}
+
+/* FF風レベルアップ演出 */
+.levelup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 400;
+    pointer-events: none;
+}
+
+.levelup-text {
+    font-size: min(56px, 10vw);
+    font-weight: bold;
+    color: #00ffff;
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    animation: levelupAnimation 2.5s ease-out forwards;
+    white-space: nowrap;
+    padding: 0 12px;
+}
+
+@keyframes levelupAnimation {
+    0% {
+        opacity: 0;
+        transform: translateY(50px) scale(0.5);
+    }
+    30% {
+        opacity: 1;
+        transform: translateY(0) scale(1.2);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.8);
+    }
+}
+
+.levelup-stats {
+    font-size: 24px;
+    color: #ffff00;
+    margin-top: 20px;
+    text-align: center;
+    opacity: 0;
+    animation: levelupStatsAnimation 2.5s ease-out forwards;
+}
+
+@keyframes levelupStatsAnimation {
+    0%, 40% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+/* 携帯：レベルアップテキストを1行に収める */
+@media (max-width: 480px) {
+    .levelup-text {
+        font-size: min(32px, 9vw);
+    }
+}
+@media (max-width: 360px) {
+    .levelup-text {
+        font-size: 26px;
+    }
+    .levelup-stats {
+        font-size: 18px;
+        margin-top: 12px;
+    }
+}
+
+/* コントロールパネル */
+#control-panel {
+    flex-shrink: 0;
+    height: 200px;  /* 縦向き時の高さ */
+    width: 100%;
+    max-width: var(--max-content);
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;  /* 20px下に下げる */
+    background-color: var(--control-bg);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    /* ゲーム画面との境界線を削除 */
+    border-top: none;
+    user-select: none;
+    touch-action: manipulation;
+    padding-top: 20px;  /* 上部パディングを追加して天地のバランス調整 */
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));  /* 下部パディングも調整して天地のバランス調整 */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2000;  /* コントロールパネルは常に最前面 */
+}
+
+/* iOS: 戦闘画面では仮想コントローラを非表示（タッチ操作でコマンド選択） */
+@media (max-width: 768px) {
+    #battle-screen.active ~ #control-panel {
+        display: none;  /* 戦闘画面では非表示 */
+    }
+    
+    /* コマンドボタンをタッチ操作に最適化 */
+    .command-box li {
+        /* タッチ操作で直接選択可能にする */
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);
+    }
+}
+
+.d-pad {
+    display: grid;
+    grid-template-areas: 
+        ". up ."
+        "left . right"
+        ". down .";
+    gap: 2px;
+}
+
+.pad-btn {
+    width: 55px;
+    height: 55px;
+    background: var(--btn-bg);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 4px var(--btn-shadow);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.pad-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px var(--btn-shadow);
+    background: #222;
+}
+
+.up { grid-area: up; } 
+.down { grid-area: down; } 
+.left { grid-area: left; } 
+.right { grid-area: right; }
+
+.action-group { 
+    display: flex; 
+    gap: 15px; 
+    transform: rotate(-5deg); 
+}
+
+.circle-btn {
+    width: 70px;
+    height: 70px;
+    background: #a00;
+    border: 2px solid #500;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    box-shadow: 0 4px var(--btn-shadow);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.circle-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px var(--btn-shadow); 
+    background: #700; 
+}
+
+.btn-a { margin-top: -10px; }
+.btn-b { 
+    margin-top: 20px; 
+    background: #444; 
+    border-color: #222; 
+}
+

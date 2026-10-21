@@ -1,0 +1,207 @@
+/* ============================================
+   マップグリッド基本スタイル
+   ============================================
+   
+   役割: マップグリッドの基本レイアウトとレスポンシブ対応
+   
+   含まれる内容:
+   - マップグリッド（#map-grid）
+   - レスポンシブ対応（メディアクエリ）
+   ============================================ */
+
+#map-grid {
+    display: grid; 
+    grid-template-columns: repeat(10, 9.6vw);  /* 8vw × 1.2 */
+    gap: 1px;
+    max-width: 384px;  /* 320px × 1.2 */
+    justify-content: center; 
+    margin: 10px auto;
+    background-color: #222; 
+    border: 2px solid #555;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+@media (min-width: 400px) {
+    #map-grid { 
+        grid-template-columns: repeat(10, 38.4px);  /* 32px × 1.2 */
+    }
+}
+
+/* 横向き（ランドスケープ）対応：パディングを広げて見やすく */
+@media (orientation: landscape) {
+    #control-panel {
+        height: 160px;  /* 横向き時の高さ */
+    }
+    
+    /* 横向きでも画面全体に表示（変更なし） */
+    
+    #battle-screen {
+        height: calc(100vh - 180px);   /* フォールバック: コントロールパネルの高さを引く（横向き160px + margin-top 20px） */
+        height: calc(100dvh - 180px);  /* iOS Safari: 動的ビューポート - コントロールパネル（横向き） */
+    }
+    
+    .pad-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    .circle-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 20px;
+    }
+    
+    #game-container {
+        padding-left: max(24px, env(safe-area-inset-left, 0));
+        padding-right: max(24px, env(safe-area-inset-right, 0));
+    }
+    
+    #map-grid {
+        max-width: 100%;
+    }
+}
+
+/* 縦向き（ポートレート）対応 */
+@media (orientation: portrait) {
+    #control-panel {
+        height: 200px;  /* 縦向き時の高さ */
+    }
+    
+    #battle-screen {
+        height: calc(100vh - 220px);   /* フォールバック: コントロールパネルの高さを引く（縦向き200px + margin-top 20px） */
+        height: calc(100dvh - 220px);  /* iOS Safari: 動的ビューポート - コントロールパネル（縦向き） */
+    }
+    
+    #game-container {
+        padding-left: env(safe-area-inset-left, 0);
+        padding-right: env(safe-area-inset-right, 0);
+    }
+}
+
+/* 横幅が狭い端末（iPhone SE 縦など）：横スクロール防止・コントロールを少し小さく */
+@media (max-width: 380px) {
+    #game-container {
+        padding-left: env(safe-area-inset-left, 0);
+        padding-right: env(safe-area-inset-right, 0);
+    }
+    .pad-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+    .circle-btn {
+        width: 58px;
+        height: 58px;
+        font-size: 20px;
+    }
+    #map-grid {
+        grid-template-columns: repeat(10, 8.8vw);
+        max-width: 100%;
+    }
+}
+
+/* モバイル・iOS：画面高さが短いとき戦闘レイアウトを圧縮（上下ログ・コマンド必ず見える） */
+@media (max-height: 700px) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(13px * 1.6 * 2 + 18px);  /* 最小高さ：2行分の高さを確保 */
+        max-height: none;
+        font-size: 13px;
+        padding: 9px 8px;
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 150px;
+        max-height: none;  /* 高さ制限を解除 */
+        padding: 4px 8px;
+        gap: 4px;
+    }
+    #battle-screen .monster-sprite {
+        font-size: min(100px, 18vw);
+    }
+    #battle-screen .monster-sprite img {
+        max-height: 100%;  /* 親要素に合わせる */
+    }
+    #battle-screen .enemy-area {
+        height: 45%;  /* モンスター画像：45% */
+        min-height: 100px;
+        max-height: none;
+    }
+    .command-box {
+        overflow-y: auto;  /* スクロール可能に */
+        max-height: calc((100dvh - 400px) * 0.7);  /* 戦闘画面の高さから敵エリアとログを引いた値の70% */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+    }
+    .status-box {
+        font-size: 11px;
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    .command-box li {
+        padding: 5px 4px;
+        font-size: 13px;
+    }
+}
+
+/* さらに縦が短い端末（iOS Plus等） */
+@media (max-height: 580px) {
+    #battle-log {
+        height: 10%;  /* 戦闘ログ：10% */
+        min-height: calc(12px * 1.6 * 2 + 16px);  /* 最小高さ：2行分の高さを確保 */
+        max-height: none;
+        font-size: 12px;
+        padding: 8px 6px;
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    #battle-screen .battle-ui {
+        height: 45%;  /* 戦闘UI：45% */
+        min-height: 130px;
+        max-height: none;  /* 高さ制限を解除 */
+    }
+    #battle-screen .monster-sprite {
+        font-size: min(72px, 14vw);
+    }
+    #battle-screen .monster-sprite img {
+        max-height: 100%;  /* 親要素に合わせる */
+    }
+    #battle-screen .enemy-area {
+        height: 30%;  /* モンスター画像：30% */
+        min-height: 80px;
+        max-height: none;
+    }
+    .command-box {
+        overflow-y: auto;  /* スクロール可能に */
+        max-height: calc((100dvh - 400px) * 0.7);  /* 戦闘画面の高さから敵エリアとログを引いた値の70% */
+        min-height: 40px;  /* コマンドログが見切れないように最小高さを固定 */
+        align-self: stretch;  /* ステータスボックスと同じ高さに揃える */
+    }
+    .status-box {
+        align-self: stretch;  /* コマンドボックスと同じ高さに揃える */
+        overflow-y: auto;  /* スクロール可能にする */
+    }
+    .command-box li {
+        padding: 4px 3px;
+        font-size: 12px;
+    }
+}
+
+/* 携帯・タッチ：画像が確実に映るようコンテナ最小サイズを確保 */
+@media (max-width: 768px) {
+    #battle-screen .monster-sprite {
+        min-height: 40px;
+    }
+    #battle-screen .monster-sprite img {
+        min-width: 16px;
+        min-height: 16px;
+    }
+    .cat-npc-container .cat-npc-frame {
+        min-width: 16px;
+        min-height: 16px;
+    }
+}
+
+/* フィールドごとの背景色と雰囲気 */

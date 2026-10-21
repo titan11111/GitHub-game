@@ -1,0 +1,19 @@
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hatGradient" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#48BB78"/>
+      <stop offset="1" stop-color="#2F855A"/>
+    </linearGradient>
+  </defs>
+  <g id="view-up">
+    <rect x="35" y="75" width="10" height="20" rx="3" fill="#4A5568"/>
+    <rect x="55" y="75" width="10" height="20" rx="3" fill="#4A5568"/>
+    <path d="M33 92 H47 V95 Q47 98 40 98 Q33 98 33 95 Z" fill="#5D350D"/>
+    <path d="M53 92 H67 V95 Q67 98 60 98 Q53 98 53 95 Z" fill="#5D350D"/>
+    <path d="M25 40 Q50 35 75 40 L80 85 Q50 90 20 85 Z" fill="#2F855A"/>
+    <rect x="35" y="45" width="30" height="30" rx="5" fill="#975A16"/>
+    <rect x="35" y="45" width="30" height="10" rx="2" fill="#744210"/>
+    <rect x="45" y="55" width="10" height="15" rx="1" fill="#744210" opacity="0.5"/>
+    <path d="M15 35 Q50 25 85 35 L80 25 Q50 0 20 25 Z" fill="url(#hatGradient)"/>
+  </g>
+</svg>

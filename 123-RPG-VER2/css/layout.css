@@ -1,0 +1,486 @@
+/* ============================================
+   レイアウト関連スタイル
+   ============================================
+   
+   役割: ゲーム全体のレイアウト、画面、ウィンドウ、ダイアログのスタイル
+   
+   含まれる内容:
+   - ゲームコンテナ（#game-container）
+   - 画面（.screen, .active）
+   - ウィンドウ（.ff-window）
+   - ダイアログ（#custom-dialog-overlay, #yes-no-modal-overlay）
+   - ステータスオーバーレイ（.status-overlay）
+   - フィールド背景色（#game-container.field-*）
+   - レスポンシブ対応（メディアクエリ）
+   ============================================ */
+
+/* ゲーム画面（上部）：PCで幅上限＋水平中央寄せ / iOS: 縦横で余白・ノッチ対応 */
+#game-container {
+    flex: 1 1 0;
+    width: 100%;
+    max-width: var(--max-content);
+    min-width: 0;
+    min-height: 0;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;  /* 下部に配置してステータスウィンドウとコントロールパネルの間の空白を削除 */
+    align-items: center;
+    position: relative;
+    overflow: hidden;  /* スクロールバーを使わない */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+    padding-bottom: 0;
+    box-sizing: border-box;
+    transition: background-color 0.5s ease;
+    /* コントロールパネルとの境界線を削除 */
+    border-bottom: none;
+    background-color: #000000;  /* デフォルト背景色（黒） */
+}
+
+/* PC: メイン画面では中央配置に戻す（ただしステータスが見えるように調整） */
+@media (min-width: 769px) {
+    #game-container.main-screen-active {
+        justify-content: center;  /* PC: 中央配置 */
+    }
+}
+
+/* ゲーム内画像：中央寄せ・はみ出し防止・アスペクト維持 */
+#game-container img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+    object-fit: contain;
+}
+
+/* タイトル画面の時だけoverflowをvisibleに */
+#game-container.start-screen-active {
+    overflow: visible;
+}
+
+
+/* フィールドごとの背景色調整 */
+#game-container.field-town_inside {
+    background: radial-gradient(ellipse at center, #3a2a1a 0%, #1a0a00 100%);
+}
+
+#game-container.field-green_field {
+    background: radial-gradient(ellipse at center, #1a3a1a 0%, #0a1a0a 100%);
+}
+
+#game-container.field-wasteland {
+    background: radial-gradient(ellipse at center, #2a1a0a 0%, #1a0a00 100%);
+}
+
+#game-container.field-lonely_desert {
+    background: radial-gradient(ellipse at center, #5a4a2a 0%, #3a2a0a 100%);
+}
+
+#game-container.field-lava_cave {
+    background: radial-gradient(ellipse at center, #2a0000 0%, #000000 100%);
+}
+
+#game-container.field-demon_castle {
+    background: radial-gradient(ellipse at center, #001a2a 0%, #000000 100%);
+}
+
+#game-container.field-ruined_village {
+    background: radial-gradient(ellipse at center, #1a1a1a 0%, #000000 100%);
+}
+
+#game-container.field-dark_forest {
+    background: radial-gradient(ellipse at center, #001a00 0%, #000000 100%);
+}
+
+#game-container.field-tropical_south {
+    background: radial-gradient(ellipse at center, #1a3a4a 0%, #0a2a3a 50%, #003030 100%);
+}
+
+#game-container.field-tropical_village {
+    background: radial-gradient(ellipse at center, #2a4a3a 0%, #1a3a2a 50%, #0a2a1a 100%);
+}
+
+#game-container.field-water_spirit_dwelling {
+    background: radial-gradient(ellipse at center, #0a2a3a 0%, #0a1a2a 50%, #001a2a 100%);
+}
+
+#game-container.field-monster_forest {
+    background: radial-gradient(ellipse at center, #0a1a0a 0%, #001a0a 50%, #000000 100%);
+}
+
+/* 壁から差し込む光（室内・町中などで窓から光が入る表現） */
+.light-through-wall {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    /* 左上の窓から差し込む光の筋を複数のグラデーションで表現 */
+    background:
+        linear-gradient(165deg, rgba(255, 248, 220, 0.22) 0%, transparent 35%),
+        linear-gradient(155deg, rgba(255, 250, 205, 0.18) 0%, transparent 40%),
+        linear-gradient(175deg, rgba(255, 245, 200, 0.14) 0%, transparent 45%);
+    opacity: 0.85;
+    mix-blend-mode: overlay;
+}
+
+/* 室内フィールドのときだけ光を表示 */
+#game-container.field-town_inside .light-through-wall,
+#game-container.field-tropical_village .light-through-wall {
+    display: block;
+}
+
+.screen {
+    display: none;
+    width: 100%;
+    max-width: var(--max-content);
+    text-align: center; 
+    padding: 10px; 
+    box-sizing: border-box; 
+    opacity: 0;
+    transition: opacity 0.3s ease-in;
+    position: relative;
+    overflow: visible;  /* PC: ステータスが見えるように visible に変更 */
+    margin: 0 auto;
+}
+
+/* PC: メイン画面のレイアウト最適化（スクロールバーを使わずに全要素を表示） */
+@media (min-width: 769px) {
+    #main-screen.active {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;  /* PC: 下部に配置してステータスウィンドウとコントロールパネルの間の空白を削除 */
+        padding: 4px 6px;  /* PC: パディングを最小限に */
+        padding-bottom: 0;  /* 下部パディングを0にしてコントロールパネルと密着 */
+        gap: 2px;  /* 要素間の間隔を最小限に */
+        overflow: visible;  /* スクロールバーを使わない */
+        flex-shrink: 1;  /* 必要に応じて縮小可能 */
+        min-height: 0;  /* flex子として縮小可能に */
+    }
+    
+    #main-screen .ff-window {
+        flex-shrink: 0;  /* 縮小しない */
+        padding: 4px 6px;  /* PC: パディングを小さく */
+        margin-bottom: 2px;
+    }
+    
+    #main-screen #map-grid {
+        flex-shrink: 0;
+        margin: 2px auto;  /* PC: マージンを小さく */
+    }
+    
+    /* ステータス表示を確実に表示 */
+    #main-screen .status-window {
+        flex-shrink: 0 !important;
+        display: block !important;  /* 確実に表示 */
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 100% !important;
+        margin-top: 4px !important;
+        margin-bottom: 0 !important;  /* 下部マージンを0にしてコントロールパネルと密着 */
+    }
+    
+    #main-screen #st-hp,
+    #main-screen #st-party {
+        font-size: 11px;  /* PC: フォントサイズをさらに小さく */
+        line-height: 1.2;
+        padding: 1px 3px;  /* PC: パディングを最小限に */
+        margin: 0;
+        display: block !important;  /* 確実に表示 */
+        visibility: visible !important;
+        color: #fff !important;  /* テキスト色を確実に */
+    }
+    
+    #main-screen #town-actions {
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+}
+
+/* 表示中は縦方向・中央揃えで戦闘/マップ/タイトルを統一 */
+.active { 
+    display: flex !important; 
+    flex-direction: column;
+    align-items: center;
+    opacity: 1;
+    margin: 0 auto;
+}
+
+#game-container > .screen.active {
+    flex: 0 1 auto;  /* 必要に応じて縮小可能に */
+    width: 100%;
+    max-width: var(--max-content);
+    margin-left: auto;
+    margin-right: auto;
+    min-height: 0;  /* flex子として縮小可能に */
+}
+
+/* メイン画面専用：全要素が確実に表示されるように */
+#game-container > #main-screen.active {
+    flex: 0 1 auto;  /* コンテンツに合わせた高さに */
+    max-height: none;  /* 高さ制限を解除 */
+    overflow: visible;  /* スクロールバーを使わない */
+    min-height: auto;  /* 最小高さを自動に */
+    margin-bottom: 0;  /* 下部マージンを0にしてコントロールパネルと密着 */
+}
+
+/* タイトル画面：シンプルな画像組み合わせレイアウト */
+#start-screen.active {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+    display: block !important;  /* .active の flex を上書き */
+    flex: 1 1 0;  /* flex子として画面全体を使う */
+    box-sizing: border-box;
+    /* スタックコンテキストを確立 */
+    isolation: isolate;
+}
+
+/* オープニング背景画像 - ディスプレイ全体に重なるように配置 */
+#start-screen .opening-background {
+    position: fixed;  /* 画面全体に固定 */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;  /* iOS Safari対応 */
+    object-fit: contain;  /* 画面全体に収まるようにアスペクト比を保ってリサイズ */
+    object-position: center center;
+    z-index: 1000;  /* コントロールパネル（z-index: 2000）より後ろ */
+    pointer-events: none;
+    display: block;
+}
+
+/* オープニング用キャラ画像（犬・猿・キジ） */
+#start-screen .opening-chara {
+    position: absolute;
+    display: block;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    pointer-events: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    z-index: 1001;  /* 背景画像（z-index: 1000）より前面、コントロールパネル（z-index: 2000）より後ろ */
+}
+
+/* 犬：左側、右を向いている - モックアップに合わせて位置とサイズを調整 */
+#start-screen .opening-chara-dog {
+    left: 8%;
+    bottom: calc(25% - 50px);  /* 50px下に移動 */
+    max-width: min(30vw, 150px);  /* モックアップに合わせたサイズ */
+    max-height: min(32vh, 170px);
+}
+
+/* 猿：右上、かがんで左を向いている - モックアップに合わせて位置とサイズを調整 */
+#start-screen .opening-chara-monkey {
+    right: 10%;
+    top: calc(35% + 50px);  /* 50px下に移動 */
+    max-width: min(26vw, 135px);  /* モックアップに合わせたサイズ */
+    max-height: min(28vh, 150px);
+}
+
+/* キジ：右下、羽を広げて飛んでいる - モックアップに合わせて位置とサイズを調整 */
+#start-screen .opening-chara-kiji {
+    right: 12%;
+    bottom: calc(20% - 50px);  /* 50px下に移動 */
+    max-width: min(34vw, 170px);  /* モックアップに合わせたサイズ */
+    max-height: min(32vh, 160px);
+}
+
+/* 戦闘画面への遷移をよりスムーズに */
+#battle-screen {
+    transition: opacity 0.2s ease-in;
+}
+
+/* 戦闘画面はコンテナ全体を使い、中央揃えを崩さない（敵画像・ログ・コマンドを収める） */
+#game-container > #battle-screen.active {
+    align-self: stretch;
+    height: 100%;
+    min-height: 0;
+}
+
+/* ウィンドウデザイン（FF風） */
+.ff-window {
+    background: linear-gradient(180deg, var(--ff-bg-top) 0%, var(--ff-bg-bottom) 100%);
+    border: 3px solid var(--ff-border);
+    border-radius: 8px;
+    box-shadow: inset 0 0 5px #000, 0 0 10px var(--ff-shadow);
+    padding: 10px;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.ff-window::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 5px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+/* カスタムダイアログ（iOS: 縦横どちらでも画面全体をカバー） */
+#custom-dialog-overlay {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100%;
+    background: rgba(0,0,0,0.7); 
+    display: none; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 1000; 
+    pointer-events: auto;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    box-sizing: border-box;
+}
+
+.dialog-content {
+    width: 85%;
+    max-width: 420px;
+    text-align: center;
+    background: linear-gradient(180deg, #0000bb 0%, var(--ff-bg-bottom) 100%);
+    border: 4px double var(--ff-border);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+/* ステータス画面オーバーレイ（Bボタンで表示/非表示） */
+.status-overlay {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    /* コントロールパネルの高さ分だけ下に余白を取る（重なりを防ぐ） */
+    height: calc(100vh - 220px);
+    height: calc(100dvh - 220px);
+    max-height: calc(100vh - 220px);
+    max-height: calc(100dvh - 220px);
+    background: rgba(0, 0, 0, 0.85); 
+    display: none; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 1500;  /* コントロールパネル（z-index: 2000）より下 */
+    pointer-events: auto;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) 0 env(safe-area-inset-left, 0);
+    padding-bottom: 0;  /* 下部パディングを0にしてコントロールパネルと重ならないように */
+    box-sizing: border-box;
+    animation: overlayFadeIn 0.2s ease-in;
+}
+
+.status-overlay-content {
+    width: 90%;
+    max-width: 500px;
+    max-height: 85vh;
+    max-height: 85dvh;
+    text-align: left;
+    background: linear-gradient(180deg, #0000bb 0%, var(--ff-bg-bottom) 100%);
+    border: 4px double var(--ff-border);
+    padding: 20px;
+    border-radius: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-shadow: 0 0 30px rgba(0, 150, 255, 0.5);
+}
+
+.status-overlay-content h2 {
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.status-overlay-content div {
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.status-overlay-content strong {
+    color: #ffff00;
+    font-weight: bold;
+}
+
+/* PC: ステータスオーバーレイの最適化 */
+@media (min-width: 769px) {
+    .status-overlay-content {
+        width: 500px;
+        max-width: 500px;
+        padding: 24px;
+    }
+    
+    .status-overlay-content div {
+        font-size: 15px;
+    }
+}
+
+@keyframes overlayFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* はい/いいえモーダル（#game-container 外・flex干渉防止 / iOS: 安全領域内に表示） */
+#yes-no-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    box-sizing: border-box;
+}
+#yes-no-modal-overlay .ff-window {
+    padding: 30px;
+    text-align: center;
+    max-width: 400px;
+}
+#yes-no-message {
+    margin-bottom: 30px;
+    font-size: 18px;
+    line-height: 1.6;
+}
+.yes-no-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+.yes-no-buttons button {
+    padding: 15px 30px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+#yes-button { background: #4CAF50; color: white; }
+#no-button { background: #f44336; color: white; }
+
+/* マップ（1.2倍表示：鳥など見やすく） */

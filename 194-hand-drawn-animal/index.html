@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>かきました - 描いた動物が動く</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0" integrity="sha384-Rn2T3GJrTBQYjz1Ecc8P8P6JnKKB9zxXVssgcjWn5fPo+FT/+eAtI2s58W0Ze0xf" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3" integrity="sha384-r9VUnf4zxSZDe4w+N0QXjqjNS13RjBVm7YfY8Q3HrDg/KL8p1jQqiLUgbx5Cw5oP" crossorigin="anonymous"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f0f4ff 0%, #ffe4f5 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 100%;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border: 3px solid #ddd;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        #drawingCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            background: white;
+        }
+        #stageCanvas {
+            display: none;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #f0f4ff 0%, #ffe4f5 100%);
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 12px 24px;
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #FF5252;
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        button.secondary {
+            background: #6C757D;
+        }
+        button.secondary:hover {
+            background: #5A6268;
+        }
+        button.success {
+            background: #51CF66;
+        }
+        button.success:hover {
+            background: #37B24D;
+        }
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+        .gallery {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+        }
+        .gallery-item {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .gallery-item:hover {
+            transform: scale(1.05);
+            border-color: #FF6B6B;
+        }
+        .gallery-item canvas {
+            width: 100%;
+            height: 100%;
+        }
+        .phase-indicator {
+            text-align: center;
+            font-weight: 600;
+            margin: 20px 0;
+            color: #FF6B6B;
+            font-size: 18px;
+        }
+        .loading {
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 かきました - 描いた動物が動く</h1>
+
+        <div class="phase-indicator" id="phaseIndicator">フェーズ1: 描く</div>
+
+        <div class="canvas-wrapper">
+            <canvas id="drawingCanvas"></canvas>
+            <canvas id="stageCanvas"></canvas>
+        </div>
+
+        <div class="controls">
+            <button id="brushSizeBtn">🖌️ ペンサイズ</button>
+            <button id="colorBtn">🎨 色選択</button>
+            <button id="clearBtn" class="secondary">🗑️ クリア</button>
+            <button id="captureBtn" class="success">📸 撮影 & 動かす</button>
+        </div>
+
+        <div class="loading" id="loadingIndicator" style="display: none;">
+            動物を認識中...
+        </div>
+
+        <div class="info" id="infoText">
+            白いキャンバスに動物を描いてください。<br>
+            描き終わったら「撮影 & 動かす」をタップ！
+        </div>
+
+        <div class="gallery" id="gallery"></div>
+    </div>
+
+    <script>
+        let isDrawing = false;
+        let brushSize = 5;
+        let brushColor = '#000000';
+        let currentPhase = 'drawing'; // drawing, stage
+        let animals = [];
+        let animalInstances = [];
+
+        const drawingCanvas = document.getElementById('drawingCanvas');
+        const stageCanvas = document.getElementById('stageCanvas');
+        const ctx = drawingCanvas.getContext('2d');
+        const stageCtx = stageCanvas.getContext('2d');
+
+        // キャンバスサイズ設定
+        function resizeCanvases() {
+            const wrapper = document.querySelector('.canvas-wrapper');
+            drawingCanvas.width = wrapper.clientWidth;
+            drawingCanvas.height = wrapper.clientHeight;
+            stageCanvas.width = wrapper.clientWidth;
+            stageCanvas.height = wrapper.clientHeight;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        }
+        resizeCanvases();
+        window.addEventListener('resize', resizeCanvases);
+
+        // イベントリスナー
+        drawingCanvas.addEventListener('touchstart', startDrawing);
+        drawingCanvas.addEventListener('touchmove', draw);
+        drawingCanvas.addEventListener('touchend', stopDrawing);
+        drawingCanvas.addEventListener('mousedown', startDrawing);
+        drawingCanvas.addEventListener('mousemove', draw);
+        drawingCanvas.addEventListener('mouseup', stopDrawing);
+
+        document.getElementById('brushSizeBtn').addEventListener('click', () => {
+            const sizes = [3, 5, 10, 15];
+            brushSize = sizes[(sizes.indexOf(brushSize) + 1) % sizes.length];
+            alert(`ペンサイズ: ${brushSize}px`);
+        });
+
+        document.getElementById('colorBtn').addEventListener('click', () => {
+            const colors = ['#000000', '#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3'];
+            const colorNames = ['黒', '赤', '青緑', '黄色', '緑'];
+            const idx = colors.indexOf(brushColor);
+            brushColor = colors[(idx + 1) % colors.length];
+            alert(`色: ${colorNames[(idx + 1) % colors.length]}`);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        });
+
+        document.getElementById('captureBtn').addEventListener('click', captureAndAnimate);
+
+        function startDrawing(e) {
+            if (currentPhase !== 'drawing') return;
+            isDrawing = true;
+            const rect = drawingCanvas.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function draw(e) {
+            if (!isDrawing || currentPhase !== 'drawing') return;
+            e.preventDefault();
+            const rect = drawingCanvas.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = brushColor;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.closePath();
+        }
+
+        async function captureAndAnimate() {
+            const loadingEl = document.getElementById('loadingIndicator');
+            loadingEl.style.display = 'block';
+            document.getElementById('phaseIndicator').textContent = 'フェーズ2: 認識中...';
+
+            try {
+                // 画像をキャンバスから取得
+                const imageData = ctx.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+                // シンプルな動物判定（デモ版）
+                // 本来は TensorFlow.js を使用するが、ここではシンプル版
+                const animal = detectSimpleAnimal(imageData);
+
+                if (!animal) {
+                    alert('動物が認識できませんでした。もう一度描いてみてください。');
+                    loadingEl.style.display = 'none';
+                    document.getElementById('phaseIndicator').textContent = 'フェーズ1: 描く';
+                    return;
+                }
+
+                // ギャラリーに保存
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                const galleryCanvas = document.createElement('canvas');
+                galleryCanvas.width = drawingCanvas.width;
+                galleryCanvas.height = drawingCanvas.height;
+                const galleryCtx = galleryCanvas.getContext('2d');
+                galleryCtx.putImageData(imageData, 0, 0);
+                galleryItem.appendChild(galleryCanvas);
+                document.getElementById('gallery').appendChild(galleryItem);
+
+                // アニメーション開始
+                currentPhase = 'stage';
+                drawingCanvas.style.display = 'none';
+                stageCanvas.style.display = 'block';
+                document.getElementById('phaseIndicator').textContent = `フェーズ3: ${animal.name}が動いています！`;
+                document.getElementById('captureBtn').textContent = '🎨 もう一度描く';
+                document.getElementById('captureBtn').onclick = resetToDrawing;
+                document.getElementById('infoText').textContent = `${animal.name}が出現しました！タップして遊んでみてください。`;
+
+                // アニメーション実行
+                animateAnimal(animal, stageCtx, stageCanvas.width, stageCanvas.height);
+
+                loadingEl.style.display = 'none';
+            } catch (error) {
+                console.error('エラー:', error);
+                alert('エラーが発生しました: ' + error.message);
+                loadingEl.style.display = 'none';
+                document.getElementById('phaseIndicator').textContent = 'フェーズ1: 描く';
+            }
+        }
+
+        function detectSimpleAnimal(imageData) {
+            // シンプルな動物判定（ピクセル密度で判定）
+            const data = imageData.data;
+            let blackPixels = 0;
+
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i] < 128) blackPixels++; // 暗いピクセル
+            }
+
+            const ratio = blackPixels / (data.length / 4);
+
+            const animals = [
+                { name: '🐱 ネコ', ratio: 0.1 },
+                { name: '🐕 イヌ', ratio: 0.15 },
+                { name: '🐟 サカナ', ratio: 0.12 },
+                { name: '🦁 ライオン', ratio: 0.18 },
+                { name: '🐘 ゾウ', ratio: 0.20 },
+                { name: '🦋 チョウ', ratio: 0.08 }
+            ];
+
+            let closest = animals[0];
+            let minDiff = Math.abs(ratio - closest.ratio);
+
+            for (const animal of animals) {
+                const diff = Math.abs(ratio - animal.ratio);
+                if (diff < minDiff) {
+                    closest = animal;
+                    minDiff = diff;
+                }
+            }
+
+            return closest;
+        }
+
+        function animateAnimal(animal, ctx, width, height) {
+            let x = width / 2;
+            let y = height / 2;
+            let vx = (Math.random() - 0.5) * 3;
+            let vy = (Math.random() - 0.5) * 3;
+            let rotation = 0;
+
+            function frame() {
+                // 背景描画
+                ctx.fillStyle = 'rgba(240, 244, 255, 0.1)';
+                ctx.fillRect(0, 0, width, height);
+
+                // 動物描画（絵文字を使用）
+                ctx.font = '60px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rotation);
+                ctx.fillText(animal.name.split(' ')[0], 0, 0);
+                ctx.restore();
+
+                // 移動
+                x += vx;
+                y += vy;
+                rotation += 0.02;
+
+                // 反発
+                if (x < 30 || x > width - 30) vx *= -1;
+                if (y < 30 || y > height - 30) vy *= -1;
+
+                x = Math.max(30, Math.min(width - 30, x));
+                y = Math.max(30, Math.min(height - 30, y));
+
+                requestAnimationFrame(frame);
+            }
+
+            frame();
+        }
+
+        function resetToDrawing() {
+            currentPhase = 'drawing';
+            drawingCanvas.style.display = 'block';
+            stageCanvas.style.display = 'none';
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            document.getElementById('phaseIndicator').textContent = 'フェーズ1: 描く';
+            document.getElementById('captureBtn').textContent = '📸 撮影 & 動かす';
+            document.getElementById('captureBtn').onclick = captureAndAnimate;
+            document.getElementById('infoText').textContent = '白いキャンバスに動物を描いてください。描き終わったら「撮影 & 動かす」をタップ！';
+        }
+    </script>
+</body>
+</html>

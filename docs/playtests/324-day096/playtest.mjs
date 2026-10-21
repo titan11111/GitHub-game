@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const b=await chromium.launch({headless:true});const p=await b.newPage({viewport:{width:390,height:844},hasTouch:true});let errors=[];p.on('pageerror',e=>errors.push(e.message));
 const report={};const diag=()=>p.evaluate(()=>window.taikoDiagnostics());
-await p.goto('http://127.0.0.1:8324/324-day096/');await p.getByRole('button',{name:'はじめての稽古',exact:true}).click();
+await p.goto('http://127.0.0.1:8324/324-odaiko-datsuryoku/');await p.getByRole('button',{name:'はじめての稽古',exact:true}).click();
 async function hit(x,y,hold=35){await p.mouse.move(x,y);await p.mouse.down();await p.waitForTimeout(hold);await p.mouse.up()}
 await p.waitForTimeout(150);const right=await p.locator('.pad[data-hand="1"]').boundingBox(),left=await p.locator('.pad[data-hand="0"]').boundingBox();
 const x=right.x+right.width/2,y=right.y+right.height*.65;

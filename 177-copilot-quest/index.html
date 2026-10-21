@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COPILOT QUEST</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap');
+
+:root{
+  --bg:#07070f;
+  --window:#0c0c1a;
+  --window2:#13132a;
+  --frame:#ffffff;
+  --ink:#f4f4ff;
+  --gold:#c9a84c;
+  --gold-bright:#ffd24a;
+  --exp:#5bd16a;
+  --exp-dark:#1e5c2a;
+  --mp:#5aa9ff;
+  --dim:#7d7da0;
+  --stamp:#ff5566;
+  --jp:'DotGothic16',monospace;
+  --px:'Press Start 2P',monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(circle at 50% -10%, #1a1a3a 0%, var(--bg) 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--jp);
+  display:flex;justify-content:center;
+  padding:18px 12px 60px;
+  -webkit-font-smoothing:none;
+  image-rendering:pixelated;
+  line-height:1.5;
+}
+/* faint scanlines */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+  mix-blend-mode:multiply;opacity:.5;
+}
+.wrap{width:100%;max-width:660px}
+
+/* ---------- DQ window frame ---------- */
+.dq{
+  position:relative;background:var(--window);
+  border:3px solid var(--frame);border-radius:9px;
+  padding:14px 16px;margin-bottom:14px;
+  box-shadow:0 4px 0 rgba(0,0,0,.6), 0 0 22px rgba(90,90,160,.25);
+}
+.dq::after{
+  content:'';position:absolute;inset:3px;border:1px solid rgba(255,255,255,.22);
+  border-radius:5px;pointer-events:none;
+}
+
+/* ---------- title ---------- */
+.title{
+  text-align:center;border:none;background:transparent;margin-bottom:16px;
+}
+.title.clickable{cursor:pointer}
+.title.clickable:active{transform:scale(.99)}
+.title h1{
+  font-family:var(--px);font-size:clamp(15px,4.6vw,26px);color:var(--gold-bright);
+  letter-spacing:1px;line-height:1.4;
+  text-shadow:3px 3px 0 #5a3d00, 0 0 14px rgba(255,210,74,.4);
+}
+.title .sub{font-size:12px;color:var(--dim);margin-top:8px;letter-spacing:2px}
+.title .star{color:var(--gold)}
+.title .hint{
+  margin-top:10px;font-size:12px;color:var(--ink);
+  border:1px dashed rgba(255,255,255,.4);display:inline-block;
+  padding:5px 10px;border-radius:4px
+}
+
+/* ---------- status ---------- */
+.status{display:flex;gap:14px;align-items:center}
+.hero{flex:0 0 64px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.blob{width:60px;height:60px;animation:bob 1.1s steps(2) infinite}
+@keyframes bob{0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}}
+.statgrid{flex:1;display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:13.5px;align-items:baseline}
+.statgrid .lbl{color:var(--dim);white-space:nowrap}
+.statgrid .val{color:var(--ink)}
+.statgrid .job{color:var(--gold-bright)}
+.lvnum{font-family:var(--px);font-size:15px;color:var(--gold-bright)}
+.gc{cursor:pointer;border-bottom:1px dotted var(--dim)}
+.gc:hover{color:var(--gold-bright)}
+.gcwrap{display:inline-flex;align-items:center;gap:6px}
+.gcbtn{font-family:var(--px);font-size:9px;background:#000;color:var(--ink);
+  border:2px solid var(--frame);border-radius:4px;width:20px;height:20px;cursor:pointer;line-height:1}
+.gcbtn:active{transform:translateY(1px)}
+
+/* ---------- EXP bar ---------- */
+.expwrap{margin-top:4px}
+.exprow{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim);margin-bottom:6px}
+.exprow b{color:var(--exp);font-family:var(--px);font-size:11px}
+.bar{height:18px;background:#000;border:2px solid var(--frame);border-radius:5px;overflow:hidden;position:relative}
+.fill{height:100%;width:0%;background:
+   linear-gradient(180deg,#8cf09a 0%, var(--exp) 45%, var(--exp-dark) 100%);
+   transition:width .55s cubic-bezier(.2,.9,.25,1);
+   box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.totbar .fill{background:linear-gradient(180deg,#ffe27a 0%,var(--gold) 50%,#7a5e10 100%)}
+
+/* ---------- level tabs ---------- */
+.tabs{display:flex;gap:7px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+.tab{
+  font-family:var(--px);font-size:11px;color:var(--ink);
+  background:var(--window2);border:2px solid var(--frame);border-radius:6px;
+  width:42px;height:42px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;transition:transform .1s}
+.tab small{position:absolute;bottom:2px;right:3px;font-size:7px;color:var(--dim);font-family:var(--px)}
+.tab.active{background:var(--gold);color:#1a1400;border-color:var(--gold-bright);box-shadow:0 0 12px rgba(255,210,74,.6)}
+.tab.locked{color:var(--dim);cursor:not-allowed;opacity:.6}
+.tab.done::after{content:'✓';position:absolute;top:1px;left:4px;font-size:9px;color:var(--exp)}
+.tab:not(.locked):hover{transform:translateY(-2px)}
+
+/* ---------- quest list ---------- */
+.qhead{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:4px}
+.qhead .lv{font-family:var(--px);font-size:12px;color:var(--gold-bright)}
+.qhead .jb{font-size:18px;color:var(--gold-bright)}
+.qhead .sb{font-size:12px;color:var(--dim)}
+
+.q{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:11px 10px;border:2px solid transparent;border-radius:6px;
+  background:rgba(255,255,255,.025);margin-bottom:9px;transition:background .2s}
+.q:hover{background:rgba(90,90,160,.14)}
+.cur{flex:0 0 14px;color:var(--gold-bright);font-size:14px;line-height:1.6;visibility:hidden}
+.q:hover .cur{visibility:visible;animation:blink .6s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.qtext{flex:1;font-size:14px;color:var(--ink)}
+.qmeta{display:block;font-size:12px;color:var(--dim);margin-top:2px}
+.qbtn{
+  flex:0 0 auto;align-self:center;
+  font-family:var(--px);font-size:10px;color:#1a1400;
+  background:var(--gold-bright);border:2px solid #fff;border-radius:5px;
+  padding:8px 11px;cursor:pointer;white-space:nowrap;
+  box-shadow:0 3px 0 #7a5e10}
+.qbtn:hover{background:#fff;color:#000}
+.qbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #7a5e10}
+
+.q.cleared{background:rgba(91,209,106,.08);border-color:rgba(91,209,106,.35)}
+.q.cleared .qtext{color:var(--dim);text-decoration:line-through;text-decoration-color:rgba(91,209,106,.5)}
+.q.cleared .cur{visibility:visible;color:var(--exp);animation:none}
+.q.cleared .qbtn{
+  background:transparent;color:var(--exp);border-color:var(--exp);
+  box-shadow:none;cursor:default;pointer-events:none}
+
+.levelnote{
+  margin-top:8px;font-size:12px;color:var(--dim);
+  border-top:1px dashed rgba(255,255,255,.2);padding-top:8px
+}
+
+.detailbox{display:none}
+.detailbox.show{display:block}
+.dtitle{font-size:16px;color:var(--gold-bright);margin-bottom:6px}
+.dgoal{font-size:13px;color:var(--ink);margin-bottom:10px}
+.flow{padding-left:18px;color:var(--ink);font-size:13px}
+.flow li{margin-bottom:6px}
+.deliver{
+  margin-top:12px;padding:9px;border:1px solid rgba(255,255,255,.26);
+  border-radius:5px;font-size:13px;background:rgba(255,255,255,.03)
+}
+.dactions{
+  margin-top:12px;display:flex;gap:8px;flex-wrap:wrap
+}
+.ghostbtn{
+  font-family:var(--px);font-size:10px;color:var(--ink);
+  background:transparent;border:2px solid var(--frame);border-radius:5px;
+  padding:8px 10px;cursor:pointer
+}
+.ghostbtn:active{transform:translateY(1px)}
+
+.locked-msg{text-align:center;color:var(--dim);font-size:14px;padding:26px 10px}
+.locked-msg .big{font-family:var(--px);font-size:13px;color:var(--gold);display:block;margin-bottom:10px}
+
+/* footer */
+.foot{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim)}
+.reset{font-family:var(--jp);font-size:12px;color:var(--dim);background:none;border:1px solid var(--dim);
+  border-radius:4px;padding:4px 9px;cursor:pointer}
+.reset:hover{color:var(--stamp);border-color:var(--stamp)}
+
+/* floating +pts */
+.pop{position:fixed;font-family:var(--px);font-size:13px;color:var(--exp);
+  pointer-events:none;z-index:30;text-shadow:1px 1px 0 #000;animation:rise 1s ease-out forwards}
+@keyframes rise{0%{opacity:0;transform:translateY(6px) scale(.8)}15%{opacity:1}100%{opacity:0;transform:translateY(-34px) scale(1.1)}}
+
+/* level up overlay */
+.overlay{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+  background:rgba(2,2,12,.86);padding:20px}
+.overlay.show{display:flex;animation:flash .5s steps(2) 2}
+@keyframes flash{50%{background:rgba(120,120,220,.5)}}
+.lvup{max-width:420px;width:100%;text-align:center}
+.lvup .ding{font-family:var(--px);font-size:clamp(14px,4.5vw,20px);color:var(--gold-bright);
+  text-shadow:2px 2px 0 #5a3d00;line-height:1.6;margin-bottom:16px;animation:pulse .8s steps(2) infinite}
+@keyframes pulse{50%{transform:scale(1.06)}}
+.lvup .blob{width:84px;height:84px;margin:0 auto 14px}
+.lvup .nj{font-size:20px;color:var(--ink);margin-bottom:6px}
+.lvup .nj b{color:var(--gold-bright)}
+.lvup .gain{font-size:13px;color:var(--exp);margin-bottom:18px;font-family:var(--px)}
+.okbtn{font-family:var(--px);font-size:11px;color:#1a1400;background:var(--gold-bright);
+  border:2px solid #fff;border-radius:6px;padding:11px 20px;cursor:pointer;box-shadow:0 4px 0 #7a5e10}
+.okbtn:active{transform:translateY(2px);box-shadow:0 2px 0 #7a5e10}
+
+/* clear-all banner */
+.clearbanner{display:none;text-align:center;border-color:var(--gold-bright)}
+.clearbanner.show{display:block;animation:pulse 1s steps(2) infinite}
+.clearbanner h2{font-family:var(--px);font-size:14px;color:var(--gold-bright);line-height:1.6;margin-bottom:8px}
+.clearbanner p{font-size:13px;color:var(--ink)}
+
+@media (max-width:480px){
+  .qbtn{font-size:9px;padding:7px 8px}
+  .qtext{font-size:13px}
+  .status{gap:9px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+    <meta property="og:title" content="COPILOT QUEST">
+    <meta property="og:description" content="スマホ・PCのブラウザで遊べる無料ゲームです。インストール不要！">
+    <meta property="og:url" content="https://titan11111.github.io/177-copilot-quest/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="title dq clickable" id="titleStart" style="border:none;box-shadow:none;background:none" role="button" tabindex="0" aria-label="タイトルを押して開始">
+    <h1><span class="star">★</span> COPILOT QUEST <span class="star">★</span></h1>
+    <div class="sub">～ じどうか・そしきか への ぼうけん ～</div>
+    <div class="hint" id="titleHint">▶ タイトルをおして はじめる</div>
+  </div>
+
+  <div id="gameArea" hidden>
+  <!-- STATUS -->
+  <div class="dq">
+    <div class="status">
+      <div class="hero">
+        <svg class="blob" id="heroBlob" viewBox="0 0 24 24" aria-hidden="true"></svg>
+      </div>
+      <div class="statgrid">
+        <div class="lbl">なまえ</div><div class="val">タイタン</div>
+        <div class="lbl">しょくぎょう</div><div class="val job" id="jobName">みならい</div>
+        <div class="lbl">レベル</div><div class="val"><span class="lvnum" id="lvNum">1</span> <span style="color:var(--dim);font-size:11px">/ 5</span></div>
+        <div class="lbl">つくったゲーム</div>
+        <div class="val">
+          <span class="gcwrap">
+            <button class="gcbtn" id="gcMinus" aria-label="へらす">−</button>
+            <span class="gc" id="gameCount" title="クリックで直接入力">80</span><span style="color:var(--dim)"> ほん</span>
+            <button class="gcbtn" id="gcPlus" aria-label="ふやす">＋</button>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="expwrap">
+      <div class="exprow"><span>つぎの レベルまで</span><b id="expLabel">0 / 5</b></div>
+      <div class="bar"><div class="fill" id="expFill"></div></div>
+    </div>
+  </div>
+
+  <!-- LEVEL TABS -->
+  <div class="tabs" id="tabs"></div>
+
+  <!-- CLEAR BANNER -->
+  <div class="dq clearbanner" id="clearBanner">
+    <h2>★ ぜんクリア！ ★</h2>
+    <p>でんせつの「じどうか アーキテクト（FDE）」に なった！<br>あたらしい クエストを じぶんで つくろう。</p>
+  </div>
+
+  <!-- QUEST LIST -->
+  <div class="dq" id="questPanel">
+    <div class="qhead">
+      <div>
+        <div class="lv" id="qLv">LEVEL 1</div>
+        <div class="jb" id="qJob">みならい</div>
+      </div>
+      <div class="sb" id="qSub">～ じどうかの いっぽ ～</div>
+    </div>
+    <div id="qList"></div>
+    <div class="levelnote" id="levelNote">このレベルのハックを1つ選ぶと、やり方フローが表示されます。</div>
+  </div>
+
+  <div class="dq detailbox" id="hackDetail">
+    <div class="qhead">
+      <div>
+        <div class="lv" id="dLv">FLOW</div>
+        <div class="dtitle" id="dTitle">ハック詳細</div>
+      </div>
+      <div class="sb" id="dState">未完了</div>
+    </div>
+    <div class="dgoal" id="dGoal"></div>
+    <ol class="flow" id="dFlow"></ol>
+    <div class="deliver" id="dDeliver"></div>
+    <div class="dactions">
+      <button class="qbtn" id="completeBtn">成果物ができた！</button>
+      <button class="ghostbtn" id="closeDetailBtn">一覧にもどる</button>
+    </div>
+  </div>
+
+  <!-- TOTAL -->
+  <div class="dq">
+    <div class="exprow"><span>そうとっぱ</span><b id="totLabel" style="color:var(--gold-bright)">0 / 25</b></div>
+    <div class="bar totbar"><div class="fill" id="totFill"></div></div>
+    <div class="foot" style="margin-top:12px">
+      <span id="weekNote">ルール：1しゅうに 5チャレンジ クリアで レベルアップ</span>
+      <button class="reset" id="resetBtn">さいしょから</button>
+    </div>
+  </div>
+  </div>
+
+</div>
+
+<!-- LEVEL UP OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="lvup">
+    <svg class="blob" id="upBlob" viewBox="0 0 24 24" aria-hidden="true"></svg>
+    <div class="ding" id="dingText">レベルが あがった！</div>
+    <div class="nj">タイタンは <b id="newJob">せんし</b> になった！</div>
+    <div class="gain" id="gainText">じどうかP +100</div>
+    <button class="okbtn" id="okBtn">▶ つづける</button>
+  </div>
+</div>
+
+<script>
+/* ============ DATA ============ */
+const LEVELS = [
+  { lv:1, job:'みならい', sub:'～ じどうかの だいいっぽ ～', color:'#5aa9ff', hacks:[
+    { title:'定型メール3種を下書き自動化', goal:'返信の初速を上げて、毎日の手戻りを減らします。', flow:['よく来る問い合わせを3パターン選び、件名と本文の型を決めます。','Outlook Copilotで各パターンの下書きを作成し、言い回しを統一します。','文面テンプレをクイックパーツまたは保存済み返信として登録します。','実運用で3日試し、手修正が多い文を1回だけ改善します。'], deliverable:'成果物: テンプレ3本 + 実運用ログ（3日分）' },
+    { title:'領収書メール添付の自動保存フロー', goal:'添付整理を手作業から外し、証憑の取りこぼしを防ぎます。', flow:['「領収書」を含む件名と保存先フォルダを定義します。','Power Automateでメール受信トリガーを作成します。','添付ファイルをSharePoint指定フォルダに保存する処理を追加します。','テストメール3件で動作確認し、失敗時通知を入れます。'], deliverable:'成果物: フロー1本 + テスト成功3件' },
+    { title:'会議リキャップを要点＋ToDoで残す', goal:'会議後の抜け漏れを減らして、実行速度を上げます。', flow:['Teams会議のリキャップ出力ルール（要点3つ、ToDo3つ）を決めます。','Copilotで会議後要約を取得します。','NotionまたはOneNoteへ転記するテンプレを作ります。','会議1回分で運用し、読みやすさを調整します。'], deliverable:'成果物: 会議メモテンプレ + 実データ1件' },
+    { title:'日報の異常値を自動ハイライト', goal:'確認ポイントを先に見せて、チェック時間を短縮します。', flow:['日報で重要な数値列を3つ決め、閾値を定義します。','Excel Copilotで条件付き書式の案を作らせます。','手動で閾値を微調整し、見逃しが出ない表示にします。','1週間のデータで誤検知が多い箇所を修正します。'], deliverable:'成果物: ハイライト設定済み台帳 + 判定ルール表' },
+    { title:'テンプレギャラリー1本を実務に適用', goal:'ゼロから作らず、既存テンプレを現場用に変換します。', flow:['Power Automateテンプレを1つ選びます。','自分の定例作業に合わせてトリガーと出力先を差し替えます。','担当者視点で分かりにくい文言を日本語化します。','最短ルート版をメモし、再利用できる形にします。'], deliverable:'成果物: 変換済みテンプレ1本 + 使い方メモ' }
+  ]},
+  { lv:2, job:'せんし', sub:'～ しくみの ひょうじゅんか ～', color:'#7bd06a', hacks:[
+    { title:'レビュー技能をSKILL.mdとして標準化', goal:'品質チェックを属人化させず、誰でも同じ基準で確認できる状態にします。', flow:['TPP18ガイドラインの必須観点を5項目に整理します。','SharePoint資料を参照してレビュー手順を作ります。','SKILL.mdに入力例・出力例を記述します。','別担当1名で再現テストを行い、曖昧語を削ります。'], deliverable:'成果物: SKILL.md 1本 + 再現テスト記録' },
+    { title:'承認カード＋自動リマインドをテンプレ化', goal:'承認待ちの滞留を減らし、対応速度を平準化します。', flow:['承認対象と承認者を定義します。','Teamsアダプティブカードで承認/差戻しUIを作ります。','24時間未対応時のリマインドを追加します。','差戻し理由が必ず残るよう入力欄を設定します。'], deliverable:'成果物: 承認テンプレ1本 + 差戻しログ確認' },
+    { title:'研修の事前・事後課題リマインド自動化', goal:'研修運営の連絡漏れをなくし、参加率を安定させます。', flow:['Formsで提出状況を取れる入力項目を整えます。','Power Automateで締切前/締切後の通知分岐を作ります。','未提出者だけに送る条件を追加します。','テスト参加者で通知タイミングを検証します。'], deliverable:'成果物: リマインドフロー1本 + 通知テスト結果' },
+    { title:'部署共有のCopilotプロンプト集を整備', goal:'よく使うプロンプトを再利用可能にして、回答品質をそろえます。', flow:['用途別にプロンプトを収集し、重複を整理します。','目的・入力・期待出力の3点でフォーマット統一します。','SharePointまたはLoopへ公開します。','3人以上で試して改善点を追記します。'], deliverable:'成果物: 共有ページ1枚 + 検証コメント3件' },
+    { title:'通知文テンプレをWord Copilotで整える', goal:'文書作成を短縮しながら、トーンのばらつきを抑えます。', flow:['LP向け案内文と通知文の用途を分けます。','Word Copilotで草案を生成します。','社内表現ルールに合わせて定型文を固定します。','差し込み変数（日時・対象）を明示します。'], deliverable:'成果物: 標準テンプレ2種 + 差し込み項目表' }
+  ]},
+  { lv:3, job:'まほうつかい', sub:'～ データれんけいの じどうか ～', color:'#b98bff', hacks:[
+    { title:'回答集計→Teams通知まで一気通貫', goal:'入力から共有までを自動化し、集計遅延をなくします。', flow:['Forms回答の必須項目を定義します。','ExcelまたはSharePointに書き込むマッピングを作ります。','集計後にTeams通知するフローを接続します。','欠損データ時のエラー通知を追加します。'], deliverable:'成果物: 連結フロー1本 + 異常系テスト1件' },
+    { title:'未回答者だけへ自動リマインド送信', goal:'全体連絡を減らし、対象者にだけ正確に通知します。', flow:['回答締切と対象者リストを確定します。','未回答者抽出条件を作成します。','個別宛のリマインド文を生成します。','再送回数の上限を設定します。'], deliverable:'成果物: 未回答抽出ロジック + 通知フロー' },
+    { title:'月次集計を定時レポート配信化', goal:'毎月の集計作業をスケジュール実行に置き換えます。', flow:['Power QueryでA+B→C集計を固定化します。','月初トリガーのスケジュールフローを作成します。','レポート配信先（Teams/メール）を設定します。','月末データで先行リハーサルを実施します。'], deliverable:'成果物: 月次フロー1本 + 配信ログ1件' },
+    { title:'日報から週次サマリーを自動生成', goal:'週報作成を省力化し、判断に使える要約を即時化します。', flow:['日報フォーマットを1つにそろえます。','Excel Copilotで週次要約の指示文を整えます。','週末に自動生成する実行トリガーを作ります。','レビュー者の観点で要約文を再調整します。'], deliverable:'成果物: 自動週報テンプレ + 出力サンプル1件' },
+    { title:'マスタを単一ソース化して再利用', goal:'参照先を一本化し、複数フローの整合性を保ちます。', flow:['LP/地域マスタをSharePointリストに統合します。','重複列と命名ゆれを解消します。','既存フローの参照先を順次差し替えます。','更新手順と責任者を明文化します。'], deliverable:'成果物: 単一マスタ + 参照切替完了フロー一覧' }
+  ]},
+  { lv:4, job:'けんじゃ', sub:'～ チームへの てんかい ～', color:'#ffb24a', hacks:[
+    { title:'Q&Aエージェントを公開可能品質で構築', goal:'問い合わせ対応を高速化し、回答品質を一定化します。', flow:['よくある質問を20件収集します。','Copilot Studioで知識ソースを接続します。','回答禁止領域とエスカレーション条件を設定します。','実運用前に5問テストで精度確認します。'], deliverable:'成果物: Q&Aエージェント + 精度テスト結果' },
+    { title:'試用運用でFBを回収して改善', goal:'導入後の使われない問題を防ぐため、試用段階で改善ループを回します。', flow:['試用メンバーを3〜5名選定します。','利用ログ取得方法を事前に設定します。','1週間運用し、定量・定性FBを回収します。','改善項目を優先度順に整理します。'], deliverable:'成果物: FB一覧 + 改善バックログ' },
+    { title:'1地域で自動化レシピを試験導入', goal:'小さく導入して効果を測り、横展開の可否を判断します。', flow:['導入対象業務を1つに絞ります。','導入前の所要時間を計測します。','自動化レシピを適用して1週間運用します。','削減時間を1指標で比較します。'], deliverable:'成果物: 導入レポート1枚 + 効果指標' },
+    { title:'多段タスクの丸投げ検証', goal:'集計→分析→ドラフトの連結作業を1命令化し、実務時間を削減します。', flow:['入力データの形式を固定します。','多段タスクのプロンプトを作成します。','3ケースで再現テストします。','誤回答時のチェックポイントを決めます。'], deliverable:'成果物: 多段プロンプト + チェックシート' },
+    { title:'共同所有化で属人化を解消', goal:'担当者不在でも運用が止まらない体制にします。', flow:['重要フローを棚卸しします。','共同所有者を追加し権限を確認します。','引継ぎドキュメントを簡潔に整備します。','代理運用テストを1回実施します。'], deliverable:'成果物: 共同所有設定 + 引継ぎ手順書' }
+  ]},
+  { lv:5, job:'ゆうしゃ', sub:'～ そしきおうだんの アーキテクト ～', color:'#ffd24a', hacks:[
+    { title:'2部署横断フローを設計・接続', goal:'部署間の受け渡しロスを減らし、業務をつなげます。', flow:['前後工程の担当部署を確定します。','入力データと出力データの契約を定義します。','部署間連結フローを構築します。','運用責任分界を明記します。'], deliverable:'成果物: 横断フロー + データ契約書' },
+    { title:'AIスキル評価を提出〜記録まで半自動化', goal:'評価業務の負荷を下げ、履歴を一元管理します。', flow:['評価基準（L6-L1）をフォーム化します。','提出データを受けるフローを作成します。','判定ロジックと記録先を接続します。','判定ずれが起きたケースをレビューします。'], deliverable:'成果物: 評価フロー + 記録台帳' },
+    { title:'再現手順＋テンプレで知識資産化', goal:'誰でも同じ成果を出せる状態にして、継続運用を可能にします。', flow:['成功した自動化レシピを1つ選びます。','手順を再現観点で書き直します。','テンプレと注意点をセット化します。','初見メンバーで再現確認します。'], deliverable:'成果物: 手順書 + テンプレ一式' },
+    { title:'他部署へ移植して横展開の型を作る', goal:'個別最適で終わらせず、組織展開できる導入モデルを作ります。', flow:['移植先部署の課題を1つ選びます。','既存仕組みとのギャップを整理します。','最小構成で導入して効果測定します。','導入チェックリストを作成します。'], deliverable:'成果物: 横展開チェックリスト + 実装記録' },
+    { title:'FDEポートフォリオへ事例を追加', goal:'成果を可視化し、次施策の説得力を高めます。', flow:['課題→設計→効果の3段構成で事例を整理します。','定量効果（時間削減・件数）を記入します。','再現可能性と次アクションを追記します。','レビューを受けて最終版を確定します。'], deliverable:'成果物: ポートフォリオ事例1本（最終版）' }
+  ]},
+];
+const PTS = 20; // per quest
+const NEXT_JOB = ['せんし','まほうつかい','けんじゃ','ゆうしゃ','でんせつ'];
+
+/* ============ STATE ============ */
+const KEY='copilot_quest_v1';
+let S = null, memFallback=null;
+
+function defaultState(){
+  return { unlocked:1, view:1, gameCount:80, startedDate:new Date().toISOString().slice(0,10), started:false, activeHack:null,
+           done:{1:[],2:[],3:[],4:[],5:[]} };
+}
+async function load(){
+  try{
+    if(window.storage && window.storage.get){
+      const r = await window.storage.get(KEY);
+      if(r && r.value) return JSON.parse(r.value);
+    }
+  }catch(e){}
+  if(memFallback) return memFallback;
+  return defaultState();
+}
+async function save(){
+  memFallback = S;
+  try{ if(window.storage && window.storage.set){ await window.storage.set(KEY, JSON.stringify(S)); } }catch(e){}
+}
+
+/* ============ AUDIO (8-bit blips) ============ */
+let actx;
+function tone(freq,dur,type,vol){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type=type||'square'; o.frequency.value=freq;
+    g.gain.value=vol||0.05; o.connect(g); g.connect(actx.destination);
+    const t=actx.currentTime; o.start(t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.stop(t+dur);
+  }catch(e){}
+}
+function sfxClear(){ tone(620,0.08,'square'); setTimeout(()=>tone(880,0.11,'square'),65); }
+function sfxLevelUp(){ [523,659,784,1046,1318].forEach((f,i)=>setTimeout(()=>tone(f,0.16,'square',0.06),i*110)); }
+function sfxTick(){ tone(440,0.04,'square',0.03); }
+
+/* ============ BLOB SPRITE ============ */
+function blobSVG(color){
+  return `
+   <g shape-rendering="crispEdges">
+     <rect x="8" y="4" width="8" height="2" fill="${color}"/>
+     <rect x="6" y="6" width="12" height="2" fill="${color}"/>
+     <rect x="5" y="8" width="14" height="2" fill="${color}"/>
+     <rect x="4" y="10" width="16" height="2" fill="${color}"/>
+     <rect x="3" y="12" width="18" height="2" fill="${color}"/>
+     <rect x="3" y="14" width="18" height="2" fill="${color}"/>
+     <rect x="2" y="16" width="20" height="2" fill="${color}"/>
+     <rect x="2" y="18" width="20" height="2" fill="${color}"/>
+     <rect x="8" y="11" width="2" height="3" fill="#fff"/>
+     <rect x="14" y="11" width="2" height="3" fill="#fff"/>
+     <rect x="9" y="12" width="1" height="1" fill="#000"/>
+     <rect x="15" y="12" width="1" height="1" fill="#000"/>
+     <rect x="10" y="16" width="4" height="1" fill="rgba(0,0,0,.45)"/>
+   </g>`;
+}
+
+/* ============ RENDER ============ */
+const $=id=>document.getElementById(id);
+
+function curLevelObj(){ return LEVELS[S.view-1]; }
+function doneCount(lv){ return (S.done[lv]||[]).length; }
+function totalDone(){ return [1,2,3,4,5].reduce((a,l)=>a+doneCount(l),0); }
+function curColor(){ return curLevelObj().color; }
+
+function renderStatus(){
+  const lvNow = S.unlocked;
+  const cleared = S.unlocked>5;
+  $('lvNum').textContent = Math.min(S.unlocked,5);
+  $('jobName').textContent = LEVELS[Math.min(S.unlocked,5)-1].job;
+  $('gameCount').textContent = S.gameCount;
+  $('heroBlob').innerHTML = blobSVG(LEVELS[Math.min(S.unlocked,5)-1].color);
+
+  // exp = progress of the current unlocked level toward level-up
+  let d = cleared?5:doneCount(S.unlocked);
+  $('expLabel').textContent = cleared ? 'MAX' : (d+' / 5');
+  $('expFill').style.width = (d/5*100)+'%';
+
+  $('totLabel').textContent = totalDone()+' / 25';
+  $('totFill').style.width = (totalDone()/25*100)+'%';
+}
+
+function renderTabs(){
+  const t=$('tabs'); t.innerHTML='';
+  LEVELS.forEach(L=>{
+    const b=document.createElement('button');
+    const locked = L.lv>S.unlocked;
+    const full = doneCount(L.lv)>=5;
+    b.className='tab'+(L.lv===S.view?' active':'')+(locked?' locked':'')+(full?' done':'');
+    b.innerHTML = (locked?'🔒':L.lv);
+    if(!locked){ b.onclick=()=>{ sfxTick(); S.view=L.lv; save(); render(); }; }
+    t.appendChild(b);
+  });
+}
+
+function renderQuests(){
+  const L=curLevelObj();
+  $('qLv').textContent='LEVEL '+L.lv;
+  $('qJob').textContent=L.job;
+  $('qJob').style.color=L.color;
+  $('qSub').textContent=L.sub;
+  const list=$('qList'); list.innerHTML='';
+
+  if(L.lv>S.unlocked){
+    list.innerHTML='<div class="locked-msg"><span class="big">？？？</span>このレベルは まだ ふういんされている。<br>いまの レベルの 5つを すべて クリアすると ひらく！</div>';
+    return;
+  }
+
+  L.hacks.forEach((hack,i)=>{
+    const done=(S.done[L.lv]||[]).includes(i);
+    const row=document.createElement('div');
+    row.className='q'+(done?' cleared':'');
+    row.innerHTML=`
+      <span class="cur">${done?'✓':'▶'}</span>
+      <span class="qtext">${hack.title}<span class="qmeta">${hack.goal}</span></span>
+      <button class="qbtn">${done?'✓ クリア！':'フローを見る ▶'}</button>`;
+    if(!done){
+      row.querySelector('.qbtn').onclick=()=>openHackDetail(L.lv,i);
+    }
+    list.appendChild(row);
+  });
+}
+
+function renderHackDetail(){
+  const detail=$('hackDetail');
+  if(!S.activeHack){ detail.classList.remove('show'); return; }
+  const { lv, index } = S.activeHack;
+  const L = LEVELS[lv-1];
+  if(!L || !L.hacks[index]){ S.activeHack=null; detail.classList.remove('show'); return; }
+  const hack = L.hacks[index];
+  const isDone = (S.done[lv]||[]).includes(index);
+  $('dLv').textContent = 'LEVEL '+lv+' FLOW';
+  $('dTitle').textContent = hack.title;
+  $('dGoal').textContent = 'ねらい: '+hack.goal;
+  $('dState').textContent = isDone ? '完了済み' : '未完了';
+  $('dState').style.color = isDone ? 'var(--exp)' : 'var(--dim)';
+  const flow=$('dFlow'); flow.innerHTML='';
+  hack.flow.forEach(step=>{
+    const li=document.createElement('li');
+    li.textContent=step;
+    flow.appendChild(li);
+  });
+  $('dDeliver').textContent = hack.deliverable;
+  $('completeBtn').disabled = isDone;
+  $('completeBtn').textContent = isDone ? 'このハックは完了済みです' : '成果物ができた！';
+  detail.classList.add('show');
+}
+
+function render(){
+  const started = !!S.started;
+  $('gameArea').hidden = !started;
+  $('titleHint').textContent = started ? '▶ ぼうけんちゅう（タイトルで もどる）' : '▶ タイトルをおして はじめる';
+  if(!started) return;
+  renderStatus(); renderTabs(); renderQuests(); renderHackDetail();
+  $('clearBanner').classList.toggle('show', S.unlocked>5);
+}
+
+/* ============ ACTIONS ============ */
+function popPoints(x,y,txt){
+  const p=document.createElement('div');
+  p.className='pop'; p.textContent=txt;
+  p.style.left=(x-20)+'px'; p.style.top=(y-14)+'px';
+  document.body.appendChild(p);
+  setTimeout(()=>p.remove(),1000);
+}
+
+function clearQuest(lv,i,ev){
+  if(!S.done[lv]) S.done[lv]=[];
+  if(S.done[lv].includes(i)) return;
+  S.done[lv].push(i);
+  sfxClear();
+  const r=ev.target.getBoundingClientRect();
+  popPoints(r.left+r.width/2, r.top, '+'+PTS+'P');
+  save();
+  render();
+  // level up?
+  if(lv===S.unlocked && doneCount(lv)>=5){
+    setTimeout(()=>levelUp(),420);
+  }
+}
+
+function levelUp(){
+  const finishedLevel=S.unlocked;
+  S.unlocked++;
+  S.view=Math.min(S.unlocked,5);
+  S.startedDate=new Date().toISOString().slice(0,10);
+  S.activeHack=null;
+  save();
+  sfxLevelUp();
+  const isFinal = finishedLevel>=5;
+  $('upBlob').innerHTML = blobSVG(LEVELS[Math.min(S.unlocked,5)-1].color);
+  $('dingText').textContent = isFinal ? '★ ぜんクリア！ ★' : 'レベルが あがった！';
+  $('newJob').textContent = isFinal ? 'でんせつのFDE' : LEVELS[S.unlocked-1].job;
+  $('gainText').textContent = isFinal ? 'じどうかP +100　MAX' : 'じどうかP +100';
+  $('overlay').classList.add('show');
+  render();
+}
+
+/* ============ GAME COUNT (editable, "保管") ============ */
+function setGameCount(n){
+  n=Math.max(0,Math.floor(n||0));
+  S.gameCount=n; save(); renderStatus();
+}
+$('gcPlus').onclick=()=>{ sfxTick(); setGameCount(S.gameCount+1); };
+$('gcMinus').onclick=()=>{ sfxTick(); setGameCount(S.gameCount-1); };
+$('gameCount').onclick=()=>{
+  const v=prompt('GitHub Games の最新本数を入力（保管されます）', S.gameCount);
+  if(v!==null && v.trim()!=='' && !isNaN(v)) setGameCount(parseInt(v,10));
+};
+
+/* ============ BUTTONS ============ */
+function startAdventure(){
+  if(S.started) return;
+  S.started=true;
+  sfxTick();
+  save();
+  render();
+}
+
+function toggleTitleScreen(){
+  if(!S.started) return;
+  S.started=false;
+  S.activeHack=null;
+  save();
+  render();
+}
+
+$('titleStart').onclick=()=>{ if(S.started){ toggleTitleScreen(); } else { startAdventure(); } };
+$('titleStart').addEventListener('keydown',(e)=>{
+  if(e.key==='Enter' || e.key===' '){
+    e.preventDefault();
+    if(S.started){ toggleTitleScreen(); } else { startAdventure(); }
+  }
+});
+
+function openHackDetail(lv,i){
+  S.activeHack={ lv, index:i };
+  sfxTick();
+  save();
+  renderHackDetail();
+}
+
+$('closeDetailBtn').onclick=()=>{
+  S.activeHack=null;
+  save();
+  renderHackDetail();
+};
+
+$('completeBtn').onclick=(e)=>{
+  if(!S.activeHack) return;
+  clearQuest(S.activeHack.lv, S.activeHack.index, e);
+  const isDone = (S.done[S.activeHack.lv]||[]).includes(S.activeHack.index);
+  if(isDone){
+    save();
+    render();
+  }
+};
+
+$('okBtn').onclick=()=>{ $('overlay').classList.remove('show'); render(); };
+$('resetBtn').onclick=()=>{
+  if(confirm('ぼうけんのしょは きえてしまいます。さいしょから やりなおしますか？')){
+    S=defaultState(); save(); render();
+  }
+};
+
+/* ============ INIT ============ */
+(async function(){
+  S = await load();
+  // sanity
+  if(!S || !S.done){ S=defaultState(); }
+  [1,2,3,4,5].forEach(l=>{ if(!Array.isArray(S.done[l])) S.done[l]=[]; });
+  if(!S.unlocked) S.unlocked=1;
+  if(typeof S.started!=='boolean') S.started=false;
+  if(!S.startedDate) S.startedDate=new Date().toISOString().slice(0,10);
+  if(!S.activeHack) S.activeHack=null;
+  if(!S.view || S.view>Math.min(S.unlocked,5)) S.view=Math.min(S.unlocked,5);
+  render();
+})();
+</script>
+</body>
+</html>

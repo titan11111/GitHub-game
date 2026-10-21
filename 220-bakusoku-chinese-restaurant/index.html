@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>爆速！激怒の中華飯店</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        chinaRed: '#D32F2F',
+                        chinaDarkRed: '#8B0000',
+                        chinaGold: '#FFD700',
+                        chinaYellow: '#FFA000',
+                        chinaWood: '#4A2E1A',
+                    },
+                    fontFamily: {
+                        chinese: ['"Zen Maru Gothic"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center text-white overflow-x-hidden" data-scrollable="true">
+    <header class="game-hud w-full border-b-4 border-chinaGold p-3 flex justify-between items-center relative z-20">
+        <div class="flex items-center space-x-3">
+            <div class="bg-black/40 px-3 py-1 rounded-full border border-chinaGold flex items-center gap-2">
+                <i class="fa-solid fa-store text-chinaGold text-lg"></i>
+                <span id="day-display" class="font-bold text-chinaGold text-sm sm:text-base">Day 1</span>
+            </div>
+            <div class="bg-black/40 px-3 py-1 rounded-full border border-red-500 flex items-center gap-2">
+                <i class="fa-solid fa-heart text-red-500 text-lg"></i>
+                <span id="reputation-display" class="font-bold text-red-400 text-sm sm:text-base">評判: 5/5</span>
+            </div>
+        </div>
+
+        <h1 class="hidden md:block font-black text-2xl text-chinaGold tracking-widest drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+            <i class="fa-solid fa-fire text-amber-500 mr-1"></i>爆速！激怒の中華飯店<i class="fa-solid fa-fire text-amber-500 ml-1"></i>
+        </h1>
+
+        <div class="flex items-center space-x-3">
+            <div class="bg-black/40 px-3 py-1 rounded-full border border-emerald-400 flex items-center gap-2">
+                <i class="fa-solid fa-yen-sign text-emerald-400 text-lg"></i>
+                <span id="money-display" class="font-bold text-emerald-300 text-base sm:text-lg">¥0</span>
+            </div>
+            <div class="hidden sm:flex flex-col gap-1">
+                <div class="flex justify-between text-[10px] text-amber-100"><span id="target-display">日商目標 ¥1,600</span><span id="timer-display">残り 70秒</span></div>
+                <div class="goal-meter"><div id="goal-fill"></div></div>
+            </div>
+            <button id="sound-toggle" class="game-btn bg-amber-600 text-white p-2 rounded-full w-9 h-9 flex items-center justify-center border border-chinaGold" type="button">
+                <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-6xl flex-1 flex flex-col p-2 sm:p-4 gap-3 relative" data-scrollable="true">
+        <div id="floating-container" class="absolute inset-0 pointer-events-none z-50"></div>
+
+        <section class="restaurant-scene">
+            <div class="lantern left"></div><div class="lantern right"></div>
+            <div class="kitchen-window" id="kitchen-window">奥の厨房</div>
+            <div class="scene-seats" id="seats-container"></div>
+            <div class="counter-plank"></div>
+            <div id="flow-step" class="flow-hint absolute left-3 bottom-2 z-10 text-[11px] text-amber-100 font-black">① お客の「これを作る」を押す</div>
+        </section>
+
+        <aside class="sns-feed" aria-live="polite" aria-label="お客さんのSNS口コミ">
+            <div class="sns-label"><i class="fa-solid fa-hashtag"></i> 爆速飯店なう</div>
+            <div id="sns-posts"></div>
+        </aside>
+
+        <section class="workbench flex-1 p-3 sm:p-4 flex flex-col justify-between gap-3">
+            <div id="service-tray" class="service-tray px-3 py-2 flex items-center gap-3">
+                <div class="text-amber-300 text-xs font-black whitespace-nowrap"><i class="fa-solid fa-bell-concierge mr-1"></i>提供台</div>
+                <div id="held-dish" class="text-xs text-neutral-400">完成した料理をコンロからここへ移します</div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-kitchen-set"></i> ここで炒める（完成したら提供台へ）
+                    </h2>
+                    <span class="text-xs text-gray-400">提供台は1皿。光っている客へ渡す</span>
+                </div>
+                <div id="wok-bay" class="wok-bay">
+                    <canvas id="flame-stage" aria-label="調理場の鉄鍋"></canvas>
+                    <div class="css-flames" aria-hidden="true">
+                        <i class="css-flame"></i><i class="css-flame"></i><i class="css-flame"></i><i class="css-flame"></i>
+                    </div>
+                    <button id="sear-btn" type="button" class="sear-btn game-btn">炙る！</button>
+                    <div class="wok-caption">鉄鍋・強火</div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mt-2" id="cookers-container"></div>
+            </div>
+
+            <div class="bg-neutral-900 rounded-xl p-3 border border-neutral-700">
+                <h3 class="text-xs font-bold text-chinaGold mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-utensils"></i> 調理メニュー（光っている料理が注文中）
+                </h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="menu-buttons-container"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="modal-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div id="start-modal" class="bg-chinaDarkRed border-4 border-chinaGold rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl chinese-border">
+            <div class="text-chinaGold text-5xl mb-2"><i class="fa-solid fa-dragon"></i></div>
+            <h1 class="text-3xl sm:text-4xl font-black text-chinaGold mb-2 tracking-wider">爆速！激怒の中華飯店</h1>
+            <p class="text-amber-200 text-sm mb-4 leading-relaxed">
+                お客が注文した料理を作ってわたすお店やさんゲームです。<br>
+                やり方は3つだけ。焦らなくてだいじょうぶです。
+            </p>
+            <div class="bg-black/50 p-4 rounded-xl text-left text-xs sm:text-sm text-amber-100 mb-6 space-y-2 border border-amber-600/40">
+                <p><b class="text-chinaGold">①</b> お客の「これを作る」を押す</p>
+                <p><b class="text-chinaGold">②</b> できたら「提供台へ盛る」を押す</p>
+                <p><b class="text-chinaGold">③</b> 光っているお客に「わたす」</p>
+                <p>おまけ：下の鉄鍋の「炙る！」で火柱。炒めが少し速くなります</p>
+                <p><i class="fa-solid fa-bullseye text-chinaGold mr-2"></i>70秒で目標金額。3日続けると三ツ星飯店</p>
+            </div>
+            <button id="start-game-btn" type="button" class="game-btn w-full py-4 bg-gradient-to-r from-amber-500 to-chinaYellow text-black font-black text-xl rounded-2xl shadow-xl">
+                暖簾をくぐって開店する！
+            </button>
+        </div>
+
+        <div id="day-clear-modal" class="hidden bg-chinaDarkRed border-4 border-chinaGold rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl chinese-border">
+            <div class="text-chinaGold text-4xl mb-2"><i class="fa-solid fa-trophy"></i></div>
+            <h2 id="day-clear-title" class="text-2xl sm:text-3xl font-black text-chinaGold mb-2">Day 1 営業終了！</h2>
+            <p id="day-clear-sub" class="text-amber-200 text-sm mb-4">本日の売上目標を達成しました！</p>
+            <div class="bg-black/50 p-4 rounded-xl text-left text-sm text-amber-100 mb-6 space-y-2 border border-amber-600/40">
+                <div class="flex justify-between"><span>本日売り上げ:</span><span id="stat-sales" class="font-bold text-emerald-400">¥0</span></div>
+                <div class="flex justify-between text-red-300"><span>帰らせた客の損失(材料費):</span><span id="stat-loss" class="font-bold">¥0</span></div>
+                <div class="flex justify-between text-red-300"><span>焦げ捨て費用:</span><span id="stat-burnt-loss" class="font-bold">¥0</span></div>
+                <hr class="border-amber-800 my-1">
+                <div class="flex justify-between font-bold text-lg text-chinaGold"><span>最終利益:</span><span id="stat-profit">¥0</span></div>
+            </div>
+            <div class="mb-6 text-left">
+                <h3 class="text-xs font-bold text-amber-300 mb-2 uppercase tracking-wider"><i class="fa-solid fa-wrench"></i> 厨房の設備投資 (次回から適用)</h3>
+                <div class="grid grid-cols-2 gap-2" id="shop-items"></div>
+            </div>
+            <button id="next-day-btn" type="button" class="game-btn w-full py-3 bg-gradient-to-r from-amber-500 to-chinaYellow text-black font-black text-lg rounded-xl shadow-lg">
+                次の営業日へ進む！
+            </button>
+        </div>
+
+        <div id="gameover-modal" class="hidden bg-neutral-900 border-4 border-red-600 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl">
+            <div class="text-red-500 text-5xl mb-2"><i class="fa-solid fa-skull-crossbones"></i></div>
+            <h2 id="gameover-title" class="text-3xl font-black text-red-500 mb-2">経営破綻・閉店...</h2>
+            <p id="gameover-reason" class="text-gray-300 text-sm mb-4">客の怒りが頂点に達し、評判がゼロになりました...</p>
+            <div class="bg-black/60 p-4 rounded-xl text-left text-sm text-gray-200 mb-6 space-y-2 border border-red-900">
+                <div class="flex justify-between"><span>生存日数:</span><span id="go-days" class="font-bold text-chinaGold">1日</span></div>
+                <div class="flex justify-between"><span>総満足顧客数:</span><span id="go-served" class="font-bold text-emerald-400">0人</span></div>
+                <div class="flex justify-between"><span>怒らせた顧客数:</span><span id="go-left" class="font-bold text-red-400">0人</span></div>
+                <p class="text-[11px] text-amber-200 mt-2">お客の書き込み</p>
+                <div id="go-reviews" class="go-reviews text-gray-200"></div>
+            </div>
+            <button id="restart-game-btn" type="button" class="game-btn w-full py-4 bg-red-600 text-white font-black text-xl rounded-2xl shadow-xl">
+                もう一度挑戦する
+            </button>
+        </div>
+    </div>
+
+    <script src="reviews.js"></script>
+    <script src="characters.js"></script>
+    <script src="kitchen.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
